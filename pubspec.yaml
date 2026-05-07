@@ -1,0 +1,53 @@
+name: airchat_flutter
+description: AirChat — YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP / WebSocket
+  http: ^1.2.0
+  web_socket_channel: ^3.0.0
+
+  # OBS overlay server
+  shelf: ^1.4.0
+  shelf_web_socket: ^2.0.0
+  network_info_plus: ^6.0.0
+
+  # Images (GIF + WebP animated)
+  cached_network_image: ^3.4.0
+  extended_image: ^9.0.0
+
+  # TTS (Supertonic ONNX)
+  flutter_onnxruntime: ^1.6.0
+  path_provider: ^2.1.1
+  audioplayers: ^5.2.1
+  logger: ^2.0.2
+
+  # Persistence
+  shared_preferences: ^2.3.0
+
+  # State management
+  flutter_riverpod: ^2.6.0
+
+  # Local packages
+  dart_youtube_chat:
+    path: ../dart_youtube_chat
+  dart_kick_chat:
+    path: ../dart_kick_chat
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/onnx/
+    - assets/voice_styles/
