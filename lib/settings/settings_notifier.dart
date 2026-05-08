@@ -12,7 +12,6 @@ import 'package:airchat_flutter/services/twitch_service.dart';
 import 'package:airchat_flutter/services/youtube_service.dart';
 import 'package:airchat_flutter/services/tts_service.dart';
 import 'package:airchat_flutter/settings/settings_model.dart';
-import 'package:airchat_flutter/services/window_control_service.dart';
 
 const _prefsKey = 'AIRCHAT_SETTINGS';
 
@@ -228,15 +227,6 @@ class AppController {
       } else {
         _overlay.stop();
       }
-    }
-
-    // Window behaviour (Windows-only) — aplica inmediatamente a la ventana nativa.
-    final winChanged = prev == null ||
-        prev.clickThrough != s.clickThrough ||
-        prev.alwaysOnTop != s.alwaysOnTop;
-    if (winChanged) {
-      WindowControlService.setClickThrough(s.clickThrough);
-      WindowControlService.setAlwaysOnTop(s.alwaysOnTop);
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/services/supertonic_helper.dart' show availableLangs;
+import 'package:airchat_flutter/window/window_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -83,8 +84,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(settingsProvider);
+    final s        = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+
+    // Window state is a separate provider — decoupled from overlay settings.
+    final win        = ref.watch(windowStateProvider);
+    final winNotifier = ref.read(windowStateProvider.notifier);
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -164,23 +169,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ]),
 
           _section('Window (Windows)'),
-          // Click-Through: igual a SetClickThrough en la versión Go
-          // WS_EX_LAYERED | WS_EX_TRANSPARENT vía platform channel
           _switchTileWithSubtitle(
             'Click-Through',
             'Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)',
-            s.clickThrough,
-            (v) => notifier.update(s.copyWith(clickThrough: v)),
+            win.clickThrough,
+            (v) => winNotifier.setClickThrough(v),
             activeColor: const Color(0xFFFF6B35),
           ),
           _switchTileWithSubtitle(
             'Always on Top',
             'La ventana se mantiene sobre todas las demás',
-            s.alwaysOnTop,
-            (v) => notifier.update(s.copyWith(alwaysOnTop: v)),
+            win.alwaysOnTop,
+            (v) => winNotifier.setAlwaysOnTop(v),
           ),
-          // Banner de advertencia cuando click-through está activo
-          if (s.clickThrough)
+          _switchTileWithSubtitle(
+            'Transparent (DWM)',
+            'Fondo de ventana 100% transparente vía DWM — como Wails RGBA{A:0}',
+            win.transparent,
+            (v) => winNotifier.setTransparent(v),
+          ),
+          if (win.clickThrough)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -188,8 +196,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: const Color(0xFFFF6B35).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFFFF6B35).withOpacity(0.5),
-                ),
+                    color: const Color(0xFFFF6B35).withOpacity(0.5)),
               ),
               child: const Row(
                 children: [
@@ -198,11 +205,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Click-through activo — desactívalo desde Settings antes de intentar interactuar con esta ventana.',
+                      'Click-through activo — desactívalo desde la barra superior antes de intentar interactuar con esta ventana.',
                       style: TextStyle(
-                        color: Color(0xFFFF6B35),
-                        fontSize: 11,
-                      ),
+                          color: Color(0xFFFF6B35), fontSize: 11),
                     ),
                   ),
                 ],
