@@ -40,6 +40,10 @@ class SettingsModel {
   final int overlayPort;
   final bool overlayEnabled;
 
+  // Window behaviour (Windows-only)
+  final bool clickThrough;
+  final bool alwaysOnTop;
+
   const SettingsModel({
     this.youtubeHandle = '',
     this.youtubeLiveId = '',
@@ -67,6 +71,8 @@ class SettingsModel {
     this.ttsLanguage = 'es',
     this.overlayPort = 8080,
     this.overlayEnabled = true,
+    this.clickThrough = false,
+    this.alwaysOnTop = false,
   });
 
   SettingsModel copyWith({
@@ -96,6 +102,8 @@ class SettingsModel {
     String? ttsLanguage,
     int? overlayPort,
     bool? overlayEnabled,
+    bool? clickThrough,
+    bool? alwaysOnTop,
   }) =>
       SettingsModel(
         youtubeHandle: youtubeHandle ?? this.youtubeHandle,
@@ -124,6 +132,8 @@ class SettingsModel {
         ttsLanguage: ttsLanguage ?? this.ttsLanguage,
         overlayPort: overlayPort ?? this.overlayPort,
         overlayEnabled: overlayEnabled ?? this.overlayEnabled,
+        clickThrough: clickThrough ?? this.clickThrough,
+        alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
       );
 
   Map<String, dynamic> toJson() => {
@@ -153,6 +163,8 @@ class SettingsModel {
         'ttsLanguage': ttsLanguage,
         'overlayPort': overlayPort,
         'overlayEnabled': overlayEnabled,
+        'clickThrough': clickThrough,
+        'alwaysOnTop': alwaysOnTop,
       };
 
   factory SettingsModel.fromJson(Map<String, dynamic> j) => SettingsModel(
@@ -182,6 +194,8 @@ class SettingsModel {
         ttsLanguage: j['ttsLanguage'] as String? ?? 'es',
         overlayPort: j['overlayPort'] as int? ?? 8080,
         overlayEnabled: j['overlayEnabled'] as bool? ?? true,
+        clickThrough: j['clickThrough'] as bool? ?? false,
+        alwaysOnTop: j['alwaysOnTop'] as bool? ?? false,
       );
 
   factory SettingsModel.fromJsonString(String s) =>

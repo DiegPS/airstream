@@ -111,6 +111,49 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
+        // ── Botones de acceso rápido para overlay mode ────────────────────
+        // Always-on-top toggle
+        Consumer(builder: (ctx, r, _) {
+          final s = r.watch(settingsProvider);
+          final notifier = r.read(settingsProvider.notifier);
+          return Tooltip(
+            message: s.alwaysOnTop ? 'Desactivar Always on Top' : 'Always on Top',
+            child: IconButton(
+              icon: Icon(
+                Icons.push_pin,
+                color: s.alwaysOnTop
+                    ? const Color(0xFF53FC18)
+                    : Colors.white38,
+                size: 20,
+              ),
+              onPressed: () =>
+                  notifier.update(s.copyWith(alwaysOnTop: !s.alwaysOnTop)),
+            ),
+          );
+        }),
+        // Click-through toggle — naranja para que sea visible cuando está activo
+        Consumer(builder: (ctx, r, _) {
+          final s = r.watch(settingsProvider);
+          final notifier = r.read(settingsProvider.notifier);
+          return Tooltip(
+            message: s.clickThrough
+                ? '⚠ Click-Through ACTIVO — toca para desactivar'
+                : 'Activar Click-Through',
+            child: IconButton(
+              icon: Icon(
+                s.clickThrough
+                    ? Icons.mouse_outlined
+                    : Icons.mouse,
+                color: s.clickThrough
+                    ? const Color(0xFFFF6B35)
+                    : Colors.white38,
+                size: 20,
+              ),
+              onPressed: () =>
+                  notifier.update(s.copyWith(clickThrough: !s.clickThrough)),
+            ),
+          );
+        }),
         IconButton(
           icon: const Icon(Icons.settings, color: Colors.white70),
           onPressed: () => Navigator.of(context).push(

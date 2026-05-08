@@ -163,6 +163,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ]),
           ]),
 
+          _section('Window (Windows)'),
+          // Click-Through: igual a SetClickThrough en la versión Go
+          // WS_EX_LAYERED | WS_EX_TRANSPARENT vía platform channel
+          _switchTileWithSubtitle(
+            'Click-Through',
+            'Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)',
+            s.clickThrough,
+            (v) => notifier.update(s.copyWith(clickThrough: v)),
+            activeColor: const Color(0xFFFF6B35),
+          ),
+          _switchTileWithSubtitle(
+            'Always on Top',
+            'La ventana se mantiene sobre todas las demás',
+            s.alwaysOnTop,
+            (v) => notifier.update(s.copyWith(alwaysOnTop: v)),
+          ),
+          // Banner de advertencia cuando click-through está activo
+          if (s.clickThrough)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFFF6B35).withOpacity(0.5),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Color(0xFFFF6B35)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Click-through activo — desactívalo desde Settings antes de intentar interactuar con esta ventana.',
+                      style: TextStyle(
+                        color: Color(0xFFFF6B35),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           _section('Appearance'),
           _sliderTile('Font size', s.fontSize, 10, 28, (v) {
             notifier.update(s.copyWith(fontSize: v));
@@ -370,6 +416,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onChanged: onChanged,
         // ignore: deprecated_member_use
         activeColor: const Color(0xFF53FC18),
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+      );
+  static Widget _switchTileWithSubtitle(
+    String label,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    Color activeColor = const Color(0xFF53FC18),
+  }) =>
+      SwitchListTile(
+        title: Text(label, style: const TextStyle(color: Colors.white70)),
+        subtitle: Text(subtitle,
+            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        value: value,
+        onChanged: onChanged,
+        // ignore: deprecated_member_use
+        activeColor: activeColor,
         contentPadding: EdgeInsets.zero,
         dense: true,
       );
