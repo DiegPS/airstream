@@ -38,6 +38,9 @@ dependencies:
   # Window management (drag, minimize, maximize, frameless — for A/B testing vs our Win32 impl)
   window_manager: ^0.4.0
 
+  # Window visual effects: transparent, acrylic, mica, blur (Windows/macOS/Linux)
+  flutter_acrylic: ^1.1.0
+
   # Local packages
   dart_youtube_chat:
     path: ../dart_youtube_chat

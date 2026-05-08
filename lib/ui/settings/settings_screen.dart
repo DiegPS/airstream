@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/services/supertonic_helper.dart' show availableLangs;
 import 'package:airchat_flutter/window/window_state.dart';
+import 'package:airchat_flutter/window/acrylic_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -213,6 +214,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
+
+          // ── Visual Effects (flutter_acrylic) ─────────────────────────────────
+          if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
+            ..._buildAcrylicSection(),
 
           _section('Appearance'),
           _sliderTile('Font size', s.fontSize, 10, 28, (v) {
@@ -442,4 +447,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         contentPadding: EdgeInsets.zero,
         dense: true,
       );
+
+  // ── flutter_acrylic effect selector ────────────────────────────────────────
+
+  List<Widget> _buildAcrylicSection() {
+    final acrylic    = ref.watch(acrylicProvider);
+    final acrylicN   = ref.read(acrylicProvider.notifier);
+
+    return [
+      _section('Visual Effects (flutter_acrylic)'),
+
+      // Effect chips
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: AcrylicEffectOption.values.map((opt) {
+            final selected = acrylic.effect == opt;
+            return ChoiceChip(
+              avatar: Icon(opt.icon, size: 14,
+                  color: selected ? Colors.black : Colors.white54),
+              label: Text(opt.label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: selected ? Colors.black : Colors.white70)),
+              selected: selected,
+              selectedColor: const Color(0xFF53FC18),
+              backgroundColor: const Color(0xFF1E1E1E),
+              onSelected: (_) => acrylicN.setEffect(opt),
+            );
+          }).toList(),
+        ),
+      ),
+
+      // Tint alpha slider (only useful for acrylic/aero)
+      if (acrylic.effect == AcrylicEffectOption.acrylic ||
+          acrylic.effect == AcrylicEffectOption.aero)
+        _sliderTile(
+          'Tint opacity',
+          acrylic.tintColor.opacity,
+          0, 1,
+          (v) => acrylicN.setTintColor(
+              Color.fromARGB((v * 255).round(), 0, 0, 0)),
+        ),
+    ];
+  }
 }

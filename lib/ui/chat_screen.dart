@@ -4,6 +4,7 @@ import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/settings/settings_screen.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
+import 'package:airchat_flutter/window/acrylic_state.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -50,24 +51,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 700;
 
-    if (isWide) {
-      return _tabletLayout();
-    }
-    return _phoneLayout();
+    // When an acrylic/transparency effect is active, the scaffold background
+    // must be transparent so the OS-level composition shows through Flutter.
+    final acrylicEffect = ref.watch(acrylicProvider).effect;
+    final scaffoldBg = acrylicEffect == AcrylicEffectOption.disabled
+        ? const Color(0xFF0D0D0D)
+        : Colors.transparent;
+
+    if (isWide) return _tabletLayout(scaffoldBg);
+    return _phoneLayout(scaffoldBg);
   }
 
   // ── Phone layout ─────────────────────────────────────────────────────────────
 
-  Widget _phoneLayout() => Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
+  Widget _phoneLayout(Color bg) => Scaffold(
+        backgroundColor: bg,
         appBar: _buildAppBar(),
         body: _chatList(),
       );
 
   // ── Tablet layout ─────────────────────────────────────────────────────────────
 
-  Widget _tabletLayout() => Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
+  Widget _tabletLayout(Color bg) => Scaffold(
+        backgroundColor: bg,
         body: Row(
           children: [
             SizedBox(

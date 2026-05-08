@@ -2,14 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:airchat_flutter/ui/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar window_manager (solo tiene efecto en desktop).
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     await windowManager.ensureInitialized();
+    await Window.initialize();   // flutter_acrylic — debe ir después de windowManager
   }
 
   runApp(const ProviderScope(child: AirChatApp()));
