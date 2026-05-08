@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:airchat_flutter/window/window_state.dart';
 
@@ -51,11 +53,63 @@ class WindowControlBar extends ConsumerWidget {
           activeColor: const Color(0xFFFF6B35),
           onTap: notifier.toggleClickThrough,
         ),
+        // ── Frameless (window_manager) ─────────────────────────────────
+        // Botón de A/B test: usa window_manager.setAsFrameless() + setHasShadow(false)
+        // en lugar de nuestro GWL_STYLE/DWMNCRP_DISABLED.
+        // Morado para distinguirlo del nuestro (verde).
+        if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
+          _WmFramelessButton(),
+
       ],
     );
   }
 }
 
+// ── A/B Test: window_manager frameless ────────────────────────────────────────
+// Botón morado — usa window_manager.setAsFrameless() + setHasShadow(false).
+// Comparar visualmente con nuestro botón verde (GWL_STYLE + DWMNCRP_DISABLED).
+
+class _WmFramelessButton extends StatefulWidget {
+  @override
+  State<_WmFramelessButton> createState() => _WmFramelessButtonState();
+}
+
+class _WmFramelessButtonState extends State<_WmFramelessButton> {
+  bool _active = false;
+
+  Future<void> _toggle() async {
+    final next = !_active;
+    if (next) {
+      // window_manager frameless: usa WM_NCCALCSIZE → 0 + setHasShadow(false)
+      await windowManager.setAsFrameless();
+      await windowManager.setHasShadow(false);
+    } else {
+      // No hay "undo" directo de setAsFrameless en window_manager,
+      // así que restauramos el estilo estándar manualmente.
+      await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      await windowManager.setHasShadow(true);
+    }
+    setState(() => _active = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: _active
+          ? '[WM] Desactivar Frameless (window_manager)'
+          : '[WM] Frameless — window_manager (WM_NCCALCSIZE)',
+      child: IconButton(
+        icon: Icon(
+          _active ? Icons.picture_in_picture : Icons.picture_in_picture_alt,
+          // Morado para distinguir del nuestro (verde)
+          color: _active ? const Color(0xFFB39DDB) : Colors.white38,
+          size: 20,
+        ),
+        onPressed: _toggle,
+      ),
+    );
+  }
+}
 // ── Private helper ────────────────────────────────────────────────────────────
 
 class _WindowToggleButton extends StatelessWidget {

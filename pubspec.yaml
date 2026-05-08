@@ -35,6 +35,9 @@ dependencies:
   # State management
   flutter_riverpod: ^2.6.0
 
+  # Window management (drag, minimize, maximize, frameless — for A/B testing vs our Win32 impl)
+  window_manager: ^0.4.0
+
   # Local packages
   dart_youtube_chat:
     path: ../dart_youtube_chat
