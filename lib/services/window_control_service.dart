@@ -19,6 +19,20 @@ class WindowControlService {
     }
   }
 
+  /// Activa o desactiva el modo frameless real.
+  /// Quita WS_OVERLAPPEDWINDOW (sin barra de título, sin bordes de resize),
+  /// deshabilita el shadow DWM y los bordes de color del Snap de Windows.
+  /// Igual a Wails: Frameless:true + DisableFramelessWindowDecorations:true
+  static Future<void> setFrameless(bool enabled) async {
+    if (!Platform.isWindows) return;
+    try {
+      await _channel.invokeMethod('setFrameless', {'enabled': enabled});
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('[WindowControl] setFrameless error: ${e.message}');
+    }
+  }
+
   /// Activa o desactiva el click-through.
   /// En Windows: WS_EX_TRANSPARENT | WS_EX_LAYERED (idéntico a la versión Go).
   static Future<void> setClickThrough(bool enabled) async {

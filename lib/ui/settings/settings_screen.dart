@@ -170,6 +170,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           _section('Window (Windows)'),
           _switchTileWithSubtitle(
+            'Frameless',
+            'Sin barra de título, sin bordes, sin sombra DWM — igual a Wails DisableFramelessWindowDecorations',
+            win.frameless,
+            (v) => winNotifier.setFrameless(v),
+          ),
+          _switchTileWithSubtitle(
             'Click-Through',
             'Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)',
             win.clickThrough,

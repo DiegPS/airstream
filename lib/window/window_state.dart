@@ -12,34 +12,40 @@ class WindowState {
   final bool clickThrough;
   final bool alwaysOnTop;
   final bool transparent;
+  final bool frameless;
 
   const WindowState({
     this.clickThrough = false,
     this.alwaysOnTop  = false,
     this.transparent  = false,
+    this.frameless    = false,
   });
 
   WindowState copyWith({
     bool? clickThrough,
     bool? alwaysOnTop,
     bool? transparent,
+    bool? frameless,
   }) =>
       WindowState(
         clickThrough: clickThrough ?? this.clickThrough,
         alwaysOnTop:  alwaysOnTop  ?? this.alwaysOnTop,
         transparent:  transparent  ?? this.transparent,
+        frameless:    frameless    ?? this.frameless,
       );
 
   Map<String, dynamic> toJson() => {
         'clickThrough': clickThrough,
         'alwaysOnTop':  alwaysOnTop,
         'transparent':  transparent,
+        'frameless':    frameless,
       };
 
   factory WindowState.fromJson(Map<String, dynamic> j) => WindowState(
         clickThrough: j['clickThrough'] as bool? ?? false,
         alwaysOnTop:  j['alwaysOnTop']  as bool? ?? false,
         transparent:  j['transparent']  as bool? ?? false,
+        frameless:    j['frameless']    as bool? ?? false,
       );
 }
 
@@ -56,6 +62,12 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
   }
 
   // ── Public setters (one per flag for clarity) ─────────────────────────────
+
+  Future<void> setFrameless(bool value) async {
+    state = state.copyWith(frameless: value);
+    await WindowControlService.setFrameless(value);
+    await _persist();
+  }
 
   Future<void> setClickThrough(bool value) async {
     state = state.copyWith(clickThrough: value);
@@ -77,6 +89,7 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
 
   // ── Toggle helpers ────────────────────────────────────────────────────────
 
+  Future<void> toggleFrameless()    => setFrameless(!state.frameless);
   Future<void> toggleClickThrough() => setClickThrough(!state.clickThrough);
   Future<void> toggleAlwaysOnTop()  => setAlwaysOnTop(!state.alwaysOnTop);
   Future<void> toggleTransparent()  => setTransparent(!state.transparent);
@@ -101,6 +114,7 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
   }
 
   void _applyAll(WindowState s) {
+    WindowControlService.setFrameless(s.frameless);
     WindowControlService.setClickThrough(s.clickThrough);
     WindowControlService.setAlwaysOnTop(s.alwaysOnTop);
     WindowControlService.setTransparent(s.transparent);

@@ -18,6 +18,18 @@ class WindowControlBar extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ── Frameless ────────────────────────────────────────────────────────
+        _WindowToggleButton(
+          tooltip: state.frameless
+              ? 'Desactivar Frameless'
+              : 'Frameless (sin chrome, sin sombra)',
+          icon:   state.frameless
+              ? Icons.crop_free
+              : Icons.web_asset,
+          active: state.frameless,
+          onTap:  notifier.toggleFrameless,
+        ),
+
         // ── Always-on-top ────────────────────────────────────────────────────
         _WindowToggleButton(
           tooltip: state.alwaysOnTop
