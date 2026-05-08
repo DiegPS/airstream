@@ -131,21 +131,6 @@ void Register(flutter::BinaryMessenger* messenger, HWND hwnd) {
           ApplyFrameless(hwnd, enabled);
           result->Success();
 
-        // ── setTransparent ────────────────────────────────────────────────
-        // Extends the DWM glass frame to the full client area.
-        // Mirrors Wails: BackgroundColour{A:0} + WindowIsTranslucent:true
-        } else if (method == "setTransparent") {
-          if (enabled) {
-            SetWindowLong(hwnd, GWL_EXSTYLE, exstyle | WS_EX_LAYERED);
-            MARGINS m = {-1, -1, -1, -1};
-            DwmExtendFrameIntoClientArea(hwnd, &m);
-          } else {
-            SetWindowLong(hwnd, GWL_EXSTYLE, exstyle & ~WS_EX_LAYERED);
-            MARGINS m = {0, 0, 0, 0};
-            DwmExtendFrameIntoClientArea(hwnd, &m);
-          }
-          result->Success();
-
         // ── setAlwaysOnTop ────────────────────────────────────────────────
         } else if (method == "setAlwaysOnTop") {
           SetWindowPos(hwnd,

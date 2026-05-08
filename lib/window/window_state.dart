@@ -9,43 +9,37 @@ import 'package:airchat_flutter/services/window_control_service.dart';
 
 /// Immutable snapshot of native-window behaviour flags.
 class WindowState {
+  final bool frameless;
   final bool clickThrough;
   final bool alwaysOnTop;
-  final bool transparent;
-  final bool frameless;
 
   const WindowState({
+    this.frameless    = false,
     this.clickThrough = false,
     this.alwaysOnTop  = false,
-    this.transparent  = false,
-    this.frameless    = false,
   });
 
   WindowState copyWith({
+    bool? frameless,
     bool? clickThrough,
     bool? alwaysOnTop,
-    bool? transparent,
-    bool? frameless,
   }) =>
       WindowState(
+        frameless:    frameless    ?? this.frameless,
         clickThrough: clickThrough ?? this.clickThrough,
         alwaysOnTop:  alwaysOnTop  ?? this.alwaysOnTop,
-        transparent:  transparent  ?? this.transparent,
-        frameless:    frameless    ?? this.frameless,
       );
 
   Map<String, dynamic> toJson() => {
+        'frameless':    frameless,
         'clickThrough': clickThrough,
         'alwaysOnTop':  alwaysOnTop,
-        'transparent':  transparent,
-        'frameless':    frameless,
       };
 
   factory WindowState.fromJson(Map<String, dynamic> j) => WindowState(
+        frameless:    j['frameless']    as bool? ?? false,
         clickThrough: j['clickThrough'] as bool? ?? false,
         alwaysOnTop:  j['alwaysOnTop']  as bool? ?? false,
-        transparent:  j['transparent']  as bool? ?? false,
-        frameless:    j['frameless']    as bool? ?? false,
       );
 }
 
@@ -54,14 +48,13 @@ class WindowState {
 const _kPrefsKey = 'AIRCHAT_WINDOW_STATE';
 
 /// Owns the native window state. Each setter immediately applies the
-/// corresponding Win32 API call via [WindowControlService] and persists the
-/// new state to SharedPreferences.
+/// corresponding Win32 API call via [WindowControlService] and persists.
 class WindowStateNotifier extends StateNotifier<WindowState> {
   WindowStateNotifier() : super(const WindowState()) {
     _load();
   }
 
-  // ── Public setters (one per flag for clarity) ─────────────────────────────
+  // ── Public setters ────────────────────────────────────────────────────────
 
   Future<void> setFrameless(bool value) async {
     state = state.copyWith(frameless: value);
@@ -81,18 +74,11 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
     await _persist();
   }
 
-  Future<void> setTransparent(bool value) async {
-    state = state.copyWith(transparent: value);
-    await WindowControlService.setTransparent(value);
-    await _persist();
-  }
-
   // ── Toggle helpers ────────────────────────────────────────────────────────
 
   Future<void> toggleFrameless()    => setFrameless(!state.frameless);
   Future<void> toggleClickThrough() => setClickThrough(!state.clickThrough);
   Future<void> toggleAlwaysOnTop()  => setAlwaysOnTop(!state.alwaysOnTop);
-  Future<void> toggleTransparent()  => setTransparent(!state.transparent);
 
   // ── Persistence ───────────────────────────────────────────────────────────
 
@@ -104,7 +90,7 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
       final loaded = WindowState.fromJson(
           jsonDecode(raw) as Map<String, dynamic>);
       state = loaded;
-      _applyAll(loaded);          // re-apply on startup
+      _applyAll(loaded);
     } catch (_) {}
   }
 
@@ -113,11 +99,12 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
     await prefs.setString(_kPrefsKey, jsonEncode(state.toJson()));
   }
 
+  // Only restores flags that are safe to re-apply at startup.
+  // frameless is intentionally skipped — if it was active when the app
+  // crashed it could leave the window undecorated on the next launch.
   void _applyAll(WindowState s) {
-    WindowControlService.setFrameless(s.frameless);
     WindowControlService.setClickThrough(s.clickThrough);
     WindowControlService.setAlwaysOnTop(s.alwaysOnTop);
-    WindowControlService.setTransparent(s.transparent);
   }
 }
 

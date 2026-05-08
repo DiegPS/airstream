@@ -188,12 +188,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             win.alwaysOnTop,
             (v) => winNotifier.setAlwaysOnTop(v),
           ),
-          _switchTileWithSubtitle(
-            'Transparent (DWM)',
-            'Fondo de ventana 100% transparente vía DWM — como Wails RGBA{A:0}',
-            win.transparent,
-            (v) => winNotifier.setTransparent(v),
-          ),
           if (win.clickThrough)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
