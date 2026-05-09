@@ -363,6 +363,11 @@ class Style {
   final OrtValue ttl, dp;
   final List<int> ttlShape, dpShape;
   Style(this.ttl, this.dp, this.ttlShape, this.dpShape);
+
+  Future<void> dispose() async {
+    await ttl.dispose();
+    await dp.dispose();
+  }
 }
 
 class TextToSpeech {
@@ -377,6 +382,13 @@ class TextToSpeech {
         baseChunkSize = cfgs['ae']['base_chunk_size'],
         chunkCompressFactor = cfgs['ttl']['chunk_compress_factor'],
         ldim = cfgs['ttl']['latent_dim'];
+
+  Future<void> dispose() async {
+    await dpOrt.close();
+    await textEncOrt.close();
+    await vectorEstOrt.close();
+    await vocoderOrt.close();
+  }
 
   Future<Map<String, dynamic>> call(
       String text, String lang, Style style, int totalStep,

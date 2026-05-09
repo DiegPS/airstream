@@ -85,6 +85,10 @@ class TtsService {
   TtsModelPaths? _modelPaths;
   bool _isInitializing = false;
   bool _isProcessing = false;
+  bool _isDisposed = false;
+  int _activeSyntheses = 0;
+  Future<void> _voiceStyleLoadFuture = Future<void>.value();
+  final List<Style> _retiredStyles = <Style>[];
   TtsLoadState _loadState = const TtsLoadState();
 
   // TTS configuration
@@ -101,6 +105,7 @@ class TtsService {
   TtsLoadState get currentLoadState => _loadState;
 
   void _emitLoadState(TtsLoadState next) {
+    if (_isDisposed) return;
     _loadState = next;
     if (!_loadStateController.isClosed) {
       _loadStateController.add(next);
@@ -118,6 +123,7 @@ class TtsService {
     try {
       _modelPaths = await _modelCache.ensureAvailable(
         onProgress: (progress) {
+          if (_isDisposed) return;
           final phase = progress.downloadedFiles == progress.totalFiles &&
                   progress.downloadedBytes == progress.totalBytes
               ? TtsLoadPhase.checking
@@ -137,11 +143,13 @@ class TtsService {
           ));
         },
       );
+      if (_isDisposed) return;
 
       _textToSpeech = await loadTextToSpeech(
         _modelPaths!.onnxDirectory.path,
         useGpu: false,
         onProgress: (progress) {
+          if (_isDisposed) return;
           _emitLoadState(_loadState.copyWith(
             phase: TtsLoadPhase.loading,
             message: progress.message,
@@ -157,9 +165,16 @@ class TtsService {
           ));
         },
       );
-      await _loadVoiceStyle(_selectedVoice, announceReady: true);
+      if (_isDisposed) return;
+      final initialVoice = _selectedVoice;
+      await _queueVoiceStyleLoad(initialVoice, announceReady: true);
+      if (!_isDisposed && _selectedVoice != initialVoice) {
+        await _queueVoiceStyleLoad(_selectedVoice, announceReady: true);
+      }
+      if (_isDisposed) return;
       debugPrint('TTS: Supertonic loaded successfully');
     } catch (e) {
+      if (_isDisposed) return;
       _emitLoadState(_loadState.copyWith(
         phase: TtsLoadPhase.error,
         message: 'Failed to load Supertonic.',
@@ -173,14 +188,16 @@ class TtsService {
   }
 
   Future<void> updateConfig(String voice, String lang) async {
+    if (_isDisposed) return;
     _selectedLang = lang;
     if (_selectedVoice != voice) {
       _selectedVoice = voice;
-      if (_textToSpeech != null) {
+      if (_textToSpeech != null && !_isInitializing) {
         try {
-          await _loadVoiceStyle(_selectedVoice);
+          await _queueVoiceStyleLoad(_selectedVoice);
           debugPrint('TTS: Voice style changed to $_selectedVoice');
         } catch (e) {
+          if (_isDisposed) return;
           _emitLoadState(_loadState.copyWith(
             phase: TtsLoadPhase.error,
             message: 'Failed to load voice style $_selectedVoice.',
@@ -193,10 +210,23 @@ class TtsService {
     }
   }
 
-  Future<void> _loadVoiceStyle(
+  Future<void> _queueVoiceStyleLoad(
+    String voice, {
+    bool announceReady = false,
+  }) {
+    _voiceStyleLoadFuture =
+        _voiceStyleLoadFuture.catchError((_) {}).then((_) async {
+      if (_isDisposed) return;
+      await _loadVoiceStyleNow(voice, announceReady: announceReady);
+    });
+    return _voiceStyleLoadFuture;
+  }
+
+  Future<void> _loadVoiceStyleNow(
     String voice, {
     bool announceReady = false,
   }) async {
+    if (_isDisposed) return;
     final modelPaths = _modelPaths;
     if (modelPaths == null) {
       throw StateError('TTS model cache is not initialized.');
@@ -219,7 +249,14 @@ class TtsService {
       fromCache: true,
       error: null,
     ));
-    _style = await loadVoiceStyle([assetPath]);
+    final loadedStyle = await loadVoiceStyle([assetPath]);
+    if (_isDisposed) return;
+    final previousStyle = _style;
+    _style = loadedStyle;
+    if (previousStyle != null && !identical(previousStyle, loadedStyle)) {
+      _retiredStyles.add(previousStyle);
+      unawaited(_disposeRetiredStylesIfIdle());
+    }
     final nextState = _loadState.copyWith(
       phase: announceReady ? TtsLoadPhase.ready : _loadState.phase,
       message: announceReady
@@ -240,12 +277,14 @@ class TtsService {
   }
 
   void speak(String text) {
+    if (_isDisposed) return;
     if (text.trim().isEmpty) return;
     _queue.add(text);
     _processQueue();
   }
 
   void stop() {
+    if (_isDisposed) return;
     _queue.clear();
     _windowsPlaybackProcess?.kill();
     _windowsPlaybackProcess = null;
@@ -253,6 +292,7 @@ class TtsService {
   }
 
   Future<void> _processQueue() async {
+    if (_isDisposed) return;
     if (_isProcessing || _queue.isEmpty) return;
     if (_textToSpeech == null || _style == null) {
       // If models failed to load or are still loading, retry later or wait
@@ -280,11 +320,16 @@ class TtsService {
   }
 
   Future<void> _generateAndPlay(String text) async {
+    File? file;
+    final textToSpeech = _textToSpeech;
+    final style = _style;
+    if (textToSpeech == null || style == null) return;
+    _activeSyntheses++;
     try {
-      final result = await _textToSpeech!.call(
+      final result = await textToSpeech.call(
         text,
         _selectedLang,
-        _style!,
+        style,
         _totalSteps,
         speed: _speed,
       );
@@ -299,19 +344,57 @@ class TtsService {
 
       writeWavFile(outputPath, wav, _textToSpeech!.sampleRate);
 
-      final file = File(outputPath);
+      file = File(outputPath);
       if (!file.existsSync()) {
         throw Exception('Failed to create WAV file');
       }
 
       await _playAudioFile(file);
-
-      // Delete temporary file
-      try {
-        file.deleteSync();
-      } catch (_) {}
     } catch (e) {
       debugPrint('TTS generation/playback error: $e');
+    } finally {
+      _activeSyntheses--;
+      await _disposeRetiredStylesIfIdle();
+      if (file != null) {
+        try {
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _disposeRetiredStylesIfIdle() async {
+    if (_activeSyntheses > 0 || _retiredStyles.isEmpty) {
+      return;
+    }
+    final styles = List<Style>.from(_retiredStyles);
+    _retiredStyles.clear();
+    for (final style in styles) {
+      try {
+        await style.dispose();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _disposeNativeResources() async {
+    final currentStyle = _style;
+    _style = null;
+    if (currentStyle != null) {
+      try {
+        await currentStyle.dispose();
+      } catch (_) {}
+    }
+
+    await _disposeRetiredStylesIfIdle();
+
+    final textToSpeech = _textToSpeech;
+    _textToSpeech = null;
+    if (textToSpeech != null) {
+      try {
+        await textToSpeech.dispose();
+      } catch (_) {}
     }
   }
 
@@ -359,9 +442,12 @@ class TtsService {
   }
 
   void dispose() {
+    if (_isDisposed) return;
     stop();
+    _isDisposed = true;
     _modelCache.dispose();
     _audioPlayer?.dispose();
     _loadStateController.close();
+    unawaited(_disposeNativeResources());
   }
 }

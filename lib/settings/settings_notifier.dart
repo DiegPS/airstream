@@ -95,6 +95,8 @@ class AppController {
   final _overlay = OverlayServer();
   final _tts = TtsService();
   late final MessagePipeline _pipeline;
+  StreamSubscription<ChatMessage>? _pipelineSub;
+  StreamSubscription<(ServiceStatus, String?)>? _kickStatusSub;
 
   final _listController =
       // ignore: close_sinks
@@ -118,7 +120,7 @@ class AppController {
     _pipeline.addSource(_youtube.messages);
     _pipeline.addSource(_kick.messages);
     _pipeline.addSource(_twitch.messages);
-    _pipeline.stream.listen((msg) {
+    _pipelineSub = _pipeline.stream.listen((msg) {
       _listController.add(_pipeline.buffer);
 
       // Trigger TTS if enabled
@@ -152,7 +154,7 @@ class AppController {
       }
     });
     // Forward per-service status to the aggregated stream.
-    _kick.statusStream.listen((s) => _updateStatus('kick', s));
+    _kickStatusSub = _kick.statusStream.listen((s) => _updateStatus('kick', s));
   }
 
   Future<void> _connectYoutube(SettingsModel s) async {
@@ -276,11 +278,15 @@ class AppController {
   }
 
   void dispose() {
+    _pipelineSub?.cancel();
+    _kickStatusSub?.cancel();
     _youtube.dispose();
     _kick.dispose();
     _twitch.dispose();
     _overlay.stop();
     _tts.dispose();
     _pipeline.dispose();
+    _listController.close();
+    _statusController.close();
   }
 }

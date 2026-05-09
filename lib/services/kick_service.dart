@@ -9,6 +9,7 @@ enum ServiceStatus { idle, connecting, connected, error }
 class KickService {
   kick.KickClient? _client;
   StreamSubscription? _sub;
+  StreamSubscription? _errorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _statusController =
       StreamController<(ServiceStatus, String?)>.broadcast();
@@ -42,12 +43,16 @@ class KickService {
       },
       onError: (e) => debugPrint('KickClient stream error: $e'),
     );
-    _client!.errors.listen((e) => debugPrint('KickClient error: $e'));
+    _errorSub = _client!.errors.listen(
+      (e) => debugPrint('KickClient error: $e'),
+    );
   }
 
   Future<void> disconnect() async {
     await _sub?.cancel();
     _sub = null;
+    await _errorSub?.cancel();
+    _errorSub = null;
     await _client?.close();
     _client = null;
     _emit(ServiceStatus.idle, null);
