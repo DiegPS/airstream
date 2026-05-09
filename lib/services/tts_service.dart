@@ -7,15 +7,69 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'supertonic_helper.dart';
 
+enum TtsLoadPhase { idle, loading, ready, error }
+
+class TtsLoadState {
+  final TtsLoadPhase phase;
+  final String message;
+  final String? currentAsset;
+  final int loadedAssets;
+  final int totalAssets;
+  final int loadedBytes;
+  final int totalBytes;
+  final String? voiceStyle;
+  final String? error;
+
+  const TtsLoadState({
+    this.phase = TtsLoadPhase.idle,
+    this.message = 'TTS not initialized.',
+    this.currentAsset,
+    this.loadedAssets = 0,
+    this.totalAssets = 0,
+    this.loadedBytes = 0,
+    this.totalBytes = 0,
+    this.voiceStyle,
+    this.error,
+  });
+
+  bool get isLoading => phase == TtsLoadPhase.loading;
+  bool get isReady => phase == TtsLoadPhase.ready;
+
+  TtsLoadState copyWith({
+    TtsLoadPhase? phase,
+    String? message,
+    String? currentAsset,
+    int? loadedAssets,
+    int? totalAssets,
+    int? loadedBytes,
+    int? totalBytes,
+    String? voiceStyle,
+    String? error,
+  }) =>
+      TtsLoadState(
+        phase: phase ?? this.phase,
+        message: message ?? this.message,
+        currentAsset: currentAsset ?? this.currentAsset,
+        loadedAssets: loadedAssets ?? this.loadedAssets,
+        totalAssets: totalAssets ?? this.totalAssets,
+        loadedBytes: loadedBytes ?? this.loadedBytes,
+        totalBytes: totalBytes ?? this.totalBytes,
+        voiceStyle: voiceStyle ?? this.voiceStyle,
+        error: error,
+      );
+}
+
 class TtsService {
   final AudioPlayer? _audioPlayer = Platform.isWindows ? null : AudioPlayer();
   final Queue<String> _queue = Queue<String>();
+  final _loadStateController = StreamController<TtsLoadState>.broadcast();
   Process? _windowsPlaybackProcess;
 
   TextToSpeech? _textToSpeech;
   Style? _style;
   bool _isInitializing = false;
   bool _isProcessing = false;
+  TtsLoadState _loadState = const TtsLoadState();
 
   // TTS configuration
   final int _totalSteps = 8;
@@ -27,14 +81,50 @@ class TtsService {
     _init();
   }
 
+  Stream<TtsLoadState> get loadStateStream => _loadStateController.stream;
+  TtsLoadState get currentLoadState => _loadState;
+
+  void _emitLoadState(TtsLoadState next) {
+    _loadState = next;
+    if (!_loadStateController.isClosed) {
+      _loadStateController.add(next);
+    }
+  }
+
   Future<void> _init() async {
     if (_isInitializing) return;
     _isInitializing = true;
+    _emitLoadState(_loadState.copyWith(
+      phase: TtsLoadPhase.loading,
+      message: 'Initializing Supertonic...',
+      error: null,
+    ));
     try {
-      _textToSpeech = await loadTextToSpeech('assets/onnx', useGpu: false);
-      _style = await loadVoiceStyle(['assets/voice_styles/$_selectedVoice.json']);
+      _textToSpeech = await loadTextToSpeech(
+        'assets/onnx',
+        useGpu: false,
+        onProgress: (progress) {
+          _emitLoadState(_loadState.copyWith(
+            phase: TtsLoadPhase.loading,
+            message: progress.message,
+            currentAsset: progress.assetPath,
+            loadedAssets: progress.loadedAssets,
+            totalAssets: progress.totalAssets,
+            loadedBytes: progress.loadedBytes,
+            totalBytes: progress.totalBytes,
+            voiceStyle: _selectedVoice,
+            error: null,
+          ));
+        },
+      );
+      await _loadVoiceStyle(_selectedVoice, announceReady: true);
       debugPrint('TTS: Supertonic loaded successfully');
     } catch (e) {
+      _emitLoadState(_loadState.copyWith(
+        phase: TtsLoadPhase.error,
+        message: 'Failed to load Supertonic.',
+        error: e.toString(),
+      ));
       debugPrint('TTS: Failed to load Supertonic models: $e');
     } finally {
       _isInitializing = false;
@@ -48,13 +138,55 @@ class TtsService {
       _selectedVoice = voice;
       if (_textToSpeech != null) {
         try {
-          _style = await loadVoiceStyle(['assets/voice_styles/$_selectedVoice.json']);
+          await _loadVoiceStyle(_selectedVoice);
           debugPrint('TTS: Voice style changed to $_selectedVoice');
         } catch (e) {
+          _emitLoadState(_loadState.copyWith(
+            phase: TtsLoadPhase.error,
+            message: 'Failed to load voice style $_selectedVoice.',
+            error: e.toString(),
+          ));
           debugPrint('TTS: Failed to change voice style to $_selectedVoice: $e');
         }
       }
     }
+  }
+
+  Future<void> _loadVoiceStyle(
+    String voice, {
+    bool announceReady = false,
+  }) async {
+    final assetPath = 'assets/voice_styles/$voice.json';
+    final assetSize = await getAssetByteLength(assetPath);
+    final loadedBytes = announceReady
+        ? _loadState.loadedBytes + (assetSize ?? 0)
+        : _loadState.loadedBytes;
+    final totalBytes = announceReady
+        ? _loadState.totalBytes + (assetSize ?? 0)
+        : _loadState.totalBytes;
+    _emitLoadState(_loadState.copyWith(
+      phase: TtsLoadPhase.loading,
+      message:
+          'Loading voice style $voice${assetSize != null ? ' (${formatByteSize(assetSize)})' : ''}...',
+      currentAsset: assetPath,
+      voiceStyle: voice,
+      error: null,
+    ));
+    _style = await loadVoiceStyle([assetPath]);
+    final nextState = _loadState.copyWith(
+      phase: announceReady ? TtsLoadPhase.ready : _loadState.phase,
+      message: announceReady
+          ? 'Supertonic ready. Voice style $voice loaded.'
+          : 'Voice style $voice loaded.',
+      currentAsset: assetPath,
+      voiceStyle: voice,
+      loadedAssets: announceReady ? _loadState.totalAssets : _loadState.loadedAssets,
+      totalAssets: _loadState.totalAssets,
+      loadedBytes: loadedBytes,
+      totalBytes: totalBytes,
+      error: null,
+    );
+    _emitLoadState(nextState);
   }
 
   void speak(String text) {
@@ -176,5 +308,6 @@ class TtsService {
   void dispose() {
     stop();
     _audioPlayer?.dispose();
+    _loadStateController.close();
   }
 }

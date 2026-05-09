@@ -7,6 +7,8 @@ import 'package:airchat_flutter/models/chat_message.dart';
 import 'package:airchat_flutter/pipeline/message_pipeline.dart';
 import 'package:airchat_flutter/services/kick_service.dart';
 export 'package:airchat_flutter/services/kick_service.dart' show ServiceStatus;
+export 'package:airchat_flutter/services/tts_service.dart'
+    show TtsLoadPhase, TtsLoadState;
 import 'package:airchat_flutter/services/overlay_server.dart';
 import 'package:airchat_flutter/services/twitch_service.dart';
 import 'package:airchat_flutter/services/youtube_service.dart';
@@ -38,6 +40,11 @@ final connectionStatusProvider =
     StreamProvider<Map<String, (ServiceStatus, String?)>>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.connectionStatusStream;
+});
+
+final ttsLoadStateProvider = StreamProvider<TtsLoadState>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.ttsLoadStateStream;
 });
 
 final appControllerProvider = Provider<AppController>((ref) {
@@ -188,6 +195,11 @@ class AppController {
       get connectionStatusStream async* {
     yield Map.from(_platformStatus);
     yield* _statusController.stream;
+  }
+
+  Stream<TtsLoadState> get ttsLoadStateStream async* {
+    yield _tts.currentLoadState;
+    yield* _tts.loadStateStream;
   }
 
   String? get overlayUrl => _overlay.localIp != null

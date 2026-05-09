@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:airchat_flutter/services/supertonic_helper.dart'
-    show availableLangs;
+    show availableLangs, formatByteSize;
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
@@ -298,6 +298,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final winNotifier = ref.read(windowStateProvider.notifier);
     final isRunning = ref.watch(chatConnectionProvider);
     final appController = ref.read(appControllerProvider);
+    final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
 
     _syncController(_ytHandle, _ytFocus, s.youtubeHandle);
     _syncController(_ytLiveId, _ytLiveIdFocus, s.youtubeLiveId);
@@ -495,6 +496,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
           _section('TTS'),
+          if (ttsLoadState != null) ...[
+            _ttsStatusCard(ttsLoadState),
+            const SizedBox(height: 12),
+          ],
           _switchRow('TTS', s.ttsEnabled,
               (v) => notifier.update(s.copyWith(ttsEnabled: v))),
           _switchRow('Members only', s.ttsMembersOnly,
@@ -594,6 +599,96 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               acrylicN.setTintColor(Color.fromARGB((v * 255).round(), 0, 0, 0)),
         ),
     ];
+  }
+
+  static Widget _ttsStatusCard(TtsLoadState state) {
+    final (label, color) = switch (state.phase) {
+      TtsLoadPhase.ready => ('Ready', const Color(0xFF53FC18)),
+      TtsLoadPhase.loading => ('Loading', Colors.amber),
+      TtsLoadPhase.error => ('Error', Colors.redAccent),
+      TtsLoadPhase.idle => ('Idle', Colors.white38),
+    };
+    final progressText = state.totalAssets > 0
+        ? '${state.loadedAssets}/${state.totalAssets} assets'
+        : null;
+    final bytesText = state.totalBytes > 0
+        ? '${formatByteSize(state.loadedBytes)} / ${formatByteSize(state.totalBytes)}'
+        : null;
+    final assetText = state.currentAsset
+        ?.replaceFirst('assets/onnx/', '')
+        .replaceFirst('assets/voice_styles/', '');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1B),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E2E2E)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Supertonic: $label',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            state.message,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          if (assetText != null && assetText.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Current: $assetText',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+          if (progressText != null || bytesText != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              [progressText, bytesText]
+                  .whereType<String>()
+                  .where((v) => v.isNotEmpty)
+                  .join(' · '),
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
+          if (state.voiceStyle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Voice: ${state.voiceStyle}',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+          if (state.error != null && state.error!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              state.error!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   static Widget _section(String t) => Padding(

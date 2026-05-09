@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:logger/logger.dart';
-import 'package:path_provider/path_provider.dart';
 
 final logger = Logger(
   printer: PrettyPrinter(methodCount: 0, errorMethodCount: 5, lineLength: 80),
@@ -15,6 +14,61 @@ final logger = Logger(
 const List<String> availableLangs = ['en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hi', 'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi'];
 
 bool isValidLang(String lang) => availableLangs.contains(lang);
+
+class SupertonicLoadProgress {
+  final String message;
+  final String? assetPath;
+  final int loadedAssets;
+  final int totalAssets;
+  final int loadedBytes;
+  final int totalBytes;
+
+  const SupertonicLoadProgress({
+    required this.message,
+    this.assetPath,
+    required this.loadedAssets,
+    required this.totalAssets,
+    required this.loadedBytes,
+    required this.totalBytes,
+  });
+}
+
+typedef SupertonicLoadProgressCallback = void Function(
+    SupertonicLoadProgress progress);
+
+String formatByteSize(int bytes) {
+  const units = ['B', 'KB', 'MB', 'GB'];
+  double value = bytes.toDouble();
+  var unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
+  }
+
+  final decimals = value >= 100 || unitIndex == 0 ? 0 : 2;
+  return '${value.toStringAsFixed(decimals)} ${units[unitIndex]}';
+}
+
+Future<int?> getAssetByteLength(String assetPath) async {
+  final directFile = File(assetPath);
+  if (await directFile.exists()) {
+    return directFile.length();
+  }
+
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    final relativeAssetPath =
+        assetPath.replaceAll('/', Platform.pathSeparator);
+    final bundledFile = File(
+      '$executableDir${Platform.pathSeparator}data${Platform.pathSeparator}flutter_assets${Platform.pathSeparator}$relativeAssetPath',
+    );
+    if (await bundledFile.exists()) {
+      return bundledFile.length();
+    }
+  }
+
+  return null;
+}
 
 // Hangul Jamo constants for NFKD decomposition
 const int _hangulSyllableBase = 0xAC00;
@@ -185,9 +239,15 @@ String preprocessText(String text, String lang) {
   text = text.replaceAll(" '", "'");
 
   // Remove duplicate quotes
-  while (text.contains('""')) text = text.replaceAll('""', '"');
-  while (text.contains("''")) text = text.replaceAll("''", "'");
-  while (text.contains('``')) text = text.replaceAll('``', '`');
+  while (text.contains('""')) {
+    text = text.replaceAll('""', '"');
+  }
+  while (text.contains("''")) {
+    text = text.replaceAll("''", "'");
+  }
+  while (text.contains('``')) {
+    text = text.replaceAll('``', '`');
+  }
 
   // Remove extra spaces
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -530,18 +590,78 @@ class TextToSpeech {
   }
 }
 
-Future<TextToSpeech> loadTextToSpeech(String onnxDir,
-    {bool useGpu = false}) async {
+Future<TextToSpeech> loadTextToSpeech(
+  String onnxDir, {
+  bool useGpu = false,
+  SupertonicLoadProgressCallback? onProgress,
+}) async {
   if (useGpu) throw Exception('GPU mode not supported yet');
 
   logger.i('Loading TTS models from $onnxDir');
+  final assetPaths = <String>[
+    '$onnxDir/tts.json',
+    '$onnxDir/duration_predictor.onnx',
+    '$onnxDir/text_encoder.onnx',
+    '$onnxDir/vector_estimator.onnx',
+    '$onnxDir/vocoder.onnx',
+    '$onnxDir/unicode_indexer.json',
+  ];
+  final assetSizes = <String, int>{};
+  var totalBytes = 0;
+  for (final path in assetPaths) {
+    final size = await getAssetByteLength(path);
+    if (size != null) {
+      assetSizes[path] = size;
+      totalBytes += size;
+    }
+  }
 
+  void report(String message, String? assetPath, int loadedAssets,
+      int loadedBytes) {
+    onProgress?.call(SupertonicLoadProgress(
+      message: message,
+      assetPath: assetPath,
+      loadedAssets: loadedAssets,
+      totalAssets: assetPaths.length,
+      loadedBytes: loadedBytes,
+      totalBytes: totalBytes,
+    ));
+  }
+
+  var loadedAssets = 0;
+  var loadedBytes = 0;
+
+  final cfgPath = '$onnxDir/tts.json';
+  report('Loading configuration...', cfgPath, loadedAssets, loadedBytes);
   final cfgs = await _loadCfgs(onnxDir);
-  final sessions = await _loadOnnxAll(onnxDir);
-  final textProcessor =
-      await UnicodeProcessor.load('$onnxDir/unicode_indexer.json');
+  loadedAssets++;
+  loadedBytes += assetSizes[cfgPath] ?? 0;
+  report('Configuration loaded.', cfgPath, loadedAssets, loadedBytes);
+
+  final sessions = await _loadOnnxAll(
+    onnxDir,
+    assetSizes: assetSizes,
+    startingLoadedAssets: loadedAssets,
+    startingLoadedBytes: loadedBytes,
+    totalAssets: assetPaths.length,
+    totalBytes: totalBytes,
+    onProgress: onProgress,
+  );
+  loadedAssets += 4;
+  loadedBytes += (assetSizes['$onnxDir/duration_predictor.onnx'] ?? 0) +
+      (assetSizes['$onnxDir/text_encoder.onnx'] ?? 0) +
+      (assetSizes['$onnxDir/vector_estimator.onnx'] ?? 0) +
+      (assetSizes['$onnxDir/vocoder.onnx'] ?? 0);
+
+  final unicodePath = '$onnxDir/unicode_indexer.json';
+  report('Loading unicode indexer...', unicodePath, loadedAssets, loadedBytes);
+  final textProcessor = await UnicodeProcessor.load(unicodePath);
+  loadedAssets++;
+  loadedBytes += assetSizes[unicodePath] ?? 0;
+  report('Unicode indexer loaded.', unicodePath, loadedAssets, loadedBytes);
 
   logger.i('TTS models loaded successfully');
+  report('Supertonic models ready.', null, loadedAssets, loadedBytes);
 
   return TextToSpeech(
     cfgs,
@@ -601,19 +721,51 @@ Future<Map<String, dynamic>> _loadCfgs(String onnxDir) async {
   return json as Map<String, dynamic>;
 }
 
-Future<Map<String, OrtSession>> _loadOnnxAll(String dir) async {
+Future<Map<String, OrtSession>> _loadOnnxAll(
+  String dir, {
+  required Map<String, int> assetSizes,
+  required int startingLoadedAssets,
+  required int startingLoadedBytes,
+  required int totalAssets,
+  required int totalBytes,
+  SupertonicLoadProgressCallback? onProgress,
+}) async {
   final ort = OnnxRuntime();
   final models = [
-    'duration_predictor',
-    'text_encoder',
-    'vector_estimator',
-    'vocoder'
+    ('duration_predictor', 'Duration Predictor'),
+    ('text_encoder', 'Text Encoder'),
+    ('vector_estimator', 'Vector Estimator'),
+    ('vocoder', 'Vocoder'),
   ];
+  final sessions = <OrtSession>[];
+  var loadedAssets = startingLoadedAssets;
+  var loadedBytes = startingLoadedBytes;
 
-  final sessions = await Future.wait(models.map((name) async {
-    logger.d('Loading $name.onnx');
-    return ort.createSessionFromAsset('$dir/$name.onnx');
-  }));
+  for (final model in models) {
+    final assetPath = '$dir/${model.$1}.onnx';
+    final size = assetSizes[assetPath];
+    onProgress?.call(SupertonicLoadProgress(
+      message: 'Loading ${model.$2}${size != null ? ' (${formatByteSize(size)})' : ''}...',
+      assetPath: assetPath,
+      loadedAssets: loadedAssets,
+      totalAssets: totalAssets,
+      loadedBytes: loadedBytes,
+      totalBytes: totalBytes,
+    ));
+    logger.d('Loading ${model.$1}.onnx');
+    final session = await ort.createSessionFromAsset(assetPath);
+    sessions.add(session);
+    loadedAssets++;
+    loadedBytes += size ?? 0;
+    onProgress?.call(SupertonicLoadProgress(
+      message: '${model.$2} loaded.',
+      assetPath: assetPath,
+      loadedAssets: loadedAssets,
+      totalAssets: totalAssets,
+      loadedBytes: loadedBytes,
+      totalBytes: totalBytes,
+    ));
+  }
 
   return {
     'dpOrt': sessions[0],
