@@ -6,56 +6,70 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'supertonic_helper.dart';
+import 'tts_model_cache.dart';
 
-enum TtsLoadPhase { idle, loading, ready, error }
+enum TtsLoadPhase { idle, checking, downloading, loading, ready, error }
 
 class TtsLoadState {
   final TtsLoadPhase phase;
   final String message;
-  final String? currentAsset;
+  final String? currentFile;
   final int loadedAssets;
   final int totalAssets;
   final int loadedBytes;
   final int totalBytes;
   final String? voiceStyle;
   final String? error;
+  final String? cacheDirectory;
+  final bool fromCache;
 
   const TtsLoadState({
     this.phase = TtsLoadPhase.idle,
     this.message = 'TTS not initialized.',
-    this.currentAsset,
+    this.currentFile,
     this.loadedAssets = 0,
     this.totalAssets = 0,
     this.loadedBytes = 0,
     this.totalBytes = 0,
     this.voiceStyle,
     this.error,
+    this.cacheDirectory,
+    this.fromCache = false,
   });
 
-  bool get isLoading => phase == TtsLoadPhase.loading;
+  bool get isLoading =>
+      phase == TtsLoadPhase.checking ||
+      phase == TtsLoadPhase.downloading ||
+      phase == TtsLoadPhase.loading;
   bool get isReady => phase == TtsLoadPhase.ready;
+  double? get progress =>
+      totalBytes > 0 ? (loadedBytes / totalBytes).clamp(0, 1) : null;
 
   TtsLoadState copyWith({
     TtsLoadPhase? phase,
     String? message,
-    String? currentAsset,
+    String? currentFile,
     int? loadedAssets,
     int? totalAssets,
     int? loadedBytes,
     int? totalBytes,
     String? voiceStyle,
     String? error,
+    String? cacheDirectory,
+    bool? fromCache,
   }) =>
       TtsLoadState(
         phase: phase ?? this.phase,
         message: message ?? this.message,
-        currentAsset: currentAsset ?? this.currentAsset,
+        currentFile: currentFile ?? this.currentFile,
         loadedAssets: loadedAssets ?? this.loadedAssets,
         totalAssets: totalAssets ?? this.totalAssets,
         loadedBytes: loadedBytes ?? this.loadedBytes,
         totalBytes: totalBytes ?? this.totalBytes,
         voiceStyle: voiceStyle ?? this.voiceStyle,
         error: error,
+        cacheDirectory: cacheDirectory ?? this.cacheDirectory,
+        fromCache: fromCache ?? this.fromCache,
       );
 }
 
@@ -63,10 +77,12 @@ class TtsService {
   final AudioPlayer? _audioPlayer = Platform.isWindows ? null : AudioPlayer();
   final Queue<String> _queue = Queue<String>();
   final _loadStateController = StreamController<TtsLoadState>.broadcast();
+  final TtsModelCache _modelCache = TtsModelCache();
   Process? _windowsPlaybackProcess;
 
   TextToSpeech? _textToSpeech;
   Style? _style;
+  TtsModelPaths? _modelPaths;
   bool _isInitializing = false;
   bool _isProcessing = false;
   TtsLoadState _loadState = const TtsLoadState();
@@ -95,24 +111,48 @@ class TtsService {
     if (_isInitializing) return;
     _isInitializing = true;
     _emitLoadState(_loadState.copyWith(
-      phase: TtsLoadPhase.loading,
-      message: 'Initializing Supertonic...',
+      phase: TtsLoadPhase.checking,
+      message: 'Checking Supertonic cache...',
       error: null,
     ));
     try {
+      _modelPaths = await _modelCache.ensureAvailable(
+        onProgress: (progress) {
+          final phase = progress.downloadedFiles == progress.totalFiles &&
+                  progress.downloadedBytes == progress.totalBytes
+              ? TtsLoadPhase.checking
+              : TtsLoadPhase.downloading;
+          _emitLoadState(_loadState.copyWith(
+            phase: phase,
+            message: progress.message,
+            currentFile: progress.currentFile,
+            loadedAssets: progress.downloadedFiles,
+            totalAssets: progress.totalFiles,
+            loadedBytes: progress.downloadedBytes,
+            totalBytes: progress.totalBytes,
+            voiceStyle: _selectedVoice,
+            cacheDirectory: progress.cacheDirectory,
+            fromCache: true,
+            error: null,
+          ));
+        },
+      );
+
       _textToSpeech = await loadTextToSpeech(
-        'assets/onnx',
+        _modelPaths!.onnxDirectory.path,
         useGpu: false,
         onProgress: (progress) {
           _emitLoadState(_loadState.copyWith(
             phase: TtsLoadPhase.loading,
             message: progress.message,
-            currentAsset: progress.assetPath,
+            currentFile: progress.assetPath,
             loadedAssets: progress.loadedAssets,
             totalAssets: progress.totalAssets,
             loadedBytes: progress.loadedBytes,
             totalBytes: progress.totalBytes,
             voiceStyle: _selectedVoice,
+            cacheDirectory: _modelPaths?.cacheDirectory.path,
+            fromCache: true,
             error: null,
           ));
         },
@@ -146,7 +186,8 @@ class TtsService {
             message: 'Failed to load voice style $_selectedVoice.',
             error: e.toString(),
           ));
-          debugPrint('TTS: Failed to change voice style to $_selectedVoice: $e');
+          debugPrint(
+              'TTS: Failed to change voice style to $_selectedVoice: $e');
         }
       }
     }
@@ -156,7 +197,11 @@ class TtsService {
     String voice, {
     bool announceReady = false,
   }) async {
-    final assetPath = 'assets/voice_styles/$voice.json';
+    final modelPaths = _modelPaths;
+    if (modelPaths == null) {
+      throw StateError('TTS model cache is not initialized.');
+    }
+    final assetPath = modelPaths.voiceStylePath(voice);
     final assetSize = await getAssetByteLength(assetPath);
     final loadedBytes = announceReady
         ? _loadState.loadedBytes + (assetSize ?? 0)
@@ -168,8 +213,10 @@ class TtsService {
       phase: TtsLoadPhase.loading,
       message:
           'Loading voice style $voice${assetSize != null ? ' (${formatByteSize(assetSize)})' : ''}...',
-      currentAsset: assetPath,
+      currentFile: assetPath,
       voiceStyle: voice,
+      cacheDirectory: modelPaths.cacheDirectory.path,
+      fromCache: true,
       error: null,
     ));
     _style = await loadVoiceStyle([assetPath]);
@@ -178,12 +225,15 @@ class TtsService {
       message: announceReady
           ? 'Supertonic ready. Voice style $voice loaded.'
           : 'Voice style $voice loaded.',
-      currentAsset: assetPath,
+      currentFile: assetPath,
       voiceStyle: voice,
-      loadedAssets: announceReady ? _loadState.totalAssets : _loadState.loadedAssets,
+      loadedAssets:
+          announceReady ? _loadState.totalAssets : _loadState.loadedAssets,
       totalAssets: _loadState.totalAssets,
       loadedBytes: loadedBytes,
       totalBytes: totalBytes,
+      cacheDirectory: modelPaths.cacheDirectory.path,
+      fromCache: true,
       error: null,
     );
     _emitLoadState(nextState);
@@ -244,7 +294,8 @@ class TtsService {
           : (result['wav'] as List).cast<double>();
 
       final tempDir = await getTemporaryDirectory();
-      final outputPath = '${tempDir.path}/speech_${DateTime.now().millisecondsSinceEpoch}.wav';
+      final outputPath =
+          '${tempDir.path}/speech_${DateTime.now().millisecondsSinceEpoch}.wav';
 
       writeWavFile(outputPath, wav, _textToSpeech!.sampleRate);
 
@@ -300,13 +351,16 @@ class TtsService {
     }
 
     if (exitCode != 0) {
-      final stderr = await process.stderr.transform(systemEncoding.decoder).join();
-      throw Exception('Windows audio playback failed (exit $exitCode): $stderr');
+      final stderr =
+          await process.stderr.transform(systemEncoding.decoder).join();
+      throw Exception(
+          'Windows audio playback failed (exit $exitCode): $stderr');
     }
   }
 
   void dispose() {
     stop();
+    _modelCache.dispose();
     _audioPlayer?.dispose();
     _loadStateController.close();
   }

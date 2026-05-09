@@ -449,8 +449,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
               ),
               child: const Row(
                 children: [
@@ -523,8 +523,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _ttsSeparatorCtrl,
             'dice',
             focusNode: _ttsSeparatorFocus,
-            onChanged: (v) =>
-                notifier.update(s.copyWith(ttsSeparatorText: v)),
+            onChanged: (v) => notifier.update(s.copyWith(ttsSeparatorText: v)),
           ),
           const SizedBox(height: 12),
           _dropdownRow(
@@ -604,6 +603,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   static Widget _ttsStatusCard(TtsLoadState state) {
     final (label, color) = switch (state.phase) {
       TtsLoadPhase.ready => ('Ready', const Color(0xFF53FC18)),
+      TtsLoadPhase.checking => ('Checking', Colors.lightBlueAccent),
+      TtsLoadPhase.downloading => ('Downloading', Colors.orangeAccent),
       TtsLoadPhase.loading => ('Loading', Colors.amber),
       TtsLoadPhase.error => ('Error', Colors.redAccent),
       TtsLoadPhase.idle => ('Idle', Colors.white38),
@@ -614,9 +615,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final bytesText = state.totalBytes > 0
         ? '${formatByteSize(state.loadedBytes)} / ${formatByteSize(state.totalBytes)}'
         : null;
-    final assetText = state.currentAsset
-        ?.replaceFirst('assets/onnx/', '')
-        .replaceFirst('assets/voice_styles/', '');
+    final assetText = state.currentFile
+        ?.split(RegExp(r'[\\/]'))
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    final currentFileLabel = assetText == null || assetText.isEmpty
+        ? null
+        : assetText.length >= 2
+            ? '${assetText[assetText.length - 2]}/${assetText.last}'
+            : assetText.last;
 
     return Container(
       width: double.infinity,
@@ -655,10 +662,22 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             state.message,
             style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
-          if (assetText != null && assetText.isNotEmpty) ...[
+          if (state.progress != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                value: state.progress,
+                backgroundColor: const Color(0xFF2A2A2A),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ],
+          if (currentFileLabel != null && currentFileLabel.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              'Current: $assetText',
+              'Current: $currentFileLabel',
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -677,6 +696,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             Text(
               'Voice: ${state.voiceStyle}',
               style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
+          if (state.fromCache && state.cacheDirectory != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Cache: ${state.cacheDirectory}',
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
           if (state.error != null && state.error!.isNotEmpty) ...[
@@ -865,9 +891,7 @@ class _ConnectionDots extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
-        children: platforms
-            .where((p) => p.$2)
-            .map((p) {
+        children: platforms.where((p) => p.$2).map((p) {
           final s = statusMap[p.$3];
           final serviceStatus = s?.$1 ?? ServiceStatus.idle;
           final error = s?.$2;

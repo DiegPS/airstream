@@ -11,7 +11,39 @@ final logger = Logger(
 );
 
 // Available languages for multilingual TTS
-const List<String> availableLangs = ['en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi', 'fr', 'hi', 'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi'];
+const List<String> availableLangs = [
+  'en',
+  'ko',
+  'ja',
+  'ar',
+  'bg',
+  'cs',
+  'da',
+  'de',
+  'el',
+  'es',
+  'et',
+  'fi',
+  'fr',
+  'hi',
+  'hr',
+  'hu',
+  'id',
+  'it',
+  'lt',
+  'lv',
+  'nl',
+  'pl',
+  'pt',
+  'ro',
+  'ru',
+  'sk',
+  'sl',
+  'sv',
+  'tr',
+  'uk',
+  'vi'
+];
 
 bool isValidLang(String lang) => availableLangs.contains(lang);
 
@@ -36,6 +68,15 @@ class SupertonicLoadProgress {
 typedef SupertonicLoadProgressCallback = void Function(
     SupertonicLoadProgress progress);
 
+bool _isAssetPath(String path) => path.startsWith('assets/');
+
+Future<String> _readTextFile(String path) async {
+  if (_isAssetPath(path)) {
+    return rootBundle.loadString(path);
+  }
+  return File(path).readAsString();
+}
+
 String formatByteSize(int bytes) {
   const units = ['B', 'KB', 'MB', 'GB'];
   double value = bytes.toDouble();
@@ -57,8 +98,7 @@ Future<int?> getAssetByteLength(String assetPath) async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     final executableDir = File(Platform.resolvedExecutable).parent.path;
-    final relativeAssetPath =
-        assetPath.replaceAll('/', Platform.pathSeparator);
+    final relativeAssetPath = assetPath.replaceAll('/', Platform.pathSeparator);
     final bundledFile = File(
       '$executableDir${Platform.pathSeparator}data${Platform.pathSeparator}flutter_assets${Platform.pathSeparator}$relativeAssetPath',
     );
@@ -276,11 +316,7 @@ class UnicodeProcessor {
   UnicodeProcessor._(this.indexer);
 
   static Future<UnicodeProcessor> load(String path) async {
-    final json = jsonDecode(
-      path.startsWith('assets/')
-          ? await rootBundle.loadString(path)
-          : File(path).readAsStringSync(),
-    );
+    final json = jsonDecode(await _readTextFile(path));
 
     final indexer = json is List
         ? {
@@ -616,8 +652,8 @@ Future<TextToSpeech> loadTextToSpeech(
     }
   }
 
-  void report(String message, String? assetPath, int loadedAssets,
-      int loadedBytes) {
+  void report(
+      String message, String? assetPath, int loadedAssets, int loadedBytes) {
     onProgress?.call(SupertonicLoadProgress(
       message: message,
       assetPath: assetPath,
@@ -676,11 +712,7 @@ Future<TextToSpeech> loadTextToSpeech(
 Future<Style> loadVoiceStyle(List<String> paths) async {
   final bsz = paths.length;
 
-  final firstJson = jsonDecode(
-    paths[0].startsWith('assets/')
-        ? await rootBundle.loadString(paths[0])
-        : File(paths[0]).readAsStringSync(),
-  );
+  final firstJson = jsonDecode(await _readTextFile(paths[0]));
 
   final ttlDims = List<int>.from(firstJson['style_ttl']['dims']);
   final dpDims = List<int>.from(firstJson['style_dp']['dims']);
@@ -689,11 +721,7 @@ Future<Style> loadVoiceStyle(List<String> paths) async {
   final dpFlat = Float32List(bsz * dpDims[1] * dpDims[2]);
 
   for (var i = 0; i < bsz; i++) {
-    final json = jsonDecode(
-      paths[i].startsWith('assets/')
-          ? await rootBundle.loadString(paths[i])
-          : File(paths[i]).readAsStringSync(),
-    );
+    final json = jsonDecode(await _readTextFile(paths[i]));
 
     final ttlData = _flattenToDouble(json['style_ttl']['data']);
     final dpData = _flattenToDouble(json['style_dp']['data']);
@@ -717,7 +745,7 @@ Future<Style> loadVoiceStyle(List<String> paths) async {
 
 Future<Map<String, dynamic>> _loadCfgs(String onnxDir) async {
   final path = '$onnxDir/tts.json';
-  final json = jsonDecode(await rootBundle.loadString(path));
+  final json = jsonDecode(await _readTextFile(path));
   return json as Map<String, dynamic>;
 }
 
@@ -745,7 +773,8 @@ Future<Map<String, OrtSession>> _loadOnnxAll(
     final assetPath = '$dir/${model.$1}.onnx';
     final size = assetSizes[assetPath];
     onProgress?.call(SupertonicLoadProgress(
-      message: 'Loading ${model.$2}${size != null ? ' (${formatByteSize(size)})' : ''}...',
+      message:
+          'Loading ${model.$2}${size != null ? ' (${formatByteSize(size)})' : ''}...',
       assetPath: assetPath,
       loadedAssets: loadedAssets,
       totalAssets: totalAssets,
@@ -753,7 +782,9 @@ Future<Map<String, OrtSession>> _loadOnnxAll(
       totalBytes: totalBytes,
     ));
     logger.d('Loading ${model.$1}.onnx');
-    final session = await ort.createSessionFromAsset(assetPath);
+    final session = _isAssetPath(assetPath)
+        ? await ort.createSessionFromAsset(assetPath)
+        : await ort.createSession(assetPath);
     sessions.add(session);
     loadedAssets++;
     loadedBytes += size ?? 0;
