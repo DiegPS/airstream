@@ -1,10 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
+
+import 'package:airchat_flutter/services/supertonic_helper.dart'
+    show availableLangs;
 import 'package:airchat_flutter/settings/settings_notifier.dart';
-import 'package:airchat_flutter/ui/settings/settings_screen.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
 import 'package:airchat_flutter/window/acrylic_state.dart';
+import 'package:airchat_flutter/window/window_state.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -31,7 +35,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _onScroll() {
-    // With reverse:true, pixels==0 means we're at the newest messages.
     final atBottom = _scrollController.position.pixels <= 40;
     if (_autoScroll != atBottom) {
       setState(() => _autoScroll = atBottom);
@@ -49,49 +52,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 700;
-
-    // When an acrylic/transparency effect is active, the scaffold background
-    // must be transparent so the OS-level composition shows through Flutter.
     final acrylicEffect = ref.watch(acrylicProvider).effect;
     final scaffoldBg = acrylicEffect == AcrylicEffectOption.disabled
         ? const Color(0xFF0D0D0D)
         : Colors.transparent;
 
-    if (isWide) return _tabletLayout(scaffoldBg);
-    return _phoneLayout(scaffoldBg);
+    return Scaffold(
+      backgroundColor: scaffoldBg,
+      body: Row(
+        children: [
+          const SizedBox(
+            width: 360,
+            child: _SettingsSidebar(),
+          ),
+          const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
+          Expanded(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(child: _chatList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
-
-  // ── Phone layout ─────────────────────────────────────────────────────────────
-
-  Widget _phoneLayout(Color bg) => Scaffold(
-        backgroundColor: bg,
-        appBar: _buildAppBar(),
-        body: _chatList(),
-      );
-
-  // ── Tablet layout ─────────────────────────────────────────────────────────────
-
-  Widget _tabletLayout(Color bg) => Scaffold(
-        backgroundColor: bg,
-        body: Row(
-          children: [
-            SizedBox(
-              width: 300,
-              child: _SettingsSidebar(),
-            ),
-            const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildAppBar(),
-                  Expanded(child: _chatList()),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
 
   AppBar _buildAppBar() {
     final overlayUrl = ref.watch(overlayUrlProvider);
@@ -101,6 +87,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         settings.youtubeLiveId.isNotEmpty ||
         settings.twitchChannel.isNotEmpty ||
         settings.kickSlug.isNotEmpty;
+
     return AppBar(
       backgroundColor: const Color(0xFF1A1A1A),
       elevation: 0,
@@ -124,7 +111,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-        // ── Quick-access window controls ──────────────────────────────────────
         const WindowControlBar(),
         IconButton(
           tooltip: isRunning ? 'Stop chat' : 'Start chat',
@@ -137,12 +123,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ref.read(chatConnectionProvider.notifier).state = !isRunning;
                 }
               : null,
-        ),
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white70),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SettingsScreen()),
-          ),
         ),
       ],
     );
@@ -168,7 +148,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ? (isRunning
                   ? 'Listening for messages...'
                   : 'Channels saved.\nPress Start when you want to listen.')
-              : 'No channels configured.\nConfigure channels in Settings.';
+              : 'No channels configured.\nConfigure channels in the sidebar.';
           return Center(
             child: Text(
               text,
@@ -182,12 +162,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             ListView.builder(
               controller: _scrollController,
-              // reverse: true anchors to the bottom automatically.
-              // New messages appear at the bottom without any programmatic scroll.
               reverse: true,
               padding: const EdgeInsets.all(8),
               itemCount: messages.length,
-              // Newest message is at index 0 in the reversed view.
               itemBuilder: (_, i) =>
                   ChatBubble(message: messages[messages.length - 1 - i]),
             ),
@@ -212,56 +189,91 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-// ── Tablet sidebar ────────────────────────────────────────────────────────────
-
 class _SettingsSidebar extends ConsumerStatefulWidget {
+  const _SettingsSidebar();
+
   @override
   ConsumerState<_SettingsSidebar> createState() => _SettingsSidebarState();
 }
 
 class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ytHandle;
+  late TextEditingController _ytLiveId;
   late TextEditingController _twitch;
   late TextEditingController _kick;
+  late TextEditingController _port;
+  late TextEditingController _ttsTestCtrl;
+  late TextEditingController _ttsPrefixCtrl;
+  late TextEditingController _ttsSeparatorCtrl;
+
   late FocusNode _ytFocus;
+  late FocusNode _ytLiveIdFocus;
   late FocusNode _twitchFocus;
   late FocusNode _kickFocus;
+  late FocusNode _portFocus;
+  late FocusNode _ttsPrefixFocus;
+  late FocusNode _ttsSeparatorFocus;
 
   @override
   void initState() {
     super.initState();
     final s = ref.read(settingsProvider);
     _ytHandle = TextEditingController(text: s.youtubeHandle);
+    _ytLiveId = TextEditingController(text: s.youtubeLiveId);
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug);
+    _port = TextEditingController(text: s.overlayPort.toString());
+    _ttsTestCtrl =
+        TextEditingController(text: 'Hola, probando sistema Text to Speech.');
+    _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
+    _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
+
     _ytFocus = FocusNode();
+    _ytLiveIdFocus = FocusNode();
     _twitchFocus = FocusNode();
     _kickFocus = FocusNode();
+    _portFocus = FocusNode();
+    _ttsPrefixFocus = FocusNode();
+    _ttsSeparatorFocus = FocusNode();
   }
 
   @override
   void dispose() {
     _ytHandle.dispose();
+    _ytLiveId.dispose();
     _twitch.dispose();
     _kick.dispose();
+    _port.dispose();
+    _ttsTestCtrl.dispose();
+    _ttsPrefixCtrl.dispose();
+    _ttsSeparatorCtrl.dispose();
+
     _ytFocus.dispose();
+    _ytLiveIdFocus.dispose();
     _twitchFocus.dispose();
     _kickFocus.dispose();
+    _portFocus.dispose();
+    _ttsPrefixFocus.dispose();
+    _ttsSeparatorFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _saveChannels() async {
+  Future<void> _saveTextSettings() async {
     final notifier = ref.read(settingsProvider.notifier);
     final current = ref.read(settingsProvider);
     await notifier.update(current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
+      youtubeLiveId: _ytLiveId.text.trim(),
       twitchChannel: _twitch.text.trim(),
       kickSlug: _kick.text.trim(),
+      overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
+      ttsCommandPrefix: _ttsPrefixCtrl.text,
+      ttsSeparatorText: _ttsSeparatorCtrl.text,
     ));
   }
 
   Future<void> _startChat() async {
-    await _saveChannels();
+    await _saveTextSettings();
     ref.read(chatConnectionProvider.notifier).state = true;
   }
 
@@ -282,14 +294,25 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final win = ref.watch(windowStateProvider);
+    final winNotifier = ref.read(windowStateProvider.notifier);
     final isRunning = ref.watch(chatConnectionProvider);
+    final appController = ref.read(appControllerProvider);
 
     _syncController(_ytHandle, _ytFocus, s.youtubeHandle);
+    _syncController(_ytLiveId, _ytLiveIdFocus, s.youtubeLiveId);
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
     _syncController(_kick, _kickFocus, s.kickSlug);
+    _syncController(_port, _portFocus, s.overlayPort.toString());
+    _syncController(_ttsPrefixCtrl, _ttsPrefixFocus, s.ttsCommandPrefix);
+    _syncController(
+      _ttsSeparatorCtrl,
+      _ttsSeparatorFocus,
+      s.ttsSeparatorText,
+    );
 
     final hasChannels = _ytHandle.text.trim().isNotEmpty ||
-        s.youtubeLiveId.isNotEmpty ||
+        _ytLiveId.text.trim().isNotEmpty ||
         _twitch.text.trim().isNotEmpty ||
         _kick.text.trim().isNotEmpty;
 
@@ -298,36 +321,68 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('AirChat',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
+          const Text(
+            'AirChat',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 20),
+          _section('Connections'),
           _label('YouTube handle, channel ID, or video URL'),
-          _field(_ytHandle, '@xqc · UC... · youtube.com/watch?v=...',
-              focusNode: _ytFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (v) {
-                notifier.update(s.copyWith(youtubeHandle: v.trim()));
-              }),
+          _field(
+            _ytHandle,
+            '@xqc · UC... · youtube.com/watch?v=...',
+            focusNode: _ytFocus,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (v) {
+              notifier.update(s.copyWith(youtubeHandle: v.trim()));
+            },
+          ),
+          const SizedBox(height: 12),
+          _label('YouTube live video ID (optional)'),
+          _field(
+            _ytLiveId,
+            'live video ID',
+            focusNode: _ytLiveIdFocus,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (v) {
+              notifier.update(s.copyWith(youtubeLiveId: v.trim()));
+            },
+          ),
           const SizedBox(height: 12),
           _label('Twitch channel'),
-          _field(_twitch, 'xqc',
-              focusNode: _twitchFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (v) {
-                notifier.update(s.copyWith(twitchChannel: v.trim()));
-              }),
+          _field(
+            _twitch,
+            'xqc',
+            focusNode: _twitchFocus,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (v) {
+              notifier.update(s.copyWith(twitchChannel: v.trim()));
+            },
+          ),
           const SizedBox(height: 12),
           _label('Kick slug'),
-          _field(_kick, 'xqc',
-              focusNode: _kickFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (v) {
-                notifier.update(s.copyWith(kickSlug: v.trim()));
-              }),
-          const SizedBox(height: 14),
+          _field(
+            _kick,
+            'xqc',
+            focusNode: _kickFocus,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (v) {
+              notifier.update(s.copyWith(kickSlug: v.trim()));
+            },
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _saveTextSettings,
+              child: const Text('Save fields'),
+            ),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -347,16 +402,87 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _label('Font size'),
-          Slider(
-            value: s.fontSize.clamp(10.0, 28.0),
-            min: 10,
-            max: 28,
-            // ignore: deprecated_member_use
-            activeColor: const Color(0xFF53FC18),
-            inactiveColor: const Color(0xFF2A2A2A),
-            onChanged: (v) => notifier.update(s.copyWith(fontSize: v)),
+          _section('Overlay Server'),
+          _label('Port'),
+          _field(
+            _port,
+            '8080',
+            focusNode: _portFocus,
+            onSubmitted: (v) {
+              final port = int.tryParse(v.trim());
+              if (port != null) {
+                notifier.update(s.copyWith(overlayPort: port));
+              }
+            },
           ),
+          const SizedBox(height: 8),
+          _switchRow('Enabled', s.overlayEnabled,
+              (v) => notifier.update(s.copyWith(overlayEnabled: v))),
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
+          _section('Window'),
+          _switchTileWithSubtitle(
+            'Frameless',
+            'Sin barra de titulo, sin bordes, sin sombra DWM.',
+            win.frameless,
+            (v) => winNotifier.setFrameless(v),
+          ),
+          _switchTileWithSubtitle(
+            'Click-Through',
+            'Los clics pasan a traves de la ventana.',
+            win.clickThrough,
+            (v) => winNotifier.setClickThrough(v),
+            activeColor: const Color(0xFFFF6B35),
+          ),
+          _switchTileWithSubtitle(
+            'Always on Top',
+            'La ventana se mantiene sobre las demas.',
+            win.alwaysOnTop,
+            (v) => winNotifier.setAlwaysOnTop(v),
+          ),
+          if (win.clickThrough)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Color(0xFFFF6B35)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Click-through activo. Desactivalo desde la barra superior para volver a interactuar.',
+                      style: TextStyle(color: Color(0xFFFF6B35), fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) ...[
+            const SizedBox(height: 8),
+            ..._buildAcrylicSection(),
+          ],
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
+          _section('Appearance'),
+          _sliderRow('Font size', s.fontSize, 10, 28,
+              (v) => notifier.update(s.copyWith(fontSize: v))),
+          _sliderRow('Background opacity', s.bgOpacity, 0, 1,
+              (v) => notifier.update(s.copyWith(bgOpacity: v))),
+          _sliderRow('Message opacity', s.messageOpacity, 0, 1,
+              (v) => notifier.update(s.copyWith(messageOpacity: v))),
+          _sliderRow('Border radius', s.borderRadius, 0, 24,
+              (v) => notifier.update(s.copyWith(borderRadius: v))),
+          _sliderRow('Message gap', s.messageGap, 0, 16,
+              (v) => notifier.update(s.copyWith(messageGap: v))),
           _switchRow('Avatars', s.showAvatars,
               (v) => notifier.update(s.copyWith(showAvatars: v))),
           _switchRow('Badges', s.showBadges,
@@ -368,17 +494,127 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
+          _section('TTS'),
           _switchRow('TTS', s.ttsEnabled,
               (v) => notifier.update(s.copyWith(ttsEnabled: v))),
+          _switchRow('Members only', s.ttsMembersOnly,
+              (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
+          _switchRow('Command mode (!voz)', s.ttsCommandMode,
+              (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
+          if (s.ttsCommandMode) ...[
+            const SizedBox(height: 8),
+            _label('Command prefix'),
+            _field(
+              _ttsPrefixCtrl,
+              '!voz',
+              focusNode: _ttsPrefixFocus,
+              onChanged: (v) =>
+                  notifier.update(s.copyWith(ttsCommandPrefix: v)),
+            ),
+          ],
+          const SizedBox(height: 8),
+          _label('Separator text'),
+          _field(
+            _ttsSeparatorCtrl,
+            'dice',
+            focusNode: _ttsSeparatorFocus,
+            onChanged: (v) =>
+                notifier.update(s.copyWith(ttsSeparatorText: v)),
+          ),
+          const SizedBox(height: 12),
+          _dropdownRow(
+            'Voice',
+            s.ttsVoice,
+            ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
+            (v) => notifier.update(s.copyWith(ttsVoice: v)),
+          ),
+          _dropdownRow(
+            'Language',
+            s.ttsLanguage,
+            availableLangs,
+            (v) => notifier.update(s.copyWith(ttsLanguage: v)),
+          ),
+          const SizedBox(height: 12),
+          _label('Test text'),
+          _field(_ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => appController.testTts(_ttsTestCtrl.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF53FC18),
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Probar TTS'),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
+  List<Widget> _buildAcrylicSection() {
+    final acrylic = ref.watch(acrylicProvider);
+    final acrylicN = ref.read(acrylicProvider.notifier);
+
+    return [
+      _section('Visual Effects'),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: AcrylicEffectOption.values.map((opt) {
+            final selected = acrylic.effect == opt;
+            return ChoiceChip(
+              avatar: Icon(opt.icon,
+                  size: 14, color: selected ? Colors.black : Colors.white54),
+              label: Text(opt.label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: selected ? Colors.black : Colors.white70)),
+              selected: selected,
+              selectedColor: const Color(0xFF53FC18),
+              backgroundColor: const Color(0xFF1E1E1E),
+              onSelected: (_) => acrylicN.setEffect(opt),
+            );
+          }).toList(),
+        ),
+      ),
+      if (acrylic.effect == AcrylicEffectOption.acrylic ||
+          acrylic.effect == AcrylicEffectOption.aero)
+        _sliderRow(
+          'Tint opacity',
+          acrylic.tintColor.a,
+          0,
+          1,
+          (v) =>
+              acrylicN.setTintColor(Color.fromARGB((v * 255).round(), 0, 0, 0)),
+        ),
+    ];
+  }
+
+  static Widget _section(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          t,
+          style: const TextStyle(
+            color: Color(0xFF53FC18),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      );
+
   static Widget _label(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 4),
-        child: Text(t,
-            style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        child: Text(
+          t,
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        ),
       );
 
   static Widget _field(
@@ -423,15 +659,95 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           Switch(
             value: value,
             onChanged: onChanged,
-            // ignore: deprecated_member_use
-            activeColor: const Color(0xFF53FC18),
+            activeThumbColor: const Color(0xFF53FC18),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       );
-}
 
-// ── Connection status dots ─────────────────────────────────────────────────────
+  static Widget _sliderRow(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged,
+  ) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 120,
+              child: Text(label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            ),
+            Expanded(
+              child: Slider(
+                value: value.clamp(min, max),
+                min: min,
+                max: max,
+                activeColor: const Color(0xFF53FC18),
+                inactiveColor: const Color(0xFF2A2A2A),
+                onChanged: onChanged,
+              ),
+            ),
+            SizedBox(
+              width: 36,
+              child: Text(
+                value.toStringAsFixed(value < 2 ? 2 : 0),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                textAlign: TextAlign.right,
+              ),
+            ),
+          ],
+        ),
+      );
+
+  static Widget _dropdownRow(
+    String label,
+    String value,
+    List<String> options,
+    ValueChanged<String> onChanged,
+  ) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            DropdownButton<String>(
+              value: value,
+              dropdownColor: const Color(0xFF1E1E1E),
+              items: options
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) onChanged(v);
+              },
+            ),
+          ],
+        ),
+      );
+
+  static Widget _switchTileWithSubtitle(
+    String label,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    Color activeColor = const Color(0xFF53FC18),
+  }) =>
+      SwitchListTile(
+        title: Text(label, style: const TextStyle(color: Colors.white70)),
+        subtitle: Text(subtitle,
+            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: activeColor,
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+      );
+}
 
 class _ConnectionDots extends ConsumerWidget {
   @override
@@ -440,7 +756,6 @@ class _ConnectionDots extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     final platforms = <(String, bool, String)>[
-      // (label, isConfigured, key)
       (
         'YT',
         settings.youtubeHandle.isNotEmpty || settings.youtubeLiveId.isNotEmpty,
@@ -456,7 +771,7 @@ class _ConnectionDots extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: platforms
-            .where((p) => p.$2) // only show configured ones
+            .where((p) => p.$2)
             .map((p) {
           final s = statusMap[p.$3];
           final serviceStatus = s?.$1 ?? ServiceStatus.idle;

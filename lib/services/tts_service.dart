@@ -2,20 +2,21 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'supertonic_helper.dart';
 
 class TtsService {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer? _audioPlayer = Platform.isWindows ? null : AudioPlayer();
   final Queue<String> _queue = Queue<String>();
-  
+  Process? _windowsPlaybackProcess;
+
   TextToSpeech? _textToSpeech;
   Style? _style;
   bool _isInitializing = false;
   bool _isProcessing = false;
-  
+
   // TTS configuration
   final int _totalSteps = 8;
   final double _speed = 1.05;
@@ -64,7 +65,9 @@ class TtsService {
 
   void stop() {
     _queue.clear();
-    _audioPlayer.stop();
+    _windowsPlaybackProcess?.kill();
+    _windowsPlaybackProcess = null;
+    _audioPlayer?.stop();
   }
 
   Future<void> _processQueue() async {
@@ -107,7 +110,7 @@ class TtsService {
       final wav = result['wav'] is List<double>
           ? result['wav']
           : (result['wav'] as List).cast<double>();
-      
+
       final tempDir = await getTemporaryDirectory();
       final outputPath = '${tempDir.path}/speech_${DateTime.now().millisecondsSinceEpoch}.wav';
 
@@ -118,11 +121,8 @@ class TtsService {
         throw Exception('Failed to create WAV file');
       }
 
-      await _audioPlayer.play(DeviceFileSource(file.absolute.path));
-      
-      // Wait for playback to finish
-      await _audioPlayer.onPlayerComplete.first;
-      
+      await _playAudioFile(file);
+
       // Delete temporary file
       try {
         file.deleteSync();
@@ -132,8 +132,49 @@ class TtsService {
     }
   }
 
+  Future<void> _playAudioFile(File file) async {
+    if (Platform.isWindows) {
+      await _playAudioWithWindowsSoundPlayer(file);
+      return;
+    }
+
+    final player = _audioPlayer;
+    if (player == null) {
+      throw Exception('No audio player available for this platform');
+    }
+
+    await player.play(DeviceFileSource(file.absolute.path));
+    await player.onPlayerComplete.first;
+  }
+
+  Future<void> _playAudioWithWindowsSoundPlayer(File file) async {
+    final process = await Process.start(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        r"$player = New-Object System.Media.SoundPlayer $env:AIRCHAT_WAV_PATH; $player.Load(); $player.PlaySync()",
+      ],
+      environment: {
+        'AIRCHAT_WAV_PATH': file.absolute.path,
+      },
+    );
+
+    _windowsPlaybackProcess = process;
+    final exitCode = await process.exitCode;
+    if (identical(_windowsPlaybackProcess, process)) {
+      _windowsPlaybackProcess = null;
+    }
+
+    if (exitCode != 0) {
+      final stderr = await process.stderr.transform(systemEncoding.decoder).join();
+      throw Exception('Windows audio playback failed (exit $exitCode): $stderr');
+    }
+  }
+
   void dispose() {
     stop();
-    _audioPlayer.dispose();
+    _audioPlayer?.dispose();
   }
 }
