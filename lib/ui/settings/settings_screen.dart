@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
-import 'package:airchat_flutter/services/supertonic_helper.dart' show availableLangs;
+import 'package:airchat_flutter/services/supertonic_helper.dart'
+    show availableLangs;
 import 'package:airchat_flutter/window/window_state.dart';
 import 'package:airchat_flutter/window/acrylic_state.dart';
 
@@ -19,7 +20,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _ytLiveId;
   late TextEditingController _twitch;
   late TextEditingController _kick;
-  late TextEditingController _kickId;
   late TextEditingController _port;
   late TextEditingController _ttsTestCtrl;
 
@@ -32,10 +32,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug)
       ..addListener(() => setState(() {}));
-    _kickId = TextEditingController(
-        text: s.kickChatroomId > 0 ? s.kickChatroomId.toString() : '');
     _port = TextEditingController(text: s.overlayPort.toString());
-    _ttsTestCtrl = TextEditingController(text: 'Hola, probando sistema Text to Speech.');
+    _ttsTestCtrl =
+        TextEditingController(text: 'Hola, probando sistema Text to Speech.');
   }
 
   @override
@@ -44,29 +43,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _ytLiveId.dispose();
     _twitch.dispose();
     _kick.dispose();
-    _kickId.dispose();
     _port.dispose();
     _ttsTestCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _openKickApi(String slug) async {
-    final url = 'https://kick.com/api/v2/channels/$slug';
-    try {
-      if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', url]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [url]);
-      } else {
-        await Process.run('xdg-open', [url]);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Abre manualmente: $url')),
-        );
-      }
-    }
   }
 
   void _save() {
@@ -77,7 +56,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       youtubeLiveId: _ytLiveId.text.trim(),
       twitchChannel: _twitch.text.trim(),
       kickSlug: _kick.text.trim(),
-      kickChatroomId: int.tryParse(_kickId.text.trim()) ?? 0,
       overlayPort: int.tryParse(_port.text) ?? 8080,
     ));
     Navigator.of(context).pop();
@@ -85,11 +63,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s        = ref.watch(settingsProvider);
+    final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
 
     // Window state is a separate provider — decoupled from overlay settings.
-    final win        = ref.watch(windowStateProvider);
+    final win = ref.watch(windowStateProvider);
     final winNotifier = ref.read(windowStateProvider.notifier);
 
     return Scaffold(
@@ -109,62 +87,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _section('Connections'),
-          _textField('YouTube handle (e.g. MrBeast)', _ytHandle,
-              prefix: '@'),
-          _textField('YouTube live ID (optional)', _ytLiveId),
+          _textField('YouTube handle, channel ID, or video URL', _ytHandle),
+          _textField('YouTube live video ID (optional)', _ytLiveId),
           _textField('Twitch channel', _twitch),
           _textField('Kick slug', _kick),
-          _textField(
-            'Kick chatroom ID (directo, sin HTTP lookup)',
-            _kickId,
-            keyboardType: TextInputType.number,
-          ),
-          if (_kick.text.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline,
-                      size: 14, color: Colors.amber),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Si el slug no funciona (403 Cloudflare), abre la URL de abajo en un browser, busca "chatroom":{"id": NÚMERO} y pégalo arriba.',
-                      style: const TextStyle(
-                          color: Colors.amber, fontSize: 11),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () => _openKickApi(_kick.text.trim()),
-                    child: const Text(
-                      'Abrir API',
-                      style:
-                          TextStyle(color: Color(0xFF53FC18), fontSize: 11),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           _section('Overlay Server'),
           Row(children: [
-            Expanded(child: _textField('Port', _port, keyboardType: TextInputType.number)),
+            Expanded(
+                child: _textField('Port', _port,
+                    keyboardType: TextInputType.number)),
             const SizedBox(width: 12),
             Column(children: [
-              const Text('Enabled', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const Text('Enabled',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
               Switch(
                 value: s.overlayEnabled,
                 onChanged: (v) =>
                     notifier.update(s.copyWith(overlayEnabled: v)),
                 // ignore: deprecated_member_use
-        activeColor: const Color(0xFF53FC18),
+                activeColor: const Color(0xFF53FC18),
               ),
             ]),
           ]),
@@ -196,8 +137,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFF6B35).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: const Color(0xFFFF6B35).withOpacity(0.5)),
+                border:
+                    Border.all(color: const Color(0xFFFF6B35).withOpacity(0.5)),
               ),
               child: const Row(
                 children: [
@@ -207,8 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Expanded(
                     child: Text(
                       'Click-through activo — desactívalo desde la barra superior antes de intentar interactuar con esta ventana.',
-                      style: TextStyle(
-                          color: Color(0xFFFF6B35), fontSize: 11),
+                      style: TextStyle(color: Color(0xFFFF6B35), fontSize: 11),
                     ),
                   ),
                 ],
@@ -253,25 +193,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
 
           if (s.ttsCommandMode)
-            _textField('Command Prefix',
+            _textField(
+                'Command Prefix',
                 TextEditingController(text: s.ttsCommandPrefix)
                   ..addListener((() {
                     // We don't save on every keystroke, use a debounce or save on unfocus normally.
                     // For simplicity in this port, we let the Save button handle text fields.
                   })),
-                onChanged: (v) => notifier.update(s.copyWith(ttsCommandPrefix: v))),
-          
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(ttsCommandPrefix: v))),
+
           _textField('Separator Text (e.g "says")',
               TextEditingController(text: s.ttsSeparatorText),
-              onChanged: (v) => notifier.update(s.copyWith(ttsSeparatorText: v))),
-          
-          _dropdownTile('Voice', s.ttsVoice, 
-              ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'], 
+              onChanged: (v) =>
+                  notifier.update(s.copyWith(ttsSeparatorText: v))),
+
+          _dropdownTile(
+              'Voice',
+              s.ttsVoice,
+              ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
               (v) => notifier.update(s.copyWith(ttsVoice: v))),
-              
-          _dropdownTile('Language', s.ttsLanguage, availableLangs, 
+
+          _dropdownTile('Language', s.ttsLanguage, availableLangs,
               (v) => notifier.update(s.copyWith(ttsLanguage: v))),
-          
+
           Padding(
             padding: const EdgeInsets.only(top: 16.0),
             child: Row(
@@ -286,7 +231,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       filled: true,
                       fillColor: Color(0xFF1E1E1E),
                       border: OutlineInputBorder(borderSide: BorderSide.none),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                   ),
                 ),
@@ -299,7 +245,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF53FC18),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                   ),
                   child: const Text('Probar'),
                 ),
@@ -349,7 +296,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
       );
@@ -376,7 +324,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 min: min,
                 max: max,
                 // ignore: deprecated_member_use
-        activeColor: const Color(0xFF53FC18),
+                activeColor: const Color(0xFF53FC18),
                 inactiveColor: const Color(0xFF3A3A3A),
                 onChanged: onChanged,
               ),
@@ -393,8 +341,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
 
-  static Widget _dropdownTile(
-          String title, String value, List<String> options, ValueChanged<String> onChanged) =>
+  static Widget _dropdownTile(String title, String value, List<String> options,
+          ValueChanged<String> onChanged) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -451,8 +399,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ── flutter_acrylic effect selector ────────────────────────────────────────
 
   List<Widget> _buildAcrylicSection() {
-    final acrylic    = ref.watch(acrylicProvider);
-    final acrylicN   = ref.read(acrylicProvider.notifier);
+    final acrylic = ref.watch(acrylicProvider);
+    final acrylicN = ref.read(acrylicProvider.notifier);
 
     return [
       _section('Visual Effects (flutter_acrylic)'),
@@ -466,8 +414,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: AcrylicEffectOption.values.map((opt) {
             final selected = acrylic.effect == opt;
             return ChoiceChip(
-              avatar: Icon(opt.icon, size: 14,
-                  color: selected ? Colors.black : Colors.white54),
+              avatar: Icon(opt.icon,
+                  size: 14, color: selected ? Colors.black : Colors.white54),
               label: Text(opt.label,
                   style: TextStyle(
                       fontSize: 11,
@@ -487,9 +435,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _sliderTile(
           'Tint opacity',
           acrylic.tintColor.opacity,
-          0, 1,
-          (v) => acrylicN.setTintColor(
-              Color.fromARGB((v * 255).round(), 0, 0, 0)),
+          0,
+          1,
+          (v) =>
+              acrylicN.setTintColor(Color.fromARGB((v * 255).round(), 0, 0, 0)),
         ),
     ];
   }

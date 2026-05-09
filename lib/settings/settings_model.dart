@@ -7,7 +7,6 @@ class SettingsModel {
   final String youtubeLiveId;
   final String twitchChannel;
   final String kickSlug;
-  final int kickChatroomId; // optional override — bypasses HTTP lookup
 
   // Overlay visual
   final double fontSize;
@@ -45,7 +44,6 @@ class SettingsModel {
     this.youtubeLiveId = '',
     this.twitchChannel = '',
     this.kickSlug = '',
-    this.kickChatroomId = 0,
     this.fontSize = 14.0,
     this.bgOpacity = 0.4,
     this.messageOpacity = 1.0,
@@ -74,7 +72,6 @@ class SettingsModel {
     String? youtubeLiveId,
     String? twitchChannel,
     String? kickSlug,
-    int? kickChatroomId,
     double? fontSize,
     double? bgOpacity,
     double? messageOpacity,
@@ -102,7 +99,6 @@ class SettingsModel {
         youtubeLiveId: youtubeLiveId ?? this.youtubeLiveId,
         twitchChannel: twitchChannel ?? this.twitchChannel,
         kickSlug: kickSlug ?? this.kickSlug,
-        kickChatroomId: kickChatroomId ?? this.kickChatroomId,
         fontSize: fontSize ?? this.fontSize,
         bgOpacity: bgOpacity ?? this.bgOpacity,
         messageOpacity: messageOpacity ?? this.messageOpacity,
@@ -131,7 +127,6 @@ class SettingsModel {
         'youtubeLiveId': youtubeLiveId,
         'twitchChannel': twitchChannel,
         'kickSlug': kickSlug,
-        'kickChatroomId': kickChatroomId,
         'fontSize': fontSize,
         'bgOpacity': bgOpacity,
         'messageOpacity': messageOpacity,
@@ -160,7 +155,6 @@ class SettingsModel {
         youtubeLiveId: j['youtubeLiveId'] as String? ?? '',
         twitchChannel: j['twitchChannel'] as String? ?? '',
         kickSlug: j['kickSlug'] as String? ?? '',
-        kickChatroomId: j['kickChatroomId'] as int? ?? 0,
         fontSize: (j['fontSize'] as num?)?.toDouble() ?? 14.0,
         bgOpacity: (j['bgOpacity'] as num?)?.toDouble() ?? 0.4,
         messageOpacity: (j['messageOpacity'] as num?)?.toDouble() ?? 1.0,

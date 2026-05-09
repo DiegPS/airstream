@@ -10,29 +10,15 @@ class KickService {
   kick.KickClient? _client;
   StreamSubscription? _sub;
   final _controller = StreamController<ChatMessage>.broadcast();
-  final _statusController = StreamController<(ServiceStatus, String?)>.broadcast();
+  final _statusController =
+      StreamController<(ServiceStatus, String?)>.broadcast();
 
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
 
-  /// Connect using [slug] to resolve the chatroom ID via HTTP.
+  /// Connect using the public Kick channel slug.
   Future<void> connect(String slug) async {
     await _connectWithSlug(slug);
-  }
-
-  /// Connect directly with a known [chatroomId], skipping the HTTP lookup.
-  Future<void> connectById(int chatroomId) async {
-    await disconnect();
-    _emit(ServiceStatus.connecting, null);
-    try {
-      _client = await kick.KickClient.connect();
-      _attachListeners();
-      _client!.joinById(chatroomId);
-      _emit(ServiceStatus.connected, null);
-    } catch (e) {
-      debugPrint('KickService.connectById failed: $e');
-      _emit(ServiceStatus.error, e.toString());
-    }
   }
 
   Future<void> _connectWithSlug(String slug) async {
@@ -80,7 +66,8 @@ class KickService {
   ChatMessage _convertMessage(kick.ChatMessage msg) {
     final items = msg.parts.map((p) {
       if (p.isEmote) {
-        return MessageItem.emoji(EmojiItem(url: p.emote!.url, alt: p.emote!.name));
+        return MessageItem.emoji(
+            EmojiItem(url: p.emote!.url, alt: p.emote!.name));
       }
       return MessageItem.text(p.text);
     }).toList();

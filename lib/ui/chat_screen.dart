@@ -95,6 +95,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   AppBar _buildAppBar() {
     final overlayUrl = ref.watch(overlayUrlProvider);
+    final settings = ref.watch(settingsProvider);
+    final isRunning = ref.watch(chatConnectionProvider);
+    final hasChannels = settings.youtubeHandle.isNotEmpty ||
+        settings.youtubeLiveId.isNotEmpty ||
+        settings.twitchChannel.isNotEmpty ||
+        settings.kickSlug.isNotEmpty;
     return AppBar(
       backgroundColor: const Color(0xFF1A1A1A),
       elevation: 0,
@@ -121,6 +127,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         // ── Quick-access window controls ──────────────────────────────────────
         const WindowControlBar(),
         IconButton(
+          tooltip: isRunning ? 'Stop chat' : 'Start chat',
+          icon: Icon(
+            isRunning ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+            color: hasChannels ? const Color(0xFF53FC18) : Colors.white24,
+          ),
+          onPressed: hasChannels
+              ? () {
+                  ref.read(chatConnectionProvider.notifier).state = !isRunning;
+                }
+              : null,
+        ),
+        IconButton(
           icon: const Icon(Icons.settings, color: Colors.white70),
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -140,11 +158,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               style: const TextStyle(color: Colors.redAccent))),
       data: (messages) {
         if (messages.isEmpty) {
-          return const Center(
+          final settings = ref.watch(settingsProvider);
+          final isRunning = ref.watch(chatConnectionProvider);
+          final hasChannels = settings.youtubeHandle.isNotEmpty ||
+              settings.youtubeLiveId.isNotEmpty ||
+              settings.twitchChannel.isNotEmpty ||
+              settings.kickSlug.isNotEmpty;
+          final text = hasChannels
+              ? (isRunning
+                  ? 'Listening for messages...'
+                  : 'Channels saved.\nPress Start when you want to listen.')
+              : 'No channels configured.\nConfigure channels in Settings.';
+          return Center(
             child: Text(
-              'No messages yet.\nConfigure channels in Settings.',
+              text,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white38, fontSize: 14),
+              style: const TextStyle(color: Colors.white38, fontSize: 14),
             ),
           );
         }
@@ -159,7 +188,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               padding: const EdgeInsets.all(8),
               itemCount: messages.length,
               // Newest message is at index 0 in the reversed view.
-              itemBuilder: (_, i) => ChatBubble(message: messages[messages.length - 1 - i]),
+              itemBuilder: (_, i) =>
+                  ChatBubble(message: messages[messages.length - 1 - i]),
             ),
             if (!_autoScroll)
               Positioned(
@@ -193,6 +223,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ytHandle;
   late TextEditingController _twitch;
   late TextEditingController _kick;
+  late FocusNode _ytFocus;
+  late FocusNode _twitchFocus;
+  late FocusNode _kickFocus;
 
   @override
   void initState() {
@@ -201,6 +234,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ytHandle = TextEditingController(text: s.youtubeHandle);
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug);
+    _ytFocus = FocusNode();
+    _twitchFocus = FocusNode();
+    _kickFocus = FocusNode();
   }
 
   @override
@@ -208,13 +244,54 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ytHandle.dispose();
     _twitch.dispose();
     _kick.dispose();
+    _ytFocus.dispose();
+    _twitchFocus.dispose();
+    _kickFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveChannels() async {
+    final notifier = ref.read(settingsProvider.notifier);
+    final current = ref.read(settingsProvider);
+    await notifier.update(current.copyWith(
+      youtubeHandle: _ytHandle.text.trim(),
+      twitchChannel: _twitch.text.trim(),
+      kickSlug: _kick.text.trim(),
+    ));
+  }
+
+  Future<void> _startChat() async {
+    await _saveChannels();
+    ref.read(chatConnectionProvider.notifier).state = true;
+  }
+
+  Future<void> _stopChat() async {
+    ref.read(chatConnectionProvider.notifier).state = false;
+  }
+
+  static void _syncController(
+    TextEditingController controller,
+    FocusNode focusNode,
+    String value,
+  ) {
+    if (focusNode.hasFocus || controller.text == value) return;
+    controller.text = value;
   }
 
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final isRunning = ref.watch(chatConnectionProvider);
+
+    _syncController(_ytHandle, _ytFocus, s.youtubeHandle);
+    _syncController(_twitch, _twitchFocus, s.twitchChannel);
+    _syncController(_kick, _kickFocus, s.kickSlug);
+
+    final hasChannels = _ytHandle.text.trim().isNotEmpty ||
+        s.youtubeLiveId.isNotEmpty ||
+        _twitch.text.trim().isNotEmpty ||
+        _kick.text.trim().isNotEmpty;
 
     return Container(
       color: const Color(0xFF141414),
@@ -227,20 +304,46 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 20),
-          _label('YouTube handle'),
-          _field(_ytHandle, '@MrBeast', onSubmitted: (v) {
-            notifier.update(s.copyWith(youtubeHandle: v.trim()));
-          }),
+          _label('YouTube handle, channel ID, or video URL'),
+          _field(_ytHandle, '@xqc · UC... · youtube.com/watch?v=...',
+              focusNode: _ytFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (v) {
+                notifier.update(s.copyWith(youtubeHandle: v.trim()));
+              }),
           const SizedBox(height: 12),
           _label('Twitch channel'),
-          _field(_twitch, 'xqc', onSubmitted: (v) {
-            notifier.update(s.copyWith(twitchChannel: v.trim()));
-          }),
+          _field(_twitch, 'xqc',
+              focusNode: _twitchFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (v) {
+                notifier.update(s.copyWith(twitchChannel: v.trim()));
+              }),
           const SizedBox(height: 12),
           _label('Kick slug'),
-          _field(_kick, 'xqc', onSubmitted: (v) {
-            notifier.update(s.copyWith(kickSlug: v.trim()));
-          }),
+          _field(_kick, 'xqc',
+              focusNode: _kickFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (v) {
+                notifier.update(s.copyWith(kickSlug: v.trim()));
+              }),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed:
+                  isRunning ? _stopChat : (hasChannels ? _startChat : null),
+              icon: Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 18),
+              label: Text(isRunning ? 'Stop chat' : 'Start chat'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isRunning ? Colors.redAccent : const Color(0xFF53FC18),
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: const Color(0xFF2A2A2A),
+                disabledForegroundColor: Colors.white38,
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
@@ -274,17 +377,21 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   static Widget _label(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 4),
-        child:
-            Text(t, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        child: Text(t,
+            style: const TextStyle(color: Colors.white54, fontSize: 12)),
       );
 
   static Widget _field(
     TextEditingController ctrl,
     String hint, {
+    FocusNode? focusNode,
+    ValueChanged<String>? onChanged,
     ValueChanged<String>? onSubmitted,
   }) =>
       TextField(
         controller: ctrl,
+        focusNode: focusNode,
+        onChanged: onChanged,
         onSubmitted: onSubmitted,
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
@@ -311,7 +418,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13)),
           Switch(
             value: value,
             onChanged: onChanged,
@@ -333,7 +441,11 @@ class _ConnectionDots extends ConsumerWidget {
 
     final platforms = <(String, bool, String)>[
       // (label, isConfigured, key)
-      ('YT', settings.youtubeHandle.isNotEmpty || settings.youtubeLiveId.isNotEmpty, 'youtube'),
+      (
+        'YT',
+        settings.youtubeHandle.isNotEmpty || settings.youtubeLiveId.isNotEmpty,
+        'youtube'
+      ),
       ('TW', settings.twitchChannel.isNotEmpty, 'twitch'),
       ('KK', settings.kickSlug.isNotEmpty, 'kick'),
     ];

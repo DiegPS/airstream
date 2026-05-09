@@ -17,10 +17,11 @@ const _prefsKey = 'AIRCHAT_SETTINGS';
 
 // ── providers ────────────────────────────────────────────────────────────────
 
-final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, SettingsModel>(
+final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsModel>(
   (ref) => SettingsNotifier(),
 );
+
+final chatConnectionProvider = StateProvider<bool>((ref) => false);
 
 final chatProvider = StreamProvider<List<ChatMessage>>((ref) {
   final app = ref.watch(appControllerProvider);
@@ -41,8 +42,9 @@ final connectionStatusProvider =
 
 final appControllerProvider = Provider<AppController>((ref) {
   final settings = ref.watch(settingsProvider);
+  final connectChats = ref.watch(chatConnectionProvider);
   final controller = ref.read(_appControllerInstanceProvider);
-  controller.applySettings(settings);
+  controller.applySettings(settings, connectChats: connectChats);
   return controller;
 });
 
@@ -102,6 +104,7 @@ class AppController {
   };
 
   SettingsModel? _lastSettings;
+  bool? _lastConnectChats;
 
   AppController() {
     _pipeline = MessagePipeline(const SettingsModel());
@@ -110,7 +113,7 @@ class AppController {
     _pipeline.addSource(_twitch.messages);
     _pipeline.stream.listen((msg) {
       _listController.add(_pipeline.buffer);
-      
+
       // Trigger TTS if enabled
       if (_lastSettings?.ttsEnabled == true) {
         if (_lastSettings?.ttsMembersOnly == true && !msg.isMembership) {
@@ -118,11 +121,13 @@ class AppController {
         } else {
           final authorName = msg.author.name;
           var text = msg.plainText;
-          
+
           if (text.isNotEmpty) {
             // Command mode
             if (_lastSettings?.ttsCommandMode == true) {
-              final prefix = (_lastSettings?.ttsCommandPrefix ?? '!voz').trim().toLowerCase();
+              final prefix = (_lastSettings?.ttsCommandPrefix ?? '!voz')
+                  .trim()
+                  .toLowerCase();
               if (prefix.isNotEmpty) {
                 if (!text.toLowerCase().startsWith(prefix)) {
                   return; // Skip if it doesn't start with prefix
@@ -143,6 +148,30 @@ class AppController {
     _kick.statusStream.listen((s) => _updateStatus('kick', s));
   }
 
+  Future<void> _connectYoutube(SettingsModel s) async {
+    _updateStatus('youtube', (ServiceStatus.connecting, null));
+    try {
+      await _youtube.connect(handle: s.youtubeHandle, liveId: s.youtubeLiveId);
+      _updateStatus('youtube', (ServiceStatus.connected, null));
+    } catch (e) {
+      debugPrint('YouTubeService.connect failed: $e');
+      await _youtube.disconnect();
+      _updateStatus('youtube', (ServiceStatus.error, e.toString()));
+    }
+  }
+
+  Future<void> _connectTwitch(SettingsModel s) async {
+    _updateStatus('twitch', (ServiceStatus.connecting, null));
+    try {
+      await _twitch.connect(s.twitchChannel);
+      _updateStatus('twitch', (ServiceStatus.connected, null));
+    } catch (e) {
+      debugPrint('TwitchService.connect failed: $e');
+      await _twitch.disconnect();
+      _updateStatus('twitch', (ServiceStatus.error, e.toString()));
+    }
+  }
+
   void _updateStatus(String platform, (ServiceStatus, String?) status) {
     _platformStatus[platform] = status;
     if (!_statusController.isClosed) {
@@ -155,7 +184,8 @@ class AppController {
     yield* _listController.stream;
   }
 
-  Stream<Map<String, (ServiceStatus, String?)>> get connectionStatusStream async* {
+  Stream<Map<String, (ServiceStatus, String?)>>
+      get connectionStatusStream async* {
     yield Map.from(_platformStatus);
     yield* _statusController.stream;
   }
@@ -170,7 +200,7 @@ class AppController {
     }
   }
 
-  void applySettings(SettingsModel s) {
+  void applySettings(SettingsModel s, {required bool connectChats}) {
     final prev = _lastSettings;
     _lastSettings = s;
     _pipeline.updateSettings(s);
@@ -178,37 +208,40 @@ class AppController {
     _tts.updateConfig(s.ttsVoice, s.ttsLanguage);
 
     // Reconnect YouTube if connection params changed.
-    final ytChanged = prev == null ||
+    final connectionChanged = prev == null ||
+        _lastConnectChats == null ||
+        _lastConnectChats != connectChats;
+    _lastConnectChats = connectChats;
+
+    final ytChanged = connectionChanged ||
         prev.youtubeHandle != s.youtubeHandle ||
         prev.youtubeLiveId != s.youtubeLiveId;
     if (ytChanged) {
-      if (s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty) {
-        _youtube.connect(
-            handle: s.youtubeHandle, liveId: s.youtubeLiveId);
+      if (connectChats &&
+          (s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty)) {
+        unawaited(_connectYoutube(s));
       } else {
         _youtube.disconnect();
+        _updateStatus('youtube', (ServiceStatus.idle, null));
       }
     }
 
     // Twitch
-    final twChanged = prev == null || prev.twitchChannel != s.twitchChannel;
+    final twChanged =
+        connectionChanged || prev.twitchChannel != s.twitchChannel;
     if (twChanged) {
-      if (s.twitchChannel.isNotEmpty) {
-        _twitch.connect(s.twitchChannel);
+      if (connectChats && s.twitchChannel.isNotEmpty) {
+        unawaited(_connectTwitch(s));
       } else {
         _twitch.disconnect();
+        _updateStatus('twitch', (ServiceStatus.idle, null));
       }
     }
 
     // Kick
-    final kickChanged = prev == null ||
-        prev.kickSlug != s.kickSlug ||
-        prev.kickChatroomId != s.kickChatroomId;
+    final kickChanged = connectionChanged || prev.kickSlug != s.kickSlug;
     if (kickChanged) {
-      if (s.kickChatroomId > 0) {
-        // Direct ID — no HTTP lookup, bypasses Cloudflare.
-        _kick.connectById(s.kickChatroomId);
-      } else if (s.kickSlug.isNotEmpty) {
+      if (connectChats && s.kickSlug.isNotEmpty) {
         _kick.connect(s.kickSlug);
       } else {
         _kick.disconnect();
