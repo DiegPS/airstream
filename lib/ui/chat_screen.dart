@@ -499,14 +499,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               (v) => notifier.update(s.copyWith(ttsEnabled: v))),
           _switchRow('Members only', s.ttsMembersOnly,
               (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
-          _switchRow('Command mode (!voz)', s.ttsCommandMode,
+          _switchRow('Command mode (custom prefix)', s.ttsCommandMode,
               (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
           if (s.ttsCommandMode) ...[
             const SizedBox(height: 8),
             _label('Command prefix'),
             _field(
               _ttsPrefixCtrl,
-              '!voz',
+              '!voz, !v, !say...',
               focusNode: _ttsPrefixFocus,
               onChanged: (v) =>
                   notifier.update(s.copyWith(ttsCommandPrefix: v)),
