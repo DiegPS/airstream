@@ -8,6 +8,7 @@ import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
 import 'package:airchat_flutter/window/window_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -21,6 +22,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _autoScroll = true;
+  bool _sidebarVisible = true;
 
   @override
   void initState() {
@@ -51,24 +53,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  void _toggleSidebarVisibility() {
+    setState(() => _sidebarVisible = !_sidebarVisible);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
-    final scaffold = Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: const _DesktopTopBar(),
-      body: Row(
-        children: [
-          const SizedBox(
-            width: 360,
-            child: _SettingsSidebar(),
+    final scaffold = CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true):
+            _toggleSidebarVisibility,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          backgroundColor: scaffoldBg,
+          appBar: const _DesktopTopBar(),
+          body: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                width: _sidebarVisible ? 360 : 0,
+                child: _sidebarVisible
+                    ? const _SettingsSidebar()
+                    : const SizedBox.shrink(),
+              ),
+              if (_sidebarVisible)
+                const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
+              Expanded(
+                child: _chatList(),
+              ),
+            ],
           ),
-          const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
-          Expanded(
-            child: _chatList(),
-          ),
-        ],
+        ),
       ),
     );
 
