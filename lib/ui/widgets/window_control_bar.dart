@@ -80,6 +80,9 @@ class _WmFramelessButtonState extends State<_WmFramelessButton> {
   Future<void> _toggle() async {
     final next = !_active;
     if (next) {
+      // setResizable(true) must happen before setAsFrameless() so the
+      // plugin's FRAMECHANGED refresh sees WS_THICKFRAME already applied.
+      await windowManager.setResizable(true);
       // window_manager frameless: usa WM_NCCALCSIZE → 0 + setHasShadow(false)
       await windowManager.setAsFrameless();
       await windowManager.setHasShadow(false);
@@ -87,6 +90,7 @@ class _WmFramelessButtonState extends State<_WmFramelessButton> {
       // No hay "undo" directo de setAsFrameless en window_manager,
       // así que restauramos el estilo estándar manualmente.
       await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      await windowManager.setResizable(true);
       await windowManager.setHasShadow(true);
     }
     setState(() => _active = next);

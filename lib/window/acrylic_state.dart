@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Available effects ─────────────────────────────────────────────────────────
 
-/// Effects that make sense for an overlay/chat app on Windows.
-/// Ordered from "most transparent" to "least".
+/// Available options retained for compatibility, even though the app now
+/// forces a transparent window and handles all perceived opacity in the UI.
 enum AcrylicEffectOption {
   disabled(label: 'Disabled',     effect: WindowEffect.disabled,     icon: Icons.block),
   transparent(label: 'Transparent', effect: WindowEffect.transparent,  icon: Icons.lens_blur),
@@ -59,17 +59,19 @@ class AcrylicNotifier extends StateNotifier<AcrylicState> {
 
   Future<void> setEffect(AcrylicEffectOption opt) async {
     if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
-    state = state.copyWith(effect: opt);
+    state = state.copyWith(
+      effect: AcrylicEffectOption.transparent,
+      tintColor: const Color(0x00000000),
+    );
     await Window.setEffect(
-      effect:    opt.effect,
+      effect:    WindowEffect.transparent,
       color:     state.tintColor,
       dark:      state.dark,
     );
   }
 
   Future<void> setTintColor(Color color) async {
-    state = state.copyWith(tintColor: color);
-    // Re-apply current effect with the new color
+    state = state.copyWith(tintColor: const Color(0x00000000));
     await setEffect(state.effect);
   }
 
@@ -78,7 +80,7 @@ class AcrylicNotifier extends StateNotifier<AcrylicState> {
     await setEffect(state.effect);
   }
 
-  Future<void> disable() => setEffect(AcrylicEffectOption.disabled);
+  Future<void> disable() => setEffect(AcrylicEffectOption.transparent);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
