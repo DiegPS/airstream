@@ -57,7 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
     final scaffold = Scaffold(
       backgroundColor: scaffoldBg,
-      appBar: _buildAppBar(),
+      appBar: const _DesktopTopBar(),
       body: Row(
         children: [
           const SizedBox(
@@ -77,55 +77,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     return scaffold;
-  }
-
-  AppBar _buildAppBar() {
-    final overlayUrl = ref.watch(overlayUrlProvider);
-    final settings = ref.watch(settingsProvider);
-    final isRunning = ref.watch(chatConnectionProvider);
-    final hasChannels = settings.youtubeHandle.isNotEmpty ||
-        settings.youtubeLiveId.isNotEmpty ||
-        settings.twitchChannel.isNotEmpty ||
-        settings.kickSlug.isNotEmpty;
-
-    return AppBar(
-      backgroundColor: const Color(0xFF1A1A1A),
-      elevation: 0,
-      title: const Text(
-        'AirChat',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-      ),
-      actions: [
-        _ConnectionDots(),
-        if (overlayUrl != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: Text(
-                overlayUrl,
-                style: const TextStyle(
-                  color: Color(0xFF53FC18),
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-          ),
-        const WindowControlBar(),
-        IconButton(
-          tooltip: isRunning ? 'Stop chat' : 'Start chat',
-          icon: Icon(
-            isRunning ? Icons.stop_circle_outlined : Icons.play_circle_outline,
-            color: hasChannels ? const Color(0xFF53FC18) : Colors.white24,
-          ),
-          onPressed: hasChannels
-              ? () {
-                  ref.read(chatConnectionProvider.notifier).state = !isRunning;
-                }
-              : null,
-        ),
-      ],
-    );
   }
 
   Widget _chatList() {
@@ -185,6 +136,244 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _DesktopTopBar();
+
+  static const _barHeight = 42.0;
+  static const _accent = Color(0xFF5B9CFF);
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_barHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overlayUrl = ref.watch(overlayUrlProvider);
+    final settings = ref.watch(settingsProvider);
+    final isRunning = ref.watch(chatConnectionProvider);
+    final hasChannels = settings.youtubeHandle.isNotEmpty ||
+        settings.youtubeLiveId.isNotEmpty ||
+        settings.twitchChannel.isNotEmpty ||
+        settings.kickSlug.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0xFF262626)),
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xCC151515),
+              Color(0x66111111),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: _barHeight,
+            child: Stack(
+              children: [
+                const Positioned.fill(
+                  child: DragToMoveArea(
+                    child: ColoredBox(color: Colors.transparent),
+                  ),
+                ),
+                const Positioned(
+                  left: 12,
+                  top: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: _TitleBarCaption(),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Center(
+                    child: IgnorePointer(
+                      child: _TitleBarCenterStatus(overlayUrl: overlayUrl),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 0,
+                  bottom: 0,
+                  child: Row(
+                    children: [
+                      _TopBarActionButton(
+                        label: isRunning ? 'Stop' : 'Start',
+                        icon: isRunning
+                            ? Icons.stop_circle_outlined
+                            : Icons.play_arrow_rounded,
+                        enabled: hasChannels,
+                        accentColor:
+                            isRunning ? const Color(0xFFE37D76) : _accent,
+                        onTap: hasChannels
+                            ? () {
+                                ref
+                                    .read(chatConnectionProvider.notifier)
+                                    .state = !isRunning;
+                              }
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      const WindowControlBar(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TitleBarCaption extends StatelessWidget {
+  const _TitleBarCaption();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Icon(
+          Icons.forum_outlined,
+          color: Color(0xFFD7D7D7),
+          size: 14,
+        ),
+        SizedBox(width: 8),
+        Text(
+          'AIRCHAT',
+          style: TextStyle(
+            color: Color(0xFFA8A8A8),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TitleBarCenterStatus extends ConsumerWidget {
+  const _TitleBarCenterStatus({required this.overlayUrl});
+
+  final String? overlayUrl;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRunning = ref.watch(chatConnectionProvider);
+    final color = isRunning ? const Color(0xFF76E39F) : const Color(0xFF8A8A8A);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _ConnectionDots(),
+          if (overlayUrl != null) ...[
+            const SizedBox(width: 10),
+            const Text(
+              '•',
+              style: TextStyle(
+                color: Color(0xFF7A7A7A),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                overlayUrl!,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFACCBFF),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TopBarActionButton extends StatelessWidget {
+  const _TopBarActionButton({
+    required this.label,
+    required this.icon,
+    required this.enabled,
+    required this.accentColor,
+    this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool enabled;
+  final Color accentColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor =
+        enabled ? accentColor.withValues(alpha: 0.14) : Colors.transparent;
+    final foregroundColor = enabled ? accentColor : const Color(0xFF6E6E6E);
+
+    return Tooltip(
+      message: label,
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: foregroundColor),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: foregroundColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
