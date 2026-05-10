@@ -18,14 +18,6 @@ class WindowControlBar extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _WindowToggleButton(
-          tooltip: state.frameless
-              ? 'Desactivar Frameless'
-              : 'Frameless (sin chrome, sin sombra)',
-          icon: state.frameless ? Icons.crop_free : Icons.web_asset_outlined,
-          active: state.frameless,
-          onTap: notifier.toggleFrameless,
-        ),
-        _WindowToggleButton(
           tooltip:
               state.alwaysOnTop ? 'Desactivar Always on Top' : 'Always on Top',
           icon: Icons.push_pin_outlined,
@@ -43,8 +35,6 @@ class WindowControlBar extends ConsumerWidget {
           activeColor: const Color(0xFFFFB15C),
           onTap: notifier.toggleClickThrough,
         ),
-        if (Platform.isWindows || Platform.isMacOS || Platform.isLinux)
-          const _WmFramelessButton(),
         if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) ...[
           const SizedBox(width: 4),
           Container(
@@ -141,46 +131,6 @@ class _WindowManagerButtonsState extends State<_WindowManagerButtons>
           hoverForeground: Colors.white,
         ),
       ],
-    );
-  }
-}
-
-class _WmFramelessButton extends StatefulWidget {
-  const _WmFramelessButton();
-
-  @override
-  State<_WmFramelessButton> createState() => _WmFramelessButtonState();
-}
-
-class _WmFramelessButtonState extends State<_WmFramelessButton> {
-  bool _active = false;
-
-  Future<void> _toggle() async {
-    final next = !_active;
-    if (next) {
-      await windowManager.setResizable(true);
-      await windowManager.setAsFrameless();
-      await windowManager.setHasShadow(false);
-    } else {
-      await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-      await windowManager.setResizable(true);
-      await windowManager.setHasShadow(true);
-    }
-    setState(() => _active = next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _WindowToggleButton(
-      tooltip: _active
-          ? '[WM] Desactivar Frameless'
-          : '[WM] Frameless con window_manager',
-      icon: _active
-          ? Icons.picture_in_picture
-          : Icons.picture_in_picture_alt_outlined,
-      active: _active,
-      activeColor: const Color(0xFFB9A8FF),
-      onTap: _toggle,
     );
   }
 }

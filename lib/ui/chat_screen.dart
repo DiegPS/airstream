@@ -6,7 +6,6 @@ import 'package:airchat_flutter/services/supertonic_helper.dart'
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
-import 'package:airchat_flutter/window/window_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -600,8 +599,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
-    final win = ref.watch(windowStateProvider);
-    final winNotifier = ref.read(windowStateProvider.notifier);
     final isRunning = ref.watch(chatConnectionProvider);
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
@@ -709,53 +706,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 8),
           _switchRow('Enabled', s.overlayEnabled,
               (v) => notifier.update(s.copyWith(overlayEnabled: v))),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section('Window'),
-          _switchTileWithSubtitle(
-            'Frameless',
-            'Sin barra de titulo, sin bordes, sin sombra DWM.',
-            win.frameless,
-            (v) => winNotifier.setFrameless(v),
-          ),
-          _switchTileWithSubtitle(
-            'Click-Through',
-            'Los clics pasan a traves de la ventana.',
-            win.clickThrough,
-            (v) => winNotifier.setClickThrough(v),
-            activeColor: const Color(0xFFFF6B35),
-          ),
-          _switchTileWithSubtitle(
-            'Always on Top',
-            'La ventana se mantiene sobre las demas.',
-            win.alwaysOnTop,
-            (v) => winNotifier.setAlwaysOnTop(v),
-          ),
-          if (win.clickThrough)
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded,
-                      size: 16, color: Color(0xFFFF6B35)),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Click-through activo. Desactivalo desde la barra superior para volver a interactuar.',
-                      style: TextStyle(color: Color(0xFFFF6B35), fontSize: 11),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
@@ -1103,24 +1053,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
           ],
         ),
-      );
-
-  static Widget _switchTileWithSubtitle(
-    String label,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged, {
-    Color activeColor = const Color(0xFF53FC18),
-  }) =>
-      SwitchListTile(
-        title: Text(label, style: const TextStyle(color: Colors.white70)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(color: Colors.white38, fontSize: 11)),
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: activeColor,
-        contentPadding: EdgeInsets.zero,
-        dense: true,
       );
 }
 
