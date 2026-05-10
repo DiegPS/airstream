@@ -813,72 +813,94 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
           _section('TTS'),
-          if (ttsLoadState != null) ...[
-            _ttsStatusCard(ttsLoadState),
-            const SizedBox(height: 12),
-          ],
-          _switchRow('TTS', s.ttsEnabled,
+          const Text(
+            'Read chat messages aloud with configurable voice, language and command behavior.',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _switchRow('Enabled', s.ttsEnabled,
               (v) => notifier.update(s.copyWith(ttsEnabled: v))),
-          _switchRow('Members only', s.ttsMembersOnly,
-              (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
-          _switchRow('Command mode (custom prefix)', s.ttsCommandMode,
-              (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
-          if (s.ttsCommandMode) ...[
+          if (s.ttsEnabled) ...[
+            const SizedBox(height: 12),
+            if (ttsLoadState != null) ...[
+              _ttsStatusCard(ttsLoadState),
+              const SizedBox(height: 12),
+            ],
+            _switchRow('Members only', s.ttsMembersOnly,
+                (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
+            _switchRow('Command mode (custom prefix)', s.ttsCommandMode,
+                (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
+            if (s.ttsCommandMode) ...[
+              const SizedBox(height: 8),
+              _label('Command prefix'),
+              _field(
+                _ttsPrefixCtrl,
+                '!voz, !v, !say...',
+                focusNode: _ttsPrefixFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+            ],
             const SizedBox(height: 8),
-            _label('Command prefix'),
+            _label('Separator text'),
             _field(
-              _ttsPrefixCtrl,
-              '!voz, !v, !say...',
-              focusNode: _ttsPrefixFocus,
+              _ttsSeparatorCtrl,
+              'dice',
+              focusNode: _ttsSeparatorFocus,
               onChanged: (_) => _queueTextSettingsSave(),
               onSubmitted: (_) => _saveTextSettings(),
             ),
-          ],
-          const SizedBox(height: 8),
-          _label('Separator text'),
-          _field(
-            _ttsSeparatorCtrl,
-            'dice',
-            focusNode: _ttsSeparatorFocus,
-            onChanged: (_) => _queueTextSettingsSave(),
-            onSubmitted: (_) => _saveTextSettings(),
-          ),
-          const SizedBox(height: 12),
-          _dropdownRow(
-            'Voice',
-            s.ttsVoice,
-            ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
-            (v) => notifier.update(s.copyWith(ttsVoice: v)),
-          ),
-          _dropdownRow(
-            'Language',
-            s.ttsLanguage,
-            availableLangs,
-            (v) => notifier.update(s.copyWith(ttsLanguage: v)),
-          ),
-          const SizedBox(height: 12),
-          _label('Test text'),
-          _field(_ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
-                  ? null
-                  : () => appController.testTts(_ttsTestCtrl.text),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF53FC18),
-                foregroundColor: Colors.black,
-              ),
-              child: Text(
-                ttsBusy
-                    ? 'Reproduciendo TTS...'
-                    : (ttsLoadState?.isLoading ?? false)
-                        ? 'Cargando TTS...'
-                        : 'Probar TTS',
+            const SizedBox(height: 12),
+            _dropdownRow(
+              'Voice',
+              s.ttsVoice,
+              ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
+              (v) => notifier.update(s.copyWith(ttsVoice: v)),
+            ),
+            _dropdownRow(
+              'Language',
+              s.ttsLanguage,
+              availableLangs,
+              (v) => notifier.update(s.copyWith(ttsLanguage: v)),
+            ),
+            const SizedBox(height: 12),
+            _label('Test text'),
+            _field(_ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
+                    ? null
+                    : () => appController.testTts(_ttsTestCtrl.text),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF53FC18),
+                  foregroundColor: Colors.black,
+                ),
+                child: Text(
+                  ttsBusy
+                      ? 'Reproduciendo TTS...'
+                      : (ttsLoadState?.isLoading ?? false)
+                          ? 'Cargando TTS...'
+                          : 'Probar TTS',
+                ),
               ),
             ),
-          ),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Turn it on to configure voice, language and test playback.',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
