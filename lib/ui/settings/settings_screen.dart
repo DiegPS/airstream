@@ -136,9 +136,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFF6B35).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(
-                        color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: const Color(0xFFFF6B35).withValues(alpha: 0.5)),
               ),
               child: const Row(
                 children: [
@@ -163,7 +162,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _sliderTile('Background opacity', s.bgOpacity, 0, 1, (v) {
             notifier.update(s.copyWith(bgOpacity: v));
           }),
-          _sliderTile('Message opacity', s.messageOpacity, 0, 1, (v) {
+          _sliderTile('Bubble opacity', s.messageOpacity, 0, 1, (v) {
             notifier.update(s.copyWith(messageOpacity: v));
           }),
           _sliderTile('Border radius', s.borderRadius, 0, 24, (v) {
@@ -402,5 +401,4 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
 
   // ── flutter_acrylic effect selector ────────────────────────────────────────
-
 }

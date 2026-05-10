@@ -707,7 +707,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               (v) => notifier.update(s.copyWith(fontSize: v))),
           _sliderRow('Background opacity', s.bgOpacity, 0, 1,
               (v) => notifier.update(s.copyWith(bgOpacity: v))),
-          _sliderRow('Message opacity', s.messageOpacity, 0, 1,
+          _sliderRow('Bubble opacity', s.messageOpacity, 0, 1,
               (v) => notifier.update(s.copyWith(messageOpacity: v))),
           _sliderRow('Border radius', s.borderRadius, 0, 24,
               (v) => notifier.update(s.copyWith(borderRadius: v))),
