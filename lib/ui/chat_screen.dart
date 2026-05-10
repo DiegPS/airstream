@@ -28,10 +28,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    FocusManager.instance.addEarlyKeyEventHandler(_handleGlobalKeyEvent);
   }
 
   @override
   void dispose() {
+    FocusManager.instance.removeEarlyKeyEventHandler(_handleGlobalKeyEvent);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -57,40 +59,52 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() => _sidebarVisible = !_sidebarVisible);
   }
 
+  KeyEventResult _handleGlobalKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final keyboard = HardwareKeyboard.instance;
+    final isToggleSidebarShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyB &&
+            keyboard.isControlPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (!isToggleSidebarShortcut) {
+      return KeyEventResult.ignored;
+    }
+
+    _toggleSidebarVisibility();
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
-    final scaffold = CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyB, control: true):
-            _toggleSidebarVisibility,
-      },
-      child: Focus(
-        autofocus: true,
-        child: Scaffold(
-          backgroundColor: scaffoldBg,
-          appBar: _DesktopTopBar(
-            sidebarVisible: _sidebarVisible,
-            onToggleSidebar: _toggleSidebarVisibility,
-          ),
-          body: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                width: _sidebarVisible ? 360 : 0,
-                child: _sidebarVisible
-                    ? const _SettingsSidebar()
-                    : const SizedBox.shrink(),
-              ),
-              if (_sidebarVisible)
-                const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
-              Expanded(
-                child: _chatList(),
-              ),
-            ],
-          ),
+    final scaffold = Focus(
+      autofocus: true,
+      child: Scaffold(
+        backgroundColor: scaffoldBg,
+        appBar: _DesktopTopBar(
+          sidebarVisible: _sidebarVisible,
+          onToggleSidebar: _toggleSidebarVisibility,
+        ),
+        body: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width: _sidebarVisible ? 360 : 0,
+              child: _sidebarVisible
+                  ? const _SettingsSidebar()
+                  : const SizedBox.shrink(),
+            ),
+            if (_sidebarVisible)
+              const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
+            Expanded(
+              child: _chatList(),
+            ),
+          ],
         ),
       ),
     );
@@ -139,11 +153,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               reverse: true,
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
               itemCount: messages.length,
-              itemBuilder: (_, i) =>
-                  ChatBubble(
-                    key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
-                    message: messages[messages.length - 1 - i],
-                  ),
+              itemBuilder: (_, i) => ChatBubble(
+                key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
+                message: messages[messages.length - 1 - i],
+              ),
             ),
             if (!_autoScroll)
               Positioned(
