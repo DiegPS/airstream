@@ -883,32 +883,52 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
           _section('Overlay Server'),
-          _label('Port'),
-          _field(
-            _port,
-            '8080',
-            focusNode: _portFocus,
-            onChanged: (_) => _queueTextSettingsSave(),
-            onSubmitted: (_) => _saveTextSettings(),
+          const Text(
+            'Enable a local browser source for OBS. When active, AirChat serves an overlay URL that you can paste into OBS.',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 8),
           _switchRow('Enabled', s.overlayEnabled,
               (v) => notifier.update(s.copyWith(overlayEnabled: v))),
-          const SizedBox(height: 10),
-          _overlayUrlCard(
-            overlayUrl: overlayCopyUrl,
-            enabled: s.overlayEnabled,
-            onCopy: () async {
-              await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Overlay URL copied'),
-                  duration: Duration(milliseconds: 1400),
-                ),
-              );
-            },
-          ),
+          if (s.overlayEnabled) ...[
+            const SizedBox(height: 12),
+            _label('Port'),
+            _field(
+              _port,
+              '8080',
+              focusNode: _portFocus,
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
+            ),
+            const SizedBox(height: 10),
+            _overlayUrlCard(
+              overlayUrl: overlayCopyUrl,
+              onCopy: () async {
+                await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Overlay URL copied'),
+                    duration: Duration(milliseconds: 1400),
+                  ),
+                );
+              },
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Turn it on to choose a port and reveal the OBS URL.',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
         ],
       ),
@@ -1412,7 +1432,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   static Widget _overlayUrlCard({
     required String overlayUrl,
-    required bool enabled,
     required VoidCallback onCopy,
   }) {
     return Container(
@@ -1467,11 +1486,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            enabled
-                ? 'Use this link as a Browser Source in OBS.'
-                : 'The server is disabled, but this is the URL it will use when enabled.',
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+          const Text(
+            'Use this link as a Browser Source in OBS.',
+            style: TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
       ),
