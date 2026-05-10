@@ -7,6 +7,7 @@ import 'package:airchat_flutter/settings/settings_model.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
+import 'package:airchat_flutter/window/window_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,9 +64,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final keyboard = HardwareKeyboard.instance;
+    final isToggleClickThroughShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyB &&
+            keyboard.isControlPressed &&
+            keyboard.isShiftPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (isToggleClickThroughShortcut) {
+      final windowNotifier = ref.read(windowStateProvider.notifier);
+      _toggleSidebarVisibility();
+      unawaited(windowNotifier.toggleAlwaysOnTop());
+      unawaited(windowNotifier.toggleClickThrough());
+      return KeyEventResult.handled;
+    }
+
     final isToggleSidebarShortcut =
         event.logicalKey == LogicalKeyboardKey.keyB &&
             keyboard.isControlPressed &&
+            !keyboard.isShiftPressed &&
             !keyboard.isAltPressed &&
             !keyboard.isMetaPressed;
 
