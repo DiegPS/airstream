@@ -627,6 +627,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
+    final overlayUrl = ref.watch(overlayUrlProvider);
+    final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
 
     _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
@@ -759,6 +761,21 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 8),
           _switchRow('Enabled', s.overlayEnabled,
               (v) => notifier.update(s.copyWith(overlayEnabled: v))),
+          const SizedBox(height: 10),
+          _overlayUrlCard(
+            overlayUrl: overlayCopyUrl,
+            enabled: s.overlayEnabled,
+            onCopy: () async {
+              await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Overlay URL copied'),
+                  duration: Duration(milliseconds: 1400),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
@@ -1348,6 +1365,74 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 height: 1.35,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _overlayUrlCard({
+    required String overlayUrl,
+    required bool enabled,
+    required VoidCallback onCopy,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1B),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E2E2E)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'OBS URL',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 28,
+                child: OutlinedButton.icon(
+                  onPressed: onCopy,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFACCBFF),
+                    side: const BorderSide(color: Color(0xFF35527A)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  icon: const Icon(Icons.copy_rounded, size: 14),
+                  label: const Text(
+                    'Copy',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            overlayUrl,
+            style: const TextStyle(
+              color: Color(0xFFACCBFF),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            enabled
+                ? 'Use this link as a Browser Source in OBS.'
+                : 'The server is disabled, but this is the URL it will use when enabled.',
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
       ),
