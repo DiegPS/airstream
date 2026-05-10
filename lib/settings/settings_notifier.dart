@@ -37,9 +37,9 @@ final overlayUrlProvider = Provider<String?>((ref) {
   return app.overlayUrl;
 });
 
-final youtubeBadgeValueProvider = Provider<String?>((ref) {
+final youtubeBadgeValueProvider = StreamProvider<String?>((ref) {
   final app = ref.watch(appControllerProvider);
-  return app.youtubeBadgeValue;
+  return app.youtubeBadgeValueStream;
 });
 
 /// Per-platform connection status: map of platform name → (status, error message).
@@ -119,6 +119,9 @@ class AppController {
   final _statusController =
       // ignore: close_sinks
       StreamController<Map<String, (ServiceStatus, String?)>>.broadcast();
+  final _youtubeBadgeController =
+      // ignore: close_sinks
+      StreamController<String?>.broadcast();
 
   final _platformStatus = <String, (ServiceStatus, String?)>{
     'youtube': (ServiceStatus.idle, null),
@@ -147,16 +150,19 @@ class AppController {
   Future<void> _connectYoutube(SettingsModel s) async {
     _updateStatus('youtube', (ServiceStatus.connecting, null));
     _youtubeBadgeValue = null;
+    _emitYoutubeBadgeValue();
     try {
       await _youtube.connect(handle: s.youtubeHandle, liveId: s.youtubeLiveId);
       _youtubeBadgeValue = _youtube.resolvedLiveId.isNotEmpty
           ? _youtube.resolvedLiveId
           : s.youtubeHandle.trim();
+      _emitYoutubeBadgeValue();
       _updateStatus('youtube', (ServiceStatus.connected, null));
     } catch (e) {
       debugPrint('YouTubeService.connect failed: $e');
       await _youtube.disconnect();
       _youtubeBadgeValue = null;
+      _emitYoutubeBadgeValue();
       _updateStatus('youtube', (ServiceStatus.error, e.toString()));
     }
   }
@@ -191,6 +197,11 @@ class AppController {
     yield* _statusController.stream;
   }
 
+  Stream<String?> get youtubeBadgeValueStream async* {
+    yield _youtubeBadgeValue;
+    yield* _youtubeBadgeController.stream;
+  }
+
   Stream<TtsLoadState> get ttsLoadStateStream async* {
     yield _tts.currentLoadState;
     yield* _tts.loadStateStream;
@@ -204,7 +215,6 @@ class AppController {
   String? get overlayUrl => _overlay.localIp != null
       ? 'http://${_overlay.localIp}:${_overlay.port}'
       : null;
-  String? get youtubeBadgeValue => _youtubeBadgeValue;
 
   bool testTts(String text) {
     if (text.isEmpty) return false;
@@ -269,6 +279,12 @@ class AppController {
     }
   }
 
+  void _emitYoutubeBadgeValue() {
+    if (!_youtubeBadgeController.isClosed) {
+      _youtubeBadgeController.add(_youtubeBadgeValue);
+    }
+  }
+
   int get _maxTrackedTtsMessages {
     final maxMessages = _lastSettings?.maxMessages ?? 200;
     final scaled = maxMessages * 10;
@@ -320,6 +336,7 @@ class AppController {
       } else {
         _youtube.disconnect();
         _youtubeBadgeValue = null;
+        _emitYoutubeBadgeValue();
         _updateStatus('youtube', (ServiceStatus.idle, null));
       }
     }
@@ -369,5 +386,6 @@ class AppController {
     _pipeline.dispose();
     _listController.close();
     _statusController.close();
+    _youtubeBadgeController.close();
   }
 }

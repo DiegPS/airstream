@@ -620,7 +620,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final isRunning = ref.watch(chatConnectionProvider);
     final connectionStatus =
         ref.watch(connectionStatusProvider).valueOrNull ?? {};
-    final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider);
+    final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider).valueOrNull;
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
