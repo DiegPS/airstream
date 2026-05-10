@@ -18,6 +18,7 @@ class SettingsModel {
 
   // Message design
   final bool showBubble;
+  final bool showBubbleShadow;
   final double borderRadius;
   final double messageGap;
   final int maxMessages;
@@ -51,6 +52,7 @@ class SettingsModel {
     this.showBadges = true,
     this.showTimestamp = false,
     this.showBubble = true,
+    this.showBubbleShadow = true,
     this.borderRadius = 8.0,
     this.messageGap = 4.0,
     this.maxMessages = 200,
@@ -79,6 +81,7 @@ class SettingsModel {
     bool? showBadges,
     bool? showTimestamp,
     bool? showBubble,
+    bool? showBubbleShadow,
     double? borderRadius,
     double? messageGap,
     int? maxMessages,
@@ -106,6 +109,7 @@ class SettingsModel {
         showBadges: showBadges ?? this.showBadges,
         showTimestamp: showTimestamp ?? this.showTimestamp,
         showBubble: showBubble ?? this.showBubble,
+        showBubbleShadow: showBubbleShadow ?? this.showBubbleShadow,
         borderRadius: borderRadius ?? this.borderRadius,
         messageGap: messageGap ?? this.messageGap,
         maxMessages: maxMessages ?? this.maxMessages,
@@ -134,6 +138,7 @@ class SettingsModel {
         'showBadges': showBadges,
         'showTimestamp': showTimestamp,
         'showBubble': showBubble,
+        'showBubbleShadow': showBubbleShadow,
         'borderRadius': borderRadius,
         'messageGap': messageGap,
         'maxMessages': maxMessages,
@@ -162,6 +167,7 @@ class SettingsModel {
         showBadges: j['showBadges'] as bool? ?? true,
         showTimestamp: j['showTimestamp'] as bool? ?? false,
         showBubble: j['showBubble'] as bool? ?? true,
+        showBubbleShadow: j['showBubbleShadow'] as bool? ?? true,
         borderRadius: (j['borderRadius'] as num?)?.toDouble() ?? 8.0,
         messageGap: (j['messageGap'] as num?)?.toDouble() ?? 4.0,
         maxMessages: j['maxMessages'] as int? ?? 200,

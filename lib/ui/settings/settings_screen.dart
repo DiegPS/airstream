@@ -185,6 +185,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               (v) => notifier.update(s.copyWith(showTimestamp: v))),
           _switchTile('Show message bubble', s.showBubble,
               (v) => notifier.update(s.copyWith(showBubble: v))),
+          _switchTile('Show bubble shadow', s.showBubbleShadow,
+              (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
 
           _section('TTS'),
           _switchTile('Enable TTS', s.ttsEnabled,

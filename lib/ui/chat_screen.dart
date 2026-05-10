@@ -137,10 +137,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ListView.builder(
               controller: _scrollController,
               reverse: true,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
               itemCount: messages.length,
               itemBuilder: (_, i) =>
-                  ChatBubble(message: messages[messages.length - 1 - i]),
+                  ChatBubble(
+                    key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
+                    message: messages[messages.length - 1 - i],
+                  ),
             ),
             if (!_autoScroll)
               Positioned(
@@ -778,6 +781,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               (v) => notifier.update(s.copyWith(showTimestamp: v))),
           _switchRow('Bubble', s.showBubble,
               (v) => notifier.update(s.copyWith(showBubble: v))),
+          _switchRow('Bubble shadow', s.showBubbleShadow,
+              (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),

@@ -1,34 +1,86 @@
-import 'package:flutter/material.dart';
 import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:flutter/material.dart';
+
+enum PlatformBadgeMode { overlay, inline }
 
 class PlatformBadge extends StatelessWidget {
-  final Platform platform;
+  const PlatformBadge({
+    super.key,
+    required this.platform,
+    this.mode = PlatformBadgeMode.inline,
+  });
 
-  const PlatformBadge({super.key, required this.platform});
+  final Platform platform;
+  final PlatformBadgeMode mode;
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, textColor) = switch (platform) {
-      Platform.youtube => ('YT', const Color(0xFFFF0000), Colors.white),
-      Platform.twitch => ('TW', const Color(0xFF9147FF), Colors.white),
-      Platform.kick => ('KK', const Color(0xFF53FC18), Colors.black),
+    final spec = _specFor(platform);
+    final size = switch (mode) {
+      PlatformBadgeMode.overlay => 14.0,
+      PlatformBadgeMode.inline => 12.0,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          height: 1.3,
+    return SizedBox(
+      width: size,
+      height: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: spec.background,
+          borderRadius: BorderRadius.circular(mode == PlatformBadgeMode.overlay ? 4 : 3),
+          border: mode == PlatformBadgeMode.overlay
+              ? Border.all(color: const Color(0xCC0F0F0F), width: 1)
+              : null,
+          boxShadow: mode == PlatformBadgeMode.overlay
+              ? const [
+                  BoxShadow(
+                    color: Color(0x4D000000),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Icon(
+            spec.icon,
+            size: mode == PlatformBadgeMode.overlay ? 9 : 8,
+            color: spec.foreground,
+          ),
         ),
       ),
     );
   }
+
+  static _PlatformSpec _specFor(Platform platform) {
+    return switch (platform) {
+      Platform.youtube => const _PlatformSpec(
+          background: Color(0xFFFF0000),
+          foreground: Colors.white,
+          icon: Icons.play_arrow_rounded,
+        ),
+      Platform.twitch => const _PlatformSpec(
+          background: Color(0xFF9146FF),
+          foreground: Colors.white,
+          icon: Icons.chat_bubble_rounded,
+        ),
+      Platform.kick => const _PlatformSpec(
+          background: Color(0xFF53FC18),
+          foreground: Color(0xFF101010),
+          icon: Icons.bolt_rounded,
+        ),
+    };
+  }
+}
+
+class _PlatformSpec {
+  const _PlatformSpec({
+    required this.background,
+    required this.foreground,
+    required this.icon,
+  });
+
+  final Color background;
+  final Color foreground;
+  final IconData icon;
 }
