@@ -233,17 +233,6 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                   bottom: 0,
                   child: Row(
                     children: [
-                      _TopBarIconButton(
-                        tooltip: sidebarVisible
-                            ? 'Hide sidebar (Ctrl+B)'
-                            : 'Show sidebar (Ctrl+B)',
-                        icon: sidebarVisible
-                            ? Icons.keyboard_double_arrow_left_rounded
-                            : Icons.keyboard_double_arrow_right_rounded,
-                        active: sidebarVisible,
-                        onTap: onToggleSidebar,
-                      ),
-                      const SizedBox(width: 6),
                       _TopBarActionButton(
                         label: isRunning ? 'Stop' : 'Start',
                         icon: isRunning
@@ -259,6 +248,17 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                                     .state = !isRunning;
                               }
                             : null,
+                      ),
+                      const SizedBox(width: 8),
+                      _TopBarIconButton(
+                        tooltip: sidebarVisible
+                            ? 'Hide sidebar (Ctrl+B)'
+                            : 'Show sidebar (Ctrl+B)',
+                        icon: sidebarVisible
+                            ? Icons.menu_open_rounded
+                            : Icons.menu_rounded,
+                        active: sidebarVisible,
+                        onTap: onToggleSidebar,
                       ),
                       const SizedBox(width: 8),
                       const WindowControlBar(),
