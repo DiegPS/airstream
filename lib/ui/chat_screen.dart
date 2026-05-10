@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:airchat_flutter/services/supertonic_helper.dart'
@@ -213,6 +214,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _portFocus;
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
+  Timer? _textSettingsDebounce;
 
   @override
   void initState() {
@@ -235,10 +237,27 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _portFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
+
+    for (final node in [
+      _ytFocus,
+      _ytLiveIdFocus,
+      _twitchFocus,
+      _kickFocus,
+      _portFocus,
+      _ttsPrefixFocus,
+      _ttsSeparatorFocus,
+    ]) {
+      node.addListener(() {
+        if (!node.hasFocus) {
+          unawaited(_saveTextSettings());
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    _textSettingsDebounce?.cancel();
     _ytHandle.dispose();
     _ytLiveId.dispose();
     _twitch.dispose();
@@ -258,10 +277,19 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     super.dispose();
   }
 
+  void _queueTextSettingsSave() {
+    _textSettingsDebounce?.cancel();
+    _textSettingsDebounce = Timer(
+      const Duration(milliseconds: 250),
+      () => unawaited(_saveTextSettings()),
+    );
+  }
+
   Future<void> _saveTextSettings() async {
+    _textSettingsDebounce?.cancel();
     final notifier = ref.read(settingsProvider.notifier);
     final current = ref.read(settingsProvider);
-    await notifier.update(current.copyWith(
+    final next = current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
       youtubeLiveId: _ytLiveId.text.trim(),
       twitchChannel: _twitch.text.trim(),
@@ -269,7 +297,19 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
       ttsCommandPrefix: _ttsPrefixCtrl.text,
       ttsSeparatorText: _ttsSeparatorCtrl.text,
-    ));
+    );
+
+    if (current.youtubeHandle == next.youtubeHandle &&
+        current.youtubeLiveId == next.youtubeLiveId &&
+        current.twitchChannel == next.twitchChannel &&
+        current.kickSlug == next.kickSlug &&
+        current.overlayPort == next.overlayPort &&
+        current.ttsCommandPrefix == next.ttsCommandPrefix &&
+        current.ttsSeparatorText == next.ttsSeparatorText) {
+      return;
+    }
+
+    await notifier.update(next);
   }
 
   Future<void> _startChat() async {
@@ -287,7 +327,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     String value,
   ) {
     if (focusNode.hasFocus || controller.text == value) return;
-    controller.text = value;
+    controller.value = controller.value.copyWith(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+      composing: TextRange.empty,
+    );
   }
 
   @override
@@ -299,6 +343,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final isRunning = ref.watch(chatConnectionProvider);
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
+    final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
 
     _syncController(_ytHandle, _ytFocus, s.youtubeHandle);
     _syncController(_ytLiveId, _ytLiveIdFocus, s.youtubeLiveId);
@@ -337,10 +382,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _ytHandle,
             '@xqc · UC... · youtube.com/watch?v=...',
             focusNode: _ytFocus,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (v) {
-              notifier.update(s.copyWith(youtubeHandle: v.trim()));
+            onChanged: (_) {
+              setState(() {});
+              _queueTextSettingsSave();
             },
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 12),
           _label('YouTube live video ID (optional)'),
@@ -348,10 +394,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _ytLiveId,
             'live video ID',
             focusNode: _ytLiveIdFocus,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (v) {
-              notifier.update(s.copyWith(youtubeLiveId: v.trim()));
+            onChanged: (_) {
+              setState(() {});
+              _queueTextSettingsSave();
             },
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 12),
           _label('Twitch channel'),
@@ -359,10 +406,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _twitch,
             'xqc',
             focusNode: _twitchFocus,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (v) {
-              notifier.update(s.copyWith(twitchChannel: v.trim()));
+            onChanged: (_) {
+              setState(() {});
+              _queueTextSettingsSave();
             },
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 12),
           _label('Kick slug'),
@@ -370,18 +418,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _kick,
             'xqc',
             focusNode: _kickFocus,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (v) {
-              notifier.update(s.copyWith(kickSlug: v.trim()));
+            onChanged: (_) {
+              setState(() {});
+              _queueTextSettingsSave();
             },
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _saveTextSettings,
-              child: const Text('Save fields'),
-            ),
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -409,12 +450,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _port,
             '8080',
             focusNode: _portFocus,
-            onSubmitted: (v) {
-              final port = int.tryParse(v.trim());
-              if (port != null) {
-                notifier.update(s.copyWith(overlayPort: port));
-              }
-            },
+            onChanged: (_) => _queueTextSettingsSave(),
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 8),
           _switchRow('Enabled', s.overlayEnabled,
@@ -513,8 +550,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               _ttsPrefixCtrl,
               '!voz, !v, !say...',
               focusNode: _ttsPrefixFocus,
-              onChanged: (v) =>
-                  notifier.update(s.copyWith(ttsCommandPrefix: v)),
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
             ),
           ],
           const SizedBox(height: 8),
@@ -523,7 +560,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _ttsSeparatorCtrl,
             'dice',
             focusNode: _ttsSeparatorFocus,
-            onChanged: (v) => notifier.update(s.copyWith(ttsSeparatorText: v)),
+            onChanged: (_) => _queueTextSettingsSave(),
+            onSubmitted: (_) => _saveTextSettings(),
           ),
           const SizedBox(height: 12),
           _dropdownRow(
@@ -545,12 +583,20 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => appController.testTts(_ttsTestCtrl.text),
+              onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
+                  ? null
+                  : () => appController.testTts(_ttsTestCtrl.text),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF53FC18),
                 foregroundColor: Colors.black,
               ),
-              child: const Text('Probar TTS'),
+              child: Text(
+                ttsBusy
+                    ? 'Reproduciendo TTS...'
+                    : (ttsLoadState?.isLoading ?? false)
+                        ? 'Cargando TTS...'
+                        : 'Probar TTS',
+              ),
             ),
           ),
           const SizedBox(height: 24),

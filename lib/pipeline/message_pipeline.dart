@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:airchat_flutter/models/chat_message.dart';
 import 'package:airchat_flutter/settings/settings_model.dart';
@@ -9,6 +10,9 @@ class MessagePipeline {
   final _controller = StreamController<ChatMessage>.broadcast();
   final _buffer = <ChatMessage>[];
   final _subscriptions = <StreamSubscription>[];
+  final _seenIdKeys = <String>{};
+  final _seenContentKeys = <String>{};
+  final _seenOrder = Queue<({String idKey, String contentKey})>();
 
   SettingsModel _settings;
 
@@ -22,6 +26,7 @@ class MessagePipeline {
 
   void updateSettings(SettingsModel settings) {
     _settings = settings;
+    _trimSeenKeys();
   }
 
   /// Adds a platform stream to the pipeline. Can be called multiple times.
@@ -39,6 +44,9 @@ class MessagePipeline {
 
   void _handleMessage(ChatMessage msg) {
     if (_shouldBlock(msg)) return;
+    if (_isDuplicate(msg)) return;
+
+    _rememberMessage(msg);
 
     _buffer.add(msg);
     while (_buffer.length > _settings.maxMessages) {
@@ -46,6 +54,43 @@ class MessagePipeline {
     }
 
     if (!_controller.isClosed) _controller.add(msg);
+  }
+
+  bool _isDuplicate(ChatMessage msg) {
+    final idKey = msg.dedupeIdKey;
+    if (idKey.isNotEmpty && _seenIdKeys.contains(idKey)) {
+      return true;
+    }
+    return _seenContentKeys.contains(msg.dedupeContentKey);
+  }
+
+  void _rememberMessage(ChatMessage msg) {
+    final idKey = msg.dedupeIdKey;
+    final contentKey = msg.dedupeContentKey;
+
+    if (idKey.isNotEmpty) {
+      _seenIdKeys.add(idKey);
+    }
+    _seenContentKeys.add(contentKey);
+    _seenOrder.add((idKey: idKey, contentKey: contentKey));
+    _trimSeenKeys();
+  }
+
+  void _trimSeenKeys() {
+    while (_seenOrder.length > _maxTrackedMessages) {
+      final oldest = _seenOrder.removeFirst();
+      if (oldest.idKey.isNotEmpty) {
+        _seenIdKeys.remove(oldest.idKey);
+      }
+      _seenContentKeys.remove(oldest.contentKey);
+    }
+  }
+
+  int get _maxTrackedMessages {
+    final scaled = _settings.maxMessages * 20;
+    if (scaled < 500) return 500;
+    if (scaled > 5000) return 5000;
+    return scaled;
   }
 
   bool _shouldBlock(ChatMessage msg) {

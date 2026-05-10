@@ -18,7 +18,8 @@ class EmojiItem {
   final String alt;
   final bool isAnimated; // GIF or animated WebP
 
-  const EmojiItem({required this.url, required this.alt, this.isAnimated = false});
+  const EmojiItem(
+      {required this.url, required this.alt, this.isAnimated = false});
 }
 
 class AuthorBadge {
@@ -79,4 +80,24 @@ class ChatMessage {
 
   String get plainText =>
       items.map((i) => i.isEmoji ? i.emoji!.alt : i.text).join();
+
+  String get normalizedPlainText =>
+      plainText.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+
+  String get dedupeIdKey {
+    final normalizedId = id.trim();
+    if (normalizedId.isEmpty) return '';
+    return '${platform.name}:id:$normalizedId';
+  }
+
+  String get dedupeContentKey {
+    final normalizedAuthor = author.channelId.trim().isNotEmpty
+        ? author.channelId.trim().toLowerCase()
+        : author.name.trim().toLowerCase();
+    final secondBucket = timestamp.toUtc().millisecondsSinceEpoch ~/ 1000;
+    return '${platform.name}:content:$normalizedAuthor:$normalizedPlainText:$secondBucket';
+  }
+
+  String get dedupeKey =>
+      dedupeIdKey.isNotEmpty ? dedupeIdKey : dedupeContentKey;
 }

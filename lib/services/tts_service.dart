@@ -77,6 +77,7 @@ class TtsService {
   final AudioPlayer? _audioPlayer = Platform.isWindows ? null : AudioPlayer();
   final Queue<String> _queue = Queue<String>();
   final _loadStateController = StreamController<TtsLoadState>.broadcast();
+  final _busyController = StreamController<bool>.broadcast();
   final TtsModelCache _modelCache = TtsModelCache();
   Process? _windowsPlaybackProcess;
 
@@ -90,6 +91,7 @@ class TtsService {
   Future<void> _voiceStyleLoadFuture = Future<void>.value();
   final List<Style> _retiredStyles = <Style>[];
   TtsLoadState _loadState = const TtsLoadState();
+  bool _isBusy = false;
 
   // TTS configuration
   final int _totalSteps = 8;
@@ -102,13 +104,23 @@ class TtsService {
   }
 
   Stream<TtsLoadState> get loadStateStream => _loadStateController.stream;
+  Stream<bool> get busyStream => _busyController.stream;
   TtsLoadState get currentLoadState => _loadState;
+  bool get isBusy => _isBusy;
 
   void _emitLoadState(TtsLoadState next) {
     if (_isDisposed) return;
     _loadState = next;
     if (!_loadStateController.isClosed) {
       _loadStateController.add(next);
+    }
+  }
+
+  void _setBusy(bool value) {
+    if (_isDisposed || _isBusy == value) return;
+    _isBusy = value;
+    if (!_busyController.isClosed) {
+      _busyController.add(value);
     }
   }
 
@@ -280,6 +292,7 @@ class TtsService {
     if (_isDisposed) return;
     if (text.trim().isEmpty) return;
     _queue.add(text);
+    _setBusy(true);
     _processQueue();
   }
 
@@ -289,6 +302,7 @@ class TtsService {
     _windowsPlaybackProcess?.kill();
     _windowsPlaybackProcess = null;
     _audioPlayer?.stop();
+    _setBusy(false);
   }
 
   Future<void> _processQueue() async {
@@ -316,6 +330,7 @@ class TtsService {
       debugPrint('TTS error: $e');
     } finally {
       _isProcessing = false;
+      _setBusy(_queue.isNotEmpty);
     }
   }
 
@@ -448,6 +463,7 @@ class TtsService {
     _modelCache.dispose();
     _audioPlayer?.dispose();
     _loadStateController.close();
+    _busyController.close();
     unawaited(_disposeNativeResources());
   }
 }

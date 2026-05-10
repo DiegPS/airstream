@@ -65,6 +65,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
+    final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
 
     // Window state is a separate provider — decoupled from overlay settings.
     final win = ref.watch(windowStateProvider);
@@ -238,17 +240,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () {
-                    final appController = ref.read(appControllerProvider);
-                    appController.testTts(_ttsTestCtrl.text);
-                  },
+                  onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
+                      ? null
+                      : () {
+                          final appController = ref.read(appControllerProvider);
+                          appController.testTts(_ttsTestCtrl.text);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF53FC18),
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                   ),
-                  child: const Text('Probar'),
+                  child: Text(
+                    ttsBusy
+                        ? 'Reproduciendo...'
+                        : (ttsLoadState?.isLoading ?? false)
+                            ? 'Cargando...'
+                            : 'Probar',
+                  ),
                 ),
               ],
             ),

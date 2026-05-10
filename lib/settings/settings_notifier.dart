@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'package:airchat_flutter/services/overlay_server.dart';
 import 'package:airchat_flutter/services/twitch_service.dart';
 import 'package:airchat_flutter/services/youtube_service.dart';
 import 'package:airchat_flutter/services/tts_service.dart';
+import 'package:airchat_flutter/settings/tts_message_policy.dart';
 import 'package:airchat_flutter/settings/settings_model.dart';
 
 const _prefsKey = 'AIRCHAT_SETTINGS';
@@ -45,6 +47,11 @@ final connectionStatusProvider =
 final ttsLoadStateProvider = StreamProvider<TtsLoadState>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.ttsLoadStateStream;
+});
+
+final ttsBusyProvider = StreamProvider<bool>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.ttsBusyStream;
 });
 
 final appControllerProvider = Provider<AppController>((ref) {
@@ -97,6 +104,8 @@ class AppController {
   late final MessagePipeline _pipeline;
   StreamSubscription<ChatMessage>? _pipelineSub;
   StreamSubscription<(ServiceStatus, String?)>? _kickStatusSub;
+  final _spokenMessageKeys = <String>{};
+  final _spokenMessageOrder = Queue<String>();
 
   final _listController =
       // ignore: close_sinks
@@ -114,6 +123,7 @@ class AppController {
 
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
+  DateTime? _ttsSessionStartedAt;
 
   AppController() {
     _pipeline = MessagePipeline(const SettingsModel());
@@ -122,36 +132,7 @@ class AppController {
     _pipeline.addSource(_twitch.messages);
     _pipelineSub = _pipeline.stream.listen((msg) {
       _listController.add(_pipeline.buffer);
-
-      // Trigger TTS if enabled
-      if (_lastSettings?.ttsEnabled == true) {
-        if (_lastSettings?.ttsMembersOnly == true && !msg.isMembership) {
-          // Skip if members only
-        } else {
-          final authorName = msg.author.name;
-          var text = msg.plainText;
-
-          if (text.isNotEmpty) {
-            // Command mode
-            if (_lastSettings?.ttsCommandMode == true) {
-              final prefix = (_lastSettings?.ttsCommandPrefix ?? '!voz')
-                  .trim()
-                  .toLowerCase();
-              if (prefix.isNotEmpty) {
-                if (!text.toLowerCase().startsWith(prefix)) {
-                  return; // Skip if it doesn't start with prefix
-                }
-                // Remove prefix
-                text = text.substring(prefix.length).trim();
-                if (text.isEmpty) return;
-              }
-            }
-
-            final separator = _lastSettings?.ttsSeparatorText ?? 'dice';
-            _tts.speak('$authorName $separator: $text');
-          }
-        }
-      }
+      _speakMessageIfEligible(msg);
     });
     // Forward per-service status to the aggregated stream.
     _kickStatusSub = _kick.statusStream.listen((s) => _updateStatus('kick', s));
@@ -204,14 +185,77 @@ class AppController {
     yield* _tts.loadStateStream;
   }
 
+  Stream<bool> get ttsBusyStream async* {
+    yield _tts.isBusy;
+    yield* _tts.busyStream;
+  }
+
   String? get overlayUrl => _overlay.localIp != null
       ? 'http://${_overlay.localIp}:${_overlay.port}'
       : null;
 
-  void testTts(String text) {
-    if (text.isNotEmpty) {
-      _tts.speak(text);
+  bool testTts(String text) {
+    if (text.isEmpty) return false;
+    if (_tts.currentLoadState.isLoading || _tts.isBusy) return false;
+    _tts.speak(text);
+    return true;
+  }
+
+  void _speakMessageIfEligible(ChatMessage msg) {
+    final settings = _lastSettings;
+    if (settings == null || !settings.ttsEnabled) return;
+    if (settings.ttsMembersOnly && !msg.isMembership) return;
+    if (!isTtsMessageFresh(msg, _ttsSessionStartedAt)) return;
+
+    final speakKey = msg.dedupeKey;
+    if (_spokenMessageKeys.contains(speakKey)) return;
+
+    final authorName = sanitizeTtsAuthorName(msg.author.name);
+    var text = msg.plainText.trim();
+    if (text.isEmpty) return;
+
+    if (settings.ttsCommandMode) {
+      final prefix = settings.ttsCommandPrefix.trim().toLowerCase();
+      if (prefix.isNotEmpty) {
+        if (!text.toLowerCase().startsWith(prefix)) return;
+        text = text.substring(prefix.length).trim();
+        if (text.isEmpty) return;
+      }
     }
+
+    _rememberSpokenMessage(speakKey);
+    final separator = settings.ttsSeparatorText;
+    final spokenAuthor = authorName.isEmpty ? 'Chat' : authorName;
+    _tts.speak('$spokenAuthor $separator: $text');
+  }
+
+  void _rememberSpokenMessage(String key) {
+    _spokenMessageKeys.add(key);
+    _spokenMessageOrder.addLast(key);
+    while (_spokenMessageOrder.length > _maxTrackedTtsMessages) {
+      final oldest = _spokenMessageOrder.removeFirst();
+      _spokenMessageKeys.remove(oldest);
+    }
+  }
+
+  void _resetTtsSession() {
+    _ttsSessionStartedAt = DateTime.now().toUtc();
+    _spokenMessageKeys.clear();
+    _spokenMessageOrder.clear();
+  }
+
+  void _clearTtsHistory() {
+    _spokenMessageKeys.clear();
+    _spokenMessageOrder.clear();
+    _ttsSessionStartedAt = null;
+  }
+
+  int get _maxTrackedTtsMessages {
+    final maxMessages = _lastSettings?.maxMessages ?? 200;
+    final scaled = maxMessages * 10;
+    if (scaled < 500) return 500;
+    if (scaled > 3000) return 3000;
+    return scaled;
   }
 
   void applySettings(SettingsModel s, {required bool connectChats}) {
@@ -227,12 +271,30 @@ class AppController {
         _lastConnectChats != connectChats;
     _lastConnectChats = connectChats;
 
+    final hasYoutubeTarget =
+        s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty;
+    final hasTwitchTarget = s.twitchChannel.isNotEmpty;
+    final hasKickTarget = s.kickSlug.isNotEmpty;
+
     final ytChanged = connectionChanged ||
         prev.youtubeHandle != s.youtubeHandle ||
         prev.youtubeLiveId != s.youtubeLiveId;
+    final twChanged =
+        connectionChanged || prev.twitchChannel != s.twitchChannel;
+    final kickChanged = connectionChanged || prev.kickSlug != s.kickSlug;
+
+    final shouldResetTtsSession = connectChats &&
+        ((ytChanged && hasYoutubeTarget) ||
+            (twChanged && hasTwitchTarget) ||
+            (kickChanged && hasKickTarget));
+    if (shouldResetTtsSession) {
+      _resetTtsSession();
+    } else if (!connectChats) {
+      _clearTtsHistory();
+    }
+
     if (ytChanged) {
-      if (connectChats &&
-          (s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty)) {
+      if (connectChats && hasYoutubeTarget) {
         unawaited(_connectYoutube(s));
       } else {
         _youtube.disconnect();
@@ -241,10 +303,8 @@ class AppController {
     }
 
     // Twitch
-    final twChanged =
-        connectionChanged || prev.twitchChannel != s.twitchChannel;
     if (twChanged) {
-      if (connectChats && s.twitchChannel.isNotEmpty) {
+      if (connectChats && hasTwitchTarget) {
         unawaited(_connectTwitch(s));
       } else {
         _twitch.disconnect();
@@ -253,9 +313,8 @@ class AppController {
     }
 
     // Kick
-    final kickChanged = connectionChanged || prev.kickSlug != s.kickSlug;
     if (kickChanged) {
-      if (connectChats && s.kickSlug.isNotEmpty) {
+      if (connectChats && hasKickTarget) {
         _kick.connect(s.kickSlug);
       } else {
         _kick.disconnect();
