@@ -788,36 +788,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _section('Overlay Server'),
-          _label('Port'),
-          _field(
-            _port,
-            '8080',
-            focusNode: _portFocus,
-            onChanged: (_) => _queueTextSettingsSave(),
-            onSubmitted: (_) => _saveTextSettings(),
-          ),
-          const SizedBox(height: 8),
-          _switchRow('Enabled', s.overlayEnabled,
-              (v) => notifier.update(s.copyWith(overlayEnabled: v))),
-          const SizedBox(height: 10),
-          _overlayUrlCard(
-            overlayUrl: overlayCopyUrl,
-            enabled: s.overlayEnabled,
-            onCopy: () async {
-              await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Overlay URL copied'),
-                  duration: Duration(milliseconds: 1400),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
           _section('Appearance'),
           _sliderRow('Font size', s.fontSize, 10, 28,
               (v) => notifier.update(s.copyWith(fontSize: v))),
@@ -908,6 +878,36 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                         : 'Probar TTS',
               ),
             ),
+          ),
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
+          _section('Overlay Server'),
+          _label('Port'),
+          _field(
+            _port,
+            '8080',
+            focusNode: _portFocus,
+            onChanged: (_) => _queueTextSettingsSave(),
+            onSubmitted: (_) => _saveTextSettings(),
+          ),
+          const SizedBox(height: 8),
+          _switchRow('Enabled', s.overlayEnabled,
+              (v) => notifier.update(s.copyWith(overlayEnabled: v))),
+          const SizedBox(height: 10),
+          _overlayUrlCard(
+            overlayUrl: overlayCopyUrl,
+            enabled: s.overlayEnabled,
+            onCopy: () async {
+              await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Overlay URL copied'),
+                  duration: Duration(milliseconds: 1400),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
         ],
