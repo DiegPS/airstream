@@ -54,10 +54,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
-    final scaffoldBg = Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
+    final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
+      appBar: _buildAppBar(),
       body: Row(
         children: [
           const SizedBox(
@@ -66,12 +67,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
           Expanded(
-            child: Column(
-              children: [
-                _buildAppBar(),
-                Expanded(child: _chatList()),
-              ],
-            ),
+            child: _chatList(),
           ),
         ],
       ),
@@ -365,15 +361,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'AirChat',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 20),
           _section('Connections'),
           _label('YouTube handle, channel ID, or video URL'),
           _field(
