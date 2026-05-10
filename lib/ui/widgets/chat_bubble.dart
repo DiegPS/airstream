@@ -32,92 +32,95 @@ class ChatBubble extends ConsumerWidget {
         ? Border(left: BorderSide(color: superColor!, width: 4))
         : null;
 
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: s.messageGap / 2),
-      decoration: BoxDecoration(
-        color: s.showBubble ? bg : Colors.transparent,
-        borderRadius: BorderRadius.circular(s.borderRadius),
-        border: border,
-      ),
-      padding: s.showBubble
-          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 5)
-          : const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (s.showAvatars) ...[
-            AuthorAvatar(
-              name: message.author.name,
-              url: message.author.avatarUrl,
-              color: message.author.color,
-            ),
-            const SizedBox(width: 6),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Author row
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  children: [
-                    if (s.showBadges)
-                      PlatformBadge(platform: message.platform),
-                    if (message.isOwner)
-                      _iconBadge(Icons.star, Colors.amber),
-                    if (message.isModerator)
-                      _iconBadge(Icons.shield, Colors.green),
-                    if (message.isMembership)
-                      _iconBadge(Icons.card_membership, Colors.purple),
-                    Text(
-                      message.author.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: s.fontSize * 0.9,
-                        color: message.author.color != null
-                            ? _parseColor(message.author.color!)
-                            : Colors.white,
-                      ),
-                    ),
-                    if (s.showTimestamp)
+    return Opacity(
+      opacity: s.messageOpacity,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: s.messageGap / 2),
+        decoration: BoxDecoration(
+          color: s.showBubble ? bg : Colors.transparent,
+          borderRadius: BorderRadius.circular(s.borderRadius),
+          border: border,
+        ),
+        padding: s.showBubble
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 5)
+            : const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (s.showAvatars) ...[
+              AuthorAvatar(
+                name: message.author.name,
+                url: message.author.avatarUrl,
+                color: message.author.color,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Author row
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
+                    children: [
+                      if (s.showBadges)
+                        PlatformBadge(platform: message.platform),
+                      if (message.isOwner)
+                        _iconBadge(Icons.star, Colors.amber),
+                      if (message.isModerator)
+                        _iconBadge(Icons.shield, Colors.green),
+                      if (message.isMembership)
+                        _iconBadge(Icons.card_membership, Colors.purple),
                       Text(
-                        _formatTime(message.timestamp),
+                        message.author.name,
                         style: TextStyle(
-                          fontSize: s.fontSize * 0.75,
-                          color: Colors.white38,
+                          fontWeight: FontWeight.w700,
+                          fontSize: s.fontSize * 0.9,
+                          color: message.author.color != null
+                              ? _parseColor(message.author.color!)
+                              : Colors.white,
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                // SuperChat amount
-                if (isSuper) ...[
-                  Text(
-                    message.superChat!.amount,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: s.fontSize,
-                      color: superColor,
-                    ),
+                      if (s.showTimestamp)
+                        Text(
+                          _formatTime(message.timestamp),
+                          style: TextStyle(
+                            fontSize: s.fontSize * 0.75,
+                            color: Colors.white38,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
-                ],
-                // Sticker
-                if (message.superChat?.stickerUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: CachedNetworkImage(
-                      imageUrl: message.superChat!.stickerUrl!,
-                      height: 48,
+                  // SuperChat amount
+                  if (isSuper) ...[
+                    Text(
+                      message.superChat!.amount,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: s.fontSize,
+                        color: superColor,
+                      ),
                     ),
-                  ),
-                // Message content
-                _MessageContent(items: message.items, fontSize: s.fontSize),
-              ],
+                    const SizedBox(height: 2),
+                  ],
+                  // Sticker
+                  if (message.superChat?.stickerUrl != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: CachedNetworkImage(
+                        imageUrl: message.superChat!.stickerUrl!,
+                        height: 48,
+                      ),
+                    ),
+                  // Message content
+                  _MessageContent(items: message.items, fontSize: s.fontSize),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

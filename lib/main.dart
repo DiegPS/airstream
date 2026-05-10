@@ -11,6 +11,11 @@ void main() async {
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     await windowManager.ensureInitialized();
     await Window.initialize();   // flutter_acrylic — debe ir después de windowManager
+    await Window.setEffect(
+      effect: WindowEffect.transparent,
+      color: const Color(0x00000000),
+      dark: true,
+    );
   }
 
   runApp(const ProviderScope(child: AirChatApp()));

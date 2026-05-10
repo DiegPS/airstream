@@ -35,7 +35,7 @@ class AcrylicState {
   final bool                dark;
 
   const AcrylicState({
-    this.effect    = AcrylicEffectOption.disabled,
+    this.effect    = AcrylicEffectOption.transparent,
     this.tintColor = const Color(0x00000000), // fully transparent tint
     this.dark      = true,
   });

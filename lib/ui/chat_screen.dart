@@ -53,10 +53,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final acrylicEffect = ref.watch(acrylicProvider).effect;
-    final scaffoldBg = acrylicEffect == AcrylicEffectOption.disabled
-        ? const Color(0xFF0D0D0D)
-        : Colors.transparent;
+    final s = ref.watch(settingsProvider);
+    final scaffoldBg = Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
