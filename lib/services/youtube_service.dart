@@ -5,6 +5,8 @@ import 'package:airchat_flutter/models/chat_message.dart';
 
 /// Wraps dart_youtube_chat.LiveChat and converts items to [ChatMessage].
 class YouTubeService {
+  static final RegExp _youtubeVideoIdPattern = RegExp(r'^[A-Za-z0-9_-]{11}$');
+
   yt.LiveChat? _chat;
   StreamSubscription? _sub;
   final _controller = StreamController<ChatMessage>.broadcast();
@@ -61,17 +63,21 @@ class YouTubeService {
 
     final uri = Uri.tryParse(value);
     if (uri != null && uri.hasScheme) {
-      final videoId = uri.queryParameters['v'];
+      final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+      final videoId = uri.queryParameters['v']?.trim();
       if (videoId != null && videoId.isNotEmpty) {
         return (handle: '', liveId: videoId, channelId: '');
       }
 
       final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-      if (uri.host.contains('youtu.be') && segments.isNotEmpty) {
+      if (host == 'youtu.be' && segments.isNotEmpty) {
         return (handle: '', liveId: segments.first, channelId: '');
       }
       if (segments.length >= 2 && segments.first == 'channel') {
         return (handle: '', liveId: '', channelId: segments[1]);
+      }
+      if (segments.length >= 2 && segments.first == 'live') {
+        return (handle: '', liveId: segments[1], channelId: '');
       }
       if (segments.isNotEmpty && segments.first.startsWith('@')) {
         return (handle: segments.first, liveId: '', channelId: '');
@@ -88,14 +94,24 @@ class YouTubeService {
         return (handle: '', liveId: videoId, channelId: '');
       }
     }
+    final pathValue = value.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+    if (pathValue.startsWith('channel/')) {
+      final parts = pathValue.split('/');
+      if (parts.length >= 2 && parts[1].trim().isNotEmpty) {
+        return (handle: '', liveId: '', channelId: parts[1].trim());
+      }
+    }
     if (_looksLikeChannelId(value)) {
       return (handle: '', liveId: '', channelId: value);
     }
+    if (_youtubeVideoIdPattern.hasMatch(value)) {
+      return (handle: '', liveId: value, channelId: '');
+    }
     if (value.startsWith('@')) {
-      value = value.split('/').first;
+      return (handle: value.split('/').first, liveId: '', channelId: '');
     }
 
-    return (handle: value, liveId: '', channelId: '');
+    return (handle: '@${value.split('/').first}', liveId: '', channelId: '');
   }
 
   bool _looksLikeChannelId(String value) =>

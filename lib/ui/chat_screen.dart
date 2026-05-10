@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:airchat_flutter/services/supertonic_helper.dart'
     show availableLangs, formatByteSize;
+import 'package:airchat_flutter/settings/settings_model.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
 import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
@@ -460,7 +461,6 @@ class _SettingsSidebar extends ConsumerStatefulWidget {
 
 class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ytHandle;
-  late TextEditingController _ytLiveId;
   late TextEditingController _twitch;
   late TextEditingController _kick;
   late TextEditingController _port;
@@ -469,7 +469,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ttsSeparatorCtrl;
 
   late FocusNode _ytFocus;
-  late FocusNode _ytLiveIdFocus;
   late FocusNode _twitchFocus;
   late FocusNode _kickFocus;
   late FocusNode _portFocus;
@@ -481,8 +480,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   void initState() {
     super.initState();
     final s = ref.read(settingsProvider);
-    _ytHandle = TextEditingController(text: s.youtubeHandle);
-    _ytLiveId = TextEditingController(text: s.youtubeLiveId);
+    _ytHandle = TextEditingController(text: _youtubeInputValue(s));
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug);
     _port = TextEditingController(text: s.overlayPort.toString());
@@ -492,7 +490,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
 
     _ytFocus = FocusNode();
-    _ytLiveIdFocus = FocusNode();
     _twitchFocus = FocusNode();
     _kickFocus = FocusNode();
     _portFocus = FocusNode();
@@ -501,7 +498,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
     for (final node in [
       _ytFocus,
-      _ytLiveIdFocus,
       _twitchFocus,
       _kickFocus,
       _portFocus,
@@ -520,7 +516,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   void dispose() {
     _textSettingsDebounce?.cancel();
     _ytHandle.dispose();
-    _ytLiveId.dispose();
     _twitch.dispose();
     _kick.dispose();
     _port.dispose();
@@ -529,7 +524,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsSeparatorCtrl.dispose();
 
     _ytFocus.dispose();
-    _ytLiveIdFocus.dispose();
     _twitchFocus.dispose();
     _kickFocus.dispose();
     _portFocus.dispose();
@@ -552,7 +546,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final current = ref.read(settingsProvider);
     final next = current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
-      youtubeLiveId: _ytLiveId.text.trim(),
+      youtubeLiveId: '',
       twitchChannel: _twitch.text.trim(),
       kickSlug: _kick.text.trim(),
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
@@ -561,7 +555,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
-        current.youtubeLiveId == next.youtubeLiveId &&
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
         current.overlayPort == next.overlayPort &&
@@ -595,17 +588,24 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
+  static String _youtubeInputValue(SettingsModel s) {
+    final liveId = s.youtubeLiveId.trim();
+    if (liveId.isNotEmpty) return liveId;
+    return s.youtubeHandle;
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final isRunning = ref.watch(chatConnectionProvider);
+    final connectionStatus =
+        ref.watch(connectionStatusProvider).valueOrNull ?? {};
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
 
-    _syncController(_ytHandle, _ytFocus, s.youtubeHandle);
-    _syncController(_ytLiveId, _ytLiveIdFocus, s.youtubeLiveId);
+    _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
     _syncController(_kick, _kickFocus, s.kickSlug);
     _syncController(_port, _portFocus, s.overlayPort.toString());
@@ -617,9 +617,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
 
     final hasChannels = _ytHandle.text.trim().isNotEmpty ||
-        _ytLiveId.text.trim().isNotEmpty ||
         _twitch.text.trim().isNotEmpty ||
         _kick.text.trim().isNotEmpty;
+    final youtubeState = connectionStatus['youtube'];
+    final twitchState = connectionStatus['twitch'];
+    final kickState = connectionStatus['kick'];
+    final youtubeError =
+        youtubeState?.$1 == ServiceStatus.error ? youtubeState?.$2 : null;
+    final twitchError =
+        twitchState?.$1 == ServiceStatus.error ? twitchState?.$2 : null;
+    final kickError =
+        kickState?.$1 == ServiceStatus.error ? kickState?.$2 : null;
 
     return Container(
       color: const Color(0xFF141414),
@@ -627,7 +635,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         padding: const EdgeInsets.all(16),
         children: [
           _section('Connections'),
-          _label('YouTube handle, channel ID, or video URL'),
+          _label('YouTube handle, channel ID, video ID, or URL'),
           _field(
             _ytHandle,
             '@xqc · UC... · youtube.com/watch?v=...',
@@ -638,18 +646,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             },
             onSubmitted: (_) => _saveTextSettings(),
           ),
-          const SizedBox(height: 12),
-          _label('YouTube live video ID (optional)'),
-          _field(
-            _ytLiveId,
-            'live video ID',
-            focusNode: _ytLiveIdFocus,
-            onChanged: (_) {
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            onSubmitted: (_) => _saveTextSettings(),
-          ),
+          if (youtubeError != null && youtubeError.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _inlineErrorMessage('YouTube', youtubeError),
+          ],
           const SizedBox(height: 12),
           _label('Twitch channel'),
           _field(
@@ -662,6 +662,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             },
             onSubmitted: (_) => _saveTextSettings(),
           ),
+          if (twitchError != null && twitchError.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _inlineErrorMessage('Twitch', twitchError),
+          ],
           const SizedBox(height: 12),
           _label('Kick slug'),
           _field(
@@ -674,6 +678,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             },
             onSubmitted: (_) => _saveTextSettings(),
           ),
+          if (kickError != null && kickError.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _inlineErrorMessage('Kick', kickError),
+          ],
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -898,7 +906,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           if (state.voiceStyle != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Voice: ${state.voiceStyle}',
+              'Voice: ${_voiceLabel(state.voiceStyle!)}',
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -1045,7 +1053,19 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               value: value,
               dropdownColor: const Color(0xFF1E1E1E),
               items: options
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(_ttsOptionLabel(label, e)),
+                      ))
+                  .toList(),
+              selectedItemBuilder: (context) => options
+                  .map((e) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _ttsOptionLabel(label, e),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
                   .toList(),
               onChanged: (v) {
                 if (v != null) onChanged(v);
@@ -1054,6 +1074,97 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ],
         ),
       );
+
+  static String _ttsOptionLabel(String field, String value) {
+    return switch (field) {
+      'Voice' => _voiceLabel(value),
+      'Language' => _languageLabel(value),
+      _ => value,
+    };
+  }
+
+  static String _voiceLabel(String value) {
+    final match = RegExp(r'^([MF])(\d+)$').firstMatch(value.trim());
+    if (match == null) return value;
+    final prefix = match.group(1) == 'F' ? 'Female' : 'Male';
+    return '$prefix ${match.group(2)}';
+  }
+
+  static String _languageLabel(String value) {
+    const labels = {
+      'en': 'English',
+      'ko': 'Korean',
+      'ja': 'Japanese',
+      'ar': 'Arabic',
+      'bg': 'Bulgarian',
+      'cs': 'Czech',
+      'da': 'Danish',
+      'de': 'German',
+      'el': 'Greek',
+      'es': 'Spanish',
+      'et': 'Estonian',
+      'fi': 'Finnish',
+      'fr': 'French',
+      'hi': 'Hindi',
+      'hr': 'Croatian',
+      'hu': 'Hungarian',
+      'id': 'Indonesian',
+      'it': 'Italian',
+      'lt': 'Lithuanian',
+      'lv': 'Latvian',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'pt': 'Portuguese',
+      'ro': 'Romanian',
+      'ru': 'Russian',
+      'sk': 'Slovak',
+      'sl': 'Slovenian',
+      'sv': 'Swedish',
+      'tr': 'Turkish',
+      'uk': 'Ukrainian',
+      'vi': 'Vietnamese',
+    };
+    return labels[value] ?? value.toUpperCase();
+  }
+
+  static Widget _inlineErrorMessage(String platform, String error) {
+    final normalized = error.replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB3261E).withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFFF6B6B).withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(
+              Icons.error_outline_rounded,
+              size: 16,
+              color: Color(0xFFFF8A80),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$platform error: $normalized',
+              style: const TextStyle(
+                color: Color(0xFFFFB4AB),
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ConnectionDots extends ConsumerWidget {

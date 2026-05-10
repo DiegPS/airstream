@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:airchat_flutter/settings/settings_model.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/services/supertonic_helper.dart'
     show availableLangs;
@@ -10,11 +11,15 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+  static String _youtubeInputValue(SettingsModel s) {
+    final liveId = s.youtubeLiveId.trim();
+    if (liveId.isNotEmpty) return liveId;
+    return s.youtubeHandle;
+  }
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _ytHandle;
-  late TextEditingController _ytLiveId;
   late TextEditingController _twitch;
   late TextEditingController _kick;
   late TextEditingController _port;
@@ -24,8 +29,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     final s = ref.read(settingsProvider);
-    _ytHandle = TextEditingController(text: s.youtubeHandle);
-    _ytLiveId = TextEditingController(text: s.youtubeLiveId);
+    _ytHandle =
+        TextEditingController(text: SettingsScreen._youtubeInputValue(s));
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug)
       ..addListener(() => setState(() {}));
@@ -37,7 +42,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void dispose() {
     _ytHandle.dispose();
-    _ytLiveId.dispose();
     _twitch.dispose();
     _kick.dispose();
     _port.dispose();
@@ -50,7 +54,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final current = ref.read(settingsProvider);
     notifier.update(current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
-      youtubeLiveId: _ytLiveId.text.trim(),
+      youtubeLiveId: '',
       twitchChannel: _twitch.text.trim(),
       kickSlug: _kick.text.trim(),
       overlayPort: int.tryParse(_port.text) ?? 8080,
@@ -86,8 +90,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _section('Connections'),
-          _textField('YouTube handle, channel ID, or video URL', _ytHandle),
-          _textField('YouTube live video ID (optional)', _ytLiveId),
+          _textField(
+            'YouTube handle, channel ID, video ID, or URL',
+            _ytHandle,
+          ),
           _textField('Twitch channel', _twitch),
           _textField('Kick slug', _kick),
           _section('Overlay Server'),
@@ -357,7 +363,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               value: value,
               dropdownColor: const Color(0xFF1E1E1E),
               items: options
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(_ttsOptionLabel(title, e)),
+                      ))
+                  .toList(),
+              selectedItemBuilder: (context) => options
+                  .map((e) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _ttsOptionLabel(title, e),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
                   .toList(),
               onChanged: (v) {
                 if (v != null) onChanged(v);
@@ -366,6 +384,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       );
+
+  static String _ttsOptionLabel(String field, String value) {
+    return switch (field) {
+      'Voice' => _voiceLabel(value),
+      'Language' => _languageLabel(value),
+      _ => value,
+    };
+  }
+
+  static String _voiceLabel(String value) {
+    final match = RegExp(r'^([MF])(\d+)$').firstMatch(value.trim());
+    if (match == null) return value;
+    final prefix = match.group(1) == 'F' ? 'Female' : 'Male';
+    return '$prefix ${match.group(2)}';
+  }
+
+  static String _languageLabel(String value) {
+    const labels = {
+      'en': 'English',
+      'ko': 'Korean',
+      'ja': 'Japanese',
+      'ar': 'Arabic',
+      'bg': 'Bulgarian',
+      'cs': 'Czech',
+      'da': 'Danish',
+      'de': 'German',
+      'el': 'Greek',
+      'es': 'Spanish',
+      'et': 'Estonian',
+      'fi': 'Finnish',
+      'fr': 'French',
+      'hi': 'Hindi',
+      'hr': 'Croatian',
+      'hu': 'Hungarian',
+      'id': 'Indonesian',
+      'it': 'Italian',
+      'lt': 'Lithuanian',
+      'lv': 'Latvian',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'pt': 'Portuguese',
+      'ro': 'Romanian',
+      'ru': 'Russian',
+      'sk': 'Slovak',
+      'sl': 'Slovenian',
+      'sv': 'Swedish',
+      'tr': 'Turkish',
+      'uk': 'Ukrainian',
+      'vi': 'Vietnamese',
+    };
+    return labels[value] ?? value.toUpperCase();
+  }
 
   static Widget _switchTile(
     String label,
