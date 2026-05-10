@@ -234,11 +234,12 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
       child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
             colors: [
-              Color(0xCC151515),
-              Color(0x66111111),
+              Color(0xCC6A0F0F),
+              Color(0x66101010),
+              Color(0xCC8A1414),
             ],
           ),
         ),
