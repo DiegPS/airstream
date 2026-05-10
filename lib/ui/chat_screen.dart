@@ -544,11 +544,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _textSettingsDebounce?.cancel();
     final notifier = ref.read(settingsProvider.notifier);
     final current = ref.read(settingsProvider);
+    final normalizedTwitch = _normalizePlatformChannel(_twitch.text);
+    final normalizedKick = _normalizePlatformChannel(_kick.text);
     final next = current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
       youtubeLiveId: '',
-      twitchChannel: _twitch.text.trim(),
-      kickSlug: _kick.text.trim(),
+      twitchChannel: normalizedTwitch,
+      kickSlug: normalizedKick,
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
       ttsCommandPrefix: _ttsPrefixCtrl.text,
       ttsSeparatorText: _ttsSeparatorCtrl.text,
@@ -594,6 +596,23 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return s.youtubeHandle;
   }
 
+  static String _normalizePlatformChannel(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+
+    try {
+      final uri = Uri.parse(trimmed);
+      if (uri.hasScheme && uri.host.isNotEmpty) {
+        final parts =
+            uri.pathSegments.where((part) => part.isNotEmpty).toList();
+        final lastPath = parts.isNotEmpty ? parts.last : '';
+        return lastPath.replaceFirst(RegExp(r'^@'), '').trim();
+      }
+    } catch (_) {}
+
+    return trimmed.replaceFirst(RegExp(r'^@'), '').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
@@ -601,6 +620,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final isRunning = ref.watch(chatConnectionProvider);
     final connectionStatus =
         ref.watch(connectionStatusProvider).valueOrNull ?? {};
+    final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider);
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
@@ -634,6 +654,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _sidebarHeader(
+            youtubeValue: youtubeBadgeValue ?? _youtubeInputValue(s),
+            twitchValue: s.twitchChannel,
+            kickValue: s.kickSlug,
+            statusMap: connectionStatus,
+          ),
+          const SizedBox(height: 16),
           _section('Connections'),
           _label('YouTube handle, channel ID, video ID, or URL'),
           _field(
@@ -645,6 +672,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               _queueTextSettingsSave();
             },
             onSubmitted: (_) => _saveTextSettings(),
+            onClear: () {
+              _ytHandle.clear();
+              setState(() {});
+              _queueTextSettingsSave();
+            },
           ),
           if (youtubeError != null && youtubeError.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -661,6 +693,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               _queueTextSettingsSave();
             },
             onSubmitted: (_) => _saveTextSettings(),
+            onClear: () {
+              _twitch.clear();
+              setState(() {});
+              _queueTextSettingsSave();
+            },
           ),
           if (twitchError != null && twitchError.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -677,6 +714,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               _queueTextSettingsSave();
             },
             onSubmitted: (_) => _saveTextSettings(),
+            onClear: () {
+              _kick.clear();
+              setState(() {});
+              _queueTextSettingsSave();
+            },
           ),
           if (kickError != null && kickError.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -956,6 +998,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     FocusNode? focusNode,
     ValueChanged<String>? onChanged,
     ValueChanged<String>? onSubmitted,
+    VoidCallback? onClear,
   }) =>
       TextField(
         controller: ctrl,
@@ -971,6 +1014,31 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           isDense: true,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          suffixIcon: onClear != null && ctrl.text.isNotEmpty
+              ? IconButton(
+                  tooltip: 'Clear',
+                  onPressed: onClear,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 20,
+                    minHeight: 20,
+                  ),
+                  visualDensity: const VisualDensity(
+                    horizontal: -4,
+                    vertical: -4,
+                  ),
+                  splashRadius: 14,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: Colors.white38,
+                  ),
+                )
+              : null,
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 28,
+            minHeight: 28,
+          ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
@@ -978,6 +1046,121 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
         ),
       );
+
+  static Widget _sidebarHeader({
+    required String youtubeValue,
+    required String twitchValue,
+    required String kickValue,
+    required Map<String, (ServiceStatus, String?)> statusMap,
+  }) {
+    final badges = <Widget>[
+      if (youtubeValue.trim().isNotEmpty)
+        _platformStatusBadge(
+          'YouTube',
+          youtubeValue.trim(),
+          statusMap['youtube']?.$1 ?? ServiceStatus.idle,
+        ),
+      if (twitchValue.trim().isNotEmpty)
+        _platformStatusBadge(
+          'Twitch',
+          twitchValue.trim(),
+          statusMap['twitch']?.$1 ?? ServiceStatus.idle,
+        ),
+      if (kickValue.trim().isNotEmpty)
+        _platformStatusBadge(
+          'Kick',
+          kickValue.trim(),
+          statusMap['kick']?.$1 ?? ServiceStatus.idle,
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Dashboard',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F1F1F),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFF2F2F2F)),
+              ),
+              child: const Text(
+                'Ctrl+B',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (badges.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: badges,
+          ),
+        ],
+      ],
+    );
+  }
+
+  static Widget _platformStatusBadge(
+    String platform,
+    String value,
+    ServiceStatus status,
+  ) {
+    final color = switch (status) {
+      ServiceStatus.connected => const Color(0xFF53FC18),
+      ServiceStatus.connecting => Colors.amber,
+      ServiceStatus.error => const Color(0xFFFF6B6B),
+      ServiceStatus.idle => Colors.white38,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1B),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$platform · $value',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   static Widget _switchRow(
     String label,

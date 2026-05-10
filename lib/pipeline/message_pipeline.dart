@@ -24,6 +24,13 @@ class MessagePipeline {
   /// Current buffered messages (up to settings.maxMessages).
   List<ChatMessage> get buffer => List.unmodifiable(_buffer);
 
+  void clear() {
+    _buffer.clear();
+    _seenIdKeys.clear();
+    _seenContentKeys.clear();
+    _seenOrder.clear();
+  }
+
   void updateSettings(SettingsModel settings) {
     _settings = settings;
     _trimSeenKeys();

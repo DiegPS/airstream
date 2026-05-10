@@ -37,6 +37,11 @@ final overlayUrlProvider = Provider<String?>((ref) {
   return app.overlayUrl;
 });
 
+final youtubeBadgeValueProvider = Provider<String?>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.youtubeBadgeValue;
+});
+
 /// Per-platform connection status: map of platform name → (status, error message).
 final connectionStatusProvider =
     StreamProvider<Map<String, (ServiceStatus, String?)>>((ref) {
@@ -120,6 +125,7 @@ class AppController {
     'twitch': (ServiceStatus.idle, null),
     'kick': (ServiceStatus.idle, null),
   };
+  String? _youtubeBadgeValue;
 
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
@@ -140,12 +146,17 @@ class AppController {
 
   Future<void> _connectYoutube(SettingsModel s) async {
     _updateStatus('youtube', (ServiceStatus.connecting, null));
+    _youtubeBadgeValue = null;
     try {
       await _youtube.connect(handle: s.youtubeHandle, liveId: s.youtubeLiveId);
+      _youtubeBadgeValue = _youtube.resolvedLiveId.isNotEmpty
+          ? _youtube.resolvedLiveId
+          : s.youtubeHandle.trim();
       _updateStatus('youtube', (ServiceStatus.connected, null));
     } catch (e) {
       debugPrint('YouTubeService.connect failed: $e');
       await _youtube.disconnect();
+      _youtubeBadgeValue = null;
       _updateStatus('youtube', (ServiceStatus.error, e.toString()));
     }
   }
@@ -193,6 +204,7 @@ class AppController {
   String? get overlayUrl => _overlay.localIp != null
       ? 'http://${_overlay.localIp}:${_overlay.port}'
       : null;
+  String? get youtubeBadgeValue => _youtubeBadgeValue;
 
   bool testTts(String text) {
     if (text.isEmpty) return false;
@@ -250,6 +262,13 @@ class AppController {
     _ttsSessionStartedAt = null;
   }
 
+  void _clearChatMessages() {
+    _pipeline.clear();
+    if (!_listController.isClosed) {
+      _listController.add(const []);
+    }
+  }
+
   int get _maxTrackedTtsMessages {
     final maxMessages = _lastSettings?.maxMessages ?? 200;
     final scaled = maxMessages * 10;
@@ -288,8 +307,10 @@ class AppController {
             (twChanged && hasTwitchTarget) ||
             (kickChanged && hasKickTarget));
     if (shouldResetTtsSession) {
+      _clearChatMessages();
       _resetTtsSession();
     } else if (!connectChats) {
+      _clearChatMessages();
       _clearTtsHistory();
     }
 
@@ -298,6 +319,7 @@ class AppController {
         unawaited(_connectYoutube(s));
       } else {
         _youtube.disconnect();
+        _youtubeBadgeValue = null;
         _updateStatus('youtube', (ServiceStatus.idle, null));
       }
     }

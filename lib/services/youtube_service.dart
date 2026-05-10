@@ -12,6 +12,7 @@ class YouTubeService {
   final _controller = StreamController<ChatMessage>.broadcast();
 
   Stream<ChatMessage> get messages => _controller.stream;
+  String get resolvedLiveId => _chat?.liveId ?? '';
 
   Future<void> connect({
     String handle = '',
