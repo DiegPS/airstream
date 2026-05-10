@@ -291,29 +291,11 @@ class _TitleBarCenterStatus extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isRunning = ref.watch(chatConnectionProvider);
-    final color = isRunning ? const Color(0xFF76E39F) : const Color(0xFF8A8A8A);
-
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
           _ConnectionDots(),
           if (overlayUrl != null) ...[
             const SizedBox(width: 10),
