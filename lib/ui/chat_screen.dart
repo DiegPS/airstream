@@ -70,7 +70,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         autofocus: true,
         child: Scaffold(
           backgroundColor: scaffoldBg,
-          appBar: const _DesktopTopBar(),
+          appBar: _DesktopTopBar(
+            sidebarVisible: _sidebarVisible,
+            onToggleSidebar: _toggleSidebarVisibility,
+          ),
           body: Row(
             children: [
               AnimatedContainer(
@@ -161,10 +164,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 }
 
 class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _DesktopTopBar();
+  const _DesktopTopBar({
+    required this.sidebarVisible,
+    required this.onToggleSidebar,
+  });
 
   static const _barHeight = 42.0;
   static const _accent = Color(0xFF5B9CFF);
+
+  final bool sidebarVisible;
+  final VoidCallback onToggleSidebar;
 
   @override
   Size get preferredSize => const Size.fromHeight(_barHeight);
@@ -183,9 +192,6 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
       color: Colors.transparent,
       child: Container(
         decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Color(0xFF262626)),
-          ),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -227,6 +233,17 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                   bottom: 0,
                   child: Row(
                     children: [
+                      _TopBarIconButton(
+                        tooltip: sidebarVisible
+                            ? 'Hide sidebar (Ctrl+B)'
+                            : 'Show sidebar (Ctrl+B)',
+                        icon: sidebarVisible
+                            ? Icons.keyboard_double_arrow_left_rounded
+                            : Icons.keyboard_double_arrow_right_rounded,
+                        active: sidebarVisible,
+                        onTap: onToggleSidebar,
+                      ),
+                      const SizedBox(width: 6),
                       _TopBarActionButton(
                         label: isRunning ? 'Stop' : 'Start',
                         icon: isRunning
@@ -373,6 +390,46 @@ class _TopBarActionButton extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBarIconButton extends StatelessWidget {
+  const _TopBarIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = active
+        ? const Color(0xFF5B9CFF).withValues(alpha: 0.14)
+        : Colors.transparent;
+    final foregroundColor =
+        active ? const Color(0xFF86B8FF) : const Color(0xFFB8B8B8);
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Icon(icon, size: 16, color: foregroundColor),
           ),
         ),
       ),

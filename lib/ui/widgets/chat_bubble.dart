@@ -23,9 +23,9 @@ class ChatBubble extends ConsumerWidget {
     final bg = isSuper
         ? Color.alphaBlend(
             superColor!.withAlpha(60),
-            const Color(0xCC1A1A1A),
+            const Color(0xFF1A1A1A),
           )
-        : const Color(0xCC1A1A1A);
+        : const Color(0xFF1A1A1A);
 
     final border = isSuper
         ? Border(
