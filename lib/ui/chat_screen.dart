@@ -210,7 +210,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     required this.onToggleSidebar,
   });
 
-  static const _barHeight = 42.0;
+  static const _barHeight = 36.0;
   static const _accent = Color(0xFF5B9CFF);
 
   final bool sidebarVisible;
