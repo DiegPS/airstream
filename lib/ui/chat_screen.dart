@@ -24,6 +24,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _autoScroll = true;
   bool _sidebarVisible = true;
+  bool _topBarVisible = true;
 
   @override
   void initState() {
@@ -60,6 +61,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() => _sidebarVisible = !_sidebarVisible);
   }
 
+  void _toggleTopBarVisibility() {
+    setState(() => _topBarVisible = !_topBarVisible);
+  }
+
   KeyEventResult _handleGlobalKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
@@ -74,6 +79,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (isToggleClickThroughShortcut) {
       final windowNotifier = ref.read(windowStateProvider.notifier);
       _toggleSidebarVisibility();
+      _toggleTopBarVisibility();
       unawaited(windowNotifier.toggleAlwaysOnTop());
       unawaited(windowNotifier.toggleClickThrough());
       return KeyEventResult.handled;
@@ -102,10 +108,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       autofocus: true,
       child: Scaffold(
         backgroundColor: scaffoldBg,
-        appBar: _DesktopTopBar(
-          sidebarVisible: _sidebarVisible,
-          onToggleSidebar: _toggleSidebarVisibility,
-        ),
+        appBar: _topBarVisible
+            ? _DesktopTopBar(
+                sidebarVisible: _sidebarVisible,
+                onToggleSidebar: _toggleSidebarVisibility,
+              )
+            : null,
         body: Row(
           children: [
             AnimatedContainer(
