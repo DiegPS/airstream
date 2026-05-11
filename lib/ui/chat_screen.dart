@@ -555,6 +555,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _port;
   late TextEditingController _obsHost;
   late TextEditingController _obsPassword;
+  late TextEditingController _overlayChromaColorCtrl;
   late TextEditingController _overlayTextStrokeColorCtrl;
   late TextEditingController _overlaySuperChatBarColorCtrl;
   late TextEditingController _ttsTestCtrl;
@@ -567,6 +568,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _portFocus;
   late FocusNode _obsHostFocus;
   late FocusNode _obsPasswordFocus;
+  late FocusNode _overlayChromaColorFocus;
   late FocusNode _overlayTextStrokeColorFocus;
   late FocusNode _overlaySuperChatBarColorFocus;
   late FocusNode _ttsPrefixFocus;
@@ -583,6 +585,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _port = TextEditingController(text: s.overlayPort.toString());
     _obsHost = TextEditingController(text: s.obsHost);
     _obsPassword = TextEditingController(text: s.obsPassword);
+    _overlayChromaColorCtrl = TextEditingController(text: s.overlayChromaColor);
     _overlayTextStrokeColorCtrl =
         TextEditingController(text: s.overlayTextStrokeColor);
     _overlaySuperChatBarColorCtrl =
@@ -598,6 +601,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _portFocus = FocusNode();
     _obsHostFocus = FocusNode();
     _obsPasswordFocus = FocusNode();
+    _overlayChromaColorFocus = FocusNode();
     _overlayTextStrokeColorFocus = FocusNode();
     _overlaySuperChatBarColorFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
@@ -610,6 +614,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _portFocus,
       _obsHostFocus,
       _obsPasswordFocus,
+      _overlayChromaColorFocus,
       _overlayTextStrokeColorFocus,
       _overlaySuperChatBarColorFocus,
       _ttsPrefixFocus,
@@ -632,6 +637,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _port.dispose();
     _obsHost.dispose();
     _obsPassword.dispose();
+    _overlayChromaColorCtrl.dispose();
     _overlayTextStrokeColorCtrl.dispose();
     _overlaySuperChatBarColorCtrl.dispose();
     _ttsTestCtrl.dispose();
@@ -644,6 +650,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _portFocus.dispose();
     _obsHostFocus.dispose();
     _obsPasswordFocus.dispose();
+    _overlayChromaColorFocus.dispose();
     _overlayTextStrokeColorFocus.dispose();
     _overlaySuperChatBarColorFocus.dispose();
     _ttsPrefixFocus.dispose();
@@ -671,6 +678,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
+      overlayChromaColor: _normalizeHexColor(
+        _overlayChromaColorCtrl.text,
+        fallback: current.overlayChromaColor,
+      ),
       overlayTextStrokeColor: _normalizeHexColor(
         _overlayTextStrokeColorCtrl.text,
         fallback: current.overlayTextStrokeColor,
@@ -689,6 +700,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
         current.overlayPort == next.overlayPort &&
+        current.overlayChromaColor == next.overlayChromaColor &&
         current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
         current.overlaySuperChatBarColor == next.overlaySuperChatBarColor &&
         current.obsHost == next.obsHost &&
@@ -778,6 +790,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _syncController(_port, _portFocus, s.overlayPort.toString());
     _syncController(_obsHost, _obsHostFocus, s.obsHost);
     _syncController(_obsPassword, _obsPasswordFocus, s.obsPassword);
+    _syncController(
+      _overlayChromaColorCtrl,
+      _overlayChromaColorFocus,
+      s.overlayChromaColor,
+    );
     _syncController(
       _overlayTextStrokeColorCtrl,
       _overlayTextStrokeColorFocus,
@@ -1209,6 +1226,25 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ),
             const SizedBox(height: 14),
+            _section('Overlay Mode'),
+            _switchRow('Chroma key', s.overlayChromaMode,
+                (v) => notifier.update(s.copyWith(overlayChromaMode: v))),
+            _switchRow('Show grid', s.overlayShowGrid,
+                (v) => notifier.update(s.copyWith(overlayShowGrid: v))),
+            _switchRow('Hide scrollbar', s.overlayHideScrollbar,
+                (v) => notifier.update(s.copyWith(overlayHideScrollbar: v))),
+            if (s.overlayChromaMode) ...[
+              const SizedBox(height: 6),
+              _label('Chroma color'),
+              _field(
+                _overlayChromaColorCtrl,
+                '#00FF00',
+                focusNode: _overlayChromaColorFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+            ],
+            const SizedBox(height: 12),
             _section('Platform Display'),
             _switchRow(
                 'Platform icon',
@@ -1314,6 +1350,24 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 2,
                 (v) =>
                     notifier.update(s.copyWith(overlayAnimationDuration: v))),
+            const SizedBox(height: 12),
+            _section('3D Transform'),
+            _switchRow('Enable 3D effect', s.overlayThreeDEnabled,
+                (v) => notifier.update(s.copyWith(overlayThreeDEnabled: v))),
+            if (s.overlayThreeDEnabled) ...[
+              _sliderRow('Perspective', s.overlayPerspective, 500, 2500,
+                  (v) => notifier.update(s.copyWith(overlayPerspective: v))),
+              _sliderRow('Rotate X', s.overlayRotateX, -180, 180,
+                  (v) => notifier.update(s.copyWith(overlayRotateX: v))),
+              _sliderRow('Rotate Y', s.overlayRotateY, -180, 180,
+                  (v) => notifier.update(s.copyWith(overlayRotateY: v))),
+              _sliderRow('Rotate Z', s.overlayRotateZ, -180, 180,
+                  (v) => notifier.update(s.copyWith(overlayRotateZ: v))),
+              _sliderRow('Skew X', s.overlaySkewX, -45, 45,
+                  (v) => notifier.update(s.copyWith(overlaySkewX: v))),
+              _sliderRow('Scale', s.overlayScale, 0.5, 2,
+                  (v) => notifier.update(s.copyWith(overlayScale: v))),
+            ],
           ] else ...[
             const SizedBox(height: 6),
             const Text(

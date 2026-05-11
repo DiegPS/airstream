@@ -40,6 +40,10 @@ class SettingsModel {
   // OBS overlay server
   final int overlayPort;
   final bool overlayEnabled;
+  final bool overlayChromaMode;
+  final String overlayChromaColor;
+  final bool overlayShowGrid;
+  final bool overlayHideScrollbar;
   final double overlayFontSize;
   final double overlayBgOpacity;
   final double overlayMessageOpacity;
@@ -64,6 +68,13 @@ class SettingsModel {
   final String overlayTextAlign;
   final bool overlayTwitchBubbleAccent;
   final bool overlayKickBubbleAccent;
+  final bool overlayThreeDEnabled;
+  final double overlayPerspective;
+  final double overlayRotateX;
+  final double overlayRotateY;
+  final double overlayRotateZ;
+  final double overlaySkewX;
+  final double overlayScale;
 
   // OBS integration
   final bool obsEnabled;
@@ -103,6 +114,10 @@ class SettingsModel {
     this.ttsLanguage = 'es',
     this.overlayPort = 8080,
     this.overlayEnabled = true,
+    this.overlayChromaMode = false,
+    this.overlayChromaColor = '#00FF00',
+    this.overlayShowGrid = false,
+    this.overlayHideScrollbar = false,
     this.overlayFontSize = 14.0,
     this.overlayBgOpacity = 0.0,
     this.overlayMessageOpacity = 0.45,
@@ -127,6 +142,13 @@ class SettingsModel {
     this.overlayTextAlign = 'left',
     this.overlayTwitchBubbleAccent = true,
     this.overlayKickBubbleAccent = true,
+    this.overlayThreeDEnabled = false,
+    this.overlayPerspective = 1000.0,
+    this.overlayRotateX = 0.0,
+    this.overlayRotateY = 0.0,
+    this.overlayRotateZ = 0.0,
+    this.overlaySkewX = 0.0,
+    this.overlayScale = 1.0,
     this.obsEnabled = false,
     this.obsHost = 'localhost:4455',
     this.obsPassword = '',
@@ -165,6 +187,10 @@ class SettingsModel {
     String? ttsLanguage,
     int? overlayPort,
     bool? overlayEnabled,
+    bool? overlayChromaMode,
+    String? overlayChromaColor,
+    bool? overlayShowGrid,
+    bool? overlayHideScrollbar,
     double? overlayFontSize,
     double? overlayBgOpacity,
     double? overlayMessageOpacity,
@@ -189,6 +215,13 @@ class SettingsModel {
     String? overlayTextAlign,
     bool? overlayTwitchBubbleAccent,
     bool? overlayKickBubbleAccent,
+    bool? overlayThreeDEnabled,
+    double? overlayPerspective,
+    double? overlayRotateX,
+    double? overlayRotateY,
+    double? overlayRotateZ,
+    double? overlaySkewX,
+    double? overlayScale,
     bool? obsEnabled,
     String? obsHost,
     String? obsPassword,
@@ -226,6 +259,10 @@ class SettingsModel {
         ttsLanguage: ttsLanguage ?? this.ttsLanguage,
         overlayPort: overlayPort ?? this.overlayPort,
         overlayEnabled: overlayEnabled ?? this.overlayEnabled,
+        overlayChromaMode: overlayChromaMode ?? this.overlayChromaMode,
+        overlayChromaColor: overlayChromaColor ?? this.overlayChromaColor,
+        overlayShowGrid: overlayShowGrid ?? this.overlayShowGrid,
+        overlayHideScrollbar: overlayHideScrollbar ?? this.overlayHideScrollbar,
         overlayFontSize: overlayFontSize ?? this.overlayFontSize,
         overlayBgOpacity: overlayBgOpacity ?? this.overlayBgOpacity,
         overlayMessageOpacity:
@@ -259,6 +296,13 @@ class SettingsModel {
             overlayTwitchBubbleAccent ?? this.overlayTwitchBubbleAccent,
         overlayKickBubbleAccent:
             overlayKickBubbleAccent ?? this.overlayKickBubbleAccent,
+        overlayThreeDEnabled: overlayThreeDEnabled ?? this.overlayThreeDEnabled,
+        overlayPerspective: overlayPerspective ?? this.overlayPerspective,
+        overlayRotateX: overlayRotateX ?? this.overlayRotateX,
+        overlayRotateY: overlayRotateY ?? this.overlayRotateY,
+        overlayRotateZ: overlayRotateZ ?? this.overlayRotateZ,
+        overlaySkewX: overlaySkewX ?? this.overlaySkewX,
+        overlayScale: overlayScale ?? this.overlayScale,
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsHost: obsHost ?? this.obsHost,
         obsPassword: obsPassword ?? this.obsPassword,
@@ -297,6 +341,10 @@ class SettingsModel {
         'ttsLanguage': ttsLanguage,
         'overlayPort': overlayPort,
         'overlayEnabled': overlayEnabled,
+        'overlayChromaMode': overlayChromaMode,
+        'overlayChromaColor': overlayChromaColor,
+        'overlayShowGrid': overlayShowGrid,
+        'overlayHideScrollbar': overlayHideScrollbar,
         'overlayFontSize': overlayFontSize,
         'overlayBgOpacity': overlayBgOpacity,
         'overlayMessageOpacity': overlayMessageOpacity,
@@ -321,6 +369,13 @@ class SettingsModel {
         'overlayTextAlign': overlayTextAlign,
         'overlayTwitchBubbleAccent': overlayTwitchBubbleAccent,
         'overlayKickBubbleAccent': overlayKickBubbleAccent,
+        'overlayThreeDEnabled': overlayThreeDEnabled,
+        'overlayPerspective': overlayPerspective,
+        'overlayRotateX': overlayRotateX,
+        'overlayRotateY': overlayRotateY,
+        'overlayRotateZ': overlayRotateZ,
+        'overlaySkewX': overlaySkewX,
+        'overlayScale': overlayScale,
         'obsEnabled': obsEnabled,
         'obsHost': obsHost,
         'obsPassword': obsPassword,
@@ -359,6 +414,10 @@ class SettingsModel {
         ttsLanguage: j['ttsLanguage'] as String? ?? 'es',
         overlayPort: j['overlayPort'] as int? ?? 8080,
         overlayEnabled: j['overlayEnabled'] as bool? ?? true,
+        overlayChromaMode: j['overlayChromaMode'] as bool? ?? false,
+        overlayChromaColor: j['overlayChromaColor'] as String? ?? '#00FF00',
+        overlayShowGrid: j['overlayShowGrid'] as bool? ?? false,
+        overlayHideScrollbar: j['overlayHideScrollbar'] as bool? ?? false,
         overlayFontSize: (j['overlayFontSize'] as num?)?.toDouble() ?? 14.0,
         overlayBgOpacity: (j['overlayBgOpacity'] as num?)?.toDouble() ?? 0.0,
         overlayMessageOpacity:
@@ -393,6 +452,14 @@ class SettingsModel {
         overlayTwitchBubbleAccent:
             j['overlayTwitchBubbleAccent'] as bool? ?? true,
         overlayKickBubbleAccent: j['overlayKickBubbleAccent'] as bool? ?? true,
+        overlayThreeDEnabled: j['overlayThreeDEnabled'] as bool? ?? false,
+        overlayPerspective:
+            (j['overlayPerspective'] as num?)?.toDouble() ?? 1000.0,
+        overlayRotateX: (j['overlayRotateX'] as num?)?.toDouble() ?? 0.0,
+        overlayRotateY: (j['overlayRotateY'] as num?)?.toDouble() ?? 0.0,
+        overlayRotateZ: (j['overlayRotateZ'] as num?)?.toDouble() ?? 0.0,
+        overlaySkewX: (j['overlaySkewX'] as num?)?.toDouble() ?? 0.0,
+        overlayScale: (j['overlayScale'] as num?)?.toDouble() ?? 1.0,
         obsEnabled: j['obsEnabled'] as bool? ?? false,
         obsHost: j['obsHost'] as String? ?? 'localhost:4455',
         obsPassword: j['obsPassword'] as String? ?? '',

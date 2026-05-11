@@ -150,6 +150,10 @@ class OverlayServer {
   }
 
   Map<String, dynamic> _overlaySettingsPayload() => {
+        'chromaMode': _settings.overlayChromaMode,
+        'chromaColor': _settings.overlayChromaColor,
+        'showGrid': _settings.overlayShowGrid,
+        'hideScrollbar': _settings.overlayHideScrollbar,
         'fontSize': _settings.overlayFontSize,
         'bgOpacity': _settings.overlayBgOpacity,
         'messageOpacity': _settings.overlayMessageOpacity,
@@ -174,6 +178,13 @@ class OverlayServer {
         'textAlign': _settings.overlayTextAlign,
         'twitchBubbleAccent': _settings.overlayTwitchBubbleAccent,
         'kickBubbleAccent': _settings.overlayKickBubbleAccent,
+        'threeDEnabled': _settings.overlayThreeDEnabled,
+        'perspective': _settings.overlayPerspective,
+        'rotateX': _settings.overlayRotateX,
+        'rotateY': _settings.overlayRotateY,
+        'rotateZ': _settings.overlayRotateZ,
+        'skewX': _settings.overlaySkewX,
+        'scale': _settings.overlayScale,
       };
 
   static String _overlayHtml() => '''<!DOCTYPE html>
@@ -202,11 +213,15 @@ class OverlayServer {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 24px 24px 18px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    -ms-overflow-style: auto;
     mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
   }
-  .chat-scroll::-webkit-scrollbar {
+  .chat-scroll.hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .chat-scroll.hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
   .chat-list {
@@ -228,12 +243,15 @@ class OverlayServer {
   .chat-item {
     display: flex;
     align-items: flex-start;
-    max-width: 100%;
+    width: fit-content;
+    max-width: 85%;
     word-break: break-word;
   }
   .chat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
-    flex: 1;
   }
   .author-row {
     display: flex;
@@ -282,6 +300,11 @@ class OverlayServer {
   .message-text {
     color: #fff;
     min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    word-break: break-word;
   }
   .message-text .emoji {
     width: 1.25em;
@@ -362,6 +385,10 @@ class OverlayServer {
 const { useEffect, useMemo, useRef, useState } = React;
 
 const DEFAULT_SETTINGS = {
+  chromaMode: false,
+  chromaColor: '#00FF00',
+  showGrid: false,
+  hideScrollbar: false,
   fontSize: 14,
   bgOpacity: 0,
   messageOpacity: 0.45,
@@ -386,6 +413,13 @@ const DEFAULT_SETTINGS = {
   textAlign: 'left',
   twitchBubbleAccent: true,
   kickBubbleAccent: true,
+  threeDEnabled: false,
+  perspective: 1000,
+  rotateX: 0,
+  rotateY: 0,
+  rotateZ: 0,
+  skewX: 0,
+  scale: 1,
 };
 
 function clampMessages(messages, maxMessages) {
@@ -645,8 +679,34 @@ function OverlayApp() {
   }, [settings.maxMessages]);
 
   const shellStyle = useMemo(() => ({
-    backgroundColor: `rgba(0, 0, 0, \${settings.bgOpacity})`,
-  }), [settings.bgOpacity]);
+    backgroundColor: settings.chromaMode
+      ? settings.chromaColor
+      : `rgba(0, 0, 0, \${settings.bgOpacity})`,
+    backgroundImage: (!settings.chromaMode && settings.showGrid)
+      ? `
+        linear-gradient(45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%)
+      `
+      : 'none',
+    backgroundSize: (!settings.chromaMode && settings.showGrid)
+      ? '40px 40px'
+      : undefined,
+    backgroundPosition: (!settings.chromaMode && settings.showGrid)
+      ? '0 0, 0 20px, 20px 20px, 20px 0'
+      : undefined,
+    perspective: settings.threeDEnabled
+      ? `\${settings.perspective}px`
+      : 'none',
+  }), [
+    settings.bgOpacity,
+    settings.chromaMode,
+    settings.chromaColor,
+    settings.showGrid,
+    settings.threeDEnabled,
+    settings.perspective,
+  ]);
 
   const listStyle = useMemo(() => ({
     fontSize: `\${settings.fontSize}px`,
@@ -656,12 +716,32 @@ function OverlayApp() {
       : settings.textAlign === 'right'
         ? 'flex-end'
         : 'flex-start',
-  }), [settings.fontSize, settings.messageGap, settings.textAlign]);
+    transform: settings.threeDEnabled
+      ? `
+        rotateX(\${settings.rotateX}deg)
+        rotateY(\${settings.rotateY}deg)
+        rotateZ(\${settings.rotateZ}deg)
+        skewX(\${settings.skewX}deg)
+        scale(\${settings.scale})
+      `
+      : 'none',
+    transformStyle: 'preserve-3d',
+  }), [
+    settings.fontSize,
+    settings.messageGap,
+    settings.textAlign,
+    settings.threeDEnabled,
+    settings.rotateX,
+    settings.rotateY,
+    settings.rotateZ,
+    settings.skewX,
+    settings.scale,
+  ]);
 
   if (!messages.length) {
     return (
       <div className="overlay-shell" style={shellStyle}>
-        <div className="chat-scroll">
+        <div className={`chat-scroll \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`}>
           <div className="overlay-empty">Waiting for new chat messages...</div>
         </div>
       </div>
@@ -670,7 +750,10 @@ function OverlayApp() {
 
   return (
     <div className="overlay-shell" style={shellStyle}>
-      <div className="chat-scroll" ref={scrollRef}>
+      <div
+        className={`chat-scroll \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`}
+        ref={scrollRef}
+      >
         <div className="chat-list" style={listStyle}>
           {messages.map((message, index) => (
             <MessageBubble

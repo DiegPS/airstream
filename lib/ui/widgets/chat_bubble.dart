@@ -26,13 +26,17 @@ class ChatBubble extends ConsumerWidget {
           isSuperChat ? _parseColor(message.superChat!.color) : null,
       isMembershipEvent: isMembershipEvent,
     );
+    final superChatAccentColor = isSuperChat
+        ? _superChatAccentColor(
+            showBubble: s.showBubble,
+            bubbleOpacity: bubbleOpacity,
+            superChatColor: _parseColor(message.superChat!.color),
+          )
+        : null;
 
     final bubbleBorder = _bubbleBorder(
       showBubble: s.showBubble,
       bubbleOpacity: bubbleOpacity,
-      isSuperChat: isSuperChat,
-      superChatColor:
-          isSuperChat ? _parseColor(message.superChat!.color) : null,
     );
 
     final shadow = s.showBubble && s.showBubbleShadow
@@ -61,76 +65,99 @@ class ChatBubble extends ConsumerWidget {
               border: bubbleBorder,
               boxShadow: shadow,
             ),
-            padding: s.showBubble
-                ? const EdgeInsets.symmetric(horizontal: 18, vertical: 12)
-                : const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (s.showAvatars) ...[
-                  AuthorAvatar(
-                    name: message.author.name,
-                    platform: message.platform,
-                    url: message.author.avatarUrl,
-                    color: message.author.color,
-                    showPlatformBadge: showPlatformBadge,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(s.borderRadius),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: s.showBubble
+                        ? const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          )
+                        : const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (s.showAvatars) ...[
+                          AuthorAvatar(
+                            name: message.author.name,
+                            platform: message.platform,
+                            url: message.author.avatarUrl,
+                            color: message.author.color,
+                            showPlatformBadge: showPlatformBadge,
+                          ),
+                          const SizedBox(width: 14),
+                        ],
+                        Flexible(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _AuthorRow(
+                                message: message,
+                                fontSize: s.fontSize,
+                                showPlatformIcons: s.showPlatformIcons,
+                                showBadges: s.showBadges,
+                                showAvatars: s.showAvatars,
+                                showTimestamp: s.showTimestamp,
+                              ),
+                              if (message.items.isNotEmpty ||
+                                  isMembershipEvent ||
+                                  message.superChat?.stickerUrl != null)
+                                const SizedBox(height: 4),
+                              if (message.items.isNotEmpty)
+                                _MessageContent(
+                                  items: message.items,
+                                  fontSize: s.fontSize,
+                                ),
+                              if (isMembershipEvent)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                      top: message.items.isNotEmpty ? 6 : 0),
+                                  child: Text(
+                                    _membershipFlair(message.platform,
+                                        message.author.badge?.label),
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.9),
+                                      fontSize: s.fontSize * 0.92,
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              if (message.superChat?.stickerUrl != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: CachedNetworkImage(
+                                      imageUrl: message.superChat!.stickerUrl!,
+                                      width: 100,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 14),
-                ],
-                Flexible(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _AuthorRow(
-                        message: message,
-                        fontSize: s.fontSize,
-                        showPlatformIcons: s.showPlatformIcons,
-                        showBadges: s.showBadges,
-                        showAvatars: s.showAvatars,
-                        showTimestamp: s.showTimestamp,
+                  if (superChatAccentColor != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        height: 4,
+                        color: superChatAccentColor,
                       ),
-                      if (message.items.isNotEmpty ||
-                          isMembershipEvent ||
-                          message.superChat?.stickerUrl != null)
-                        const SizedBox(height: 4),
-                      if (message.items.isNotEmpty)
-                        _MessageContent(
-                          items: message.items,
-                          fontSize: s.fontSize,
-                        ),
-                      if (isMembershipEvent)
-                        Padding(
-                          padding: EdgeInsets.only(
-                              top: message.items.isNotEmpty ? 6 : 0),
-                          child: Text(
-                            _membershipFlair(
-                                message.platform, message.author.badge?.label),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: s.fontSize * 0.92,
-                              fontStyle: FontStyle.italic,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                      if (message.superChat?.stickerUrl != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
-                              imageUrl: message.superChat!.stickerUrl!,
-                              width: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -169,8 +196,6 @@ class ChatBubble extends ConsumerWidget {
   static Border? _bubbleBorder({
     required bool showBubble,
     required double bubbleOpacity,
-    required bool isSuperChat,
-    required Color? superChatColor,
   }) {
     if (!showBubble) return null;
 
@@ -178,20 +203,17 @@ class ChatBubble extends ConsumerWidget {
       color: Colors.white.withValues(alpha: 0.1 * bubbleOpacity),
     );
 
-    if (isSuperChat && superChatColor != null) {
-      return Border(
-        top: baseSide,
-        right: baseSide,
-        left: baseSide,
-        bottom: BorderSide(
-          color: superChatColor
-              .withAlpha((255 * bubbleOpacity).round().clamp(0, 255)),
-          width: 4,
-        ),
-      );
-    }
-
     return Border.fromBorderSide(baseSide);
+  }
+
+  static Color? _superChatAccentColor({
+    required bool showBubble,
+    required double bubbleOpacity,
+    required Color superChatColor,
+  }) {
+    if (!showBubble) return null;
+    return superChatColor
+        .withAlpha((255 * bubbleOpacity).round().clamp(0, 255));
   }
 
   static Color _parseColor(String hex) {
