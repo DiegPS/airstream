@@ -13,6 +13,7 @@ class SettingsModel {
   final double bgOpacity;
   final double messageOpacity;
   final bool showAvatars;
+  final bool showPlatformIcons;
   final bool showBadges;
   final bool showTimestamp;
 
@@ -59,6 +60,7 @@ class SettingsModel {
     this.bgOpacity = 0.4,
     this.messageOpacity = 1.0,
     this.showAvatars = true,
+    this.showPlatformIcons = true,
     this.showBadges = true,
     this.showTimestamp = false,
     this.showBubble = true,
@@ -96,6 +98,7 @@ class SettingsModel {
     double? bgOpacity,
     double? messageOpacity,
     bool? showAvatars,
+    bool? showPlatformIcons,
     bool? showBadges,
     bool? showTimestamp,
     bool? showBubble,
@@ -132,6 +135,7 @@ class SettingsModel {
         bgOpacity: bgOpacity ?? this.bgOpacity,
         messageOpacity: messageOpacity ?? this.messageOpacity,
         showAvatars: showAvatars ?? this.showAvatars,
+        showPlatformIcons: showPlatformIcons ?? this.showPlatformIcons,
         showBadges: showBadges ?? this.showBadges,
         showTimestamp: showTimestamp ?? this.showTimestamp,
         showBubble: showBubble ?? this.showBubble,
@@ -169,6 +173,7 @@ class SettingsModel {
         'bgOpacity': bgOpacity,
         'messageOpacity': messageOpacity,
         'showAvatars': showAvatars,
+        'showPlatformIcons': showPlatformIcons,
         'showBadges': showBadges,
         'showTimestamp': showTimestamp,
         'showBubble': showBubble,
@@ -206,6 +211,7 @@ class SettingsModel {
         bgOpacity: (j['bgOpacity'] as num?)?.toDouble() ?? 0.4,
         messageOpacity: (j['messageOpacity'] as num?)?.toDouble() ?? 1.0,
         showAvatars: j['showAvatars'] as bool? ?? true,
+        showPlatformIcons: j['showPlatformIcons'] as bool? ?? true,
         showBadges: j['showBadges'] as bool? ?? true,
         showTimestamp: j['showTimestamp'] as bool? ?? false,
         showBubble: j['showBubble'] as bool? ?? true,

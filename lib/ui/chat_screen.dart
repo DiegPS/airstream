@@ -148,6 +148,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final showObsCard = settings.obsEnabled;
+    final obsBottomSpacing =
+        settings.messageGap < 6 ? 6.0 : settings.messageGap;
+    final obsReservedSpace = 56.0 + obsBottomSpacing;
 
     Widget buildPane(Widget child) {
       if (!showObsCard) return child;
@@ -156,7 +159,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Positioned.fill(child: child),
           Positioned(
             left: 24,
-            bottom: 12,
+            bottom: obsBottomSpacing,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 320),
               child: _ObsStatusCard(
@@ -218,7 +221,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   24,
                   24,
                   24,
-                  showObsCard ? 76 : 20,
+                  showObsCard ? obsReservedSpace : 20,
                 ),
                 itemCount: messages.length,
                 itemBuilder: (_, i) => ChatBubble(
@@ -867,6 +870,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               (v) => notifier.update(s.copyWith(messageGap: v))),
           _switchRow('Avatars', s.showAvatars,
               (v) => notifier.update(s.copyWith(showAvatars: v))),
+          _switchRow('Platform icon', s.showPlatformIcons,
+              (v) => notifier.update(s.copyWith(showPlatformIcons: v))),
           _switchRow('Badges', s.showBadges,
               (v) => notifier.update(s.copyWith(showBadges: v))),
           _switchRow('Timestamp', s.showTimestamp,

@@ -22,7 +22,8 @@ class ChatBubble extends ConsumerWidget {
       showBubble: s.showBubble,
       platform: message.platform,
       bubbleOpacity: bubbleOpacity,
-      superChatColor: isSuperChat ? _parseColor(message.superChat!.color) : null,
+      superChatColor:
+          isSuperChat ? _parseColor(message.superChat!.color) : null,
       isMembershipEvent: isMembershipEvent,
     );
 
@@ -30,7 +31,8 @@ class ChatBubble extends ConsumerWidget {
       showBubble: s.showBubble,
       bubbleOpacity: bubbleOpacity,
       isSuperChat: isSuperChat,
-      superChatColor: isSuperChat ? _parseColor(message.superChat!.color) : null,
+      superChatColor:
+          isSuperChat ? _parseColor(message.superChat!.color) : null,
     );
 
     final shadow = s.showBubble && s.showBubbleShadow
@@ -44,7 +46,7 @@ class ChatBubble extends ConsumerWidget {
         : const <BoxShadow>[];
 
     final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.82;
-    final showPlatformBadge = s.showBadges;
+    final showPlatformBadge = s.showPlatformIcons;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: s.messageGap / 2),
@@ -84,11 +86,14 @@ class ChatBubble extends ConsumerWidget {
                       _AuthorRow(
                         message: message,
                         fontSize: s.fontSize,
+                        showPlatformIcons: s.showPlatformIcons,
                         showBadges: s.showBadges,
                         showAvatars: s.showAvatars,
                         showTimestamp: s.showTimestamp,
                       ),
-                      if (message.items.isNotEmpty || isMembershipEvent || message.superChat?.stickerUrl != null)
+                      if (message.items.isNotEmpty ||
+                          isMembershipEvent ||
+                          message.superChat?.stickerUrl != null)
                         const SizedBox(height: 4),
                       if (message.items.isNotEmpty)
                         _MessageContent(
@@ -97,9 +102,11 @@ class ChatBubble extends ConsumerWidget {
                         ),
                       if (isMembershipEvent)
                         Padding(
-                          padding: EdgeInsets.only(top: message.items.isNotEmpty ? 6 : 0),
+                          padding: EdgeInsets.only(
+                              top: message.items.isNotEmpty ? 6 : 0),
                           child: Text(
-                            _membershipFlair(message.platform, message.author.badge?.label),
+                            _membershipFlair(
+                                message.platform, message.author.badge?.label),
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.9),
                               fontSize: s.fontSize * 0.92,
@@ -177,7 +184,8 @@ class ChatBubble extends ConsumerWidget {
         right: baseSide,
         left: baseSide,
         bottom: BorderSide(
-          color: superChatColor.withAlpha((255 * bubbleOpacity).round().clamp(0, 255)),
+          color: superChatColor
+              .withAlpha((255 * bubbleOpacity).round().clamp(0, 255)),
           width: 4,
         ),
       );
@@ -211,6 +219,7 @@ class _AuthorRow extends StatelessWidget {
   const _AuthorRow({
     required this.message,
     required this.fontSize,
+    required this.showPlatformIcons,
     required this.showBadges,
     required this.showAvatars,
     required this.showTimestamp,
@@ -218,6 +227,7 @@ class _AuthorRow extends StatelessWidget {
 
   final ChatMessage message;
   final double fontSize;
+  final bool showPlatformIcons;
   final bool showBadges;
   final bool showAvatars;
   final bool showTimestamp;
@@ -238,7 +248,7 @@ class _AuthorRow extends StatelessWidget {
       spacing: 8,
       runSpacing: 6,
       children: [
-        if (showBadges && !showAvatars)
+        if (showPlatformIcons && !showAvatars)
           PlatformBadge(
             platform: message.platform,
             mode: PlatformBadgeMode.inline,
@@ -267,8 +277,9 @@ class _AuthorRow extends StatelessWidget {
           _LabelBadge(
             text: _membershipBadgeLabel(message.platform),
             backgroundColor: _membershipBadgeColor(message.platform),
-            foregroundColor:
-                message.platform == Platform.kick ? const Color(0xFF101010) : Colors.white,
+            foregroundColor: message.platform == Platform.kick
+                ? const Color(0xFF101010)
+                : Colors.white,
           ),
         if (showBadges && message.superChat != null)
           _LabelBadge(
