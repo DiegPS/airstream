@@ -2212,12 +2212,8 @@ class _ObsStatusCard extends StatelessWidget {
                   _ObsPillBadge(
                     label:
                         'DROP ${state.dropPercentage.toStringAsFixed(1)}% (${state.droppedFrames})',
-                    foreground: state.dropPercentage > 0
-                        ? const Color(0xFFFFB15C)
-                        : const Color(0xFFE7E7E7),
-                    background: state.dropPercentage > 0
-                        ? const Color(0x33FFB15C)
-                        : const Color(0xFF2A2A2A),
+                    foreground: _obsDropBadgeForeground(state.dropTrend),
+                    background: _obsDropBadgeBackground(state.dropTrend),
                     fontSize: 10,
                   ),
               ],
@@ -2278,6 +2274,22 @@ bool _showObsFps(SettingsModel? settings) => settings?.obsShowFps ?? true;
 bool _showObsDroppedFrames(SettingsModel? settings) =>
     settings?.obsShowDroppedFrames ?? true;
 
+Color _obsDropBadgeForeground(ObsDropTrend trend) {
+  return switch (trend) {
+    ObsDropTrend.rising => const Color(0xFFFF6B6B),
+    ObsDropTrend.steady => const Color(0xFFFFD166),
+    ObsDropTrend.normal => const Color(0xFFE7E7E7),
+  };
+}
+
+Color _obsDropBadgeBackground(ObsDropTrend trend) {
+  return switch (trend) {
+    ObsDropTrend.rising => const Color(0x33FF6B6B),
+    ObsDropTrend.steady => const Color(0x33FFD166),
+    ObsDropTrend.normal => const Color(0xFF2A2A2A),
+  };
+}
+
 class _ObsCompactPill extends StatelessWidget {
   const _ObsCompactPill({
     required this.state,
@@ -2299,8 +2311,8 @@ class _ObsCompactPill extends StatelessWidget {
     final sceneLabel =
         state.currentScene.trim().isEmpty ? null : state.currentScene.trim();
     final bubbleOpacity = styleSettings.messageOpacity.clamp(0.0, 1.0);
+    const neutralForeground = Color(0xFFE7E7E7);
     final backgroundColor = _obsCompactBackground(
-      accentColor: color,
       showBubble: styleSettings.showBubble,
       bubbleOpacity: bubbleOpacity,
     );
@@ -2313,6 +2325,10 @@ class _ObsCompactPill extends StatelessWidget {
             ),
           ]
         : const <BoxShadow>[];
+    final border = _obsCompactBorder(
+      showBubble: styleSettings.showBubble,
+      bubbleOpacity: bubbleOpacity,
+    );
     final fontSize = styleSettings.fontSize;
     final badgeFontSize = (fontSize * 0.68).clamp(9.0, 12.0);
     final pillRadius = (styleSettings.borderRadius + 18).clamp(18.0, 30.0);
@@ -2322,6 +2338,7 @@ class _ObsCompactPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(pillRadius),
+        border: border,
         boxShadow: shadow,
       ),
       child: IntrinsicHeight(
@@ -2336,7 +2353,7 @@ class _ObsCompactPill extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.45),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 8,
                   ),
                 ],
@@ -2346,7 +2363,7 @@ class _ObsCompactPill extends StatelessWidget {
               const SizedBox(width: 8),
               _ObsPillBadge(
                 label: outputLabel,
-                foreground: color,
+                foreground: neutralForeground,
                 background: Colors.transparent,
                 fontSize: badgeFontSize,
               ),
@@ -2356,7 +2373,7 @@ class _ObsCompactPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 _ObsPillBadge(
                   label: '${state.bitrateKbps.toStringAsFixed(0)}k',
-                  foreground: const Color(0xFFE7E7E7),
+                  foreground: neutralForeground,
                   background: Colors.transparent,
                   fontSize: badgeFontSize,
                 ),
@@ -2365,7 +2382,7 @@ class _ObsCompactPill extends StatelessWidget {
                 const SizedBox(width: 6),
                 _ObsPillBadge(
                   label: '${state.fps.toStringAsFixed(0)}fps',
-                  foreground: const Color(0xFFE7E7E7),
+                  foreground: neutralForeground,
                   background: Colors.transparent,
                   fontSize: badgeFontSize,
                 ),
@@ -2376,9 +2393,7 @@ class _ObsCompactPill extends StatelessWidget {
                   label: state.dropPercentage > 0
                       ? 'drop ${state.dropPercentage.toStringAsFixed(1)}%'
                       : 'drop 0',
-                  foreground: state.dropPercentage > 0
-                      ? const Color(0xFFFFB15C)
-                      : const Color(0xFFE7E7E7),
+                  foreground: _obsDropBadgeForeground(state.dropTrend),
                   background: Colors.transparent,
                   fontSize: badgeFontSize,
                 ),
@@ -2389,7 +2404,7 @@ class _ObsCompactPill extends StatelessWidget {
               const SizedBox(width: 6),
               _ObsPillBadge(
                 label: sceneLabel,
-                foreground: const Color(0xFFE7E7E7),
+                foreground: neutralForeground,
                 background: Colors.transparent,
                 maxWidth: 150,
                 fontSize: badgeFontSize,
@@ -2457,18 +2472,27 @@ class _ObsPillBadge extends StatelessWidget {
 }
 
 Color _obsCompactBackground({
-  required Color accentColor,
   required bool showBubble,
   required double bubbleOpacity,
 }) {
   if (!showBubble || bubbleOpacity <= 0) return Colors.transparent;
 
-  final baseColor = Color.alphaBlend(
-    accentColor.withValues(alpha: 0.16),
-    const Color(0xFF111111),
-  );
+  const baseColor = Color(0xFF111111);
 
   return baseColor.withAlpha((255 * bubbleOpacity).round().clamp(0, 255));
+}
+
+Border? _obsCompactBorder({
+  required bool showBubble,
+  required double bubbleOpacity,
+}) {
+  if (!showBubble) return null;
+
+  final side = BorderSide(
+    color: Colors.white.withValues(alpha: 0.1 * bubbleOpacity),
+  );
+
+  return Border.fromBorderSide(side);
 }
 
 class _ConnectionDots extends ConsumerWidget {
