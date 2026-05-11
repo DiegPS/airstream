@@ -11,6 +11,7 @@ export 'package:airchat_flutter/services/kick_service.dart' show ServiceStatus;
 export 'package:airchat_flutter/services/tts_service.dart'
     show TtsLoadPhase, TtsLoadState;
 import 'package:airchat_flutter/services/overlay_server.dart';
+import 'package:airchat_flutter/services/obs_service.dart';
 import 'package:airchat_flutter/services/twitch_service.dart';
 import 'package:airchat_flutter/services/youtube_service.dart';
 import 'package:airchat_flutter/services/tts_service.dart';
@@ -59,6 +60,11 @@ final ttsBusyProvider = StreamProvider<bool>((ref) {
   return app.ttsBusyStream;
 });
 
+final obsStateProvider = StreamProvider<ObsState>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.obsStateStream;
+});
+
 final appControllerProvider = Provider<AppController>((ref) {
   final settings = ref.watch(settingsProvider);
   final connectChats = ref.watch(chatConnectionProvider);
@@ -105,6 +111,7 @@ class AppController {
   final _kick = KickService();
   final _twitch = TwitchService();
   final _overlay = OverlayServer();
+  final _obs = ObsService();
   final _tts = TtsService();
   late final MessagePipeline _pipeline;
   StreamSubscription<ChatMessage>? _pipelineSub;
@@ -133,6 +140,7 @@ class AppController {
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
   DateTime? _ttsSessionStartedAt;
+  bool _obsConnectRequested = false;
 
   AppController() {
     _pipeline = MessagePipeline(const SettingsModel());
@@ -212,6 +220,11 @@ class AppController {
     yield* _tts.busyStream;
   }
 
+  Stream<ObsState> get obsStateStream async* {
+    yield _obs.currentState;
+    yield* _obs.stateStream;
+  }
+
   String? get overlayUrl => _overlay.localIp != null
       ? 'http://${_overlay.localIp}:${_overlay.port}'
       : null;
@@ -221,6 +234,18 @@ class AppController {
     if (_tts.currentLoadState.isLoading || _tts.isBusy) return false;
     _tts.speak(text);
     return true;
+  }
+
+  Future<void> connectObs() async {
+    final settings = _lastSettings;
+    if (settings == null || !settings.obsEnabled) return;
+    _obsConnectRequested = true;
+    await _obs.connect(host: settings.obsHost, password: settings.obsPassword);
+  }
+
+  Future<void> disconnectObs() async {
+    _obsConnectRequested = false;
+    await _obs.disconnect();
   }
 
   void _speakMessageIfEligible(ChatMessage msg) {
@@ -373,6 +398,19 @@ class AppController {
         _overlay.stop();
       }
     }
+
+    final obsChanged = prev == null ||
+        prev.obsEnabled != s.obsEnabled ||
+        prev.obsHost != s.obsHost ||
+        prev.obsPassword != s.obsPassword;
+    if (obsChanged) {
+      if (!s.obsEnabled) {
+        _obsConnectRequested = false;
+        unawaited(_obs.disconnect());
+      } else if (_obsConnectRequested) {
+        unawaited(_obs.connect(host: s.obsHost, password: s.obsPassword));
+      }
+    }
   }
 
   void dispose() {
@@ -382,6 +420,7 @@ class AppController {
     _kick.dispose();
     _twitch.dispose();
     _overlay.stop();
+    _obs.dispose();
     _tts.dispose();
     _pipeline.dispose();
     _listController.close();

@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:airchat_flutter/services/supertonic_helper.dart'
     show availableLangs, formatByteSize;
+import 'package:airchat_flutter/services/obs_service.dart';
 import 'package:airchat_flutter/settings/settings_model.dart';
 import 'package:airchat_flutter/settings/settings_notifier.dart';
 import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
@@ -143,15 +144,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _chatList() {
     final chat = ref.watch(chatProvider);
+    final settings = ref.watch(settingsProvider);
+    final obsState =
+        ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
+    final showObsCard = settings.obsEnabled;
+
+    Widget buildPane(Widget child) {
+      if (!showObsCard) return child;
+      return Stack(
+        children: [
+          Positioned.fill(child: child),
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: _ObsStatusCard(state: obsState, compact: true),
+            ),
+          ),
+        ],
+      );
+    }
+
     return chat.when(
-      loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF53FC18))),
-      error: (e, _) => Center(
-          child: Text('Error: $e',
-              style: const TextStyle(color: Colors.redAccent))),
+      loading: () => buildPane(
+        const Center(
+          child: CircularProgressIndicator(color: Color(0xFF53FC18)),
+        ),
+      ),
+      error: (e, _) => buildPane(
+        Center(
+          child: Text(
+            'Error: $e',
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      ),
       data: (messages) {
         if (messages.isEmpty) {
-          final settings = ref.watch(settingsProvider);
           final isRunning = ref.watch(chatConnectionProvider);
           final hasChannels = settings.youtubeHandle.isNotEmpty ||
               settings.youtubeLiveId.isNotEmpty ||
@@ -162,42 +192,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ? 'Listening for messages...'
                   : 'Channels saved.\nPress Start when you want to listen.')
               : 'No channels configured.\nConfigure channels in the sidebar.';
-          return Center(
-            child: Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
+          return buildPane(
+            Center(
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white38, fontSize: 14),
+              ),
             ),
           );
         }
 
-        return Stack(
-          children: [
-            ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-              itemCount: messages.length,
-              itemBuilder: (_, i) => ChatBubble(
-                key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
-                message: messages[messages.length - 1 - i],
-              ),
-            ),
-            if (!_autoScroll)
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: FloatingActionButton.small(
-                  backgroundColor: const Color(0xFF53FC18),
-                  foregroundColor: Colors.black,
-                  onPressed: () {
-                    setState(() => _autoScroll = true);
-                    _scrollToBottom();
-                  },
-                  child: const Icon(Icons.arrow_downward),
+        return buildPane(
+          Stack(
+            children: [
+              ListView.builder(
+                controller: _scrollController,
+                reverse: true,
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  24,
+                  24,
+                  showObsCard ? 104 : 20,
+                ),
+                itemCount: messages.length,
+                itemBuilder: (_, i) => ChatBubble(
+                  key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
+                  message: messages[messages.length - 1 - i],
                 ),
               ),
-          ],
+              if (!_autoScroll)
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: FloatingActionButton.small(
+                    backgroundColor: const Color(0xFF53FC18),
+                    foregroundColor: Colors.black,
+                    onPressed: () {
+                      setState(() => _autoScroll = true);
+                      _scrollToBottom();
+                    },
+                    child: const Icon(Icons.arrow_downward),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
@@ -506,6 +545,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _twitch;
   late TextEditingController _kick;
   late TextEditingController _port;
+  late TextEditingController _obsHost;
+  late TextEditingController _obsPassword;
   late TextEditingController _ttsTestCtrl;
   late TextEditingController _ttsPrefixCtrl;
   late TextEditingController _ttsSeparatorCtrl;
@@ -514,6 +555,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _twitchFocus;
   late FocusNode _kickFocus;
   late FocusNode _portFocus;
+  late FocusNode _obsHostFocus;
+  late FocusNode _obsPasswordFocus;
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
   Timer? _textSettingsDebounce;
@@ -526,6 +569,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug);
     _port = TextEditingController(text: s.overlayPort.toString());
+    _obsHost = TextEditingController(text: s.obsHost);
+    _obsPassword = TextEditingController(text: s.obsPassword);
     _ttsTestCtrl =
         TextEditingController(text: 'Hola, probando sistema Text to Speech.');
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
@@ -535,6 +580,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _twitchFocus = FocusNode();
     _kickFocus = FocusNode();
     _portFocus = FocusNode();
+    _obsHostFocus = FocusNode();
+    _obsPasswordFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
 
@@ -543,6 +590,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _twitchFocus,
       _kickFocus,
       _portFocus,
+      _obsHostFocus,
+      _obsPasswordFocus,
       _ttsPrefixFocus,
       _ttsSeparatorFocus,
     ]) {
@@ -561,6 +610,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _twitch.dispose();
     _kick.dispose();
     _port.dispose();
+    _obsHost.dispose();
+    _obsPassword.dispose();
     _ttsTestCtrl.dispose();
     _ttsPrefixCtrl.dispose();
     _ttsSeparatorCtrl.dispose();
@@ -569,6 +620,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _twitchFocus.dispose();
     _kickFocus.dispose();
     _portFocus.dispose();
+    _obsHostFocus.dispose();
+    _obsPasswordFocus.dispose();
     _ttsPrefixFocus.dispose();
     _ttsSeparatorFocus.dispose();
     super.dispose();
@@ -594,6 +647,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
+      obsHost: _obsHost.text.trim(),
+      obsPassword: _obsPassword.text,
       ttsCommandPrefix: _ttsPrefixCtrl.text,
       ttsSeparatorText: _ttsSeparatorCtrl.text,
     );
@@ -602,6 +657,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
         current.overlayPort == next.overlayPort &&
+        current.obsHost == next.obsHost &&
+        current.obsPassword == next.obsPassword &&
         current.ttsCommandPrefix == next.ttsCommandPrefix &&
         current.ttsSeparatorText == next.ttsSeparatorText) {
       return;
@@ -666,6 +723,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
+    final obsState =
+        ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final overlayUrl = ref.watch(overlayUrlProvider);
     final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
 
@@ -673,6 +732,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
     _syncController(_kick, _kickFocus, s.kickSlug);
     _syncController(_port, _portFocus, s.overlayPort.toString());
+    _syncController(_obsHost, _obsHostFocus, s.obsHost);
+    _syncController(_obsPassword, _obsPasswordFocus, s.obsPassword);
     _syncController(_ttsPrefixCtrl, _ttsPrefixFocus, s.ttsCommandPrefix);
     _syncController(
       _ttsSeparatorCtrl,
@@ -904,6 +965,102 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
+          _section('OBS Integration'),
+          const Text(
+            'Connect to OBS over WebSocket to show live status and the current program scene inside AirChat.',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _switchRow('Enabled', s.obsEnabled, (v) {
+            final next = s.copyWith(obsEnabled: v);
+            if (!v) {
+              unawaited(appController.disconnectObs());
+            }
+            unawaited(notifier.update(next));
+          }),
+          if (s.obsEnabled) ...[
+            const SizedBox(height: 12),
+            _label('WebSocket host'),
+            _field(
+              _obsHost,
+              'localhost:4455',
+              focusNode: _obsHostFocus,
+              onChanged: (_) {
+                setState(() {});
+                _queueTextSettingsSave();
+              },
+              onSubmitted: (_) => _saveTextSettings(),
+            ),
+            const SizedBox(height: 8),
+            _label('Password'),
+            _field(
+              _obsPassword,
+              'Optional password',
+              focusNode: _obsPasswordFocus,
+              obscureText: true,
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: obsState.connecting
+                    ? null
+                    : () async {
+                        if (obsState.connected) {
+                          await appController.disconnectObs();
+                          return;
+                        }
+                        await _saveTextSettings();
+                        await appController.connectObs();
+                      },
+                icon: Icon(
+                  obsState.connected
+                      ? Icons.link_off_rounded
+                      : Icons.link_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  obsState.connecting
+                      ? 'Connecting to OBS...'
+                      : obsState.connected
+                          ? 'Disconnect OBS'
+                          : (obsState.error != null &&
+                                  obsState.error!.isNotEmpty)
+                              ? 'Reconnect OBS'
+                              : 'Connect OBS',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: obsState.connected
+                      ? const Color(0xFFB54040)
+                      : const Color(0xFF5B9CFF),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFF2A2A2A),
+                  disabledForegroundColor: Colors.white38,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _ObsStatusCard(state: obsState, showHost: true),
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Turn it on to enter the OBS host, password and connect on demand.',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
           _section('Overlay Server'),
           const Text(
             'Enable a local browser source for OBS. When active, AirChat serves an overlay URL that you can paste into OBS.',
@@ -1099,6 +1256,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     TextEditingController ctrl,
     String hint, {
     FocusNode? focusNode,
+    bool obscureText = false,
     ValueChanged<String>? onChanged,
     ValueChanged<String>? onSubmitted,
     VoidCallback? onClear,
@@ -1106,6 +1264,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       TextField(
         controller: ctrl,
         focusNode: focusNode,
+        obscureText: obscureText,
+        enableSuggestions: !obscureText,
+        autocorrect: !obscureText,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -1514,6 +1675,281 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ObsStatusCard extends StatelessWidget {
+  const _ObsStatusCard({
+    required this.state,
+    this.compact = false,
+    this.showHost = false,
+  });
+
+  final ObsState state;
+  final bool compact;
+  final bool showHost;
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, color) = _obsStatusVisuals(state);
+    final showSecondaryStatus =
+        !_obsStatusMessageDuplicatesTitle(title, state.statusMessage);
+
+    if (compact) {
+      return _ObsCompactPill(
+        state: state,
+        title: title,
+        color: color,
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B1B),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E2E2E)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (showSecondaryStatus) ...[
+            const SizedBox(height: 8),
+            Text(
+              state.statusMessage,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (showHost && state.host.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              state.host,
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+          if (state.currentScene.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Scene: ${state.currentScene}',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            state.outputActive ? 'Output: Live' : 'Output: Offline',
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
+          ),
+          if (state.error != null && state.error!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              state.error!,
+              style: const TextStyle(
+                color: Color(0xFFFFB4AB),
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+(String, Color) _obsStatusVisuals(ObsState state) {
+  return switch ((
+    state.error,
+    state.connecting,
+    state.outputActive,
+    state.connected,
+  )) {
+    (final String? error, _, _, _) when error != null && error.isNotEmpty => (
+        'OBS Error',
+        const Color(0xFFFF8A80)
+      ),
+    (_, true, _, _) => ('OBS Connecting', Colors.amberAccent),
+    (_, _, true, _) => ('OBS Live', const Color(0xFF53FC18)),
+    (_, _, _, true) => ('OBS Connected', const Color(0xFF86B8FF)),
+    _ => ('OBS Ready', Colors.white54),
+  };
+}
+
+bool _obsStatusMessageDuplicatesTitle(String title, String statusMessage) {
+  final normalizedTitle = title.toLowerCase().replaceFirst('obs ', '').trim();
+  final normalizedStatus = statusMessage.toLowerCase().trim();
+  return normalizedTitle == normalizedStatus;
+}
+
+class _ObsCompactPill extends StatelessWidget {
+  const _ObsCompactPill({
+    required this.state,
+    required this.title,
+    required this.color,
+  });
+
+  final ObsState state;
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final outputLabel = state.outputActive ? 'LIVE' : 'OFF';
+    final sceneLabel =
+        state.currentScene.trim().isEmpty ? null : state.currentScene.trim();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xE0191919),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.45),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'OBS',
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _ObsPillBadge(
+              label: outputLabel,
+              foreground: color,
+              background: color.withValues(alpha: 0.14),
+            ),
+            if (sceneLabel != null) ...[
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: sceneLabel,
+                foreground: const Color(0xFFE7E7E7),
+                background: const Color(0xFF2A2A2A),
+                maxWidth: 150,
+              ),
+            ],
+            if (state.error != null && state.error!.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: state.error!,
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 14,
+                  color: Color(0xFFFF8A80),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObsPillBadge extends StatelessWidget {
+  const _ObsPillBadge({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    this.maxWidth,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+  final double? maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+
+    if (maxWidth == null) return badge;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth!),
+      child: badge,
     );
   }
 }
