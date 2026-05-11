@@ -13,10 +13,14 @@ class MessagePipeline {
   final _seenIdKeys = <String>{};
   final _seenContentKeys = <String>{};
   final _seenOrder = Queue<({String idKey, String contentKey})>();
+  final _blockedUsers = <String>{};
+  final _blockedWordPatterns = <String>{};
 
   SettingsModel _settings;
 
-  MessagePipeline(this._settings);
+  MessagePipeline(this._settings) {
+    _rebuildFilterCache();
+  }
 
   /// The filtered, deduplicated output stream.
   Stream<ChatMessage> get stream => _controller.stream;
@@ -33,6 +37,7 @@ class MessagePipeline {
 
   void updateSettings(SettingsModel settings) {
     _settings = settings;
+    _rebuildFilterCache();
     _trimSeenKeys();
   }
 
@@ -101,15 +106,55 @@ class MessagePipeline {
   }
 
   bool _shouldBlock(ChatMessage msg) {
-    final name = msg.author.name.toLowerCase();
-    if (_settings.blockedUsers.any((u) => u.toLowerCase() == name)) return true;
+    final authorKeys = <String>{
+      _normalizeUserKey(msg.author.name),
+      _normalizeUserKey(msg.author.channelId),
+    }..removeWhere((value) => value.isEmpty);
 
-    final text = msg.plainText.toLowerCase();
-    if (_settings.blockedWords
-        .any((w) => w.isNotEmpty && text.contains(w.toLowerCase()))) {
+    if (authorKeys.any(_blockedUsers.contains)) {
       return true;
     }
 
+    final normalizedText = _normalizeWordPattern(msg.plainText);
+    if (normalizedText.isEmpty || _blockedWordPatterns.isEmpty) {
+      return false;
+    }
+
+    final paddedText = ' $normalizedText ';
+    for (final blockedWord in _blockedWordPatterns) {
+      if (paddedText.contains(' $blockedWord ')) {
+        return true;
+      }
+    }
+
     return false;
+  }
+
+  void _rebuildFilterCache() {
+    _blockedUsers
+      ..clear()
+      ..addAll(_settings.blockedUsers
+          .map(_normalizeUserKey)
+          .where((value) => value.isNotEmpty));
+
+    _blockedWordPatterns
+      ..clear()
+      ..addAll(_settings.blockedWords
+          .map(_normalizeWordPattern)
+          .where((value) => value.isNotEmpty));
+  }
+
+  static String _normalizeUserKey(String value) {
+    var normalized = value.trim().toLowerCase();
+    normalized = normalized.replaceFirst(RegExp(r'^@+'), '');
+    normalized = normalized.replaceAll(RegExp(r'\s+'), '');
+    return normalized;
+  }
+
+  static String _normalizeWordPattern(String value) {
+    final lowered = value.toLowerCase();
+    final sanitized =
+        lowered.replaceAll(RegExp(r'[^a-z0-9áéíóúüñ]+'), ' ');
+    return sanitized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }

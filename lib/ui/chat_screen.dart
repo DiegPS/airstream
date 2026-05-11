@@ -561,6 +561,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ttsTestCtrl;
   late TextEditingController _ttsPrefixCtrl;
   late TextEditingController _ttsSeparatorCtrl;
+  late TextEditingController _blockedUsersCtrl;
+  late TextEditingController _blockedWordsCtrl;
 
   late FocusNode _ytFocus;
   late FocusNode _twitchFocus;
@@ -573,6 +575,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _overlaySuperChatBarColorFocus;
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
+  late FocusNode _blockedUsersFocus;
+  late FocusNode _blockedWordsFocus;
   Timer? _textSettingsDebounce;
 
   @override
@@ -594,6 +598,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         TextEditingController(text: 'Hola, probando sistema Text to Speech.');
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
     _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
+    _blockedUsersCtrl =
+        TextEditingController(text: _formatFilterList(s.blockedUsers));
+    _blockedWordsCtrl =
+        TextEditingController(text: _formatFilterList(s.blockedWords));
 
     _ytFocus = FocusNode();
     _twitchFocus = FocusNode();
@@ -606,6 +614,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _overlaySuperChatBarColorFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
+    _blockedUsersFocus = FocusNode();
+    _blockedWordsFocus = FocusNode();
 
     for (final node in [
       _ytFocus,
@@ -619,6 +629,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _overlaySuperChatBarColorFocus,
       _ttsPrefixFocus,
       _ttsSeparatorFocus,
+      _blockedUsersFocus,
+      _blockedWordsFocus,
     ]) {
       node.addListener(() {
         if (!node.hasFocus) {
@@ -643,6 +655,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsTestCtrl.dispose();
     _ttsPrefixCtrl.dispose();
     _ttsSeparatorCtrl.dispose();
+    _blockedUsersCtrl.dispose();
+    _blockedWordsCtrl.dispose();
 
     _ytFocus.dispose();
     _twitchFocus.dispose();
@@ -655,6 +669,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _overlaySuperChatBarColorFocus.dispose();
     _ttsPrefixFocus.dispose();
     _ttsSeparatorFocus.dispose();
+    _blockedUsersFocus.dispose();
+    _blockedWordsFocus.dispose();
     super.dispose();
   }
 
@@ -672,11 +688,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final current = ref.read(settingsProvider);
     final normalizedTwitch = _normalizePlatformChannel(_twitch.text);
     final normalizedKick = _normalizePlatformChannel(_kick.text);
+    final blockedUsers = _parseFilterList(_blockedUsersCtrl.text);
+    final blockedWords = _parseFilterList(_blockedWordsCtrl.text);
     final next = current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
       youtubeLiveId: '',
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
+      blockedUsers: blockedUsers,
+      blockedWords: blockedWords,
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
       overlayChromaColor: _normalizeHexColor(
         _overlayChromaColorCtrl.text,
@@ -699,6 +719,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     if (current.youtubeHandle == next.youtubeHandle &&
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
+        _listEquals(current.blockedUsers, next.blockedUsers) &&
+        _listEquals(current.blockedWords, next.blockedWords) &&
         current.overlayPort == next.overlayPort &&
         current.overlayChromaColor == next.overlayChromaColor &&
         current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
@@ -768,6 +790,32 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return isValid ? normalized : fallback.toUpperCase();
   }
 
+  static List<String> _parseFilterList(String raw) {
+    final seen = <String>{};
+    final values = <String>[];
+
+    for (final part in raw.split(RegExp(r'[\r\n,;]+'))) {
+      final trimmed = part.trim();
+      if (trimmed.isEmpty) continue;
+      final key = trimmed.toLowerCase();
+      if (!seen.add(key)) continue;
+      values.add(trimmed);
+    }
+
+    return values;
+  }
+
+  static String _formatFilterList(List<String> values) => values.join('\n');
+
+  static bool _listEquals(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
@@ -812,6 +860,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _ttsSeparatorCtrl,
       _ttsSeparatorFocus,
       s.ttsSeparatorText,
+    );
+    _syncController(
+      _blockedUsersCtrl,
+      _blockedUsersFocus,
+      _formatFilterList(s.blockedUsers),
+    );
+    _syncController(
+      _blockedWordsCtrl,
+      _blockedWordsFocus,
+      _formatFilterList(s.blockedWords),
     );
 
     final hasChannels = _ytHandle.text.trim().isNotEmpty ||
@@ -945,6 +1003,68 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               (v) => notifier.update(s.copyWith(showBubble: v))),
           _switchRow('Bubble shadow', s.showBubbleShadow,
               (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
+          _section('Filters'),
+          const Text(
+            'Blocked users and words are filtered in the message pipeline, so they are removed for your local chat view, TTS and the Shelf overlay.',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _label('Blocked users'),
+          _field(
+            _blockedUsersCtrl,
+            '@nightbot\notrobot',
+            focusNode: _blockedUsersFocus,
+            onChanged: (_) => _queueTextSettingsSave(),
+            onSubmitted: (_) => _saveTextSettings(),
+            onClear: () {
+              _blockedUsersCtrl.clear();
+              setState(() {});
+              _queueTextSettingsSave();
+            },
+            minLines: 3,
+            maxLines: 5,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'One per line. Prefixing with @ is optional.',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _label('Blocked words or phrases'),
+          _field(
+            _blockedWordsCtrl,
+            'palabra1\nfrase completa',
+            focusNode: _blockedWordsFocus,
+            onChanged: (_) => _queueTextSettingsSave(),
+            onSubmitted: (_) => _saveTextSettings(),
+            onClear: () {
+              _blockedWordsCtrl.clear();
+              setState(() {});
+              _queueTextSettingsSave();
+            },
+            minLines: 3,
+            maxLines: 6,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Single words respect token boundaries. Phrases are matched after normalization.',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
@@ -1544,6 +1664,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     ValueChanged<String>? onChanged,
     ValueChanged<String>? onSubmitted,
     VoidCallback? onClear,
+    int minLines = 1,
+    int maxLines = 1,
   }) =>
       TextField(
         controller: ctrl,
@@ -1551,6 +1673,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         obscureText: obscureText,
         enableSuggestions: !obscureText,
         autocorrect: !obscureText,
+        minLines: minLines,
+        maxLines: maxLines,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         style: const TextStyle(color: Colors.white, fontSize: 13),

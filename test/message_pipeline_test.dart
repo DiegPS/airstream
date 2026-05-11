@@ -34,19 +34,101 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('blocks users at the pipeline root for all downstream consumers',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(
+      maxMessages: 10,
+      blockedUsers: ['@nightbot'],
+    ));
+    final source = StreamController<ChatMessage>();
+    final emitted = <ChatMessage>[];
+    final sub = pipeline.stream.listen(emitted.add);
+
+    pipeline.addSource(source.stream);
+
+    final baseTime = DateTime.utc(2026, 5, 9, 12, 0, 0);
+    source.add(_message(
+      id: 'hidden',
+      text: 'This should not pass',
+      authorName: 'Nightbot',
+      authorChannelId: 'nightbot',
+      timestamp: baseTime,
+    ));
+    source.add(_message(
+      id: 'visible',
+      text: 'Hola chat',
+      authorName: 'Tester',
+      authorChannelId: 'tester-channel',
+      timestamp: baseTime,
+    ));
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(emitted.map((msg) => msg.id).toList(), ['visible']);
+    expect(pipeline.buffer.map((msg) => msg.id).toList(), ['visible']);
+
+    await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
+
+  test('blocks normalized word tokens and phrases without substring false positives',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(
+      maxMessages: 10,
+      blockedWords: ['puta', 'callate bot'],
+    ));
+    final source = StreamController<ChatMessage>();
+    final emitted = <ChatMessage>[];
+    final sub = pipeline.stream.listen(emitted.add);
+
+    pipeline.addSource(source.stream);
+
+    final baseTime = DateTime.utc(2026, 5, 9, 12, 0, 0);
+    source.add(_message(
+      id: 'blocked-word',
+      text: 'Eso estuvo puta madre',
+      timestamp: baseTime,
+    ));
+    source.add(_message(
+      id: 'blocked-phrase',
+      text: 'Callate, bot por favor',
+      timestamp: baseTime.add(const Duration(seconds: 1)),
+    ));
+    source.add(_message(
+      id: 'allowed-substring',
+      text: 'La disputa sigue manana',
+      timestamp: baseTime.add(const Duration(seconds: 2)),
+    ));
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(emitted.map((msg) => msg.id).toList(), ['allowed-substring']);
+    expect(
+      pipeline.buffer.map((msg) => msg.id).toList(),
+      ['allowed-substring'],
+    );
+
+    await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({
   required String id,
   required String text,
   required DateTime timestamp,
+  String authorName = 'Tester',
+  String authorChannelId = 'tester-channel',
 }) {
   return ChatMessage(
     platform: Platform.youtube,
     id: id,
-    author: const ChatAuthor(
-      name: 'Tester',
-      channelId: 'tester-channel',
+    author: ChatAuthor(
+      name: authorName,
+      channelId: authorChannelId,
     ),
     items: [MessageItem.text(text)],
     timestamp: timestamp,
