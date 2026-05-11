@@ -213,7 +213,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   24,
                   24,
                   24,
-                  showObsCard ? 104 : 20,
+                  showObsCard ? 76 : 20,
                 ),
                 itemCount: messages.length,
                 itemBuilder: (_, i) => ChatBubble(
@@ -1772,6 +1772,35 @@ class _ObsStatusCard extends StatelessWidget {
             state.outputActive ? 'Output: Live' : 'Output: Offline',
             style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
+          if (state.connected) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _ObsPillBadge(
+                  label: '${state.bitrateKbps.toStringAsFixed(0)} kbps',
+                  foreground: const Color(0xFFE7E7E7),
+                  background: const Color(0xFF2A2A2A),
+                ),
+                _ObsPillBadge(
+                  label: '${state.fps.toStringAsFixed(0)} FPS',
+                  foreground: const Color(0xFFE7E7E7),
+                  background: const Color(0xFF2A2A2A),
+                ),
+                _ObsPillBadge(
+                  label:
+                      'DROP ${state.dropPercentage.toStringAsFixed(1)}% (${state.droppedFrames})',
+                  foreground: state.dropPercentage > 0
+                      ? const Color(0xFFFFB15C)
+                      : const Color(0xFFE7E7E7),
+                  background: state.dropPercentage > 0
+                      ? const Color(0x33FFB15C)
+                      : const Color(0xFF2A2A2A),
+                ),
+              ],
+            ),
+          ],
           if (state.error != null && state.error!.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
@@ -1886,6 +1915,32 @@ class _ObsCompactPill extends StatelessWidget {
               foreground: color,
               background: color.withValues(alpha: 0.14),
             ),
+            if (state.connected) ...[
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: '${state.bitrateKbps.toStringAsFixed(0)}k',
+                foreground: const Color(0xFFE7E7E7),
+                background: const Color(0xFF2A2A2A),
+              ),
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: '${state.fps.toStringAsFixed(0)}fps',
+                foreground: const Color(0xFFE7E7E7),
+                background: const Color(0xFF2A2A2A),
+              ),
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: state.dropPercentage > 0
+                    ? 'drop ${state.dropPercentage.toStringAsFixed(1)}%'
+                    : 'drop 0',
+                foreground: state.dropPercentage > 0
+                    ? const Color(0xFFFFB15C)
+                    : const Color(0xFFE7E7E7),
+                background: state.dropPercentage > 0
+                    ? const Color(0x33FFB15C)
+                    : const Color(0xFF2A2A2A),
+              ),
+            ],
             if (sceneLabel != null) ...[
               const SizedBox(width: 6),
               _ObsPillBadge(

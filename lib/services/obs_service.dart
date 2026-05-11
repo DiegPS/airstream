@@ -9,6 +9,10 @@ class ObsState {
   final bool connecting;
   final bool outputActive;
   final bool reconnecting;
+  final double bitrateKbps;
+  final double fps;
+  final int droppedFrames;
+  final double dropPercentage;
   final String currentScene;
   final String statusMessage;
   final String? error;
@@ -19,6 +23,10 @@ class ObsState {
     this.connecting = false,
     this.outputActive = false,
     this.reconnecting = false,
+    this.bitrateKbps = 0,
+    this.fps = 0,
+    this.droppedFrames = 0,
+    this.dropPercentage = 0,
     this.currentScene = '',
     this.statusMessage = 'Ready to connect',
     this.error,
@@ -30,6 +38,10 @@ class ObsState {
     bool? connecting,
     bool? outputActive,
     bool? reconnecting,
+    double? bitrateKbps,
+    double? fps,
+    int? droppedFrames,
+    double? dropPercentage,
     String? currentScene,
     String? statusMessage,
     String? error,
@@ -41,6 +53,10 @@ class ObsState {
         connecting: connecting ?? this.connecting,
         outputActive: outputActive ?? this.outputActive,
         reconnecting: reconnecting ?? this.reconnecting,
+        bitrateKbps: bitrateKbps ?? this.bitrateKbps,
+        fps: fps ?? this.fps,
+        droppedFrames: droppedFrames ?? this.droppedFrames,
+        dropPercentage: dropPercentage ?? this.dropPercentage,
         currentScene: currentScene ?? this.currentScene,
         statusMessage: statusMessage ?? this.statusMessage,
         error: clearError ? null : (error ?? this.error),
@@ -49,6 +65,8 @@ class ObsState {
 }
 
 class ObsService {
+  static const _statsPollInterval = Duration(seconds: 1);
+
   ObsWebSocket? _obs;
   final _stateController =
       // ignore: close_sinks
@@ -56,6 +74,9 @@ class ObsService {
 
   ObsState _state = const ObsState();
   int _generation = 0;
+  Timer? _statsTimer;
+  _ObsMetricsSample? _lastMetricsSample;
+  bool _statsPollInFlight = false;
 
   ObsState get currentState => _state;
 
@@ -117,12 +138,18 @@ class ObsService {
 
       final currentScene = await obs.scenes.getCurrentProgramScene();
       final streamStatus = await obs.stream.getStreamStatus();
+      final stats = await obs.general.getStats();
 
       if (generation != _generation) {
         await obs.close();
         return;
       }
 
+      final metrics = _computeMetrics(
+        streamStatus: streamStatus,
+        stats: stats,
+      );
+      _lastMetricsSample = metrics.sample;
       _emit(
         _state.copyWith(
           connected: true,
@@ -130,6 +157,10 @@ class ObsService {
           currentScene: currentScene,
           outputActive: streamStatus.outputActive,
           reconnecting: streamStatus.outputReconnecting,
+          bitrateKbps: metrics.bitrateKbps,
+          fps: metrics.fps,
+          droppedFrames: metrics.droppedFrames,
+          dropPercentage: metrics.dropPercentage,
           statusMessage: _streamStatusLabel(
             outputActive: streamStatus.outputActive,
             reconnecting: streamStatus.outputReconnecting,
@@ -138,15 +169,21 @@ class ObsService {
           host: trimmedHost,
         ),
       );
+      _startStatsPolling(generation);
     } catch (e) {
       if (generation != _generation) return;
       _obs = null;
+      _stopStatsPolling();
       _emit(
         _state.copyWith(
           connected: false,
           connecting: false,
           outputActive: false,
           reconnecting: false,
+          bitrateKbps: 0,
+          fps: 0,
+          droppedFrames: 0,
+          dropPercentage: 0,
           statusMessage: 'Connection failed',
           error: _formatError(e),
           host: trimmedHost,
@@ -157,6 +194,7 @@ class ObsService {
 
   Future<void> disconnect() async {
     ++_generation;
+    _stopStatsPolling();
     await _closeCurrentSocket();
     _emit(
       _state.copyWith(
@@ -164,6 +202,10 @@ class ObsService {
         connecting: false,
         outputActive: false,
         reconnecting: false,
+        bitrateKbps: 0,
+        fps: 0,
+        droppedFrames: 0,
+        dropPercentage: 0,
         currentScene: '',
         statusMessage: 'Disconnected',
         clearError: true,
@@ -174,6 +216,7 @@ class ObsService {
   Future<void> _closeCurrentSocket() async {
     final obs = _obs;
     _obs = null;
+    _lastMetricsSample = null;
     if (obs == null) return;
     try {
       await obs.close();
@@ -183,12 +226,17 @@ class ObsService {
   void _handleSocketDone(int generation) {
     if (generation != _generation) return;
     _obs = null;
+    _stopStatsPolling();
     _emit(
       _state.copyWith(
         connected: false,
         connecting: false,
         outputActive: false,
         reconnecting: false,
+        bitrateKbps: 0,
+        fps: 0,
+        droppedFrames: 0,
+        dropPercentage: 0,
         currentScene: '',
         statusMessage: 'Disconnected',
       ),
@@ -226,10 +274,101 @@ class ObsService {
             ),
           ),
         );
+        unawaited(_pollStatsOnce(generation));
         break;
       default:
         break;
     }
+  }
+
+  void _startStatsPolling(int generation) {
+    _stopStatsPolling();
+    _statsTimer = Timer.periodic(_statsPollInterval, (_) {
+      unawaited(_pollStatsOnce(generation));
+    });
+  }
+
+  void _stopStatsPolling() {
+    _statsTimer?.cancel();
+    _statsTimer = null;
+    _statsPollInFlight = false;
+    _lastMetricsSample = null;
+  }
+
+  Future<void> _pollStatsOnce(int generation) async {
+    if (_statsPollInFlight || generation != _generation) return;
+    final obs = _obs;
+    if (obs == null) return;
+
+    _statsPollInFlight = true;
+    try {
+      final streamStatus = await obs.stream.getStreamStatus();
+      final stats = await obs.general.getStats();
+      if (generation != _generation) return;
+
+      final metrics = _computeMetrics(
+        streamStatus: streamStatus,
+        stats: stats,
+      );
+      _lastMetricsSample = metrics.sample;
+      _emit(
+        _state.copyWith(
+          outputActive: streamStatus.outputActive,
+          reconnecting: streamStatus.outputReconnecting,
+          bitrateKbps: metrics.bitrateKbps,
+          fps: metrics.fps,
+          droppedFrames: metrics.droppedFrames,
+          dropPercentage: metrics.dropPercentage,
+          statusMessage: _streamStatusLabel(
+            outputActive: streamStatus.outputActive,
+            reconnecting: streamStatus.outputReconnecting,
+          ),
+        ),
+      );
+    } catch (_) {
+      // Keep the last known UI state; connection lifecycle will be updated by socket callbacks.
+    } finally {
+      _statsPollInFlight = false;
+    }
+  }
+
+  _ObsMetrics _computeMetrics({
+    required StreamStatusResponse streamStatus,
+    required StatsResponse stats,
+  }) {
+    final sample = _ObsMetricsSample(
+      outputBytes: streamStatus.outputBytes,
+      outputDurationMs: streamStatus.outputDuration,
+    );
+
+    double bitrateKbps = 0;
+    final previous = _lastMetricsSample;
+    if (previous != null) {
+      final bytesDelta = streamStatus.outputBytes - previous.outputBytes;
+      final durationDeltaMs =
+          streamStatus.outputDuration - previous.outputDurationMs;
+      if (bytesDelta > 0 && durationDeltaMs > 0) {
+        bitrateKbps = (bytesDelta * 8) / durationDeltaMs;
+      }
+    }
+
+    if (bitrateKbps <= 0 && streamStatus.outputDuration > 0) {
+      bitrateKbps =
+          (streamStatus.outputBytes * 8) / streamStatus.outputDuration;
+    }
+
+    final totalFrames = streamStatus.outputTotalFrames;
+    final droppedFrames = streamStatus.outputSkippedFrames;
+    final dropPercentage =
+        totalFrames > 0 ? (droppedFrames / totalFrames) * 100 : 0.0;
+
+    return _ObsMetrics(
+      sample: sample,
+      bitrateKbps: bitrateKbps,
+      fps: stats.activeFps.toDouble(),
+      droppedFrames: droppedFrames,
+      dropPercentage: dropPercentage,
+    );
   }
 
   String _normalizeConnectUrl(String host) {
@@ -276,7 +415,34 @@ class ObsService {
   }
 
   void dispose() {
+    _stopStatsPolling();
     unawaited(_closeCurrentSocket());
     _stateController.close();
   }
+}
+
+class _ObsMetrics {
+  const _ObsMetrics({
+    required this.sample,
+    required this.bitrateKbps,
+    required this.fps,
+    required this.droppedFrames,
+    required this.dropPercentage,
+  });
+
+  final _ObsMetricsSample sample;
+  final double bitrateKbps;
+  final double fps;
+  final int droppedFrames;
+  final double dropPercentage;
+}
+
+class _ObsMetricsSample {
+  const _ObsMetricsSample({
+    required this.outputBytes,
+    required this.outputDurationMs,
+  });
+
+  final int outputBytes;
+  final int outputDurationMs;
 }
