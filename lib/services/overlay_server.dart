@@ -2,18 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airchat_flutter/settings/settings_model.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:airchat_flutter/models/chat_message.dart';
 
 /// Serves the OBS overlay HTML page and broadcasts chat messages over WebSocket.
 class OverlayServer {
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
   StreamSubscription? _msgSub;
+  SettingsModel _settings = const SettingsModel();
 
   int _port = 8080;
   int get port => _port;
@@ -26,14 +28,17 @@ class OverlayServer {
 
   Future<void> start({
     required Stream<ChatMessage> messages,
+    required SettingsModel settings,
     int port = 8080,
   }) async {
     await stop();
+    _settings = settings;
     _port = port;
     _localIp = await NetworkInfo().getWifiIP();
 
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
+      _sendSettingsToClient(ws);
       ws.stream.listen(null, onDone: () => _clients.remove(ws));
     });
 
@@ -50,10 +55,15 @@ class OverlayServer {
     try {
       _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, _port);
     } on SocketException {
-      // Try localhost-only as fallback (avoids OS permission issues on some systems).
-      _server = await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
+      _server =
+          await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
     }
-    _msgSub = messages.listen(_broadcast);
+    _msgSub = messages.listen(_broadcastMessage);
+  }
+
+  void setSettings(SettingsModel settings) {
+    _settings = settings;
+    _broadcastSettings();
   }
 
   Future<void> stop() async {
@@ -64,22 +74,66 @@ class OverlayServer {
     _clients.clear();
   }
 
-  void _broadcast(ChatMessage msg) {
-    if (_clients.isEmpty) return;
-    final json = jsonEncode({
-      'platform': msg.platform.name,
-      'id': msg.id,
-      'author': msg.author.name,
-      'color': msg.author.color,
-      'text': msg.plainText,
-      'isSuperChat': msg.superChat != null,
-      'superChatAmount': msg.superChat?.amount,
-      'superChatColor': msg.superChat?.color,
-      'isMembership': msg.isMembership,
-      'isOwner': msg.isOwner,
-      'isModerator': msg.isModerator,
-      'timestamp': msg.timestamp.toIso8601String(),
+  void _broadcastMessage(ChatMessage msg) {
+    _broadcastEnvelope({
+      'type': 'message',
+      'data': {
+        'platform': msg.platform.name,
+        'id': msg.id,
+        'author': msg.author.name,
+        'authorAvatarUrl': msg.author.avatarUrl,
+        'authorChannelId': msg.author.channelId,
+        'badgeImageUrl': msg.author.badge?.imageUrl,
+        'badgeLabel': msg.author.badge?.label,
+        'color': msg.author.color,
+        'text': msg.plainText,
+        'items': msg.items
+            .map((item) => item.isEmoji
+                ? {
+                    'kind': 'emoji',
+                    'url': item.emoji!.url,
+                    'alt': item.emoji!.alt,
+                    'isAnimated': item.emoji!.isAnimated,
+                  }
+                : {
+                    'kind': 'text',
+                    'text': item.text,
+                  })
+            .toList(),
+        'isSuperChat': msg.superChat != null,
+        'superChatAmount': msg.superChat?.amount,
+        'superChatColor': msg.superChat?.color,
+        'superChatStickerUrl': msg.superChat?.stickerUrl,
+        'isMembership': msg.isMembership,
+        'isOwner': msg.isOwner,
+        'isModerator': msg.isModerator,
+        'isVerified': msg.isVerified,
+        'timestamp': msg.timestamp.toIso8601String(),
+      },
     });
+  }
+
+  void _broadcastSettings() {
+    _broadcastEnvelope({
+      'type': 'settings',
+      'data': _overlaySettingsPayload(),
+    });
+  }
+
+  void _sendSettingsToClient(WebSocketChannel client) {
+    try {
+      client.sink.add(jsonEncode({
+        'type': 'settings',
+        'data': _overlaySettingsPayload(),
+      }));
+    } catch (_) {
+      _clients.remove(client);
+    }
+  }
+
+  void _broadcastEnvelope(Map<String, dynamic> envelope) {
+    if (_clients.isEmpty) return;
+    final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
       try {
         client.sink.add(json);
@@ -88,6 +142,33 @@ class OverlayServer {
       }
     }
   }
+
+  Map<String, dynamic> _overlaySettingsPayload() => {
+        'fontSize': _settings.overlayFontSize,
+        'bgOpacity': _settings.overlayBgOpacity,
+        'messageOpacity': _settings.overlayMessageOpacity,
+        'showAvatars': _settings.overlayShowAvatars,
+        'showPlatformIcons': _settings.overlayShowPlatformIcons,
+        'showBadges': _settings.overlayShowBadges,
+        'showTimestamp': _settings.overlayShowTimestamp,
+        'textStroke': _settings.overlayTextStroke,
+        'textStrokeColor': _settings.overlayTextStrokeColor,
+        'lineHeight': _settings.overlayLineHeight,
+        'messageGap': _settings.overlayMessageGap,
+        'fontWeight': _settings.overlayFontWeight,
+        'borderRadius': _settings.overlayBorderRadius,
+        'textShadow': _settings.overlayTextShadow,
+        'showBubble': _settings.overlayShowBubble,
+        'superChatBarEnabled': _settings.overlaySuperChatBarEnabled,
+        'superChatBarColor': _settings.overlaySuperChatBarColor,
+        'superChatBarWidth': _settings.overlaySuperChatBarWidth,
+        'maxMessages': _settings.overlayMaxMessages,
+        'animation': _settings.overlayAnimation,
+        'animationDuration': _settings.overlayAnimationDuration,
+        'textAlign': _settings.overlayTextAlign,
+        'twitchBubbleAccent': _settings.overlayTwitchBubbleAccent,
+        'kickBubbleAccent': _settings.overlayKickBubbleAccent,
+      };
 
   static String _overlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
@@ -99,104 +180,503 @@ class OverlayServer {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: transparent;
-    font-family: 'Segoe UI', sans-serif;
-    font-size: 14px;
     overflow: hidden;
     height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  #root { height: 100%; }
+  .overlay-shell {
+    height: 100%;
+    width: 100%;
     display: flex;
     flex-direction: column;
+  }
+  .chat-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px 24px 18px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
+  }
+  .chat-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100%;
     justify-content: flex-end;
-    padding: 8px;
   }
-  #chat {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 100vh;
-    overflow: hidden;
-  }
-  .msg {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 4px 8px;
+  .overlay-empty {
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    align-self: flex-start;
+    padding: 10px 12px;
     border-radius: 8px;
-    background: rgba(0,0,0,0.45);
-    animation: fadeIn 0.2s ease;
-    word-break: break-word;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+  }
+  .chat-item {
+    display: flex;
+    align-items: flex-start;
     max-width: 100%;
+    word-break: break-word;
   }
-  .msg.superchat {
-    border-left: 4px solid var(--sc-color, #FFD600);
-    background: color-mix(in srgb, var(--sc-color, #FFD600) 20%, rgba(0,0,0,0.6));
+  .chat-content {
+    min-width: 0;
+    flex: 1;
   }
+  .author-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .author-name {
+    color: #fff;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .author-name.owner { color: #FFD700; }
+  .author-name.mod { color: #7EA4FF; }
   .badge {
-    font-size: 10px;
-    padding: 1px 4px;
-    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 0.8em;
+    font-weight: 700;
+    line-height: 1;
     white-space: nowrap;
-    font-weight: 600;
   }
-  .badge.yt  { background: #FF0000; color: #fff; }
-  .badge.twitch { background: #9147FF; color: #fff; }
-  .badge.kick { background: #53FC18; color: #000; }
-  .author { font-weight: 700; white-space: nowrap; }
-  .text { color: #fff; }
-  .sc-amount { font-weight: 700; font-size: 12px; color: #FFD600; white-space: nowrap; }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: translateY(0); }
+  .owner-badge { background: #FFD700; color: #111; }
+  .mod-badge { background: #7EA4FF; color: #111; }
+  .member-badge { background: #0F9D58; color: #fff; }
+  .twitch-sub-badge { background: #9146FF; color: #fff; }
+  .kick-sub-badge { background: #53FC18; color: #111; }
+  .superchat-badge { background: #FFD600; color: #111; }
+  .custom-badge {
+    padding: 0;
+    background: transparent;
+  }
+  .custom-badge img {
+    width: 1em;
+    height: 1em;
+    display: block;
+  }
+  .timestamp {
+    opacity: 0.6;
+    font-size: 0.85em;
+  }
+  .message-text {
+    color: #fff;
+    min-width: 0;
+  }
+  .message-text .emoji {
+    width: 1.25em;
+    height: 1.25em;
+    vertical-align: middle;
+    margin: 0 0.1em;
+  }
+  .membership-flair {
+    margin-top: 6px;
+    opacity: 0.95;
+  }
+  .superchat-sticker {
+    margin-top: 8px;
+  }
+  .superchat-sticker img {
+    max-width: 100px;
+    border-radius: 4px;
+  }
+  .avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.2);
+    display: block;
+  }
+  .avatar-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.65em;
+    user-select: none;
+  }
+  .platform-overlay {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slide-left {
+    from { opacity: 0; transform: translateX(14px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes zoom-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
   }
 </style>
 </head>
 <body>
-<div id="chat"></div>
-<script>
-const MAX = 50;
-const chat = document.getElementById('chat');
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useEffect, useMemo, useRef, useState } = React;
 
-function addMsg(data) {
-  const div = document.createElement('div');
-  div.className = 'msg' + (data.isSuperChat ? ' superchat' : '');
-  if (data.isSuperChat && data.superChatColor) {
-    div.style.setProperty('--sc-color', data.superChatColor);
-  }
+const DEFAULT_SETTINGS = {
+  fontSize: 14,
+  bgOpacity: 0,
+  messageOpacity: 0.45,
+  showAvatars: true,
+  showPlatformIcons: true,
+  showBadges: true,
+  showTimestamp: false,
+  textStroke: 0,
+  textStrokeColor: '#000000',
+  lineHeight: 1.5,
+  messageGap: 15,
+  fontWeight: 400,
+  borderRadius: 16,
+  textShadow: false,
+  showBubble: true,
+  superChatBarEnabled: true,
+  superChatBarColor: '#1DE9B6',
+  superChatBarWidth: 3,
+  maxMessages: 100,
+  animation: 'slide-up',
+  animationDuration: 0.4,
+  textAlign: 'left',
+  twitchBubbleAccent: true,
+  kickBubbleAccent: true,
+};
 
-  const badge = document.createElement('span');
-  badge.className = 'badge ' + data.platform;
-  badge.textContent = data.platform === 'youtube' ? 'YT'
-                    : data.platform === 'twitch' ? 'TW' : 'KK';
-  div.appendChild(badge);
-
-  const author = document.createElement('span');
-  author.className = 'author';
-  author.style.color = data.color || '#fff';
-  author.textContent = data.author + ':';
-  div.appendChild(author);
-
-  if (data.isSuperChat && data.superChatAmount) {
-    const sc = document.createElement('span');
-    sc.className = 'sc-amount';
-    sc.textContent = data.superChatAmount;
-    div.appendChild(sc);
-  }
-
-  const text = document.createElement('span');
-  text.className = 'text';
-  text.textContent = data.text;
-  div.appendChild(text);
-
-  chat.appendChild(div);
-  while (chat.children.length > MAX) chat.removeChild(chat.firstChild);
-  div.scrollIntoView({ behavior: 'smooth' });
+function clampMessages(messages, maxMessages) {
+  return messages.slice(-Math.max(10, maxMessages || DEFAULT_SETTINGS.maxMessages));
 }
 
-function connect() {
-  const ws = new WebSocket('ws://' + location.host + '/ws');
-  ws.onmessage = (e) => { try { addMsg(JSON.parse(e.data)); } catch(_) {} };
-  ws.onclose = () => setTimeout(connect, 3000);
+function platformLabel(platform) {
+  switch (platform) {
+    case 'youtube': return 'YT';
+    case 'twitch': return 'TW';
+    default: return 'KK';
+  }
 }
-connect();
+
+function platformIcon(platform) {
+  if (platform === 'twitch') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="#9146FF" style={{ flexShrink: 0 }}>
+        <path d="M11.6 6H13v4.5h-1.4V6zm3.8 0h1.4v4.5h-1.4V6zM4 0L.5 3.5V20.5H6V24l3.5-3.5H12L23.5 9V0H4zm18 8.5L18.5 12H16l-3 3v-3H9.5v-8H22v4.5z" />
+      </svg>
+    );
+  }
+  if (platform === 'kick') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 512 512" fill="#53FC18" style={{ flexShrink: 0 }}>
+        <path d="M37 .036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF0000" style={{ flexShrink: 0 }}>
+      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8A3 3 0 0 0 2.6 20c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z" />
+    </svg>
+  );
+}
+
+function nameToHue(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return Math.abs(hash) % 360;
+}
+
+function Avatar({ url, name, platform, showPlatformIcons }) {
+  const hue = nameToHue(name || '??');
+  const initials = (name || '?').slice(0, 2).toUpperCase();
+
+  return (
+    <div className="avatar-wrap">
+      {url ? (
+        <img src={url} alt={name} className="avatar" />
+      ) : (
+        <div
+          className="avatar-fallback"
+          style={{ background: `hsl(\${hue}, 60%, 40%)` }}
+        >
+          {initials}
+        </div>
+      )}
+      {showPlatformIcons ? (
+        <div className="platform-overlay">{platformIcon(platform)}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function renderMessageItems(items) {
+  if (!Array.isArray(items)) return null;
+  return items.map((item, index) => {
+    if (item.kind === 'emoji' && item.url) {
+      return (
+        <img
+          key={index}
+          src={item.url}
+          alt={item.alt || ''}
+          className="emoji"
+        />
+      );
+    }
+    return <span key={index}>{item.text || ''}</span>;
+  });
+}
+
+function MessageBubble({ message, settings, index }) {
+  const isTwitch = message.platform === 'twitch';
+  const isKick = message.platform === 'kick';
+  const isSuperChat = !!message.isSuperChat;
+  const isMembershipEvent = message.isMembership && (!message.items || message.items.length === 0);
+
+  let backgroundColor = settings.showBubble
+    ? `rgba(0, 0, 0, \${settings.messageOpacity})`
+    : 'transparent';
+
+  if (isMembershipEvent) {
+    backgroundColor = '#0F9D58';
+  } else if (isTwitch && settings.twitchBubbleAccent && settings.showBubble) {
+    backgroundColor = `rgba(97, 25, 210, \${settings.messageOpacity})`;
+  } else if (isKick && settings.kickBubbleAccent && settings.showBubble) {
+    backgroundColor = `rgba(30, 90, 10, \${settings.messageOpacity})`;
+  }
+
+  const defaultBorder = settings.showBubble
+    ? '1px solid rgba(255, 255, 255, 0.1)'
+    : 'none';
+  const superChatBorder = isSuperChat && settings.showBubble && settings.superChatBarEnabled
+    ? `\${settings.superChatBarWidth}px solid \${settings.superChatBarColor}`
+    : null;
+
+  return (
+    <div
+      className="chat-item"
+      style={{
+        backgroundColor,
+        borderRadius: `\${settings.borderRadius}px`,
+        border: defaultBorder,
+        ...(superChatBorder ? { borderBottom: superChatBorder } : {}),
+        padding: settings.showBubble ? '12px 18px' : '4px 0',
+        boxShadow: settings.showBubble ? '0 8px 32px rgba(0, 0, 0, 0.3)' : 'none',
+        animation: settings.animation
+          ? `\${settings.animation} \${settings.animationDuration}s cubic-bezier(0.16, 1, 0.3, 1) both`
+          : 'none',
+        color: (isSuperChat || isMembershipEvent) ? '#FFFFFF' : 'inherit',
+        gap: settings.showAvatars ? '14px' : '0',
+      }}
+    >
+      {settings.showAvatars ? (
+        <Avatar
+          url={message.authorAvatarUrl}
+          name={message.author}
+          platform={message.platform}
+          showPlatformIcons={settings.showPlatformIcons}
+        />
+      ) : null}
+      <div className="chat-content">
+        <div className="author-row">
+          {settings.showPlatformIcons && !settings.showAvatars ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: '4px' }}>
+              {platformIcon(message.platform)}
+            </span>
+          ) : null}
+          <span
+            className={`author-name \${message.isOwner ? 'owner' : ''} \${message.isModerator ? 'mod' : ''}`}
+            style={{ color: message.color || undefined }}
+          >
+            {message.author}
+          </span>
+          {settings.showBadges ? (
+            <>
+              {message.isOwner ? <span className="badge owner-badge">OWNER</span> : null}
+              {message.isModerator ? <span className="badge mod-badge">MOD</span> : null}
+              {message.isMembership && !isMembershipEvent ? (
+                <span className={`badge \${isTwitch ? 'twitch-sub-badge' : isKick ? 'kick-sub-badge' : 'member-badge'}`}>
+                  {isTwitch || isKick ? 'SUB' : 'MEMBER'}
+                </span>
+              ) : null}
+              {isSuperChat && message.superChatAmount ? (
+                <span className="badge superchat-badge">{message.superChatAmount}</span>
+              ) : null}
+              {message.badgeImageUrl ? (
+                <span className="badge custom-badge" title={message.badgeLabel || ''}>
+                  <img src={message.badgeImageUrl} alt="" />
+                </span>
+              ) : null}
+            </>
+          ) : null}
+          {settings.showTimestamp ? (
+            <span className="timestamp">
+              {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+            </span>
+          ) : null}
+        </div>
+
+        <div
+          className="message-text"
+          style={{
+            WebkitTextStroke: `\${settings.textStroke}px \${settings.textStrokeColor}`,
+            textShadow: settings.textShadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none',
+            fontWeight: settings.fontWeight,
+            lineHeight: settings.lineHeight,
+            textAlign: settings.textAlign,
+          }}
+        >
+          {renderMessageItems(message.items)}
+
+          {isMembershipEvent ? (
+            <div className="membership-flair">
+              <em>{message.badgeLabel || (isTwitch ? 'New Subscriber!' : isKick ? 'Subscription Update' : 'Membership Update')}</em>
+            </div>
+          ) : null}
+
+          {isSuperChat && message.superChatStickerUrl ? (
+            <div className="superchat-sticker">
+              <img src={message.superChatStickerUrl} alt="" />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OverlayApp() {
+  const [messages, setMessages] = useState([]);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    setMessages((current) => clampMessages(current, settings.maxMessages));
+  }, [settings.maxMessages]);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    const frame = window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, settings.messageGap, settings.fontSize, settings.showBubble]);
+
+  useEffect(() => {
+    let ws;
+    let retry;
+
+    const connect = () => {
+      const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+      ws = new WebSocket(protocol + location.host + '/ws');
+
+      ws.onmessage = (event) => {
+        try {
+          const envelope = JSON.parse(event.data);
+          if (envelope.type === 'settings') {
+            setSettings((current) => ({ ...current, ...envelope.data }));
+            return;
+          }
+          if (envelope.type === 'message') {
+            setMessages((current) =>
+              clampMessages([...current, envelope.data], settings.maxMessages)
+            );
+          }
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        retry = window.setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (retry) window.clearTimeout(retry);
+      if (ws) ws.close();
+    };
+  }, [settings.maxMessages]);
+
+  const shellStyle = useMemo(() => ({
+    backgroundColor: `rgba(0, 0, 0, \${settings.bgOpacity})`,
+  }), [settings.bgOpacity]);
+
+  const listStyle = useMemo(() => ({
+    fontSize: `\${settings.fontSize}px`,
+    gap: `\${settings.messageGap}px`,
+    alignItems: settings.textAlign === 'center'
+      ? 'center'
+      : settings.textAlign === 'right'
+        ? 'flex-end'
+        : 'flex-start',
+  }), [settings.fontSize, settings.messageGap, settings.textAlign]);
+
+  if (!messages.length) {
+    return (
+      <div className="overlay-shell" style={shellStyle}>
+        <div className="chat-scroll">
+          <div className="overlay-empty">Waiting for new chat messages...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overlay-shell" style={shellStyle}>
+      <div className="chat-scroll" ref={scrollRef}>
+        <div className="chat-list" style={listStyle}>
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={message.id ? message.id + '-' + index : index}
+              message={message}
+              settings={settings}
+              index={index}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<OverlayApp />);
 </script>
 </body>
 </html>''';

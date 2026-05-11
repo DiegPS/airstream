@@ -392,11 +392,18 @@ class AppController {
     if (overlayChanged) {
       if (s.overlayEnabled) {
         _overlay
-            .start(messages: _pipeline.stream, port: s.overlayPort)
+            .start(
+              messages: _pipeline.stream,
+              settings: s,
+              port: s.overlayPort,
+            )
             .catchError((e) => debugPrint('OverlayServer.start failed: $e'));
       } else {
         _overlay.stop();
       }
+    }
+    if (s.overlayEnabled) {
+      _overlay.setSettings(s);
     }
 
     final obsChanged = prev == null ||

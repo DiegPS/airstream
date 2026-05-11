@@ -40,6 +40,30 @@ class SettingsModel {
   // OBS overlay server
   final int overlayPort;
   final bool overlayEnabled;
+  final double overlayFontSize;
+  final double overlayBgOpacity;
+  final double overlayMessageOpacity;
+  final bool overlayShowAvatars;
+  final bool overlayShowPlatformIcons;
+  final bool overlayShowBadges;
+  final bool overlayShowTimestamp;
+  final double overlayTextStroke;
+  final String overlayTextStrokeColor;
+  final double overlayLineHeight;
+  final double overlayMessageGap;
+  final double overlayFontWeight;
+  final double overlayBorderRadius;
+  final bool overlayTextShadow;
+  final bool overlayShowBubble;
+  final bool overlaySuperChatBarEnabled;
+  final String overlaySuperChatBarColor;
+  final double overlaySuperChatBarWidth;
+  final int overlayMaxMessages;
+  final String overlayAnimation;
+  final double overlayAnimationDuration;
+  final String overlayTextAlign;
+  final bool overlayTwitchBubbleAccent;
+  final bool overlayKickBubbleAccent;
 
   // OBS integration
   final bool obsEnabled;
@@ -79,6 +103,30 @@ class SettingsModel {
     this.ttsLanguage = 'es',
     this.overlayPort = 8080,
     this.overlayEnabled = true,
+    this.overlayFontSize = 14.0,
+    this.overlayBgOpacity = 0.0,
+    this.overlayMessageOpacity = 0.45,
+    this.overlayShowAvatars = true,
+    this.overlayShowPlatformIcons = true,
+    this.overlayShowBadges = true,
+    this.overlayShowTimestamp = false,
+    this.overlayTextStroke = 0.0,
+    this.overlayTextStrokeColor = '#000000',
+    this.overlayLineHeight = 1.5,
+    this.overlayMessageGap = 15.0,
+    this.overlayFontWeight = 400.0,
+    this.overlayBorderRadius = 16.0,
+    this.overlayTextShadow = false,
+    this.overlayShowBubble = true,
+    this.overlaySuperChatBarEnabled = true,
+    this.overlaySuperChatBarColor = '#1DE9B6',
+    this.overlaySuperChatBarWidth = 3.0,
+    this.overlayMaxMessages = 100,
+    this.overlayAnimation = 'slide-up',
+    this.overlayAnimationDuration = 0.4,
+    this.overlayTextAlign = 'left',
+    this.overlayTwitchBubbleAccent = true,
+    this.overlayKickBubbleAccent = true,
     this.obsEnabled = false,
     this.obsHost = 'localhost:4455',
     this.obsPassword = '',
@@ -117,6 +165,30 @@ class SettingsModel {
     String? ttsLanguage,
     int? overlayPort,
     bool? overlayEnabled,
+    double? overlayFontSize,
+    double? overlayBgOpacity,
+    double? overlayMessageOpacity,
+    bool? overlayShowAvatars,
+    bool? overlayShowPlatformIcons,
+    bool? overlayShowBadges,
+    bool? overlayShowTimestamp,
+    double? overlayTextStroke,
+    String? overlayTextStrokeColor,
+    double? overlayLineHeight,
+    double? overlayMessageGap,
+    double? overlayFontWeight,
+    double? overlayBorderRadius,
+    bool? overlayTextShadow,
+    bool? overlayShowBubble,
+    bool? overlaySuperChatBarEnabled,
+    String? overlaySuperChatBarColor,
+    double? overlaySuperChatBarWidth,
+    int? overlayMaxMessages,
+    String? overlayAnimation,
+    double? overlayAnimationDuration,
+    String? overlayTextAlign,
+    bool? overlayTwitchBubbleAccent,
+    bool? overlayKickBubbleAccent,
     bool? obsEnabled,
     String? obsHost,
     String? obsPassword,
@@ -154,6 +226,39 @@ class SettingsModel {
         ttsLanguage: ttsLanguage ?? this.ttsLanguage,
         overlayPort: overlayPort ?? this.overlayPort,
         overlayEnabled: overlayEnabled ?? this.overlayEnabled,
+        overlayFontSize: overlayFontSize ?? this.overlayFontSize,
+        overlayBgOpacity: overlayBgOpacity ?? this.overlayBgOpacity,
+        overlayMessageOpacity:
+            overlayMessageOpacity ?? this.overlayMessageOpacity,
+        overlayShowAvatars: overlayShowAvatars ?? this.overlayShowAvatars,
+        overlayShowPlatformIcons:
+            overlayShowPlatformIcons ?? this.overlayShowPlatformIcons,
+        overlayShowBadges: overlayShowBadges ?? this.overlayShowBadges,
+        overlayShowTimestamp: overlayShowTimestamp ?? this.overlayShowTimestamp,
+        overlayTextStroke: overlayTextStroke ?? this.overlayTextStroke,
+        overlayTextStrokeColor:
+            overlayTextStrokeColor ?? this.overlayTextStrokeColor,
+        overlayLineHeight: overlayLineHeight ?? this.overlayLineHeight,
+        overlayMessageGap: overlayMessageGap ?? this.overlayMessageGap,
+        overlayFontWeight: overlayFontWeight ?? this.overlayFontWeight,
+        overlayBorderRadius: overlayBorderRadius ?? this.overlayBorderRadius,
+        overlayTextShadow: overlayTextShadow ?? this.overlayTextShadow,
+        overlayShowBubble: overlayShowBubble ?? this.overlayShowBubble,
+        overlaySuperChatBarEnabled:
+            overlaySuperChatBarEnabled ?? this.overlaySuperChatBarEnabled,
+        overlaySuperChatBarColor:
+            overlaySuperChatBarColor ?? this.overlaySuperChatBarColor,
+        overlaySuperChatBarWidth:
+            overlaySuperChatBarWidth ?? this.overlaySuperChatBarWidth,
+        overlayMaxMessages: overlayMaxMessages ?? this.overlayMaxMessages,
+        overlayAnimation: overlayAnimation ?? this.overlayAnimation,
+        overlayAnimationDuration:
+            overlayAnimationDuration ?? this.overlayAnimationDuration,
+        overlayTextAlign: overlayTextAlign ?? this.overlayTextAlign,
+        overlayTwitchBubbleAccent:
+            overlayTwitchBubbleAccent ?? this.overlayTwitchBubbleAccent,
+        overlayKickBubbleAccent:
+            overlayKickBubbleAccent ?? this.overlayKickBubbleAccent,
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsHost: obsHost ?? this.obsHost,
         obsPassword: obsPassword ?? this.obsPassword,
@@ -192,6 +297,30 @@ class SettingsModel {
         'ttsLanguage': ttsLanguage,
         'overlayPort': overlayPort,
         'overlayEnabled': overlayEnabled,
+        'overlayFontSize': overlayFontSize,
+        'overlayBgOpacity': overlayBgOpacity,
+        'overlayMessageOpacity': overlayMessageOpacity,
+        'overlayShowAvatars': overlayShowAvatars,
+        'overlayShowPlatformIcons': overlayShowPlatformIcons,
+        'overlayShowBadges': overlayShowBadges,
+        'overlayShowTimestamp': overlayShowTimestamp,
+        'overlayTextStroke': overlayTextStroke,
+        'overlayTextStrokeColor': overlayTextStrokeColor,
+        'overlayLineHeight': overlayLineHeight,
+        'overlayMessageGap': overlayMessageGap,
+        'overlayFontWeight': overlayFontWeight,
+        'overlayBorderRadius': overlayBorderRadius,
+        'overlayTextShadow': overlayTextShadow,
+        'overlayShowBubble': overlayShowBubble,
+        'overlaySuperChatBarEnabled': overlaySuperChatBarEnabled,
+        'overlaySuperChatBarColor': overlaySuperChatBarColor,
+        'overlaySuperChatBarWidth': overlaySuperChatBarWidth,
+        'overlayMaxMessages': overlayMaxMessages,
+        'overlayAnimation': overlayAnimation,
+        'overlayAnimationDuration': overlayAnimationDuration,
+        'overlayTextAlign': overlayTextAlign,
+        'overlayTwitchBubbleAccent': overlayTwitchBubbleAccent,
+        'overlayKickBubbleAccent': overlayKickBubbleAccent,
         'obsEnabled': obsEnabled,
         'obsHost': obsHost,
         'obsPassword': obsPassword,
@@ -230,6 +359,40 @@ class SettingsModel {
         ttsLanguage: j['ttsLanguage'] as String? ?? 'es',
         overlayPort: j['overlayPort'] as int? ?? 8080,
         overlayEnabled: j['overlayEnabled'] as bool? ?? true,
+        overlayFontSize: (j['overlayFontSize'] as num?)?.toDouble() ?? 14.0,
+        overlayBgOpacity: (j['overlayBgOpacity'] as num?)?.toDouble() ?? 0.0,
+        overlayMessageOpacity:
+            (j['overlayMessageOpacity'] as num?)?.toDouble() ?? 0.45,
+        overlayShowAvatars: j['overlayShowAvatars'] as bool? ?? true,
+        overlayShowPlatformIcons:
+            j['overlayShowPlatformIcons'] as bool? ?? true,
+        overlayShowBadges: j['overlayShowBadges'] as bool? ?? true,
+        overlayShowTimestamp: j['overlayShowTimestamp'] as bool? ?? false,
+        overlayTextStroke: (j['overlayTextStroke'] as num?)?.toDouble() ?? 0.0,
+        overlayTextStrokeColor:
+            j['overlayTextStrokeColor'] as String? ?? '#000000',
+        overlayLineHeight: (j['overlayLineHeight'] as num?)?.toDouble() ?? 1.5,
+        overlayMessageGap: (j['overlayMessageGap'] as num?)?.toDouble() ?? 15.0,
+        overlayFontWeight:
+            (j['overlayFontWeight'] as num?)?.toDouble() ?? 400.0,
+        overlayBorderRadius:
+            (j['overlayBorderRadius'] as num?)?.toDouble() ?? 16.0,
+        overlayTextShadow: j['overlayTextShadow'] as bool? ?? false,
+        overlayShowBubble: j['overlayShowBubble'] as bool? ?? true,
+        overlaySuperChatBarEnabled:
+            j['overlaySuperChatBarEnabled'] as bool? ?? true,
+        overlaySuperChatBarColor:
+            j['overlaySuperChatBarColor'] as String? ?? '#1DE9B6',
+        overlaySuperChatBarWidth:
+            (j['overlaySuperChatBarWidth'] as num?)?.toDouble() ?? 3.0,
+        overlayMaxMessages: j['overlayMaxMessages'] as int? ?? 100,
+        overlayAnimation: j['overlayAnimation'] as String? ?? 'slide-up',
+        overlayAnimationDuration:
+            (j['overlayAnimationDuration'] as num?)?.toDouble() ?? 0.4,
+        overlayTextAlign: j['overlayTextAlign'] as String? ?? 'left',
+        overlayTwitchBubbleAccent:
+            j['overlayTwitchBubbleAccent'] as bool? ?? true,
+        overlayKickBubbleAccent: j['overlayKickBubbleAccent'] as bool? ?? true,
         obsEnabled: j['obsEnabled'] as bool? ?? false,
         obsHost: j['obsHost'] as String? ?? 'localhost:4455',
         obsPassword: j['obsPassword'] as String? ?? '',

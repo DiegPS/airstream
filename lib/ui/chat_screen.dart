@@ -555,6 +555,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _port;
   late TextEditingController _obsHost;
   late TextEditingController _obsPassword;
+  late TextEditingController _overlayTextStrokeColorCtrl;
+  late TextEditingController _overlaySuperChatBarColorCtrl;
   late TextEditingController _ttsTestCtrl;
   late TextEditingController _ttsPrefixCtrl;
   late TextEditingController _ttsSeparatorCtrl;
@@ -565,6 +567,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _portFocus;
   late FocusNode _obsHostFocus;
   late FocusNode _obsPasswordFocus;
+  late FocusNode _overlayTextStrokeColorFocus;
+  late FocusNode _overlaySuperChatBarColorFocus;
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
   Timer? _textSettingsDebounce;
@@ -579,6 +583,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _port = TextEditingController(text: s.overlayPort.toString());
     _obsHost = TextEditingController(text: s.obsHost);
     _obsPassword = TextEditingController(text: s.obsPassword);
+    _overlayTextStrokeColorCtrl =
+        TextEditingController(text: s.overlayTextStrokeColor);
+    _overlaySuperChatBarColorCtrl =
+        TextEditingController(text: s.overlaySuperChatBarColor);
     _ttsTestCtrl =
         TextEditingController(text: 'Hola, probando sistema Text to Speech.');
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
@@ -590,6 +598,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _portFocus = FocusNode();
     _obsHostFocus = FocusNode();
     _obsPasswordFocus = FocusNode();
+    _overlayTextStrokeColorFocus = FocusNode();
+    _overlaySuperChatBarColorFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
 
@@ -600,6 +610,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _portFocus,
       _obsHostFocus,
       _obsPasswordFocus,
+      _overlayTextStrokeColorFocus,
+      _overlaySuperChatBarColorFocus,
       _ttsPrefixFocus,
       _ttsSeparatorFocus,
     ]) {
@@ -620,6 +632,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _port.dispose();
     _obsHost.dispose();
     _obsPassword.dispose();
+    _overlayTextStrokeColorCtrl.dispose();
+    _overlaySuperChatBarColorCtrl.dispose();
     _ttsTestCtrl.dispose();
     _ttsPrefixCtrl.dispose();
     _ttsSeparatorCtrl.dispose();
@@ -630,6 +644,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _portFocus.dispose();
     _obsHostFocus.dispose();
     _obsPasswordFocus.dispose();
+    _overlayTextStrokeColorFocus.dispose();
+    _overlaySuperChatBarColorFocus.dispose();
     _ttsPrefixFocus.dispose();
     _ttsSeparatorFocus.dispose();
     super.dispose();
@@ -655,6 +671,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
       overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
+      overlayTextStrokeColor: _normalizeHexColor(
+        _overlayTextStrokeColorCtrl.text,
+        fallback: current.overlayTextStrokeColor,
+      ),
+      overlaySuperChatBarColor: _normalizeHexColor(
+        _overlaySuperChatBarColorCtrl.text,
+        fallback: current.overlaySuperChatBarColor,
+      ),
       obsHost: _obsHost.text.trim(),
       obsPassword: _obsPassword.text,
       ttsCommandPrefix: _ttsPrefixCtrl.text,
@@ -665,6 +689,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
         current.overlayPort == next.overlayPort &&
+        current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
+        current.overlaySuperChatBarColor == next.overlaySuperChatBarColor &&
         current.obsHost == next.obsHost &&
         current.obsPassword == next.obsPassword &&
         current.ttsCommandPrefix == next.ttsCommandPrefix &&
@@ -720,6 +746,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return trimmed.replaceFirst(RegExp(r'^@'), '').trim();
   }
 
+  static String _normalizeHexColor(
+    String value, {
+    required String fallback,
+  }) {
+    final trimmed = value.trim().toUpperCase();
+    final normalized = trimmed.startsWith('#') ? trimmed : '#$trimmed';
+    final isValid = RegExp(r'^#[0-9A-F]{6}$').hasMatch(normalized);
+    return isValid ? normalized : fallback.toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
@@ -742,6 +778,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _syncController(_port, _portFocus, s.overlayPort.toString());
     _syncController(_obsHost, _obsHostFocus, s.obsHost);
     _syncController(_obsPassword, _obsPasswordFocus, s.obsPassword);
+    _syncController(
+      _overlayTextStrokeColorCtrl,
+      _overlayTextStrokeColorFocus,
+      s.overlayTextStrokeColor,
+    );
+    _syncController(
+      _overlaySuperChatBarColorCtrl,
+      _overlaySuperChatBarColorFocus,
+      s.overlaySuperChatBarColor,
+    );
     _syncController(_ttsPrefixCtrl, _ttsPrefixFocus, s.ttsCommandPrefix);
     _syncController(
       _ttsSeparatorCtrl,
@@ -1132,6 +1178,112 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 );
               },
             ),
+            const SizedBox(height: 14),
+            _section('Platform Display'),
+            _switchRow(
+                'Platform icon',
+                s.overlayShowPlatformIcons,
+                (v) =>
+                    notifier.update(s.copyWith(overlayShowPlatformIcons: v))),
+            _switchRow(
+                'Twitch accent',
+                s.overlayTwitchBubbleAccent,
+                (v) =>
+                    notifier.update(s.copyWith(overlayTwitchBubbleAccent: v))),
+            _switchRow('Kick accent', s.overlayKickBubbleAccent,
+                (v) => notifier.update(s.copyWith(overlayKickBubbleAccent: v))),
+            const SizedBox(height: 12),
+            _section('Style Settings'),
+            _sliderRow('Font size', s.overlayFontSize, 12, 32,
+                (v) => notifier.update(s.copyWith(overlayFontSize: v))),
+            _sliderRow('Line height', s.overlayLineHeight, 1, 2,
+                (v) => notifier.update(s.copyWith(overlayLineHeight: v))),
+            _sliderRow('Font weight', s.overlayFontWeight, 100, 900,
+                (v) => notifier.update(s.copyWith(overlayFontWeight: v))),
+            _sliderRow('Overlay bg', s.overlayBgOpacity, 0, 1,
+                (v) => notifier.update(s.copyWith(overlayBgOpacity: v))),
+            _switchRow('Avatars', s.overlayShowAvatars,
+                (v) => notifier.update(s.copyWith(overlayShowAvatars: v))),
+            _switchRow('Badges', s.overlayShowBadges,
+                (v) => notifier.update(s.copyWith(overlayShowBadges: v))),
+            _switchRow('Timestamp', s.overlayShowTimestamp,
+                (v) => notifier.update(s.copyWith(overlayShowTimestamp: v))),
+            _switchRow('Text shadow', s.overlayTextShadow,
+                (v) => notifier.update(s.copyWith(overlayTextShadow: v))),
+            _sliderRow('Text outline', s.overlayTextStroke, 0, 4,
+                (v) => notifier.update(s.copyWith(overlayTextStroke: v))),
+            if (s.overlayTextStroke > 0) ...[
+              const SizedBox(height: 6),
+              _label('Outline color'),
+              _field(
+                _overlayTextStrokeColorCtrl,
+                '#000000',
+                focusNode: _overlayTextStrokeColorFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+            ],
+            const SizedBox(height: 12),
+            _section('Message Design'),
+            _switchRow('Bubble background', s.overlayShowBubble,
+                (v) => notifier.update(s.copyWith(overlayShowBubble: v))),
+            _dropdownRow(
+              'Text alignment',
+              s.overlayTextAlign,
+              const ['left', 'center', 'right'],
+              (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
+            ),
+            _sliderRow('Bubble opacity', s.overlayMessageOpacity, 0, 1,
+                (v) => notifier.update(s.copyWith(overlayMessageOpacity: v))),
+            _sliderRow('Corner radius', s.overlayBorderRadius, 0, 30,
+                (v) => notifier.update(s.copyWith(overlayBorderRadius: v))),
+            _sliderRow('Vertical gap', s.overlayMessageGap, 0, 30,
+                (v) => notifier.update(s.copyWith(overlayMessageGap: v))),
+            _sliderRow(
+                'Max messages',
+                s.overlayMaxMessages.toDouble(),
+                10,
+                500,
+                (v) =>
+                    notifier.update(s.copyWith(overlayMaxMessages: v.round()))),
+            _switchRow(
+                'SuperChat color bar',
+                s.overlaySuperChatBarEnabled,
+                (v) =>
+                    notifier.update(s.copyWith(overlaySuperChatBarEnabled: v))),
+            if (s.overlaySuperChatBarEnabled) ...[
+              const SizedBox(height: 6),
+              _label('SuperChat bar color'),
+              _field(
+                _overlaySuperChatBarColorCtrl,
+                '#1DE9B6',
+                focusNode: _overlaySuperChatBarColorFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+              _sliderRow(
+                'SuperChat width',
+                s.overlaySuperChatBarWidth,
+                1,
+                8,
+                (v) => notifier.update(s.copyWith(overlaySuperChatBarWidth: v)),
+              ),
+            ],
+            const SizedBox(height: 12),
+            _section('Animation'),
+            _dropdownRow(
+              'Entrance',
+              s.overlayAnimation,
+              const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
+              (v) => notifier.update(s.copyWith(overlayAnimation: v)),
+            ),
+            _sliderRow(
+                'Duration',
+                s.overlayAnimationDuration,
+                0.1,
+                2,
+                (v) =>
+                    notifier.update(s.copyWith(overlayAnimationDuration: v))),
           ] else ...[
             const SizedBox(height: 6),
             const Text(
