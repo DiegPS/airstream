@@ -44,6 +44,11 @@ class SettingsModel {
   final bool obsEnabled;
   final String obsHost;
   final String obsPassword;
+  final bool obsShowStreamState;
+  final bool obsShowCurrentScene;
+  final bool obsShowBitrate;
+  final bool obsShowFps;
+  final bool obsShowDroppedFrames;
 
   const SettingsModel({
     this.youtubeHandle = '',
@@ -75,6 +80,11 @@ class SettingsModel {
     this.obsEnabled = false,
     this.obsHost = 'localhost:4455',
     this.obsPassword = '',
+    this.obsShowStreamState = true,
+    this.obsShowCurrentScene = true,
+    this.obsShowBitrate = true,
+    this.obsShowFps = true,
+    this.obsShowDroppedFrames = true,
   });
 
   SettingsModel copyWith({
@@ -107,6 +117,11 @@ class SettingsModel {
     bool? obsEnabled,
     String? obsHost,
     String? obsPassword,
+    bool? obsShowStreamState,
+    bool? obsShowCurrentScene,
+    bool? obsShowBitrate,
+    bool? obsShowFps,
+    bool? obsShowDroppedFrames,
   }) =>
       SettingsModel(
         youtubeHandle: youtubeHandle ?? this.youtubeHandle,
@@ -138,6 +153,11 @@ class SettingsModel {
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsHost: obsHost ?? this.obsHost,
         obsPassword: obsPassword ?? this.obsPassword,
+        obsShowStreamState: obsShowStreamState ?? this.obsShowStreamState,
+        obsShowCurrentScene: obsShowCurrentScene ?? this.obsShowCurrentScene,
+        obsShowBitrate: obsShowBitrate ?? this.obsShowBitrate,
+        obsShowFps: obsShowFps ?? this.obsShowFps,
+        obsShowDroppedFrames: obsShowDroppedFrames ?? this.obsShowDroppedFrames,
       );
 
   Map<String, dynamic> toJson() => {
@@ -170,6 +190,11 @@ class SettingsModel {
         'obsEnabled': obsEnabled,
         'obsHost': obsHost,
         'obsPassword': obsPassword,
+        'obsShowStreamState': obsShowStreamState,
+        'obsShowCurrentScene': obsShowCurrentScene,
+        'obsShowBitrate': obsShowBitrate,
+        'obsShowFps': obsShowFps,
+        'obsShowDroppedFrames': obsShowDroppedFrames,
       };
 
   factory SettingsModel.fromJson(Map<String, dynamic> j) => SettingsModel(
@@ -202,6 +227,11 @@ class SettingsModel {
         obsEnabled: j['obsEnabled'] as bool? ?? false,
         obsHost: j['obsHost'] as String? ?? 'localhost:4455',
         obsPassword: j['obsPassword'] as String? ?? '',
+        obsShowStreamState: j['obsShowStreamState'] as bool? ?? true,
+        obsShowCurrentScene: j['obsShowCurrentScene'] as bool? ?? true,
+        obsShowBitrate: j['obsShowBitrate'] as bool? ?? true,
+        obsShowFps: j['obsShowFps'] as bool? ?? true,
+        obsShowDroppedFrames: j['obsShowDroppedFrames'] as bool? ?? true,
       );
 
   factory SettingsModel.fromJsonString(String s) =>
