@@ -155,7 +155,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Positioned.fill(child: child),
           Positioned(
-            left: 12,
+            left: 24,
             bottom: 12,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 320),
