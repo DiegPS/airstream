@@ -159,7 +159,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             bottom: 12,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 320),
-              child: _ObsStatusCard(state: obsState, compact: true),
+              child: _ObsStatusCard(
+                state: obsState,
+                compact: true,
+                styleSettings: settings,
+              ),
             ),
           ),
         ],
@@ -1684,11 +1688,13 @@ class _ObsStatusCard extends StatelessWidget {
     required this.state,
     this.compact = false,
     this.showHost = false,
+    this.styleSettings,
   });
 
   final ObsState state;
   final bool compact;
   final bool showHost;
+  final SettingsModel? styleSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -1701,6 +1707,7 @@ class _ObsStatusCard extends StatelessWidget {
         state: state,
         title: title,
         color: color,
+        styleSettings: styleSettings ?? const SettingsModel(),
       );
     }
 
@@ -1782,11 +1789,13 @@ class _ObsStatusCard extends StatelessWidget {
                   label: '${state.bitrateKbps.toStringAsFixed(0)} kbps',
                   foreground: const Color(0xFFE7E7E7),
                   background: const Color(0xFF2A2A2A),
+                  fontSize: 10,
                 ),
                 _ObsPillBadge(
                   label: '${state.fps.toStringAsFixed(0)} FPS',
                   foreground: const Color(0xFFE7E7E7),
                   background: const Color(0xFF2A2A2A),
+                  fontSize: 10,
                 ),
                 _ObsPillBadge(
                   label:
@@ -1797,6 +1806,7 @@ class _ObsStatusCard extends StatelessWidget {
                   background: state.dropPercentage > 0
                       ? const Color(0x33FFB15C)
                       : const Color(0xFF2A2A2A),
+                  fontSize: 10,
                 ),
               ],
             ),
@@ -1847,31 +1857,45 @@ class _ObsCompactPill extends StatelessWidget {
     required this.state,
     required this.title,
     required this.color,
+    required this.styleSettings,
   });
 
   final ObsState state;
   final String title;
   final Color color;
+  final SettingsModel styleSettings;
 
   @override
   Widget build(BuildContext context) {
     final outputLabel = state.outputActive ? 'LIVE' : 'OFF';
     final sceneLabel =
         state.currentScene.trim().isEmpty ? null : state.currentScene.trim();
+    final bubbleOpacity = styleSettings.messageOpacity.clamp(0.0, 1.0);
+    final backgroundColor = _obsCompactBackground(
+      accentColor: color,
+      showBubble: styleSettings.showBubble,
+      bubbleOpacity: bubbleOpacity,
+    );
+    final shadow = styleSettings.showBubble && styleSettings.showBubbleShadow
+        ? const [
+            BoxShadow(
+              color: Color(0x4D000000),
+              blurRadius: 32,
+              offset: Offset(0, 8),
+            ),
+          ]
+        : const <BoxShadow>[];
+    final fontSize = styleSettings.fontSize;
+    final badgeFontSize = (fontSize * 0.68).clamp(9.0, 12.0);
+    final titleFontSize = (fontSize * 0.76).clamp(10.0, 13.0);
+    final pillRadius = (styleSettings.borderRadius + 18).clamp(18.0, 30.0);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xE0191919),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(pillRadius),
+        boxShadow: shadow,
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -1904,7 +1928,7 @@ class _ObsCompactPill extends StatelessWidget {
               'OBS',
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: titleFontSize,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
               ),
@@ -1913,20 +1937,23 @@ class _ObsCompactPill extends StatelessWidget {
             _ObsPillBadge(
               label: outputLabel,
               foreground: color,
-              background: color.withValues(alpha: 0.14),
+              background: Colors.transparent,
+              fontSize: badgeFontSize,
             ),
             if (state.connected) ...[
               const SizedBox(width: 6),
               _ObsPillBadge(
                 label: '${state.bitrateKbps.toStringAsFixed(0)}k',
                 foreground: const Color(0xFFE7E7E7),
-                background: const Color(0xFF2A2A2A),
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
               ),
               const SizedBox(width: 6),
               _ObsPillBadge(
                 label: '${state.fps.toStringAsFixed(0)}fps',
                 foreground: const Color(0xFFE7E7E7),
-                background: const Color(0xFF2A2A2A),
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
               ),
               const SizedBox(width: 6),
               _ObsPillBadge(
@@ -1936,9 +1963,8 @@ class _ObsCompactPill extends StatelessWidget {
                 foreground: state.dropPercentage > 0
                     ? const Color(0xFFFFB15C)
                     : const Color(0xFFE7E7E7),
-                background: state.dropPercentage > 0
-                    ? const Color(0x33FFB15C)
-                    : const Color(0xFF2A2A2A),
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
               ),
             ],
             if (sceneLabel != null) ...[
@@ -1946,8 +1972,9 @@ class _ObsCompactPill extends StatelessWidget {
               _ObsPillBadge(
                 label: sceneLabel,
                 foreground: const Color(0xFFE7E7E7),
-                background: const Color(0xFF2A2A2A),
+                background: Colors.transparent,
                 maxWidth: 150,
+                fontSize: badgeFontSize,
               ),
             ],
             if (state.error != null && state.error!.isNotEmpty) ...[
@@ -1973,12 +2000,14 @@ class _ObsPillBadge extends StatelessWidget {
     required this.label,
     required this.foreground,
     required this.background,
+    required this.fontSize,
     this.maxWidth,
   });
 
   final String label;
   final Color foreground;
   final Color background;
+  final double fontSize;
   final double? maxWidth;
 
   @override
@@ -1995,7 +2024,7 @@ class _ObsPillBadge extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: foreground,
-          fontSize: 10,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -2007,6 +2036,21 @@ class _ObsPillBadge extends StatelessWidget {
       child: badge,
     );
   }
+}
+
+Color _obsCompactBackground({
+  required Color accentColor,
+  required bool showBubble,
+  required double bubbleOpacity,
+}) {
+  if (!showBubble || bubbleOpacity <= 0) return Colors.transparent;
+
+  final baseColor = Color.alphaBlend(
+    accentColor.withValues(alpha: 0.16),
+    const Color(0xFF111111),
+  );
+
+  return baseColor.withAlpha((255 * bubbleOpacity).round().clamp(0, 255));
 }
 
 class _ConnectionDots extends ConsumerWidget {
