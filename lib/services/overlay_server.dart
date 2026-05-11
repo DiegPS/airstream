@@ -205,7 +205,7 @@ class OverlayServer {
   .overlay-shell {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
     width: 100%;
     display: flex;
@@ -222,6 +222,7 @@ class OverlayServer {
   .chat-overlay {
     flex: 1;
     overflow-y: auto;
+    overflow-x: visible;
     padding: 3rem;
     display: flex;
     flex-direction: column;
@@ -229,15 +230,6 @@ class OverlayServer {
     scrollbar-width: thin;
     -ms-overflow-style: auto;
     mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
-  }
-  .overlay-empty {
-    color: rgba(255,255,255,0.75);
-    font-size: 13px;
-    align-self: flex-start;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.22);
-    border: 1px dashed rgba(255, 255, 255, 0.08);
   }
   .chat-item {
     display: flex;
@@ -715,6 +707,7 @@ function OverlayApp() {
   const overlayStyle = useMemo(() => ({
     fontSize: `\${settings.fontSize}px`,
     gap: `\${settings.messageGap}px`,
+    padding: settings.threeDEnabled ? '4rem 4rem 6rem' : '3rem',
     alignItems: settings.textAlign === 'center'
       ? 'center'
       : settings.textAlign === 'right'
@@ -733,6 +726,7 @@ function OverlayApp() {
   }), [
     settings.fontSize,
     settings.messageGap,
+    settings.threeDEnabled,
     settings.textAlign,
     settings.threeDEnabled,
     settings.rotateX,
@@ -743,13 +737,7 @@ function OverlayApp() {
   ]);
 
   if (!messages.length) {
-    return (
-      <div className={shellClassName} style={shellStyle}>
-        <div className="chat-overlay" style={overlayStyle}>
-          <div className="overlay-empty">Waiting for new chat messages...</div>
-        </div>
-      </div>
-    );
+    return <div className={shellClassName} style={shellStyle} />;
   }
 
   return (
