@@ -1178,6 +1178,36 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 );
               },
             ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final reloaded = appController.reloadOverlay();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        reloaded
+                            ? 'Overlay reload sent'
+                            : 'No overlay client connected',
+                      ),
+                      duration: const Duration(milliseconds: 1400),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFFC877),
+                  side: const BorderSide(color: Color(0xFF6A4C1D)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text(
+                  'Reload Overlay',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             _section('Platform Display'),
             _switchRow(

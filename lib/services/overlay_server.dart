@@ -66,6 +66,12 @@ class OverlayServer {
     _broadcastSettings();
   }
 
+  bool reloadClients() {
+    if (_clients.isEmpty) return false;
+    _broadcastEnvelope({'type': 'reload'});
+    return true;
+  }
+
   Future<void> stop() async {
     await _msgSub?.cancel();
     _msgSub = null;
@@ -611,6 +617,10 @@ function OverlayApp() {
           const envelope = JSON.parse(event.data);
           if (envelope.type === 'settings') {
             setSettings((current) => ({ ...current, ...envelope.data }));
+            return;
+          }
+          if (envelope.type === 'reload') {
+            window.location.reload();
             return;
           }
           if (envelope.type === 'message') {

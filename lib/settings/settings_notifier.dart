@@ -248,6 +248,8 @@ class AppController {
     await _obs.disconnect();
   }
 
+  bool reloadOverlay() => _overlay.reloadClients();
+
   void _speakMessageIfEligible(ChatMessage msg) {
     final settings = _lastSettings;
     if (settings == null || !settings.ttsEnabled) return;
