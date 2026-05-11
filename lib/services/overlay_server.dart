@@ -203,33 +203,32 @@ class OverlayServer {
   }
   #root { height: 100%; }
   .overlay-shell {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
     height: 100%;
     width: 100%;
     display: flex;
     flex-direction: column;
+    transition: background-color 0.3s ease;
   }
-  .chat-scroll {
+  .overlay-shell.hide-scrollbar .chat-overlay::-webkit-scrollbar {
+    display: none;
+  }
+  .overlay-shell.hide-scrollbar .chat-overlay {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .chat-overlay {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
-    padding: 24px 24px 18px;
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
     scrollbar-width: thin;
     -ms-overflow-style: auto;
     mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
-  }
-  .chat-scroll.hide-scrollbar {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .chat-scroll.hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .chat-list {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-height: 100%;
-    justify-content: flex-end;
   }
   .overlay-empty {
     color: rgba(255,255,255,0.75);
@@ -623,17 +622,17 @@ function MessageBubble({ message, settings, index }) {
 function OverlayApp() {
   const [messages, setMessages] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const scrollRef = useRef(null);
+  const scrollToBottomRef = useRef(null);
 
   useEffect(() => {
     setMessages((current) => clampMessages(current, settings.maxMessages));
   }, [settings.maxMessages]);
 
   useEffect(() => {
-    const node = scrollRef.current;
+    const node = scrollToBottomRef.current;
     if (!node) return;
     const frame = window.requestAnimationFrame(() => {
-      node.scrollTop = node.scrollHeight;
+      node.scrollIntoView({ behavior: 'smooth', block: 'end' });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [messages, settings.messageGap, settings.fontSize, settings.showBubble]);
@@ -708,7 +707,12 @@ function OverlayApp() {
     settings.perspective,
   ]);
 
-  const listStyle = useMemo(() => ({
+  const shellClassName = useMemo(
+    () => `overlay-shell \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`,
+    [settings.hideScrollbar],
+  );
+
+  const overlayStyle = useMemo(() => ({
     fontSize: `\${settings.fontSize}px`,
     gap: `\${settings.messageGap}px`,
     alignItems: settings.textAlign === 'center'
@@ -740,8 +744,8 @@ function OverlayApp() {
 
   if (!messages.length) {
     return (
-      <div className="overlay-shell" style={shellStyle}>
-        <div className={`chat-scroll \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`}>
+      <div className={shellClassName} style={shellStyle}>
+        <div className="chat-overlay" style={overlayStyle}>
           <div className="overlay-empty">Waiting for new chat messages...</div>
         </div>
       </div>
@@ -749,21 +753,17 @@ function OverlayApp() {
   }
 
   return (
-    <div className="overlay-shell" style={shellStyle}>
-      <div
-        className={`chat-scroll \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`}
-        ref={scrollRef}
-      >
-        <div className="chat-list" style={listStyle}>
-          {messages.map((message, index) => (
-            <MessageBubble
-              key={message.id ? message.id + '-' + index : index}
-              message={message}
-              settings={settings}
-              index={index}
-            />
-          ))}
-        </div>
+    <div className={shellClassName} style={shellStyle}>
+      <div className="chat-overlay" style={overlayStyle}>
+        {messages.map((message, index) => (
+          <MessageBubble
+            key={message.id ? message.id + '-' + index : index}
+            message={message}
+            settings={settings}
+            index={index}
+          />
+        ))}
+        <div ref={scrollToBottomRef} />
       </div>
     </div>
   );
