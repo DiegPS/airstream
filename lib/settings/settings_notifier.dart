@@ -38,6 +38,11 @@ final overlayUrlProvider = Provider<String?>((ref) {
   return app.overlayUrl;
 });
 
+final overlayClientCountProvider = StreamProvider<int>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.overlayClientCountStream;
+});
+
 final youtubeBadgeValueProvider = StreamProvider<String?>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.youtubeBadgeValueStream;
@@ -224,6 +229,8 @@ class AppController {
     yield _obs.currentState;
     yield* _obs.stateStream;
   }
+
+  Stream<int> get overlayClientCountStream => _overlay.clientCountStream;
 
   String? get overlayUrl => _overlay.localIp != null
       ? 'http://${_overlay.localIp}:${_overlay.port}'
@@ -428,7 +435,7 @@ class AppController {
     _youtube.dispose();
     _kick.dispose();
     _twitch.dispose();
-    _overlay.stop();
+    _overlay.dispose();
     _obs.dispose();
     _tts.dispose();
     _pipeline.dispose();

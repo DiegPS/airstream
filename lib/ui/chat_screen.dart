@@ -782,6 +782,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final overlayUrl = ref.watch(overlayUrlProvider);
+    final overlayClientCount =
+        ref.watch(overlayClientCountProvider).valueOrNull ?? 0;
     final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
 
     _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
@@ -1194,6 +1196,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 6),
+            Text(
+              overlayClientCount == 1
+                  ? '1 overlay client connected'
+                  : '$overlayClientCount overlay clients connected',
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 8),
             SizedBox(

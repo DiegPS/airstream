@@ -14,6 +14,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class OverlayServer {
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
+  final _clientCountController = StreamController<int>.broadcast();
   StreamSubscription? _msgSub;
   SettingsModel _settings = const SettingsModel();
 
@@ -22,6 +23,11 @@ class OverlayServer {
 
   String? _localIp;
   String? get localIp => _localIp;
+  int get clientCount => _clients.length;
+  Stream<int> get clientCountStream async* {
+    yield _clients.length;
+    yield* _clientCountController.stream;
+  }
 
   String get overlayUrl =>
       _localIp != null ? 'http://$_localIp:$_port' : 'http://localhost:$_port';
@@ -38,8 +44,12 @@ class OverlayServer {
 
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
+      _emitClientCount();
       _sendSettingsToClient(ws);
-      ws.stream.listen(null, onDone: () => _clients.remove(ws));
+      ws.stream.listen(null, onDone: () {
+        _clients.remove(ws);
+        _emitClientCount();
+      });
     });
 
     final handler = const Pipeline().addHandler((Request req) async {
@@ -78,6 +88,12 @@ class OverlayServer {
     await _server?.close(force: true);
     _server = null;
     _clients.clear();
+    _emitClientCount();
+  }
+
+  Future<void> dispose() async {
+    await stop();
+    await _clientCountController.close();
   }
 
   void _broadcastMessage(ChatMessage msg) {
@@ -145,7 +161,14 @@ class OverlayServer {
         client.sink.add(json);
       } catch (_) {
         _clients.remove(client);
+        _emitClientCount();
       }
+    }
+  }
+
+  void _emitClientCount() {
+    if (!_clientCountController.isClosed) {
+      _clientCountController.add(_clients.length);
     }
   }
 
@@ -373,7 +396,7 @@ class OverlayServer {
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel">
-const { useEffect, useMemo, useRef, useState } = React;
+const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React;
 
 const DEFAULT_SETTINGS = {
   chromaMode: false,
@@ -453,14 +476,32 @@ function nameToHue(name) {
   return Math.abs(hash) % 360;
 }
 
-function Avatar({ url, name, platform, showPlatformIcons }) {
+function normalizeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('//')) return `https:\${url}`;
+  return url;
+}
+
+function Avatar({ url, name, platform, showPlatformIcons, onMediaLoad }) {
   const hue = nameToHue(name || '??');
   const initials = (name || '?').slice(0, 2).toUpperCase();
+  const [failed, setFailed] = useState(false);
+  const resolvedUrl = failed ? '' : normalizeUrl(url);
 
   return (
     <div className="avatar-wrap">
-      {url ? (
-        <img src={url} alt={name} className="avatar" />
+      {resolvedUrl ? (
+        <img
+          src={resolvedUrl}
+          alt={name}
+          className="avatar"
+          referrerPolicy="no-referrer"
+          onLoad={onMediaLoad}
+          onError={() => {
+            setFailed(true);
+            onMediaLoad?.();
+          }}
+        />
       ) : (
         <div
           className="avatar-fallback"
@@ -476,16 +517,19 @@ function Avatar({ url, name, platform, showPlatformIcons }) {
   );
 }
 
-function renderMessageItems(items) {
+function renderMessageItems(items, onMediaLoad) {
   if (!Array.isArray(items)) return null;
   return items.map((item, index) => {
     if (item.kind === 'emoji' && item.url) {
       return (
         <img
           key={index}
-          src={item.url}
+          src={normalizeUrl(item.url)}
           alt={item.alt || ''}
           className="emoji"
+          referrerPolicy="no-referrer"
+          onLoad={onMediaLoad}
+          onError={onMediaLoad}
         />
       );
     }
@@ -493,7 +537,7 @@ function renderMessageItems(items) {
   });
 }
 
-function MessageBubble({ message, settings, index }) {
+function MessageBubble({ message, settings, index, onMediaLoad }) {
   const isTwitch = message.platform === 'twitch';
   const isKick = message.platform === 'kick';
   const isSuperChat = !!message.isSuperChat;
@@ -541,6 +585,7 @@ function MessageBubble({ message, settings, index }) {
           name={message.author}
           platform={message.platform}
           showPlatformIcons={settings.showPlatformIcons}
+          onMediaLoad={onMediaLoad}
         />
       ) : null}
       <div className="chat-content">
@@ -570,7 +615,13 @@ function MessageBubble({ message, settings, index }) {
               ) : null}
               {message.badgeImageUrl ? (
                 <span className="badge custom-badge" title={message.badgeLabel || ''}>
-                  <img src={message.badgeImageUrl} alt="" />
+                  <img
+                    src={normalizeUrl(message.badgeImageUrl)}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    onLoad={onMediaLoad}
+                    onError={onMediaLoad}
+                  />
                 </span>
               ) : null}
             </>
@@ -592,7 +643,7 @@ function MessageBubble({ message, settings, index }) {
             textAlign: settings.textAlign,
           }}
         >
-          {renderMessageItems(message.items)}
+          {renderMessageItems(message.items, onMediaLoad)}
 
           {isMembershipEvent ? (
             <div className="membership-flair">
@@ -602,7 +653,13 @@ function MessageBubble({ message, settings, index }) {
 
           {isSuperChat && message.superChatStickerUrl ? (
             <div className="superchat-sticker">
-              <img src={message.superChatStickerUrl} alt="" />
+              <img
+                src={normalizeUrl(message.superChatStickerUrl)}
+                alt=""
+                referrerPolicy="no-referrer"
+                onLoad={onMediaLoad}
+                onError={onMediaLoad}
+              />
             </div>
           ) : null}
         </div>
@@ -614,20 +671,53 @@ function MessageBubble({ message, settings, index }) {
 function OverlayApp() {
   const [messages, setMessages] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const scrollToBottomRef = useRef(null);
+  const overlayRef = useRef(null);
+  const scrollTaskRef = useRef(0);
+
+  const forceScrollToBottom = () => {
+    const scroller = overlayRef.current;
+    if (!scroller) return;
+    scroller.scrollTop = scroller.scrollHeight;
+  };
+
+  const scheduleScrollToBottom = () => {
+    if (scrollTaskRef.current) {
+      window.cancelAnimationFrame(scrollTaskRef.current);
+    }
+    scrollTaskRef.current = window.requestAnimationFrame(() => {
+      forceScrollToBottom();
+      window.requestAnimationFrame(() => {
+        forceScrollToBottom();
+        window.setTimeout(forceScrollToBottom, 0);
+      });
+    });
+  };
 
   useEffect(() => {
     setMessages((current) => clampMessages(current, settings.maxMessages));
   }, [settings.maxMessages]);
 
-  useEffect(() => {
-    const node = scrollToBottomRef.current;
-    if (!node) return;
-    const frame = window.requestAnimationFrame(() => {
-      node.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    });
-    return () => window.cancelAnimationFrame(frame);
+  useLayoutEffect(() => {
+    scheduleScrollToBottom();
+    return () => {
+      if (scrollTaskRef.current) {
+        window.cancelAnimationFrame(scrollTaskRef.current);
+      }
+    };
   }, [messages, settings.messageGap, settings.fontSize, settings.showBubble]);
+
+  useEffect(() => {
+    const scroller = overlayRef.current;
+    if (!scroller || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      scheduleScrollToBottom();
+    });
+    observer.observe(scroller);
+    for (const child of scroller.children) {
+      observer.observe(child);
+    }
+    return () => observer.disconnect();
+  }, [messages.length, settings.threeDEnabled, settings.showAvatars]);
 
   useEffect(() => {
     let ws;
@@ -742,16 +832,16 @@ function OverlayApp() {
 
   return (
     <div className={shellClassName} style={shellStyle}>
-      <div className="chat-overlay" style={overlayStyle}>
+      <div className="chat-overlay" style={overlayStyle} ref={overlayRef}>
         {messages.map((message, index) => (
           <MessageBubble
             key={message.id ? message.id + '-' + index : index}
             message={message}
             settings={settings}
             index={index}
+            onMediaLoad={scheduleScrollToBottom}
           />
         ))}
-        <div ref={scrollToBottomRef} />
       </div>
     </div>
   );
