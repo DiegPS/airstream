@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airchat_flutter/services/kick_service.dart' show ServiceStatus;
 
 /// Wraps dart_youtube_chat.LiveChat and converts items to [ChatMessage].
 class YouTubeService {
@@ -9,9 +10,15 @@ class YouTubeService {
 
   yt.LiveChat? _chat;
   StreamSubscription? _sub;
+  StreamSubscription? _errorSub;
+  StreamSubscription? _pollSub;
   final _controller = StreamController<ChatMessage>.broadcast();
+  final _statusController =
+      StreamController<(ServiceStatus, String?)>.broadcast();
+  ServiceStatus _lastStatus = ServiceStatus.idle;
 
   Stream<ChatMessage> get messages => _controller.stream;
+  Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
   String get resolvedLiveId => _chat?.liveId ?? '';
 
   Future<void> connect({
@@ -20,6 +27,7 @@ class YouTubeService {
     String channelId = '',
   }) async {
     await disconnect();
+    _emit(ServiceStatus.connecting, null);
 
     final normalized = _normalizeYoutubeId(
       handle: handle,
@@ -36,12 +44,29 @@ class YouTubeService {
     _chat = yt.LiveChat(id: ytId);
     _sub = _chat!.messages.listen(
       (item) {
+        if (_lastStatus != ServiceStatus.connected) {
+          _emit(ServiceStatus.connected, null);
+        }
         final msg = _convertItem(item);
         if (msg != null && !_controller.isClosed) _controller.add(msg);
       },
-      onError: (_) {},
+      onError: (e) => _emit(ServiceStatus.error, e.toString()),
     );
-    await _chat!.start();
+    _errorSub = _chat!.errors.listen(
+      (e) => _emit(ServiceStatus.error, e.toString()),
+    );
+    _pollSub = _chat!.polls.listen((_) {
+      if (_lastStatus != ServiceStatus.connected) {
+        _emit(ServiceStatus.connected, null);
+      }
+    });
+    try {
+      await _chat!.start();
+      _emit(ServiceStatus.connected, null);
+    } catch (e) {
+      _emit(ServiceStatus.error, e.toString());
+      rethrow;
+    }
   }
 
   ({String handle, String liveId, String channelId}) _normalizeYoutubeId({
@@ -121,13 +146,26 @@ class YouTubeService {
   Future<void> disconnect() async {
     await _sub?.cancel();
     _sub = null;
+    await _errorSub?.cancel();
+    _errorSub = null;
+    await _pollSub?.cancel();
+    _pollSub = null;
     _chat?.stop();
     _chat = null;
+    _emit(ServiceStatus.idle, null);
   }
 
   void dispose() {
-    disconnect();
+    unawaited(disconnect());
     _controller.close();
+    _statusController.close();
+  }
+
+  void _emit(ServiceStatus status, String? error) {
+    _lastStatus = status;
+    if (!_statusController.isClosed) {
+      _statusController.add((status, error));
+    }
   }
 
   ChatMessage? _convertItem(yt.ChatItem item) {

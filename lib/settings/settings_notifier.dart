@@ -120,6 +120,7 @@ class AppController {
   final _tts = TtsService();
   late final MessagePipeline _pipeline;
   StreamSubscription<ChatMessage>? _pipelineSub;
+  StreamSubscription<(ServiceStatus, String?)>? _youtubeStatusSub;
   StreamSubscription<(ServiceStatus, String?)>? _kickStatusSub;
   final _spokenMessageKeys = <String>{};
   final _spokenMessageOrder = Queue<String>();
@@ -157,11 +158,12 @@ class AppController {
       _speakMessageIfEligible(msg);
     });
     // Forward per-service status to the aggregated stream.
+    _youtubeStatusSub =
+        _youtube.statusStream.listen((s) => _updateStatus('youtube', s));
     _kickStatusSub = _kick.statusStream.listen((s) => _updateStatus('kick', s));
   }
 
   Future<void> _connectYoutube(SettingsModel s) async {
-    _updateStatus('youtube', (ServiceStatus.connecting, null));
     _youtubeBadgeValue = null;
     _emitYoutubeBadgeValue();
     try {
@@ -170,7 +172,6 @@ class AppController {
           ? _youtube.resolvedLiveId
           : s.youtubeHandle.trim();
       _emitYoutubeBadgeValue();
-      _updateStatus('youtube', (ServiceStatus.connected, null));
     } catch (e) {
       debugPrint('YouTubeService.connect failed: $e');
       await _youtube.disconnect();
@@ -368,10 +369,9 @@ class AppController {
       if (connectChats && hasYoutubeTarget) {
         unawaited(_connectYoutube(s));
       } else {
-        _youtube.disconnect();
+        unawaited(_youtube.disconnect());
         _youtubeBadgeValue = null;
         _emitYoutubeBadgeValue();
-        _updateStatus('youtube', (ServiceStatus.idle, null));
       }
     }
 
@@ -431,6 +431,7 @@ class AppController {
 
   void dispose() {
     _pipelineSub?.cancel();
+    _youtubeStatusSub?.cancel();
     _kickStatusSub?.cancel();
     _youtube.dispose();
     _kick.dispose();
