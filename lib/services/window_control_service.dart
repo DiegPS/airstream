@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// Controla propiedades nativas de la ventana en Windows via un MethodChannel
 /// que habla con el runner C++ (window_channel.cpp).
@@ -31,12 +32,15 @@ class WindowControlService {
 
   /// Always-on-top: SetWindowPos HWND_TOPMOST / HWND_NOTOPMOST.
   static Future<void> setAlwaysOnTop(bool enabled) async {
-    if (!Platform.isWindows) return;
+    if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) return;
     try {
-      await _channel.invokeMethod('setAlwaysOnTop', {'enabled': enabled});
+      await windowManager.setAlwaysOnTop(enabled);
     } on PlatformException catch (e) {
       // ignore: avoid_print
       print('[WindowControl] setAlwaysOnTop error: ${e.message}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[WindowControl] setAlwaysOnTop error: $e');
     }
   }
 }
