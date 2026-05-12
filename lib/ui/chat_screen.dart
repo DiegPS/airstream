@@ -22,6 +22,8 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
+  static const _sidebarWidth = 360.0;
+
   final _scrollController = ScrollController();
   bool _autoScroll = true;
   bool _sidebarVisible = true;
@@ -120,13 +122,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
-              width: _sidebarVisible ? 360 : 0,
-              child: _sidebarVisible
-                  ? const _SettingsSidebar()
-                  : const SizedBox.shrink(),
+              width: _sidebarVisible ? _sidebarWidth : 0,
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: _sidebarWidth,
+                  maxWidth: _sidebarWidth,
+                  child: IgnorePointer(
+                    ignoring: !_sidebarVisible,
+                    child: const SizedBox(
+                      width: _sidebarWidth,
+                      child: _SettingsSidebar(),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            if (_sidebarVisible)
-              const VerticalDivider(width: 1, color: Color(0xFF2A2A2A)),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width: _sidebarVisible ? 1 : 0,
+              color: const Color(0xFF2A2A2A),
+            ),
             Expanded(
               child: _chatList(),
             ),
@@ -1821,12 +1838,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            '$platform · $value',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              '$platform - $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
