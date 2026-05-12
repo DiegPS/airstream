@@ -116,6 +116,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ]),
 
           _section('Window (Windows)'),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Shortcuts: Ctrl+B sidebar, Ctrl+Shift+T top bar, Ctrl+Shift+P always on top, Ctrl+Shift+C click-through.',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ),
           _switchTileWithSubtitle(
             'Frameless',
             'Sin barra de título, sin bordes, sin sombra DWM — igual a Wails DisableFramelessWindowDecorations',

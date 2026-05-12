@@ -18,16 +18,17 @@ class WindowControlBar extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _WindowToggleButton(
-          tooltip:
-              state.alwaysOnTop ? 'Desactivar Always on Top' : 'Always on Top',
+          tooltip: state.alwaysOnTop
+              ? 'Desactivar Always on Top (Ctrl+Shift+P)'
+              : 'Always on Top (Ctrl+Shift+P)',
           icon: Icons.push_pin_outlined,
           active: state.alwaysOnTop,
           onTap: notifier.toggleAlwaysOnTop,
         ),
         _WindowToggleButton(
           tooltip: state.clickThrough
-              ? 'Click-Through activo. Toca para desactivar.'
-              : 'Activar Click-Through',
+              ? 'Click-Through activo. Desactivar (Ctrl+Shift+C).'
+              : 'Activar Click-Through (Ctrl+Shift+C)',
           icon: state.clickThrough
               ? Icons.ads_click_outlined
               : Icons.mouse_outlined,

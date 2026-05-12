@@ -72,21 +72,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     final keyboard = HardwareKeyboard.instance;
-    final isToggleClickThroughShortcut =
-        event.logicalKey == LogicalKeyboardKey.keyB &&
-            keyboard.isControlPressed &&
-            keyboard.isShiftPressed &&
-            !keyboard.isAltPressed &&
-            !keyboard.isMetaPressed;
-
-    if (isToggleClickThroughShortcut) {
-      final windowNotifier = ref.read(windowStateProvider.notifier);
-      _toggleSidebarVisibility();
-      _toggleTopBarVisibility();
-      unawaited(windowNotifier.toggleAlwaysOnTop());
-      unawaited(windowNotifier.toggleClickThrough());
-      return KeyEventResult.handled;
-    }
+    final windowNotifier = ref.read(windowStateProvider.notifier);
 
     final isToggleSidebarShortcut =
         event.logicalKey == LogicalKeyboardKey.keyB &&
@@ -95,12 +81,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             !keyboard.isAltPressed &&
             !keyboard.isMetaPressed;
 
-    if (!isToggleSidebarShortcut) {
-      return KeyEventResult.ignored;
+    if (isToggleSidebarShortcut) {
+      _toggleSidebarVisibility();
+      return KeyEventResult.handled;
     }
 
-    _toggleSidebarVisibility();
-    return KeyEventResult.handled;
+    final isToggleTopBarShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyT &&
+            keyboard.isControlPressed &&
+            keyboard.isShiftPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (isToggleTopBarShortcut) {
+      _toggleTopBarVisibility();
+      return KeyEventResult.handled;
+    }
+
+    final isToggleAlwaysOnTopShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyP &&
+            keyboard.isControlPressed &&
+            keyboard.isShiftPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (isToggleAlwaysOnTopShortcut) {
+      unawaited(windowNotifier.toggleAlwaysOnTop());
+      return KeyEventResult.handled;
+    }
+
+    final isToggleClickThroughShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+            keyboard.isControlPressed &&
+            keyboard.isShiftPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (isToggleClickThroughShortcut) {
+      unawaited(windowNotifier.toggleClickThrough());
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
   }
 
   @override
