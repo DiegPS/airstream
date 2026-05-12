@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
-
 import 'package:flutter/foundation.dart';
 import 'package:obs_websocket/obs_websocket.dart';
 
@@ -74,8 +72,7 @@ class ObsState {
 
 class ObsService {
   static const _statsPollInterval = Duration(seconds: 1);
-  static const _dropTrendWindow = Duration(seconds: 3);
-  static const _dropTrendTolerance = 0.01;
+  static const _dropRecoveryWindow = Duration(seconds: 10);
 
   ObsWebSocket? _obs;
   final _stateController =
@@ -86,7 +83,7 @@ class ObsService {
   int _generation = 0;
   Timer? _statsTimer;
   _ObsMetricsSample? _lastMetricsSample;
-  final Queue<_ObsDropSnapshot> _dropHistory = Queue<_ObsDropSnapshot>();
+  DateTime? _lastObservedDropAt;
   bool _statsPollInFlight = false;
 
   ObsState get currentState => _state;
@@ -161,7 +158,7 @@ class ObsService {
         stats: stats,
       );
       _lastMetricsSample = metrics.sample;
-      final dropTrend = _rememberDropTrend(metrics.dropPercentage);
+      final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
       _emit(
         _state.copyWith(
           connected: true,
@@ -232,7 +229,7 @@ class ObsService {
     final obs = _obs;
     _obs = null;
     _lastMetricsSample = null;
-    _dropHistory.clear();
+    _lastObservedDropAt = null;
     if (obs == null) return;
     try {
       await obs.close();
@@ -310,7 +307,7 @@ class ObsService {
     _statsTimer = null;
     _statsPollInFlight = false;
     _lastMetricsSample = null;
-    _dropHistory.clear();
+    _lastObservedDropAt = null;
   }
 
   Future<void> _pollStatsOnce(int generation) async {
@@ -329,7 +326,7 @@ class ObsService {
         stats: stats,
       );
       _lastMetricsSample = metrics.sample;
-      final dropTrend = _rememberDropTrend(metrics.dropPercentage);
+      final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
       _emit(
         _state.copyWith(
           outputActive: streamStatus.outputActive,
@@ -356,13 +353,14 @@ class ObsService {
     required StreamStatusResponse streamStatus,
     required StatsResponse stats,
   }) {
+    final previous = _lastMetricsSample;
     final sample = _ObsMetricsSample(
       outputBytes: streamStatus.outputBytes,
       outputDurationMs: streamStatus.outputDuration,
+      droppedFrames: streamStatus.outputSkippedFrames,
     );
 
     double bitrateKbps = 0;
-    final previous = _lastMetricsSample;
     if (previous != null) {
       final bytesDelta = streamStatus.outputBytes - previous.outputBytes;
       final durationDeltaMs =
@@ -388,6 +386,9 @@ class ObsService {
       fps: stats.activeFps.toDouble(),
       droppedFrames: droppedFrames,
       dropPercentage: dropPercentage,
+      recentDroppedFrames: previous == null
+          ? 0
+          : (droppedFrames - previous.droppedFrames).clamp(0, droppedFrames),
     );
   }
 
@@ -419,46 +420,19 @@ class ObsService {
     return 'Connected';
   }
 
-  ObsDropTrend _rememberDropTrend(double dropPercentage) {
+  ObsDropTrend _rememberDropTrend(bool hasActiveDrop) {
     final now = DateTime.now().toUtc();
-    _dropHistory.addLast(
-      _ObsDropSnapshot(
-        capturedAt: now,
-        dropPercentage: dropPercentage,
-      ),
-    );
-
-    final maxAge = _dropTrendWindow * 2 + _statsPollInterval;
-    while (_dropHistory.isNotEmpty &&
-        now.difference(_dropHistory.first.capturedAt) > maxAge) {
-      _dropHistory.removeFirst();
-    }
-
-    final baselineTime = now.subtract(_dropTrendWindow);
-    _ObsDropSnapshot? baseline;
-    for (final snapshot in _dropHistory) {
-      if (snapshot.capturedAt.isAfter(baselineTime)) break;
-      baseline = snapshot;
-    }
-
-    baseline ??= _dropHistory.length >= 2
-        ? _dropHistory.elementAt(_dropHistory.length - 2)
-        : null;
-
-    if (baseline == null) {
-      return dropPercentage > _dropTrendTolerance
-          ? ObsDropTrend.steady
-          : ObsDropTrend.normal;
-    }
-
-    final delta = dropPercentage - baseline.dropPercentage;
-    if (delta > _dropTrendTolerance) {
+    if (hasActiveDrop) {
+      _lastObservedDropAt = now;
       return ObsDropTrend.rising;
     }
-    if (dropPercentage > _dropTrendTolerance &&
-        delta.abs() <= _dropTrendTolerance) {
+
+    final lastObservedDropAt = _lastObservedDropAt;
+    if (lastObservedDropAt != null &&
+        now.difference(lastObservedDropAt) < _dropRecoveryWindow) {
       return ObsDropTrend.steady;
     }
+
     return ObsDropTrend.normal;
   }
 
@@ -491,6 +465,7 @@ class _ObsMetrics {
     required this.fps,
     required this.droppedFrames,
     required this.dropPercentage,
+    required this.recentDroppedFrames,
   });
 
   final _ObsMetricsSample sample;
@@ -498,24 +473,17 @@ class _ObsMetrics {
   final double fps;
   final int droppedFrames;
   final double dropPercentage;
+  final int recentDroppedFrames;
 }
 
 class _ObsMetricsSample {
   const _ObsMetricsSample({
     required this.outputBytes,
     required this.outputDurationMs,
+    required this.droppedFrames,
   });
 
   final int outputBytes;
   final int outputDurationMs;
-}
-
-class _ObsDropSnapshot {
-  const _ObsDropSnapshot({
-    required this.capturedAt,
-    required this.dropPercentage,
-  });
-
-  final DateTime capturedAt;
-  final double dropPercentage;
+  final int droppedFrames;
 }
