@@ -12,34 +12,40 @@ class WindowState {
   final bool frameless;
   final bool clickThrough;
   final bool alwaysOnTop;
+  final bool excludeFromCapture;
 
   const WindowState({
-    this.frameless    = false,
-    this.clickThrough = false,
-    this.alwaysOnTop  = false,
+    this.frameless          = false,
+    this.clickThrough       = false,
+    this.alwaysOnTop        = false,
+    this.excludeFromCapture = false,
   });
 
   WindowState copyWith({
     bool? frameless,
     bool? clickThrough,
     bool? alwaysOnTop,
+    bool? excludeFromCapture,
   }) =>
       WindowState(
-        frameless:    frameless    ?? this.frameless,
-        clickThrough: clickThrough ?? this.clickThrough,
-        alwaysOnTop:  alwaysOnTop  ?? this.alwaysOnTop,
+        frameless:          frameless          ?? this.frameless,
+        clickThrough:       clickThrough       ?? this.clickThrough,
+        alwaysOnTop:        alwaysOnTop        ?? this.alwaysOnTop,
+        excludeFromCapture: excludeFromCapture ?? this.excludeFromCapture,
       );
 
   Map<String, dynamic> toJson() => {
-        'frameless':    frameless,
-        'clickThrough': clickThrough,
-        'alwaysOnTop':  alwaysOnTop,
+        'frameless':          frameless,
+        'clickThrough':       clickThrough,
+        'alwaysOnTop':        alwaysOnTop,
+        'excludeFromCapture': excludeFromCapture,
       };
 
   factory WindowState.fromJson(Map<String, dynamic> j) => WindowState(
-        frameless:    j['frameless']    as bool? ?? false,
-        clickThrough: j['clickThrough'] as bool? ?? false,
-        alwaysOnTop:  j['alwaysOnTop']  as bool? ?? false,
+        frameless:          j['frameless']          as bool? ?? false,
+        clickThrough:       j['clickThrough']       as bool? ?? false,
+        alwaysOnTop:        j['alwaysOnTop']        as bool? ?? false,
+        excludeFromCapture: j['excludeFromCapture'] as bool? ?? false,
       );
 }
 
@@ -79,6 +85,22 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
   Future<void> toggleFrameless()    => setFrameless(!state.frameless);
   Future<void> toggleClickThrough() => setClickThrough(!state.clickThrough);
   Future<void> toggleAlwaysOnTop()  => setAlwaysOnTop(!state.alwaysOnTop);
+  Future<void> toggleExcludeFromCapture() => setExcludeFromCapture(!state.excludeFromCapture);
+
+  /// Electron-style: stores the desired state and calls native.
+  /// If the native side reports "not applied yet" (window not visible),
+  /// we retry once after a short delay.
+  Future<void> setExcludeFromCapture(bool value) async {
+    state = state.copyWith(excludeFromCapture: value);
+    final applied = await WindowControlService.setExcludeFromCapture(value);
+    if (!applied && value) {
+      // Deferred apply — window might not be visible yet.
+      Future.delayed(const Duration(milliseconds: 300), () {
+        WindowControlService.setExcludeFromCapture(value);
+      });
+    }
+    await _persist();
+  }
 
   // ── Persistence ───────────────────────────────────────────────────────────
 

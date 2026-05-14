@@ -36,6 +36,17 @@ class WindowControlBar extends ConsumerWidget {
           activeColor: const Color(0xFFFFB15C),
           onTap: notifier.toggleClickThrough,
         ),
+        _WindowToggleButton(
+          tooltip: state.excludeFromCapture
+              ? 'Modo privacidad activo — ventana oculta de capturas/OBS'
+              : 'Ocultar de capturas / screen share',
+          icon: state.excludeFromCapture
+              ? Icons.shield
+              : Icons.shield_outlined,
+          active: state.excludeFromCapture,
+          activeColor: const Color(0xFFBB86FC),
+          onTap: notifier.toggleExcludeFromCapture,
+        ),
         if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) ...[
           const SizedBox(width: 4),
           Container(

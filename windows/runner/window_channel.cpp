@@ -1,12 +1,20 @@
 #include "window_channel.h"
 
 #include <dwmapi.h>
+#include <windows.h>
+
+// Compat: WDA_EXCLUDEFROMCAPTURE was introduced in Windows 10 2004 (20H1).
+// Electron uses this exact value for setContentProtection(true).
+#ifndef WDA_EXCLUDEFROMCAPTURE
+#define WDA_EXCLUDEFROMCAPTURE 0x00000011
+#endif
 
 #include <flutter/encodable_value.h>
 #include <flutter/method_channel.h>
 #include <flutter/method_result_functions.h>
 #include <flutter/standard_method_codec.h>
 
+#include <cstdio>
 #include <memory>
 #include <string>
 
@@ -31,6 +39,76 @@ bool ExtractEnabled(const flutter::EncodableValue* args) {
 
 // The channel is held in a file-local unique_ptr so it outlives the call site.
 std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> g_channel;
+
+// ---------------------------------------------------------------------------
+// excludeFromCapture — Electron-style content protection
+// ---------------------------------------------------------------------------
+// Electron stores the desired state internally and only calls
+// SetWindowDisplayAffinity when the window is visible.  We replicate that.
+// Before applying WDA_EXCLUDEFROMCAPTURE we ensure WS_EX_LAYERED is set
+// (Electron does the same on older Windows builds).
+// This is completely independent of clickThrough / frameless / alwaysOnTop.
+
+bool g_exclude_from_capture = false;
+
+void LogWindowDiag(HWND hwnd, const char* tag) {
+  char buf[512];
+  LONG_PTR style   = GetWindowLongPtr(hwnd, GWL_STYLE);
+  LONG_PTR exstyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+  HWND parent      = GetParent(hwnd);
+  HWND owner       = GetWindow(hwnd, GW_OWNER);
+  snprintf(buf, sizeof(buf),
+           "[WindowControl][%s] HWND=%p valid=%d visible=%d "
+           "style=0x%08lX exstyle=0x%08lX parent=%p owner=%p\n",
+           tag, hwnd, IsWindow(hwnd), IsWindowVisible(hwnd),
+           (unsigned long)style, (unsigned long)exstyle, parent, owner);
+  OutputDebugStringA(buf);
+}
+
+bool ApplyExcludeFromCapture(HWND hwnd) {
+  if (!hwnd || !IsWindow(hwnd)) {
+    OutputDebugStringA(
+        "[WindowControl] Invalid HWND for excludeFromCapture\n");
+    return false;
+  }
+
+  if (!IsWindowVisible(hwnd)) {
+    OutputDebugStringA(
+        "[WindowControl] HWND not visible, deferring excludeFromCapture\n");
+    return false;
+  }
+
+  LogWindowDiag(hwnd, g_exclude_from_capture ? "APPLY_EXCLUDE" : "APPLY_NONE");
+
+  // Electron: ensure WS_EX_LAYERED is set before applying affinity.
+  if (g_exclude_from_capture) {
+    LONG_PTR exstyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    if (!(exstyle & WS_EX_LAYERED)) {
+      SetWindowLongPtr(hwnd, GWL_EXSTYLE, exstyle | WS_EX_LAYERED);
+      OutputDebugStringA(
+          "[WindowControl] Added WS_EX_LAYERED for excludeFromCapture\n");
+    }
+  }
+
+  DWORD affinity = g_exclude_from_capture ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+  BOOL ok = SetWindowDisplayAffinity(hwnd, affinity);
+
+  if (!ok) {
+    char err[256];
+    snprintf(err, sizeof(err),
+             "[WindowControl] SetWindowDisplayAffinity(%lu) FAILED, "
+             "GetLastError=%lu\n",
+             (unsigned long)affinity, (unsigned long)GetLastError());
+    OutputDebugStringA(err);
+    return false;
+  }
+
+  OutputDebugStringA(
+      g_exclude_from_capture
+          ? "[WindowControl] SetWindowDisplayAffinity -> WDA_EXCLUDEFROMCAPTURE OK\n"
+          : "[WindowControl] SetWindowDisplayAffinity -> WDA_NONE OK\n");
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // setFrameless implementation
@@ -139,6 +217,22 @@ void Register(flutter::BinaryMessenger* messenger, HWND hwnd) {
                        SWP_NOMOVE | SWP_NOSIZE);
           result->Success();
 
+        // ── setExcludeFromCapture ──────────────────────────────────────────
+        // Electron-style content protection via SetWindowDisplayAffinity.
+        // Stores the desired state natively; only applies when visible.
+        // Ensures WS_EX_LAYERED is present (Electron does the same).
+        // Completely independent of clickThrough / frameless / alwaysOnTop.
+        } else if (method == "setExcludeFromCapture") {
+          g_exclude_from_capture = enabled;
+          bool applied = ApplyExcludeFromCapture(hwnd);
+
+          if (!applied && IsWindow(hwnd)) {
+            OutputDebugStringA(
+                "[WindowControl] excludeFromCapture deferred (not applied yet)\n");
+          }
+
+          result->Success(flutter::EncodableValue(applied));
+
         } else {
           result->NotImplemented();
         }
@@ -146,3 +240,4 @@ void Register(flutter::BinaryMessenger* messenger, HWND hwnd) {
 }
 
 }  // namespace window_channel
+

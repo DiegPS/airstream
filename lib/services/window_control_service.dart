@@ -43,4 +43,20 @@ class WindowControlService {
       print('[WindowControl] setAlwaysOnTop error: $e');
     }
   }
+
+  /// Exclude from capture: Electron-style SetWindowDisplayAffinity.
+  /// Hides the window from screenshots, screen share, and OBS captures.
+  /// Returns true if the affinity was applied immediately, false if deferred.
+  static Future<bool> setExcludeFromCapture(bool enabled) async {
+    if (!Platform.isWindows) return false;
+    try {
+      final result = await _channel.invokeMethod<bool>(
+          'setExcludeFromCapture', {'enabled': enabled});
+      return result ?? false;
+    } catch (e) {
+      // ignore: avoid_print
+      print('[WindowControl] setExcludeFromCapture error: $e');
+      return false;
+    }
+  }
 }
