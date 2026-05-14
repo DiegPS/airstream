@@ -102,8 +102,10 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
   // Only restores flags that are safe to re-apply at startup.
   // frameless is intentionally skipped — if it was active when the app
   // crashed it could leave the window undecorated on the next launch.
+  // clickThrough is also skipped — if it was active when the app closed,
+  // re-applying it at launch makes the window invisible/unclickable with
+  // no way to recover short of manually editing shared_preferences.json.
   void _applyAll(WindowState s) {
-    WindowControlService.setClickThrough(s.clickThrough);
     WindowControlService.setAlwaysOnTop(s.alwaysOnTop);
   }
 }
