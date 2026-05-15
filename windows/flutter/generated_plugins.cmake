@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  air_window_control
   audioplayers_windows
   flutter_acrylic
   flutter_onnxruntime

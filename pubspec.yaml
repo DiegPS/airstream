@@ -44,6 +44,10 @@ dependencies:
   # OBS integration
   obs_websocket: ^5.7.0+3
 
+  # Window control (click-through, anti-capture)
+  air_window_control:
+    path: ../air_window_control
+
   # Local packages
   dart_youtube_chat:
     path: ../dart_youtube_chat

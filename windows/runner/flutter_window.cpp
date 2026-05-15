@@ -1,5 +1,4 @@
 #include "flutter_window.h"
-#include "window_channel.h"
 
 #include <optional>
 
@@ -36,12 +35,6 @@ bool FlutterWindow::OnCreate() {
   // registered. The following call ensures a frame is pending to ensure the
   // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
-
-  // Register the native window control channel.
-  // All Win32 logic lives in window_channel.cpp — this file stays clean.
-  window_channel::Register(
-      flutter_controller_->engine()->messenger(),
-      GetHandle());
 
   return true;
 }

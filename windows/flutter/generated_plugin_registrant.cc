@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <air_window_control/air_window_control_plugin_c_api.h>
 #include <audioplayers_windows/audioplayers_windows_plugin.h>
 #include <flutter_acrylic/flutter_acrylic_plugin.h>
 #include <flutter_onnxruntime/flutter_onnxruntime_plugin.h>
@@ -13,6 +14,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  AirWindowControlPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("AirWindowControlPluginCApi"));
   AudioplayersWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("AudioplayersWindowsPlugin"));
   FlutterAcrylicPluginRegisterWithRegistrar(
