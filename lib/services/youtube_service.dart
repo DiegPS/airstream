@@ -209,6 +209,7 @@ class YouTubeService {
       items: items,
       superChat: superChat,
       isMembership: item.isMembership,
+      isMembershipEvent: item.isMembershipEvent,
       isOwner: item.isOwner,
       isModerator: item.isModerator,
       isVerified: item.isVerified,

@@ -60,6 +60,7 @@ class ChatMessage {
   final List<MessageItem> items;
   final SuperChat? superChat;
   final bool isMembership;
+  final bool isMembershipEvent;
   final bool isOwner;
   final bool isModerator;
   final bool isVerified;
@@ -72,6 +73,7 @@ class ChatMessage {
     required this.items,
     this.superChat,
     this.isMembership = false,
+    this.isMembershipEvent = false,
     this.isOwner = false,
     this.isModerator = false,
     this.isVerified = false,

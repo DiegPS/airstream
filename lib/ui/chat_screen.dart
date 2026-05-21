@@ -872,6 +872,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final overlayClientCount =
         ref.watch(overlayClientCountProvider).valueOrNull ?? 0;
     final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
+    final alertsCopyUrl = '$overlayCopyUrl/alerts';
 
     _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
@@ -1344,13 +1345,32 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             const SizedBox(height: 10),
             _overlayUrlCard(
+              title: 'Chat OBS URL',
               overlayUrl: overlayCopyUrl,
+              description: 'Use this link as a Browser Source for chat in OBS.',
               onCopy: () async {
                 await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Overlay URL copied'),
+                    content: Text('Chat overlay URL copied'),
+                    duration: Duration(milliseconds: 1400),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            _overlayUrlCard(
+              title: 'Alerts OBS URL',
+              overlayUrl: alertsCopyUrl,
+              description:
+                  'Use this as a separate Browser Source for Super Chats and memberships.',
+              onCopy: () async {
+                await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Alerts overlay URL copied'),
                     duration: Duration(milliseconds: 1400),
                   ),
                 );
@@ -1396,6 +1416,46 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
               ),
+            ),
+            const SizedBox(height: 14),
+            _section('Alerts'),
+            const Text(
+              'YouTube Super Chats and membership events show on /alerts. The alert payload keeps platform data so Twitch and Kick can be added later.',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _sliderRow('Alert font size', s.alertFontSize, 18, 56,
+                (v) => notifier.update(s.copyWith(alertFontSize: v))),
+            _sliderRow(
+              'Alert duration',
+              s.alertDisplaySeconds.toDouble(),
+              3,
+              20,
+              (v) => notifier.update(
+                s.copyWith(alertDisplaySeconds: v.round()),
+              ),
+            ),
+            _switchRow('Alert avatars', s.alertShowAvatars,
+                (v) => notifier.update(s.copyWith(alertShowAvatars: v))),
+            const SizedBox(height: 8),
+            _alertTestButtons(
+              onTest: (kind) {
+                final sent = appController.testOverlayAlert(kind);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      sent
+                          ? 'Test alert sent'
+                          : 'Open the alerts overlay in OBS/browser first',
+                    ),
+                    duration: const Duration(milliseconds: 1400),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 14),
             _section('Overlay Mode'),
@@ -1484,6 +1544,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 500,
                 (v) =>
                     notifier.update(s.copyWith(overlayMaxMessages: v.round()))),
+            _sliderRow(
+              'Message lifetime',
+              s.overlayMessageTtlSeconds.toDouble(),
+              5,
+              120,
+              (v) => notifier.update(
+                s.copyWith(overlayMessageTtlSeconds: v.round()),
+              ),
+            ),
             _switchRow(
                 'SuperChat color bar',
                 s.overlaySuperChatBarEnabled,
@@ -2066,7 +2135,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }
 
   static Widget _overlayUrlCard({
+    required String title,
     required String overlayUrl,
+    required String description,
     required VoidCallback onCopy,
   }) {
     return Container(
@@ -2082,10 +2153,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'OBS URL',
-                  style: TextStyle(
+                  title,
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -2121,11 +2192,73 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Use this link as a Browser Source in OBS.',
-            style: TextStyle(color: Colors.white38, fontSize: 11),
+          Text(
+            description,
+            style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
+      ),
+    );
+  }
+
+  static Widget _alertTestButtons({
+    required void Function(String kind) onTest,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Test alerts',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _alertTestButton(
+                'SuperChat',
+                () => onTest('superchat'),
+              ),
+              _alertTestButton(
+                'No message',
+                () => onTest('superchat-empty'),
+              ),
+              _alertTestButton(
+                'Member',
+                () => onTest('membership'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _alertTestButton(String label, VoidCallback onPressed) {
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFACCBFF),
+        side: const BorderSide(color: Color(0xFF35527A)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
       ),
     );
   }

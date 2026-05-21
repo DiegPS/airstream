@@ -63,6 +63,7 @@ class SettingsModel {
   final String overlaySuperChatBarColor;
   final double overlaySuperChatBarWidth;
   final int overlayMaxMessages;
+  final int overlayMessageTtlSeconds;
   final String overlayAnimation;
   final double overlayAnimationDuration;
   final String overlayTextAlign;
@@ -75,6 +76,9 @@ class SettingsModel {
   final double overlayRotateZ;
   final double overlaySkewX;
   final double overlayScale;
+  final double alertFontSize;
+  final int alertDisplaySeconds;
+  final bool alertShowAvatars;
 
   // OBS integration
   final bool obsEnabled;
@@ -137,6 +141,7 @@ class SettingsModel {
     this.overlaySuperChatBarColor = '#1DE9B6',
     this.overlaySuperChatBarWidth = 3.0,
     this.overlayMaxMessages = 100,
+    this.overlayMessageTtlSeconds = 20,
     this.overlayAnimation = 'slide-up',
     this.overlayAnimationDuration = 0.4,
     this.overlayTextAlign = 'left',
@@ -149,6 +154,9 @@ class SettingsModel {
     this.overlayRotateZ = 0.0,
     this.overlaySkewX = 0.0,
     this.overlayScale = 1.0,
+    this.alertFontSize = 28.0,
+    this.alertDisplaySeconds = 7,
+    this.alertShowAvatars = true,
     this.obsEnabled = false,
     this.obsHost = 'localhost:4455',
     this.obsPassword = '',
@@ -210,6 +218,7 @@ class SettingsModel {
     String? overlaySuperChatBarColor,
     double? overlaySuperChatBarWidth,
     int? overlayMaxMessages,
+    int? overlayMessageTtlSeconds,
     String? overlayAnimation,
     double? overlayAnimationDuration,
     String? overlayTextAlign,
@@ -222,6 +231,9 @@ class SettingsModel {
     double? overlayRotateZ,
     double? overlaySkewX,
     double? overlayScale,
+    double? alertFontSize,
+    int? alertDisplaySeconds,
+    bool? alertShowAvatars,
     bool? obsEnabled,
     String? obsHost,
     String? obsPassword,
@@ -288,6 +300,8 @@ class SettingsModel {
         overlaySuperChatBarWidth:
             overlaySuperChatBarWidth ?? this.overlaySuperChatBarWidth,
         overlayMaxMessages: overlayMaxMessages ?? this.overlayMaxMessages,
+        overlayMessageTtlSeconds:
+            overlayMessageTtlSeconds ?? this.overlayMessageTtlSeconds,
         overlayAnimation: overlayAnimation ?? this.overlayAnimation,
         overlayAnimationDuration:
             overlayAnimationDuration ?? this.overlayAnimationDuration,
@@ -303,6 +317,9 @@ class SettingsModel {
         overlayRotateZ: overlayRotateZ ?? this.overlayRotateZ,
         overlaySkewX: overlaySkewX ?? this.overlaySkewX,
         overlayScale: overlayScale ?? this.overlayScale,
+        alertFontSize: alertFontSize ?? this.alertFontSize,
+        alertDisplaySeconds: alertDisplaySeconds ?? this.alertDisplaySeconds,
+        alertShowAvatars: alertShowAvatars ?? this.alertShowAvatars,
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsHost: obsHost ?? this.obsHost,
         obsPassword: obsPassword ?? this.obsPassword,
@@ -364,6 +381,7 @@ class SettingsModel {
         'overlaySuperChatBarColor': overlaySuperChatBarColor,
         'overlaySuperChatBarWidth': overlaySuperChatBarWidth,
         'overlayMaxMessages': overlayMaxMessages,
+        'overlayMessageTtlSeconds': overlayMessageTtlSeconds,
         'overlayAnimation': overlayAnimation,
         'overlayAnimationDuration': overlayAnimationDuration,
         'overlayTextAlign': overlayTextAlign,
@@ -376,6 +394,9 @@ class SettingsModel {
         'overlayRotateZ': overlayRotateZ,
         'overlaySkewX': overlaySkewX,
         'overlayScale': overlayScale,
+        'alertFontSize': alertFontSize,
+        'alertDisplaySeconds': alertDisplaySeconds,
+        'alertShowAvatars': alertShowAvatars,
         'obsEnabled': obsEnabled,
         'obsHost': obsHost,
         'obsPassword': obsPassword,
@@ -445,6 +466,8 @@ class SettingsModel {
         overlaySuperChatBarWidth:
             (j['overlaySuperChatBarWidth'] as num?)?.toDouble() ?? 3.0,
         overlayMaxMessages: j['overlayMaxMessages'] as int? ?? 100,
+        overlayMessageTtlSeconds:
+            (j['overlayMessageTtlSeconds'] as num?)?.round() ?? 20,
         overlayAnimation: j['overlayAnimation'] as String? ?? 'slide-up',
         overlayAnimationDuration:
             (j['overlayAnimationDuration'] as num?)?.toDouble() ?? 0.4,
@@ -460,6 +483,9 @@ class SettingsModel {
         overlayRotateZ: (j['overlayRotateZ'] as num?)?.toDouble() ?? 0.0,
         overlaySkewX: (j['overlaySkewX'] as num?)?.toDouble() ?? 0.0,
         overlayScale: (j['overlayScale'] as num?)?.toDouble() ?? 1.0,
+        alertFontSize: (j['alertFontSize'] as num?)?.toDouble() ?? 28.0,
+        alertDisplaySeconds: (j['alertDisplaySeconds'] as num?)?.round() ?? 7,
+        alertShowAvatars: j['alertShowAvatars'] as bool? ?? true,
         obsEnabled: j['obsEnabled'] as bool? ?? false,
         obsHost: j['obsHost'] as String? ?? 'localhost:4455',
         obsPassword: j['obsPassword'] as String? ?? '',

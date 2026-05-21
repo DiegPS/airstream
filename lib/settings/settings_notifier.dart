@@ -258,6 +258,8 @@ class AppController {
 
   bool reloadOverlay() => _overlay.reloadClients();
 
+  bool testOverlayAlert(String kind) => _overlay.broadcastTestAlert(kind);
+
   void _speakMessageIfEligible(ChatMessage msg) {
     final settings = _lastSettings;
     if (settings == null || !settings.ttsEnabled) return;

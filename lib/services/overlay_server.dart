@@ -56,6 +56,12 @@ class OverlayServer {
       if (req.url.path == 'ws') {
         return wsHandler(req);
       }
+      if (req.url.path == 'alerts') {
+        return Response.ok(
+          _alertsHtml(),
+          headers: {'content-type': 'text/html; charset=utf-8'},
+        );
+      }
       return Response.ok(
         _overlayHtml(),
         headers: {'content-type': 'text/html; charset=utf-8'},
@@ -82,6 +88,64 @@ class OverlayServer {
     return true;
   }
 
+  bool broadcastTestAlert(String kind) {
+    if (_clients.isEmpty) return false;
+    final now = DateTime.now().toIso8601String();
+    const donorAvatar =
+        'https://api.dicebear.com/9.x/initials/svg?seed=Test%20Donor';
+    const memberAvatar =
+        'https://api.dicebear.com/9.x/initials/svg?seed=Test%20Member';
+    final data = switch (kind) {
+      'superchat-empty' => {
+          'platform': 'youtube',
+          'kind': 'superchat',
+          'id': 'test-superchat-empty-$now',
+          'author': 'Test Donor',
+          'authorAvatarUrl': donorAvatar,
+          'authorChannelId': 'test-donor',
+          'badgeImageUrl': null,
+          'badgeLabel': null,
+          'message': '',
+          'amount': r'MX$100.00',
+          'color': '#E91E63',
+          'stickerUrl': null,
+          'timestamp': now,
+        },
+      'membership' => {
+          'platform': 'youtube',
+          'kind': 'membership',
+          'id': 'test-membership-$now',
+          'author': 'Test Member',
+          'authorAvatarUrl': memberAvatar,
+          'authorChannelId': 'test-member',
+          'badgeImageUrl': null,
+          'badgeLabel': 'New member',
+          'message': 'Welcome to the channel membership!',
+          'amount': null,
+          'color': '#0F9D58',
+          'stickerUrl': null,
+          'timestamp': now,
+        },
+      _ => {
+          'platform': 'youtube',
+          'kind': 'superchat',
+          'id': 'test-superchat-$now',
+          'author': 'Test Donor',
+          'authorAvatarUrl': donorAvatar,
+          'authorChannelId': 'test-donor',
+          'badgeImageUrl': null,
+          'badgeLabel': null,
+          'message': 'This is a test Super Chat message.',
+          'amount': r'MX$50.00',
+          'color': '#FFD600',
+          'stickerUrl': null,
+          'timestamp': now,
+        },
+    };
+    _broadcastEnvelope({'type': 'alert', 'data': data});
+    return true;
+  }
+
   Future<void> stop() async {
     await _msgSub?.cancel();
     _msgSub = null;
@@ -99,7 +163,12 @@ class OverlayServer {
   void _broadcastMessage(ChatMessage msg) {
     _broadcastEnvelope({
       'type': 'message',
-      'data': {
+      'data': _messagePayload(msg),
+    });
+    _broadcastAlert(msg);
+  }
+
+  Map<String, dynamic> _messagePayload(ChatMessage msg) => {
         'platform': msg.platform.name,
         'id': msg.id,
         'author': msg.author.name,
@@ -127,9 +196,37 @@ class OverlayServer {
         'superChatColor': msg.superChat?.color,
         'superChatStickerUrl': msg.superChat?.stickerUrl,
         'isMembership': msg.isMembership,
+        'isMembershipEvent': msg.isMembershipEvent,
         'isOwner': msg.isOwner,
         'isModerator': msg.isModerator,
         'isVerified': msg.isVerified,
+        'timestamp': msg.timestamp.toIso8601String(),
+      };
+
+  void _broadcastAlert(ChatMessage msg) {
+    if (msg.platform != Platform.youtube) return;
+    final kind = msg.superChat != null
+        ? 'superchat'
+        : msg.isMembershipEvent
+            ? 'membership'
+            : null;
+    if (kind == null) return;
+
+    _broadcastEnvelope({
+      'type': 'alert',
+      'data': {
+        'platform': msg.platform.name,
+        'kind': kind,
+        'id': msg.id,
+        'author': msg.author.name,
+        'authorAvatarUrl': msg.author.avatarUrl,
+        'authorChannelId': msg.author.channelId,
+        'badgeImageUrl': msg.author.badge?.imageUrl,
+        'badgeLabel': msg.author.badge?.label,
+        'message': msg.plainText.trim(),
+        'amount': msg.superChat?.amount,
+        'color': msg.superChat?.color,
+        'stickerUrl': msg.superChat?.stickerUrl,
         'timestamp': msg.timestamp.toIso8601String(),
       },
     });
@@ -196,6 +293,7 @@ class OverlayServer {
         'superChatBarColor': _settings.overlaySuperChatBarColor,
         'superChatBarWidth': _settings.overlaySuperChatBarWidth,
         'maxMessages': _settings.overlayMaxMessages,
+        'messageTtlSeconds': _settings.overlayMessageTtlSeconds,
         'animation': _settings.overlayAnimation,
         'animationDuration': _settings.overlayAnimationDuration,
         'textAlign': _settings.overlayTextAlign,
@@ -208,7 +306,236 @@ class OverlayServer {
         'rotateZ': _settings.overlayRotateZ,
         'skewX': _settings.overlaySkewX,
         'scale': _settings.overlayScale,
+        'alertFontSize': _settings.alertFontSize,
+        'alertDisplaySeconds': _settings.alertDisplaySeconds,
+        'alertShowAvatars': _settings.alertShowAvatars,
       };
+
+  static String _alertsHtml() => '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirChat Alerts</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: transparent;
+    overflow: hidden;
+    height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  #root { height: 100%; }
+  .alert-stage {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px;
+  }
+  .alert-card {
+    min-width: 360px;
+    max-width: min(760px, 90vw);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 28px;
+    border-radius: 18px;
+    color: #fff;
+    background: rgba(10, 10, 10, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.45);
+    animation: alert-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .alert-avatar {
+    width: 76px;
+    height: 76px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .alert-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .alert-kicker {
+    font-size: 0.55em;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.82;
+  }
+  .alert-title {
+    font-size: 1em;
+    font-weight: 800;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  .alert-message {
+    margin-top: 2px;
+    font-size: 0.68em;
+    line-height: 1.32;
+    opacity: 0.94;
+    overflow-wrap: anywhere;
+  }
+  .alert-sticker {
+    max-width: 118px;
+    max-height: 118px;
+    border-radius: 8px;
+  }
+  @keyframes alert-in {
+    from { opacity: 0; transform: translateY(24px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useEffect, useMemo, useRef, useState } = React;
+
+const DEFAULT_SETTINGS = {
+  alertFontSize: 28,
+  alertDisplaySeconds: 7,
+  alertShowAvatars: true,
+};
+
+function normalizeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('//')) return `https:\${url}`;
+  return url;
+}
+
+function platformLabel(platform) {
+  switch (platform) {
+    case 'youtube': return 'YouTube';
+    case 'twitch': return 'Twitch';
+    case 'kick': return 'Kick';
+    default: return 'Chat';
+  }
+}
+
+function alertAccent(alert) {
+  if (alert.kind === 'superchat') return alert.color || '#FFD600';
+  if (alert.platform === 'kick') return '#53FC18';
+  if (alert.platform === 'twitch') return '#9146FF';
+  return '#FF4E45';
+}
+
+function AlertCard({ alert, settings }) {
+  const accent = alertAccent(alert);
+  const message = (alert.message || '').trim();
+  const title = alert.kind === 'superchat'
+    ? `\${alert.author || 'Someone'} sent \${alert.amount || 'a Super Chat'}`
+    : `\${alert.author || 'Someone'} became a member`;
+  const kicker = alert.kind === 'superchat'
+    ? `\${platformLabel(alert.platform)} Super Chat`
+    : `\${platformLabel(alert.platform)} Membership`;
+  const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
+  const stickerUrl = normalizeUrl(alert.stickerUrl);
+
+  return (
+    <div className="alert-card" style={{ borderBottom: `5px solid \${accent}` }}>
+      {settings.alertShowAvatars && avatarUrl ? (
+        <img className="alert-avatar" src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+      ) : null}
+      <div className="alert-copy">
+        <div className="alert-kicker" style={{ color: accent }}>{kicker}</div>
+        <div className="alert-title">{title}</div>
+        {message ? <div className="alert-message">{message}</div> : null}
+      </div>
+      {stickerUrl ? (
+        <img className="alert-sticker" src={stickerUrl} alt="" referrerPolicy="no-referrer" />
+      ) : null}
+    </div>
+  );
+}
+
+function AlertsApp() {
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [queue, setQueue] = useState([]);
+  const [active, setActive] = useState(null);
+  const settingsRef = useRef(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    if (active || queue.length === 0) return;
+    const [next, ...rest] = queue;
+    setActive(next);
+    setQueue(rest);
+  }, [active, queue]);
+
+  useEffect(() => {
+    if (!active) return;
+    const duration = Math.max(1, settingsRef.current.alertDisplaySeconds || DEFAULT_SETTINGS.alertDisplaySeconds);
+    const timeout = window.setTimeout(() => setActive(null), duration * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [active]);
+
+  useEffect(() => {
+    let ws;
+    let retry;
+
+    const connect = () => {
+      const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+      ws = new WebSocket(protocol + location.host + '/ws');
+
+      ws.onmessage = (event) => {
+        try {
+          const envelope = JSON.parse(event.data);
+          if (envelope.type === 'settings') {
+            setSettings((current) => ({ ...current, ...envelope.data }));
+            return;
+          }
+          if (envelope.type === 'reload') {
+            window.location.reload();
+            return;
+          }
+          if (envelope.type === 'alert') {
+            setQueue((current) => [...current, envelope.data]);
+          }
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        retry = window.setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (retry) window.clearTimeout(retry);
+      if (ws) ws.close();
+    };
+  }, []);
+
+  const stageStyle = useMemo(() => ({
+    fontSize: `\${settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize}px`,
+  }), [settings.alertFontSize]);
+
+  return (
+    <div className="alert-stage" style={stageStyle}>
+      {active ? <AlertCard alert={active} settings={settings} /> : null}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
+</script>
+</body>
+</html>''';
 
   static String _overlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
@@ -422,6 +749,7 @@ const DEFAULT_SETTINGS = {
   superChatBarColor: '#1DE9B6',
   superChatBarWidth: 3,
   maxMessages: 100,
+  messageTtlSeconds: 20,
   animation: 'slide-up',
   animationDuration: 0.4,
   textAlign: 'left',
@@ -436,8 +764,13 @@ const DEFAULT_SETTINGS = {
   scale: 1,
 };
 
-function clampMessages(messages, maxMessages) {
-  return messages.slice(-Math.max(10, maxMessages || DEFAULT_SETTINGS.maxMessages));
+function clampMessages(messages, maxMessages, messageTtlSeconds = DEFAULT_SETTINGS.messageTtlSeconds) {
+  const limit = Math.max(10, maxMessages || DEFAULT_SETTINGS.maxMessages);
+  const ttl = Number(messageTtlSeconds);
+  const freshMessages = ttl > 0
+    ? messages.filter((message) => Date.now() - (message.receivedAt || Date.now()) < ttl * 1000)
+    : messages;
+  return freshMessages.slice(-limit);
 }
 
 function platformLabel(platform) {
@@ -541,7 +874,7 @@ function MessageBubble({ message, settings, index, onMediaLoad }) {
   const isTwitch = message.platform === 'twitch';
   const isKick = message.platform === 'kick';
   const isSuperChat = !!message.isSuperChat;
-  const isMembershipEvent = message.isMembership && (!message.items || message.items.length === 0);
+  const isMembershipEvent = !!message.isMembershipEvent;
 
   let backgroundColor = settings.showBubble
     ? `rgba(0, 0, 0, \${settings.messageOpacity})`
@@ -673,6 +1006,7 @@ function OverlayApp() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const overlayRef = useRef(null);
   const scrollTaskRef = useRef(0);
+  const settingsRef = useRef(DEFAULT_SETTINGS);
 
   const forceScrollToBottom = () => {
     const scroller = overlayRef.current;
@@ -694,8 +1028,29 @@ function OverlayApp() {
   };
 
   useEffect(() => {
-    setMessages((current) => clampMessages(current, settings.maxMessages));
-  }, [settings.maxMessages]);
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    setMessages((current) =>
+      clampMessages(current, settings.maxMessages, settings.messageTtlSeconds)
+    );
+  }, [settings.maxMessages, settings.messageTtlSeconds]);
+
+  useEffect(() => {
+    const prune = () => {
+      const currentSettings = settingsRef.current;
+      setMessages((current) =>
+        clampMessages(
+          current,
+          currentSettings.maxMessages,
+          currentSettings.messageTtlSeconds
+        )
+      );
+    };
+    const interval = window.setInterval(prune, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useLayoutEffect(() => {
     scheduleScrollToBottom();
@@ -740,7 +1095,11 @@ function OverlayApp() {
           }
           if (envelope.type === 'message') {
             setMessages((current) =>
-              clampMessages([...current, envelope.data], settings.maxMessages)
+              clampMessages(
+                [...current, { ...envelope.data, receivedAt: Date.now() }],
+                settingsRef.current.maxMessages,
+                settingsRef.current.messageTtlSeconds
+              )
             );
           }
         } catch (_) {}
@@ -757,7 +1116,7 @@ function OverlayApp() {
       if (retry) window.clearTimeout(retry);
       if (ws) ws.close();
     };
-  }, [settings.maxMessages]);
+  }, []);
 
   const shellStyle = useMemo(() => ({
     backgroundColor: settings.chromaMode

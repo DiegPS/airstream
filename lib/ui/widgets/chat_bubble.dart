@@ -17,7 +17,7 @@ class ChatBubble extends ConsumerWidget {
     final s = ref.watch(settingsProvider);
     final bubbleOpacity = s.messageOpacity.clamp(0.0, 1.0);
     final isSuperChat = message.superChat != null;
-    final isMembershipEvent = message.isMembership && message.items.isEmpty;
+    final isMembershipEvent = message.isMembershipEvent;
     final bubbleColor = _bubbleColor(
       showBubble: s.showBubble,
       platform: message.platform,
@@ -256,7 +256,7 @@ class _AuthorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMembershipEvent = message.isMembership && message.items.isEmpty;
+    final isMembershipEvent = message.isMembershipEvent;
     final authorColor = message.author.color != null
         ? ChatBubble._parseColor(message.author.color!)
         : switch (message.platform) {
