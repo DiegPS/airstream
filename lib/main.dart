@@ -24,7 +24,13 @@ void main() async {
     await windowManager.setHasShadow(false);
   }
 
-  runApp(const ProviderScope(child: AirstreamApp()));
+  runApp(
+    ProviderScope(
+      child: Platform.isWindows
+          ? const ExcludeSemantics(child: AirstreamApp())
+          : const AirstreamApp(),
+    ),
+  );
 }
 
 class AirstreamApp extends StatelessWidget {

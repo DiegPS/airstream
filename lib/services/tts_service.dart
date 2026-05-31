@@ -270,7 +270,7 @@ class TtsService {
       unawaited(_disposeRetiredStylesIfIdle());
     }
     final nextState = _loadState.copyWith(
-      phase: announceReady ? TtsLoadPhase.ready : _loadState.phase,
+      phase: TtsLoadPhase.ready,
       message: announceReady
           ? 'Supertonic ready. Voice style $voice loaded.'
           : 'Voice style $voice loaded.',
