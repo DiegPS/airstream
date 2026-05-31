@@ -4,9 +4,9 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   air_window_control
-  audioplayers_linux
   flutter_acrylic
   flutter_onnxruntime
+  media_kit_libs_linux
   screen_retriever_linux
   window_manager
 )

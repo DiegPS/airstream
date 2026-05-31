@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'media_kit_audio_playback_service.dart';
 import 'supertonic_helper.dart';
 import 'tts_model_cache.dart';
 
@@ -74,12 +74,12 @@ class TtsLoadState {
 }
 
 class TtsService {
-  final AudioPlayer? _audioPlayer = Platform.isWindows ? null : AudioPlayer();
   final Queue<String> _queue = Queue<String>();
   final _loadStateController = StreamController<TtsLoadState>.broadcast();
   final _busyController = StreamController<bool>.broadcast();
   final TtsModelCache _modelCache = TtsModelCache();
-  Process? _windowsPlaybackProcess;
+  final MediaKitAudioPlaybackService _audioPlayback =
+      MediaKitAudioPlaybackService();
 
   TextToSpeech? _textToSpeech;
   Style? _style;
@@ -299,9 +299,7 @@ class TtsService {
   void stop() {
     if (_isDisposed) return;
     _queue.clear();
-    _windowsPlaybackProcess?.kill();
-    _windowsPlaybackProcess = null;
-    _audioPlayer?.stop();
+    unawaited(_audioPlayback.stop());
     _setBusy(false);
   }
 
@@ -414,46 +412,7 @@ class TtsService {
   }
 
   Future<void> _playAudioFile(File file) async {
-    if (Platform.isWindows) {
-      await _playAudioWithWindowsSoundPlayer(file);
-      return;
-    }
-
-    final player = _audioPlayer;
-    if (player == null) {
-      throw Exception('No audio player available for this platform');
-    }
-
-    await player.play(DeviceFileSource(file.absolute.path));
-    await player.onPlayerComplete.first;
-  }
-
-  Future<void> _playAudioWithWindowsSoundPlayer(File file) async {
-    final process = await Process.start(
-      'powershell',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        r"$player = New-Object System.Media.SoundPlayer $env:AIRCHAT_WAV_PATH; $player.Load(); $player.PlaySync()",
-      ],
-      environment: {
-        'AIRCHAT_WAV_PATH': file.absolute.path,
-      },
-    );
-
-    _windowsPlaybackProcess = process;
-    final exitCode = await process.exitCode;
-    if (identical(_windowsPlaybackProcess, process)) {
-      _windowsPlaybackProcess = null;
-    }
-
-    if (exitCode != 0) {
-      final stderr =
-          await process.stderr.transform(systemEncoding.decoder).join();
-      throw Exception(
-          'Windows audio playback failed (exit $exitCode): $stderr');
-    }
+    await _audioPlayback.playFile(file);
   }
 
   void dispose() {
@@ -461,9 +420,9 @@ class TtsService {
     stop();
     _isDisposed = true;
     _modelCache.dispose();
-    _audioPlayer?.dispose();
     _loadStateController.close();
     _busyController.close();
+    unawaited(_audioPlayback.dispose());
     unawaited(_disposeNativeResources());
   }
 }

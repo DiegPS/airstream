@@ -25,8 +25,9 @@ dependencies:
 
   # TTS (Supertonic ONNX)
   flutter_onnxruntime: ^1.6.0
+  media_kit: ^1.2.6
+  media_kit_libs_audio: ^1.0.7
   path_provider: ^2.1.1
-  audioplayers: ^5.2.1
   logger: ^2.0.2
 
   # Persistence
@@ -46,13 +47,19 @@ dependencies:
 
   # Window control (click-through, anti-capture)
   air_window_control:
-    path: ../air_window_control
+    git:
+      url: git@github.com:DiegPS/air_window_control.git
+      ref: main
 
-  # Local packages
+  # Chat clients
   dart_youtube_chat:
-    path: ../dart_youtube_chat
+    git:
+      url: git@github.com:DiegPS/dart_youtube_chat.git
+      ref: main
   dart_kick_chat:
-    path: ../dart_kick_chat
+    git:
+      url: git@github.com:DiegPS/dart_kick_chat.git
+      ref: main
 
 dev_dependencies:
   flutter_test:
