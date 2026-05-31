@@ -55,6 +55,9 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+if(POLICY CMP0175)
+  set(CMAKE_POLICY_DEFAULT_CMP0175 OLD)
+endif()
 include(flutter/generated_plugins.cmake)
 
 
