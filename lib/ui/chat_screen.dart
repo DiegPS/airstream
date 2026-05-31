@@ -24,7 +24,9 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   static const _sidebarWidth = 360.0;
+  static const _minInlineChatWidth = 360.0;
 
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _scrollController = ScrollController();
   bool _autoScroll = true;
   bool _sidebarVisible = true;
@@ -62,6 +64,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _toggleSidebarVisibility() {
+    if (_usesSidebarDrawer(MediaQuery.sizeOf(context).width)) {
+      final scaffoldState = _scaffoldKey.currentState;
+      if (scaffoldState == null) return;
+
+      if (scaffoldState.isDrawerOpen) {
+        Navigator.of(scaffoldState.context).pop();
+      } else {
+        scaffoldState.openDrawer();
+      }
+      return;
+    }
+
     setState(() => _sidebarVisible = !_sidebarVisible);
   }
 
@@ -130,47 +144,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
+    final availableWidth = MediaQuery.sizeOf(context).width;
+    final usesSidebarDrawer = _usesSidebarDrawer(availableWidth);
     final scaffold = Focus(
       autofocus: true,
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: scaffoldBg,
+        drawer: usesSidebarDrawer
+            ? Drawer(
+                width: _drawerWidth(availableWidth),
+                backgroundColor: const Color(0xFF141414),
+                child: const _SettingsSidebar(),
+              )
+            : null,
+        drawerEnableOpenDragGesture: usesSidebarDrawer,
         appBar: _topBarVisible
             ? _DesktopTopBar(
-                sidebarVisible: _sidebarVisible,
+                sidebarVisible: usesSidebarDrawer ? false : _sidebarVisible,
                 onToggleSidebar: _toggleSidebarVisibility,
               )
             : null,
-        body: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              width: _sidebarVisible ? _sidebarWidth : 0,
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: _sidebarWidth,
-                  maxWidth: _sidebarWidth,
-                  child: IgnorePointer(
-                    ignoring: !_sidebarVisible,
-                    child: const SizedBox(
-                      width: _sidebarWidth,
-                      child: _SettingsSidebar(),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            if (_usesSidebarDrawer(constraints.maxWidth)) {
+              return _chatList();
+            }
+
+            return Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  width: _sidebarVisible ? _sidebarWidth : 0,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.centerLeft,
+                      minWidth: _sidebarWidth,
+                      maxWidth: _sidebarWidth,
+                      child: IgnorePointer(
+                        ignoring: !_sidebarVisible,
+                        child: const SizedBox(
+                          width: _sidebarWidth,
+                          child: _SettingsSidebar(),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              width: _sidebarVisible ? 1 : 0,
-              color: const Color(0xFF2A2A2A),
-            ),
-            Expanded(
-              child: _chatList(),
-            ),
-          ],
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  width: _sidebarVisible ? 1 : 0,
+                  color: const Color(0xFF2A2A2A),
+                ),
+                Expanded(
+                  child: _chatList(),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -180,6 +213,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     return scaffold;
+  }
+
+  static bool _usesSidebarDrawer(double width) {
+    return width < _sidebarWidth + _minInlineChatWidth;
+  }
+
+  static double _drawerWidth(double availableWidth) {
+    return availableWidth < _sidebarWidth ? availableWidth : _sidebarWidth;
   }
 
   Widget _chatList() {
