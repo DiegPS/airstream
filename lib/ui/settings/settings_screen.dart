@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
-import 'package:airchat_flutter/settings/settings_notifier.dart';
-import 'package:airchat_flutter/services/supertonic_helper.dart'
+import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/services/supertonic_helper.dart'
     show availableLangs;
-import 'package:airchat_flutter/window/window_state.dart';
+import 'package:airstream/window/window_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});

@@ -4,21 +4,21 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/pipeline/message_pipeline.dart';
-import 'package:airchat_flutter/services/kick_service.dart';
-export 'package:airchat_flutter/services/kick_service.dart' show ServiceStatus;
-export 'package:airchat_flutter/services/tts_service.dart'
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/message_pipeline.dart';
+import 'package:airstream/services/kick_service.dart';
+export 'package:airstream/services/kick_service.dart' show ServiceStatus;
+export 'package:airstream/services/tts_service.dart'
     show TtsLoadPhase, TtsLoadState;
-import 'package:airchat_flutter/services/overlay_server.dart';
-import 'package:airchat_flutter/services/obs_service.dart';
-import 'package:airchat_flutter/services/twitch_service.dart';
-import 'package:airchat_flutter/services/youtube_service.dart';
-import 'package:airchat_flutter/services/tts_service.dart';
-import 'package:airchat_flutter/settings/tts_message_policy.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
+import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/obs_service.dart';
+import 'package:airstream/services/twitch_service.dart';
+import 'package:airstream/services/youtube_service.dart';
+import 'package:airstream/services/tts_service.dart';
+import 'package:airstream/settings/tts_message_policy.dart';
+import 'package:airstream/settings/settings_model.dart';
 
-const _prefsKey = 'AIRCHAT_SETTINGS';
+const _prefsKey = 'AIRSTREAM_SETTINGS';
 
 // ── providers ────────────────────────────────────────────────────────────────
 

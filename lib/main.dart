@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
-import 'package:airchat_flutter/ui/chat_screen.dart';
+import 'package:airstream/ui/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,16 +24,16 @@ void main() async {
     await windowManager.setHasShadow(false);
   }
 
-  runApp(const ProviderScope(child: AirChatApp()));
+  runApp(const ProviderScope(child: AirstreamApp()));
 }
 
-class AirChatApp extends StatelessWidget {
-  const AirChatApp({super.key});
+class AirstreamApp extends StatelessWidget {
+  const AirstreamApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AirChat',
+      title: 'Airstream',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: const ColorScheme.dark(

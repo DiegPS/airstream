@@ -4,7 +4,7 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airstream/models/chat_message.dart';
 
 const _ircUrl = 'wss://irc-ws.chat.twitch.tv/';
 const _reconnectDelay = Duration(seconds: 5);

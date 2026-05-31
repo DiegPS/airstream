@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/pipeline/message_pipeline.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/message_pipeline.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

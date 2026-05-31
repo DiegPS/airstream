@@ -1,5 +1,5 @@
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/settings/tts_message_policy.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/tts_message_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

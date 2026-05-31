@@ -1,5 +1,5 @@
-name: airchat_flutter
-description: AirChat — YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.
+name: airstream
+description: Airstream - YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.
 publish_to: 'none'
 version: 0.1.0+1
 

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:airchat_flutter/window/window_state.dart';
+import 'package:airstream/window/window_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';

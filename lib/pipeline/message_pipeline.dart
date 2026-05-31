@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/settings_model.dart';
 
 /// Merges streams from YouTube, Twitch, and Kick, applies filtering rules,
 /// and enforces the maxMessages buffer cap.

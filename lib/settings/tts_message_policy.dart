@@ -1,4 +1,4 @@
-import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airstream/models/chat_message.dart';
 
 const ttsSessionMessageTolerance = Duration(seconds: 2);
 

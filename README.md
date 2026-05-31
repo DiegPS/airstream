@@ -1,4 +1,4 @@
-# airchat_flutter
+# Airstream
 
 A new Flutter project.
 

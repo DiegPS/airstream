@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'dart:async';
 
-import 'package:airchat_flutter/services/supertonic_helper.dart'
+import 'package:airstream/services/supertonic_helper.dart'
     show availableLangs, formatByteSize;
-import 'package:airchat_flutter/services/obs_service.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
-import 'package:airchat_flutter/settings/settings_notifier.dart';
-import 'package:airchat_flutter/ui/widgets/chat_bubble.dart';
-import 'package:airchat_flutter/ui/widgets/window_control_bar.dart';
-import 'package:airchat_flutter/window/window_state.dart';
+import 'package:airstream/services/obs_service.dart';
+import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:airstream/ui/widgets/window_control_bar.dart';
+import 'package:airstream/window/window_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -416,7 +416,7 @@ class _TitleBarCaption extends StatelessWidget {
         ),
         SizedBox(width: 8),
         Text(
-          'AIRCHAT',
+          'AIRSTREAM',
           style: TextStyle(
             color: Color(0xFFA8A8A8),
             fontSize: 11,
@@ -1202,7 +1202,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 12),
           _section('OBS Integration'),
           const Text(
-            'Connect to OBS over WebSocket to show live status and the current program scene inside AirChat.',
+            'Connect to OBS over WebSocket to show live status and the current program scene inside Airstream.',
             style: TextStyle(
               color: Colors.white54,
               fontSize: 12,
@@ -1323,7 +1323,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 12),
           _section('Overlay Server'),
           const Text(
-            'Enable a local browser source for OBS. When active, AirChat serves an overlay URL that you can paste into OBS.',
+            'Enable a local browser source for OBS. When active, Airstream serves an overlay URL that you can paste into OBS.',
             style: TextStyle(
               color: Colors.white54,
               fontSize: 12,

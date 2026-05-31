@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/services/kick_service.dart' show ServiceStatus;
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 
 /// Wraps dart_youtube_chat.LiveChat and converts items to [ChatMessage].
 class YouTubeService {

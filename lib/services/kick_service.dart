@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
-import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airstream/models/chat_message.dart';
 
 enum ServiceStatus { idle, connecting, connected, error }
 

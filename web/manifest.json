@@ -1,11 +1,11 @@
 {
-    "name": "airchat_flutter",
-    "short_name": "airchat_flutter",
+    "name": "Airstream",
+    "short_name": "Airstream",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,7 +1,7 @@
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/settings/settings_notifier.dart';
-import 'package:airchat_flutter/ui/widgets/author_avatar.dart';
-import 'package:airchat_flutter/ui/widgets/platform_badge.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/author_avatar.dart';
+import 'package:airstream/ui/widgets/platform_badge.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';

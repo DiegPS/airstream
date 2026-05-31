@@ -1,4 +1,4 @@
-import 'package:airchat_flutter/models/chat_message.dart';
+import 'package:airstream/models/chat_message.dart';
 import 'package:flutter/material.dart';
 
 enum PlatformBadgeMode { overlay, inline }

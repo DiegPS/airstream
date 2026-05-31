@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:airchat_flutter/models/chat_message.dart';
-import 'package:airchat_flutter/settings/settings_model.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -316,7 +316,7 @@ class OverlayServer {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AirChat Alerts</title>
+<title>Airstream Alerts</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -542,7 +542,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AirChat Overlay</title>
+<title>Airstream Overlay</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
