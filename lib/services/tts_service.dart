@@ -157,7 +157,7 @@ class TtsService {
       );
       if (_isDisposed) return;
 
-      _textToSpeech = await loadTextToSpeech(
+      final textToSpeech = await loadTextToSpeech(
         _modelPaths!.onnxDirectory.path,
         useGpu: false,
         onProgress: (progress) {
@@ -177,7 +177,11 @@ class TtsService {
           ));
         },
       );
-      if (_isDisposed) return;
+      if (_isDisposed) {
+        await textToSpeech.dispose();
+        return;
+      }
+      _textToSpeech = textToSpeech;
       final initialVoice = _selectedVoice;
       await _queueVoiceStyleLoad(initialVoice, announceReady: true);
       if (!_isDisposed && _selectedVoice != initialVoice) {
@@ -262,7 +266,10 @@ class TtsService {
       error: null,
     ));
     final loadedStyle = await loadVoiceStyle([assetPath]);
-    if (_isDisposed) return;
+    if (_isDisposed) {
+      await loadedStyle.dispose();
+      return;
+    }
     final previousStyle = _style;
     _style = loadedStyle;
     if (previousStyle != null && !identical(previousStyle, loadedStyle)) {
@@ -296,10 +303,9 @@ class TtsService {
     _processQueue();
   }
 
-  void stop() {
-    if (_isDisposed) return;
+  Future<void> stop() async {
     _queue.clear();
-    unawaited(_audioPlayback.stop());
+    await _audioPlayback.stop();
     _setBusy(false);
   }
 
@@ -415,14 +421,16 @@ class TtsService {
     await _audioPlayback.playFile(file);
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     if (_isDisposed) return;
-    stop();
     _isDisposed = true;
+    _queue.clear();
+    _isBusy = false;
     _modelCache.dispose();
+    await _audioPlayback.dispose();
+    await _voiceStyleLoadFuture.catchError((_) {});
+    await _disposeNativeResources();
     _loadStateController.close();
     _busyController.close();
-    unawaited(_audioPlayback.dispose());
-    unawaited(_disposeNativeResources());
   }
 }

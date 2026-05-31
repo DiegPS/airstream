@@ -80,7 +80,7 @@ final appControllerProvider = Provider<AppController>((ref) {
 
 final _appControllerInstanceProvider = Provider<AppController>((ref) {
   final c = AppController();
-  ref.onDispose(c.dispose);
+  ref.onDispose(() => unawaited(c.dispose()));
   return c;
 });
 
@@ -431,19 +431,19 @@ class AppController {
     }
   }
 
-  void dispose() {
-    _pipelineSub?.cancel();
-    _youtubeStatusSub?.cancel();
-    _kickStatusSub?.cancel();
+  Future<void> dispose() async {
+    await _pipelineSub?.cancel();
+    await _youtubeStatusSub?.cancel();
+    await _kickStatusSub?.cancel();
     _youtube.dispose();
     _kick.dispose();
     _twitch.dispose();
-    _overlay.dispose();
+    await _overlay.dispose();
     _obs.dispose();
-    _tts.dispose();
+    await _tts.dispose();
     _pipeline.dispose();
-    _listController.close();
-    _statusController.close();
-    _youtubeBadgeController.close();
+    await _listController.close();
+    await _statusController.close();
+    await _youtubeBadgeController.close();
   }
 }

@@ -970,720 +970,853 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final kickError =
         kickState?.$1 == ServiceStatus.error ? kickState?.$2 : null;
 
-    return Container(
-      color: const Color(0xFF141414),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _sidebarHeader(
-            l: l,
-            youtubeValue: youtubeBadgeValue ?? _youtubeInputValue(s),
-            twitchValue: s.twitchChannel,
-            kickValue: s.kickSlug,
-            statusMap: connectionStatus,
-          ),
-          const SizedBox(height: 16),
-          _section(l.connections),
-          _label(l.youtubeInputLabel),
-          _field(
-            _ytHandle,
-            '@xqc · UC... · youtube.com/watch?v=...',
-            focusNode: _ytFocus,
-            onChanged: (_) {
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            onSubmitted: (_) => _saveTextSettings(),
-            onClear: () {
-              _ytHandle.clear();
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-          ),
-          if (youtubeError != null && youtubeError.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _inlineErrorMessage(l, 'YouTube', youtubeError),
-          ],
-          const SizedBox(height: 12),
-          _label(l.twitchChannel),
-          _field(
-            _twitch,
-            'xqc',
-            focusNode: _twitchFocus,
-            onChanged: (_) {
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            onSubmitted: (_) => _saveTextSettings(),
-            onClear: () {
-              _twitch.clear();
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-          ),
-          if (twitchError != null && twitchError.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _inlineErrorMessage(l, 'Twitch', twitchError),
-          ],
-          const SizedBox(height: 12),
-          _label(l.kickSlug),
-          _field(
-            _kick,
-            'xqc',
-            focusNode: _kickFocus,
-            onChanged: (_) {
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            onSubmitted: (_) => _saveTextSettings(),
-            onClear: () {
-              _kick.clear();
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-          ),
-          if (kickError != null && kickError.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _inlineErrorMessage(l, 'Kick', kickError),
-          ],
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed:
-                  isRunning ? _stopChat : (hasChannels ? _startChat : null),
-              icon: Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 18),
-              label: Text(isRunning ? l.stopChat : l.startChat),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isRunning ? Colors.redAccent : const Color(0xFF53FC18),
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: const Color(0xFF2A2A2A),
-                disabledForegroundColor: Colors.white38,
+    return SizedBox.expand(
+      child: ColoredBox(
+        color: const Color(0xFF141414),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _sidebarHeader(
+                l: l,
+                youtubeValue: youtubeBadgeValue ?? _youtubeInputValue(s),
+                twitchValue: s.twitchChannel,
+                kickValue: s.kickSlug,
+                statusMap: connectionStatus,
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section(l.appearance),
-          _sliderRow(l.fontSize, s.fontSize, 10, 28,
-              (v) => notifier.update(s.copyWith(fontSize: v))),
-          _sliderRow(l.backgroundOpacity, s.bgOpacity, 0, 1,
-              (v) => notifier.update(s.copyWith(bgOpacity: v))),
-          _sliderRow(l.bubbleOpacity, s.messageOpacity, 0, 1,
-              (v) => notifier.update(s.copyWith(messageOpacity: v))),
-          _sliderRow(l.borderRadius, s.borderRadius, 0, 24,
-              (v) => notifier.update(s.copyWith(borderRadius: v))),
-          _sliderRow(l.messageGap, s.messageGap, 0, 16,
-              (v) => notifier.update(s.copyWith(messageGap: v))),
-          _switchRow(l.avatars, s.showAvatars,
-              (v) => notifier.update(s.copyWith(showAvatars: v))),
-          _switchRow(l.platformIcon, s.showPlatformIcons,
-              (v) => notifier.update(s.copyWith(showPlatformIcons: v))),
-          _switchRow(l.badges, s.showBadges,
-              (v) => notifier.update(s.copyWith(showBadges: v))),
-          _switchRow(l.timestamp, s.showTimestamp,
-              (v) => notifier.update(s.copyWith(showTimestamp: v))),
-          _switchRow(l.bubble, s.showBubble,
-              (v) => notifier.update(s.copyWith(showBubble: v))),
-          _switchRow(l.bubbleShadow, s.showBubbleShadow,
-              (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section(l.filters),
-          Text(
-            l.filtersDescription,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _label(l.blockedUsers),
-          _field(
-            _blockedUsersCtrl,
-            '@nightbot\notrobot',
-            focusNode: _blockedUsersFocus,
-            onChanged: (_) => _queueTextSettingsSave(),
-            onSubmitted: (_) => _saveTextSettings(),
-            onClear: () {
-              _blockedUsersCtrl.clear();
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            minLines: 3,
-            maxLines: 5,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l.blockedUsersHelp,
-            style: const TextStyle(
-              color: Colors.white38,
-              fontSize: 11,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _label(l.blockedWordsOrPhrases),
-          _field(
-            _blockedWordsCtrl,
-            'palabra1\nfrase completa',
-            focusNode: _blockedWordsFocus,
-            onChanged: (_) => _queueTextSettingsSave(),
-            onSubmitted: (_) => _saveTextSettings(),
-            onClear: () {
-              _blockedWordsCtrl.clear();
-              setState(() {});
-              _queueTextSettingsSave();
-            },
-            minLines: 3,
-            maxLines: 6,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l.blockedWordsHelp,
-            style: const TextStyle(
-              color: Colors.white38,
-              fontSize: 11,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section('TTS'),
-          Text(
-            l.ttsDescription,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _switchRow(l.enabled, s.ttsEnabled,
-              (v) => notifier.update(s.copyWith(ttsEnabled: v))),
-          if (s.ttsEnabled) ...[
-            const SizedBox(height: 12),
-            if (ttsLoadState != null) ...[
-              _ttsStatusCard(l, ttsLoadState),
-              const SizedBox(height: 12),
-            ],
-            _switchRow(l.membersOnly, s.ttsMembersOnly,
-                (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
-            _switchRow(l.commandMode, s.ttsCommandMode,
-                (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
-            if (s.ttsCommandMode) ...[
-              const SizedBox(height: 8),
-              _label(l.commandPrefix),
-              _field(
-                _ttsPrefixCtrl,
-                '!voz, !v, !say...',
-                focusNode: _ttsPrefixFocus,
-                onChanged: (_) => _queueTextSettingsSave(),
-                onSubmitted: (_) => _saveTextSettings(),
-              ),
-            ],
-            const SizedBox(height: 8),
-            _label(l.separatorText),
-            _field(
-              _ttsSeparatorCtrl,
-              'dice',
-              focusNode: _ttsSeparatorFocus,
-              onChanged: (_) => _queueTextSettingsSave(),
-              onSubmitted: (_) => _saveTextSettings(),
-            ),
-            const SizedBox(height: 12),
-            _dropdownRow(
-              l.voice,
-              s.ttsVoice,
-              ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
-              (v) => notifier.update(s.copyWith(ttsVoice: v)),
-              optionLabel: (v) => _voiceLabel(l, v),
-            ),
-            _dropdownRow(
-              l.language,
-              s.ttsLanguage,
-              availableLangs,
-              (v) => notifier.update(s.copyWith(ttsLanguage: v)),
-              optionLabel: _languageLabel,
-            ),
-            const SizedBox(height: 12),
-            _label(l.testText),
-            _field(_ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
-                    ? null
-                    : () => appController.testTts(_ttsTestCtrl.text),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF53FC18),
-                  foregroundColor: Colors.black,
-                ),
-                child: Text(
-                  ttsBusy
-                      ? l.playingTts
-                      : (ttsLoadState?.isLoading ?? false)
-                          ? l.loadingTts
-                          : l.testTts,
-                ),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 6),
-            Text(
-              l.ttsDisabledHelp,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                height: 1.35,
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section(l.obsIntegration),
-          Text(
-            l.obsDescription,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _switchRow(l.enabled, s.obsEnabled, (v) {
-            final next = s.copyWith(obsEnabled: v);
-            if (!v) {
-              unawaited(appController.disconnectObs());
-            }
-            unawaited(notifier.update(next));
-          }),
-          if (s.obsEnabled) ...[
-            const SizedBox(height: 12),
-            _label(l.webSocketHost),
-            _field(
-              _obsHost,
-              'localhost:4455',
-              focusNode: _obsHostFocus,
-              onChanged: (_) {
-                setState(() {});
-                _queueTextSettingsSave();
-              },
-              onSubmitted: (_) => _saveTextSettings(),
-            ),
-            const SizedBox(height: 8),
-            _label(l.password),
-            _field(
-              _obsPassword,
-              l.optionalPassword,
-              focusNode: _obsPasswordFocus,
-              obscureText: true,
-              onChanged: (_) => _queueTextSettingsSave(),
-              onSubmitted: (_) => _saveTextSettings(),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: obsState.connecting
-                    ? null
-                    : () async {
-                        if (obsState.connected) {
-                          await appController.disconnectObs();
-                          return;
-                        }
-                        await _saveTextSettings();
-                        await appController.connectObs();
-                      },
-                icon: Icon(
-                  obsState.connected
-                      ? Icons.link_off_rounded
-                      : Icons.link_rounded,
-                  size: 18,
-                ),
-                label: Text(
-                  obsState.connecting
-                      ? l.connectingToObs
-                      : obsState.connected
-                          ? l.disconnectObs
-                          : (obsState.error != null &&
-                                  obsState.error!.isNotEmpty)
-                              ? l.reconnectObs
-                              : l.connectObs,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: obsState.connected
-                      ? const Color(0xFFB54040)
-                      : const Color(0xFF5B9CFF),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFF2A2A2A),
-                  disabledForegroundColor: Colors.white38,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _ObsStatusCard(
-              state: obsState,
-              showHost: true,
-              displaySettings: s,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l.hudElements,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _switchRow(l.streamState, s.obsShowStreamState,
-                (v) => notifier.update(s.copyWith(obsShowStreamState: v))),
-            _switchRow(l.currentScene, s.obsShowCurrentScene,
-                (v) => notifier.update(s.copyWith(obsShowCurrentScene: v))),
-            _switchRow(l.bitrate, s.obsShowBitrate,
-                (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
-            _switchRow(l.fps, s.obsShowFps,
-                (v) => notifier.update(s.copyWith(obsShowFps: v))),
-            _switchRow(l.droppedFrames, s.obsShowDroppedFrames,
-                (v) => notifier.update(s.copyWith(obsShowDroppedFrames: v))),
-          ] else ...[
-            const SizedBox(height: 6),
-            Text(
-              l.obsDisabledHelp,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                height: 1.35,
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section(l.overlayServer),
-          Text(
-            l.overlayServerDescription,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _switchRow(l.enabled, s.overlayEnabled,
-              (v) => notifier.update(s.copyWith(overlayEnabled: v))),
-          if (s.overlayEnabled) ...[
-            const SizedBox(height: 12),
-            _label(l.port),
-            _field(
-              _port,
-              '8080',
-              focusNode: _portFocus,
-              onChanged: (_) => _queueTextSettingsSave(),
-              onSubmitted: (_) => _saveTextSettings(),
-            ),
-            const SizedBox(height: 10),
-            _overlayUrlCard(
-              l: l,
-              title: l.chatObsUrl,
-              overlayUrl: overlayCopyUrl,
-              description: l.chatObsUrlDescription,
-              onCopy: () async {
-                await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l.chatOverlayUrlCopied),
-                    duration: const Duration(milliseconds: 1400),
+              const SizedBox(height: 16),
+              _sidebarSectionTile(
+                title: l.connections,
+                initiallyExpanded: true,
+                children: [
+                  _label(l.youtubeInputLabel),
+                  _field(
+                    _ytHandle,
+                    '@xqc · UC... · youtube.com/watch?v=...',
+                    focusNode: _ytFocus,
+                    onChanged: (_) {
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _ytHandle.clear();
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            _overlayUrlCard(
-              l: l,
-              title: l.alertsObsUrl,
-              overlayUrl: alertsCopyUrl,
-              description: l.alertsObsUrlDescription,
-              onCopy: () async {
-                await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(l.alertsOverlayUrlCopied),
-                    duration: const Duration(milliseconds: 1400),
+                  if (youtubeError != null && youtubeError.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _inlineErrorMessage(l, 'YouTube', youtubeError),
+                  ],
+                  const SizedBox(height: 12),
+                  _label(l.twitchChannel),
+                  _field(
+                    _twitch,
+                    'xqc',
+                    focusNode: _twitchFocus,
+                    onChanged: (_) {
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _twitch.clear();
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 6),
-            Text(
-              overlayClientCount == 1
-                  ? l.oneOverlayClientConnected
-                  : l.overlayClientsConnected(overlayClientCount),
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  final reloaded = appController.reloadOverlay();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        reloaded
-                            ? l.overlayReloadSent
-                            : l.noOverlayClientConnected,
+                  if (twitchError != null && twitchError.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _inlineErrorMessage(l, 'Twitch', twitchError),
+                  ],
+                  const SizedBox(height: 12),
+                  _label(l.kickSlug),
+                  _field(
+                    _kick,
+                    'xqc',
+                    focusNode: _kickFocus,
+                    onChanged: (_) {
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _kick.clear();
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                  ),
+                  if (kickError != null && kickError.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _inlineErrorMessage(l, 'Kick', kickError),
+                  ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isRunning
+                          ? _stopChat
+                          : (hasChannels ? _startChat : null),
+                      icon: Icon(isRunning ? Icons.stop : Icons.play_arrow,
+                          size: 18),
+                      label: Text(isRunning ? l.stopChat : l.startChat),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isRunning
+                            ? Colors.redAccent
+                            : const Color(0xFF53FC18),
+                        foregroundColor: Colors.black,
+                        disabledBackgroundColor: const Color(0xFF2A2A2A),
+                        disabledForegroundColor: Colors.white38,
                       ),
-                      duration: const Duration(milliseconds: 1400),
                     ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFFFC877),
-                  side: const BorderSide(color: Color(0xFF6A4C1D)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: Text(
-                  l.reloadOverlay,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
                   ),
-                ),
+                ],
               ),
-            ),
-            const SizedBox(height: 14),
-            _section(l.alerts),
-            Text(
-              l.alertsDescription,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                height: 1.4,
+              _sidebarSectionTile(
+                title: l.appearance,
+                initiallyExpanded: true,
+                children: [
+                  _sliderRow(l.fontSize, s.fontSize, 10, 28,
+                      (v) => notifier.update(s.copyWith(fontSize: v))),
+                  _sliderRow(l.backgroundOpacity, s.bgOpacity, 0, 1,
+                      (v) => notifier.update(s.copyWith(bgOpacity: v))),
+                  _sliderRow(l.bubbleOpacity, s.messageOpacity, 0, 1,
+                      (v) => notifier.update(s.copyWith(messageOpacity: v))),
+                  _sliderRow(l.borderRadius, s.borderRadius, 0, 24,
+                      (v) => notifier.update(s.copyWith(borderRadius: v))),
+                  _sliderRow(l.messageGap, s.messageGap, 0, 16,
+                      (v) => notifier.update(s.copyWith(messageGap: v))),
+                  _switchRow(l.avatars, s.showAvatars,
+                      (v) => notifier.update(s.copyWith(showAvatars: v))),
+                  _switchRow(l.platformIcon, s.showPlatformIcons,
+                      (v) => notifier.update(s.copyWith(showPlatformIcons: v))),
+                  _switchRow(l.badges, s.showBadges,
+                      (v) => notifier.update(s.copyWith(showBadges: v))),
+                  _switchRow(l.timestamp, s.showTimestamp,
+                      (v) => notifier.update(s.copyWith(showTimestamp: v))),
+                  _switchRow(l.bubble, s.showBubble,
+                      (v) => notifier.update(s.copyWith(showBubble: v))),
+                  _switchRow(l.bubbleShadow, s.showBubbleShadow,
+                      (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            _sliderRow(l.alertFontSize, s.alertFontSize, 18, 56,
-                (v) => notifier.update(s.copyWith(alertFontSize: v))),
-            _sliderRow(
-              l.alertDuration,
-              s.alertDisplaySeconds.toDouble(),
-              3,
-              20,
-              (v) => notifier.update(
-                s.copyWith(alertDisplaySeconds: v.round()),
-              ),
-            ),
-            _switchRow(l.alertAvatars, s.alertShowAvatars,
-                (v) => notifier.update(s.copyWith(alertShowAvatars: v))),
-            const SizedBox(height: 8),
-            _alertTestButtons(
-              l: l,
-              onTest: (kind) {
-                final sent = appController.testOverlayAlert(kind);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      sent ? l.testAlertSent : l.openAlertsOverlayFirst,
+              _sidebarSectionTile(
+                title: l.filters,
+                children: [
+                  Text(
+                    l.filtersDescription,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      height: 1.4,
                     ),
-                    duration: const Duration(milliseconds: 1400),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            _section(l.overlayMode),
-            _switchRow(l.chromaKey, s.overlayChromaMode,
-                (v) => notifier.update(s.copyWith(overlayChromaMode: v))),
-            _switchRow(l.showGrid, s.overlayShowGrid,
-                (v) => notifier.update(s.copyWith(overlayShowGrid: v))),
-            _switchRow(l.hideScrollbar, s.overlayHideScrollbar,
-                (v) => notifier.update(s.copyWith(overlayHideScrollbar: v))),
-            if (s.overlayChromaMode) ...[
-              const SizedBox(height: 6),
-              _label(l.chromaColor),
-              _field(
-                _overlayChromaColorCtrl,
-                '#00FF00',
-                focusNode: _overlayChromaColorFocus,
-                onChanged: (_) => _queueTextSettingsSave(),
-                onSubmitted: (_) => _saveTextSettings(),
+                  const SizedBox(height: 8),
+                  _label(l.blockedUsers),
+                  _field(
+                    _blockedUsersCtrl,
+                    '@nightbot\notrobot',
+                    focusNode: _blockedUsersFocus,
+                    onChanged: (_) => _queueTextSettingsSave(),
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _blockedUsersCtrl.clear();
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                    minLines: 3,
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l.blockedUsersHelp,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _label(l.blockedWordsOrPhrases),
+                  _field(
+                    _blockedWordsCtrl,
+                    'palabra1\nfrase completa',
+                    focusNode: _blockedWordsFocus,
+                    onChanged: (_) => _queueTextSettingsSave(),
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _blockedWordsCtrl.clear();
+                      setState(() {});
+                      _queueTextSettingsSave();
+                    },
+                    minLines: 3,
+                    maxLines: 6,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l.blockedWordsHelp,
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ),
+              _sidebarSectionTile(
+                title: 'TTS',
+                initiallyExpanded: s.ttsEnabled,
+                children: [
+                  Text(
+                    l.ttsDescription,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _switchRow(l.enabled, s.ttsEnabled,
+                      (v) => notifier.update(s.copyWith(ttsEnabled: v))),
+                  if (s.ttsEnabled) ...[
+                    const SizedBox(height: 12),
+                    if (ttsLoadState != null) ...[
+                      _ttsStatusCard(l, ttsLoadState),
+                      const SizedBox(height: 12),
+                    ],
+                    _switchRow(l.membersOnly, s.ttsMembersOnly,
+                        (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
+                    _switchRow(l.commandMode, s.ttsCommandMode,
+                        (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
+                    if (s.ttsCommandMode) ...[
+                      const SizedBox(height: 8),
+                      _label(l.commandPrefix),
+                      _field(
+                        _ttsPrefixCtrl,
+                        '!voz, !v, !say...',
+                        focusNode: _ttsPrefixFocus,
+                        onChanged: (_) => _queueTextSettingsSave(),
+                        onSubmitted: (_) => _saveTextSettings(),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    _label(l.separatorText),
+                    _field(
+                      _ttsSeparatorCtrl,
+                      'dice',
+                      focusNode: _ttsSeparatorFocus,
+                      onChanged: (_) => _queueTextSettingsSave(),
+                      onSubmitted: (_) => _saveTextSettings(),
+                    ),
+                    const SizedBox(height: 12),
+                    _dropdownRow(
+                      l.voice,
+                      s.ttsVoice,
+                      [
+                        'M1',
+                        'M2',
+                        'M3',
+                        'M4',
+                        'M5',
+                        'F1',
+                        'F2',
+                        'F3',
+                        'F4',
+                        'F5'
+                      ],
+                      (v) => notifier.update(s.copyWith(ttsVoice: v)),
+                      optionLabel: (v) => _voiceLabel(l, v),
+                    ),
+                    _dropdownRow(
+                      l.language,
+                      s.ttsLanguage,
+                      availableLangs,
+                      (v) => notifier.update(s.copyWith(ttsLanguage: v)),
+                      optionLabel: _languageLabel,
+                    ),
+                    const SizedBox(height: 12),
+                    _label(l.testText),
+                    _field(
+                        _ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (ttsBusy ||
+                                (ttsLoadState?.isLoading ?? false))
+                            ? null
+                            : () => appController.testTts(_ttsTestCtrl.text),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF53FC18),
+                          foregroundColor: Colors.black,
+                        ),
+                        child: Text(
+                          ttsBusy
+                              ? l.playingTts
+                              : (ttsLoadState?.isLoading ?? false)
+                                  ? l.loadingTts
+                                  : l.testTts,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      l.ttsDisabledHelp,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              _sidebarSectionTile(
+                title: l.obsIntegration,
+                initiallyExpanded: s.obsEnabled,
+                children: [
+                  Text(
+                    l.obsDescription,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _switchRow(l.enabled, s.obsEnabled, (v) {
+                    final next = s.copyWith(obsEnabled: v);
+                    if (!v) {
+                      unawaited(appController.disconnectObs());
+                    }
+                    unawaited(notifier.update(next));
+                  }),
+                  if (s.obsEnabled) ...[
+                    const SizedBox(height: 12),
+                    _label(l.webSocketHost),
+                    _field(
+                      _obsHost,
+                      'localhost:4455',
+                      focusNode: _obsHostFocus,
+                      onChanged: (_) {
+                        setState(() {});
+                        _queueTextSettingsSave();
+                      },
+                      onSubmitted: (_) => _saveTextSettings(),
+                    ),
+                    const SizedBox(height: 8),
+                    _label(l.password),
+                    _field(
+                      _obsPassword,
+                      l.optionalPassword,
+                      focusNode: _obsPasswordFocus,
+                      obscureText: true,
+                      onChanged: (_) => _queueTextSettingsSave(),
+                      onSubmitted: (_) => _saveTextSettings(),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: obsState.connecting
+                            ? null
+                            : () async {
+                                if (obsState.connected) {
+                                  await appController.disconnectObs();
+                                  return;
+                                }
+                                await _saveTextSettings();
+                                await appController.connectObs();
+                              },
+                        icon: Icon(
+                          obsState.connected
+                              ? Icons.link_off_rounded
+                              : Icons.link_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          obsState.connecting
+                              ? l.connectingToObs
+                              : obsState.connected
+                                  ? l.disconnectObs
+                                  : (obsState.error != null &&
+                                          obsState.error!.isNotEmpty)
+                                      ? l.reconnectObs
+                                      : l.connectObs,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: obsState.connected
+                              ? const Color(0xFFB54040)
+                              : const Color(0xFF5B9CFF),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFF2A2A2A),
+                          disabledForegroundColor: Colors.white38,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _ObsStatusCard(
+                      state: obsState,
+                      showHost: true,
+                      displaySettings: s,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l.hudElements,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _switchRow(
+                        l.streamState,
+                        s.obsShowStreamState,
+                        (v) =>
+                            notifier.update(s.copyWith(obsShowStreamState: v))),
+                    _switchRow(
+                        l.currentScene,
+                        s.obsShowCurrentScene,
+                        (v) => notifier
+                            .update(s.copyWith(obsShowCurrentScene: v))),
+                    _switchRow(l.bitrate, s.obsShowBitrate,
+                        (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
+                    _switchRow(l.fps, s.obsShowFps,
+                        (v) => notifier.update(s.copyWith(obsShowFps: v))),
+                    _switchRow(
+                        l.droppedFrames,
+                        s.obsShowDroppedFrames,
+                        (v) => notifier
+                            .update(s.copyWith(obsShowDroppedFrames: v))),
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      l.obsDisabledHelp,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              _sidebarSectionTile(
+                title: l.overlayServer,
+                initiallyExpanded: s.overlayEnabled,
+                children: [
+                  Text(
+                    l.overlayServerDescription,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _switchRow(l.enabled, s.overlayEnabled,
+                      (v) => notifier.update(s.copyWith(overlayEnabled: v))),
+                  if (s.overlayEnabled) ...[
+                    const SizedBox(height: 12),
+                    _label(l.port),
+                    _field(
+                      _port,
+                      '8080',
+                      focusNode: _portFocus,
+                      onChanged: (_) => _queueTextSettingsSave(),
+                      onSubmitted: (_) => _saveTextSettings(),
+                    ),
+                    const SizedBox(height: 10),
+                    _overlayUrlCard(
+                      l: l,
+                      title: l.chatObsUrl,
+                      overlayUrl: overlayCopyUrl,
+                      description: l.chatObsUrlDescription,
+                      onCopy: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: overlayCopyUrl));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l.chatOverlayUrlCopied),
+                            duration: const Duration(milliseconds: 1400),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _overlayUrlCard(
+                      l: l,
+                      title: l.alertsObsUrl,
+                      overlayUrl: alertsCopyUrl,
+                      description: l.alertsObsUrlDescription,
+                      onCopy: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: alertsCopyUrl));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l.alertsOverlayUrlCopied),
+                            duration: const Duration(milliseconds: 1400),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      overlayClientCount == 1
+                          ? l.oneOverlayClientConnected
+                          : l.overlayClientsConnected(overlayClientCount),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          final reloaded = appController.reloadOverlay();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                reloaded
+                                    ? l.overlayReloadSent
+                                    : l.noOverlayClientConnected,
+                              ),
+                              duration: const Duration(milliseconds: 1400),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFFC877),
+                          side: const BorderSide(color: Color(0xFF6A4C1D)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: Text(
+                          l.reloadOverlay,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _section(l.alerts),
+                    Text(
+                      l.alertsDescription,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _sliderRow(l.alertFontSize, s.alertFontSize, 18, 56,
+                        (v) => notifier.update(s.copyWith(alertFontSize: v))),
+                    _sliderRow(
+                      l.alertDuration,
+                      s.alertDisplaySeconds.toDouble(),
+                      3,
+                      20,
+                      (v) => notifier.update(
+                        s.copyWith(alertDisplaySeconds: v.round()),
+                      ),
+                    ),
+                    _switchRow(
+                        l.alertAvatars,
+                        s.alertShowAvatars,
+                        (v) =>
+                            notifier.update(s.copyWith(alertShowAvatars: v))),
+                    const SizedBox(height: 8),
+                    _alertTestButtons(
+                      l: l,
+                      onTest: (kind) {
+                        final sent = appController.testOverlayAlert(kind);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              sent ? l.testAlertSent : l.openAlertsOverlayFirst,
+                            ),
+                            duration: const Duration(milliseconds: 1400),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _section(l.overlayMode),
+                    _switchRow(
+                        l.chromaKey,
+                        s.overlayChromaMode,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayChromaMode: v))),
+                    _switchRow(l.showGrid, s.overlayShowGrid,
+                        (v) => notifier.update(s.copyWith(overlayShowGrid: v))),
+                    _switchRow(
+                        l.hideScrollbar,
+                        s.overlayHideScrollbar,
+                        (v) => notifier
+                            .update(s.copyWith(overlayHideScrollbar: v))),
+                    if (s.overlayChromaMode) ...[
+                      const SizedBox(height: 6),
+                      _label(l.chromaColor),
+                      _field(
+                        _overlayChromaColorCtrl,
+                        '#00FF00',
+                        focusNode: _overlayChromaColorFocus,
+                        onChanged: (_) => _queueTextSettingsSave(),
+                        onSubmitted: (_) => _saveTextSettings(),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _section(l.platformDisplay),
+                    _switchRow(
+                        l.platformIcon,
+                        s.overlayShowPlatformIcons,
+                        (v) => notifier
+                            .update(s.copyWith(overlayShowPlatformIcons: v))),
+                    _switchRow(
+                        l.twitchAccent,
+                        s.overlayTwitchBubbleAccent,
+                        (v) => notifier
+                            .update(s.copyWith(overlayTwitchBubbleAccent: v))),
+                    _switchRow(
+                        l.kickAccent,
+                        s.overlayKickBubbleAccent,
+                        (v) => notifier
+                            .update(s.copyWith(overlayKickBubbleAccent: v))),
+                    const SizedBox(height: 12),
+                    _section(l.styleSettings),
+                    _sliderRow(l.fontSize, s.overlayFontSize, 12, 32,
+                        (v) => notifier.update(s.copyWith(overlayFontSize: v))),
+                    _sliderRow(
+                        l.lineHeight,
+                        s.overlayLineHeight,
+                        1,
+                        2,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayLineHeight: v))),
+                    _sliderRow(
+                        l.fontWeight,
+                        s.overlayFontWeight,
+                        100,
+                        900,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayFontWeight: v))),
+                    _sliderRow(
+                        l.overlayBg,
+                        s.overlayBgOpacity,
+                        0,
+                        1,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayBgOpacity: v))),
+                    _switchRow(
+                        l.avatars,
+                        s.overlayShowAvatars,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayShowAvatars: v))),
+                    _switchRow(
+                        l.badges,
+                        s.overlayShowBadges,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayShowBadges: v))),
+                    _switchRow(
+                        l.timestamp,
+                        s.overlayShowTimestamp,
+                        (v) => notifier
+                            .update(s.copyWith(overlayShowTimestamp: v))),
+                    _switchRow(
+                        l.textShadow,
+                        s.overlayTextShadow,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayTextShadow: v))),
+                    _sliderRow(
+                        l.textOutline,
+                        s.overlayTextStroke,
+                        0,
+                        4,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayTextStroke: v))),
+                    if (s.overlayTextStroke > 0) ...[
+                      const SizedBox(height: 6),
+                      _label(l.outlineColor),
+                      _field(
+                        _overlayTextStrokeColorCtrl,
+                        '#000000',
+                        focusNode: _overlayTextStrokeColorFocus,
+                        onChanged: (_) => _queueTextSettingsSave(),
+                        onSubmitted: (_) => _saveTextSettings(),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _section(l.messageDesign),
+                    _switchRow(
+                        l.bubbleBackground,
+                        s.overlayShowBubble,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayShowBubble: v))),
+                    _dropdownRow(
+                      l.textAlignment,
+                      s.overlayTextAlign,
+                      const ['left', 'center', 'right'],
+                      (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
+                    ),
+                    _sliderRow(
+                        l.bubbleOpacity,
+                        s.overlayMessageOpacity,
+                        0,
+                        1,
+                        (v) => notifier
+                            .update(s.copyWith(overlayMessageOpacity: v))),
+                    _sliderRow(
+                        l.cornerRadius,
+                        s.overlayBorderRadius,
+                        0,
+                        30,
+                        (v) => notifier
+                            .update(s.copyWith(overlayBorderRadius: v))),
+                    _sliderRow(
+                        l.verticalGap,
+                        s.overlayMessageGap,
+                        0,
+                        30,
+                        (v) =>
+                            notifier.update(s.copyWith(overlayMessageGap: v))),
+                    _sliderRow(
+                        l.maxMessages,
+                        s.overlayMaxMessages.toDouble(),
+                        10,
+                        500,
+                        (v) => notifier
+                            .update(s.copyWith(overlayMaxMessages: v.round()))),
+                    _sliderRow(
+                      l.messageLifetime,
+                      s.overlayMessageTtlSeconds.toDouble(),
+                      5,
+                      120,
+                      (v) => notifier.update(
+                        s.copyWith(overlayMessageTtlSeconds: v.round()),
+                      ),
+                    ),
+                    _switchRow(
+                        l.superChatColorBar,
+                        s.overlaySuperChatBarEnabled,
+                        (v) => notifier
+                            .update(s.copyWith(overlaySuperChatBarEnabled: v))),
+                    if (s.overlaySuperChatBarEnabled) ...[
+                      const SizedBox(height: 6),
+                      _label(l.superChatBarColor),
+                      _field(
+                        _overlaySuperChatBarColorCtrl,
+                        '#1DE9B6',
+                        focusNode: _overlaySuperChatBarColorFocus,
+                        onChanged: (_) => _queueTextSettingsSave(),
+                        onSubmitted: (_) => _saveTextSettings(),
+                      ),
+                      _sliderRow(
+                        l.superChatWidth,
+                        s.overlaySuperChatBarWidth,
+                        1,
+                        8,
+                        (v) => notifier
+                            .update(s.copyWith(overlaySuperChatBarWidth: v)),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _section(l.animation),
+                    _dropdownRow(
+                      l.entrance,
+                      s.overlayAnimation,
+                      const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
+                      (v) => notifier.update(s.copyWith(overlayAnimation: v)),
+                    ),
+                    _sliderRow(
+                        l.duration,
+                        s.overlayAnimationDuration,
+                        0.1,
+                        2,
+                        (v) => notifier
+                            .update(s.copyWith(overlayAnimationDuration: v))),
+                    const SizedBox(height: 12),
+                    _section(l.transform3d),
+                    _switchRow(
+                        l.enable3dEffect,
+                        s.overlayThreeDEnabled,
+                        (v) => notifier
+                            .update(s.copyWith(overlayThreeDEnabled: v))),
+                    if (s.overlayThreeDEnabled) ...[
+                      _sliderRow(
+                          l.perspective,
+                          s.overlayPerspective,
+                          500,
+                          2500,
+                          (v) => notifier
+                              .update(s.copyWith(overlayPerspective: v))),
+                      _sliderRow(
+                          l.rotateX,
+                          s.overlayRotateX,
+                          -180,
+                          180,
+                          (v) =>
+                              notifier.update(s.copyWith(overlayRotateX: v))),
+                      _sliderRow(
+                          l.rotateY,
+                          s.overlayRotateY,
+                          -180,
+                          180,
+                          (v) =>
+                              notifier.update(s.copyWith(overlayRotateY: v))),
+                      _sliderRow(
+                          l.rotateZ,
+                          s.overlayRotateZ,
+                          -180,
+                          180,
+                          (v) =>
+                              notifier.update(s.copyWith(overlayRotateZ: v))),
+                      _sliderRow(l.skewX, s.overlaySkewX, -45, 45,
+                          (v) => notifier.update(s.copyWith(overlaySkewX: v))),
+                      _sliderRow(l.scale, s.overlayScale, 0.5, 2,
+                          (v) => notifier.update(s.copyWith(overlayScale: v))),
+                    ],
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      l.overlayDisabledHelp,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              _sidebarSectionTile(
+                title: l.language,
+                children: [
+                  _dropdownRow(
+                    l.language,
+                    s.appLanguageCode,
+                    const ['en', 'es'],
+                    (v) => notifier.update(s.copyWith(appLanguageCode: v)),
+                    optionLabel: (v) => v == 'es' ? l.spanish : l.english,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
             ],
-            const SizedBox(height: 12),
-            _section(l.platformDisplay),
-            _switchRow(
-                l.platformIcon,
-                s.overlayShowPlatformIcons,
-                (v) =>
-                    notifier.update(s.copyWith(overlayShowPlatformIcons: v))),
-            _switchRow(
-                l.twitchAccent,
-                s.overlayTwitchBubbleAccent,
-                (v) =>
-                    notifier.update(s.copyWith(overlayTwitchBubbleAccent: v))),
-            _switchRow(l.kickAccent, s.overlayKickBubbleAccent,
-                (v) => notifier.update(s.copyWith(overlayKickBubbleAccent: v))),
-            const SizedBox(height: 12),
-            _section(l.styleSettings),
-            _sliderRow(l.fontSize, s.overlayFontSize, 12, 32,
-                (v) => notifier.update(s.copyWith(overlayFontSize: v))),
-            _sliderRow(l.lineHeight, s.overlayLineHeight, 1, 2,
-                (v) => notifier.update(s.copyWith(overlayLineHeight: v))),
-            _sliderRow(l.fontWeight, s.overlayFontWeight, 100, 900,
-                (v) => notifier.update(s.copyWith(overlayFontWeight: v))),
-            _sliderRow(l.overlayBg, s.overlayBgOpacity, 0, 1,
-                (v) => notifier.update(s.copyWith(overlayBgOpacity: v))),
-            _switchRow(l.avatars, s.overlayShowAvatars,
-                (v) => notifier.update(s.copyWith(overlayShowAvatars: v))),
-            _switchRow(l.badges, s.overlayShowBadges,
-                (v) => notifier.update(s.copyWith(overlayShowBadges: v))),
-            _switchRow(l.timestamp, s.overlayShowTimestamp,
-                (v) => notifier.update(s.copyWith(overlayShowTimestamp: v))),
-            _switchRow(l.textShadow, s.overlayTextShadow,
-                (v) => notifier.update(s.copyWith(overlayTextShadow: v))),
-            _sliderRow(l.textOutline, s.overlayTextStroke, 0, 4,
-                (v) => notifier.update(s.copyWith(overlayTextStroke: v))),
-            if (s.overlayTextStroke > 0) ...[
-              const SizedBox(height: 6),
-              _label(l.outlineColor),
-              _field(
-                _overlayTextStrokeColorCtrl,
-                '#000000',
-                focusNode: _overlayTextStrokeColorFocus,
-                onChanged: (_) => _queueTextSettingsSave(),
-                onSubmitted: (_) => _saveTextSettings(),
-              ),
-            ],
-            const SizedBox(height: 12),
-            _section(l.messageDesign),
-            _switchRow(l.bubbleBackground, s.overlayShowBubble,
-                (v) => notifier.update(s.copyWith(overlayShowBubble: v))),
-            _dropdownRow(
-              l.textAlignment,
-              s.overlayTextAlign,
-              const ['left', 'center', 'right'],
-              (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
-            ),
-            _sliderRow(l.bubbleOpacity, s.overlayMessageOpacity, 0, 1,
-                (v) => notifier.update(s.copyWith(overlayMessageOpacity: v))),
-            _sliderRow(l.cornerRadius, s.overlayBorderRadius, 0, 30,
-                (v) => notifier.update(s.copyWith(overlayBorderRadius: v))),
-            _sliderRow(l.verticalGap, s.overlayMessageGap, 0, 30,
-                (v) => notifier.update(s.copyWith(overlayMessageGap: v))),
-            _sliderRow(
-                l.maxMessages,
-                s.overlayMaxMessages.toDouble(),
-                10,
-                500,
-                (v) =>
-                    notifier.update(s.copyWith(overlayMaxMessages: v.round()))),
-            _sliderRow(
-              l.messageLifetime,
-              s.overlayMessageTtlSeconds.toDouble(),
-              5,
-              120,
-              (v) => notifier.update(
-                s.copyWith(overlayMessageTtlSeconds: v.round()),
-              ),
-            ),
-            _switchRow(
-                l.superChatColorBar,
-                s.overlaySuperChatBarEnabled,
-                (v) =>
-                    notifier.update(s.copyWith(overlaySuperChatBarEnabled: v))),
-            if (s.overlaySuperChatBarEnabled) ...[
-              const SizedBox(height: 6),
-              _label(l.superChatBarColor),
-              _field(
-                _overlaySuperChatBarColorCtrl,
-                '#1DE9B6',
-                focusNode: _overlaySuperChatBarColorFocus,
-                onChanged: (_) => _queueTextSettingsSave(),
-                onSubmitted: (_) => _saveTextSettings(),
-              ),
-              _sliderRow(
-                l.superChatWidth,
-                s.overlaySuperChatBarWidth,
-                1,
-                8,
-                (v) => notifier.update(s.copyWith(overlaySuperChatBarWidth: v)),
-              ),
-            ],
-            const SizedBox(height: 12),
-            _section(l.animation),
-            _dropdownRow(
-              l.entrance,
-              s.overlayAnimation,
-              const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
-              (v) => notifier.update(s.copyWith(overlayAnimation: v)),
-            ),
-            _sliderRow(
-                l.duration,
-                s.overlayAnimationDuration,
-                0.1,
-                2,
-                (v) =>
-                    notifier.update(s.copyWith(overlayAnimationDuration: v))),
-            const SizedBox(height: 12),
-            _section(l.transform3d),
-            _switchRow(l.enable3dEffect, s.overlayThreeDEnabled,
-                (v) => notifier.update(s.copyWith(overlayThreeDEnabled: v))),
-            if (s.overlayThreeDEnabled) ...[
-              _sliderRow(l.perspective, s.overlayPerspective, 500, 2500,
-                  (v) => notifier.update(s.copyWith(overlayPerspective: v))),
-              _sliderRow(l.rotateX, s.overlayRotateX, -180, 180,
-                  (v) => notifier.update(s.copyWith(overlayRotateX: v))),
-              _sliderRow(l.rotateY, s.overlayRotateY, -180, 180,
-                  (v) => notifier.update(s.copyWith(overlayRotateY: v))),
-              _sliderRow(l.rotateZ, s.overlayRotateZ, -180, 180,
-                  (v) => notifier.update(s.copyWith(overlayRotateZ: v))),
-              _sliderRow(l.skewX, s.overlaySkewX, -45, 45,
-                  (v) => notifier.update(s.copyWith(overlaySkewX: v))),
-              _sliderRow(l.scale, s.overlayScale, 0.5, 2,
-                  (v) => notifier.update(s.copyWith(overlayScale: v))),
-            ],
-          ] else ...[
-            const SizedBox(height: 6),
-            Text(
-              l.overlayDisabledHelp,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-                height: 1.35,
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2A2A2A)),
-          const SizedBox(height: 12),
-          _section(l.language),
-          _dropdownRow(
-            l.language,
-            s.appLanguageCode,
-            const ['en', 'es'],
-            (v) => notifier.update(s.copyWith(appLanguageCode: v)),
-            optionLabel: (v) => v == 'es' ? l.spanish : l.english,
           ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
@@ -1804,6 +1937,56 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       ),
     );
   }
+
+  static Widget _sidebarSectionTile({
+    required String title,
+    required List<Widget> children,
+    bool initiallyExpanded = false,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Builder(
+          builder: (context) {
+            final theme = Theme.of(context);
+            return Theme(
+              data: theme.copyWith(
+                splashColor: Colors.white10,
+                highlightColor: Colors.white10,
+                dividerColor: Colors.transparent,
+              ),
+              child: ExpansionTile(
+                initiallyExpanded: initiallyExpanded,
+                maintainState: true,
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 12),
+                iconColor: const Color(0xFF53FC18),
+                collapsedIconColor: Colors.white54,
+                shape: const Border(
+                  bottom: BorderSide(color: Color(0xFF2A2A2A)),
+                ),
+                collapsedShape: const Border(
+                  bottom: BorderSide(color: Color(0xFF2A2A2A)),
+                ),
+                title: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF53FC18),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: children,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
 
   static Widget _section(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
