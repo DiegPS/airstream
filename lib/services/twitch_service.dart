@@ -210,8 +210,8 @@ class TwitchService {
       final word = words[i];
       final emote = _emotes[word];
       if (emote != null) {
-        items.add(MessageItem.emoji(
-            EmojiItem(url: emote.url, alt: word, isAnimated: emote.isAnimated)));
+        items.add(MessageItem.emoji(EmojiItem(
+            url: emote.url, alt: word, isAnimated: emote.isAnimated)));
       } else {
         if (items.isNotEmpty && !items.last.isEmoji) {
           // Append to previous text item
@@ -297,15 +297,13 @@ class TwitchService {
         // Prefer 1x WebP
         final file = files.firstWhere(
           (f) =>
-              (f as Map<String, dynamic>)['name']
-                  .toString()
-                  .startsWith('1x') ==
+              (f as Map<String, dynamic>)['name'].toString().startsWith('1x') ==
               true,
           orElse: () => files.first,
         );
         final fileName = (file as Map<String, dynamic>)['name'] as String;
-        final isAnimated = fileName.contains('gif') ||
-            ((data['animated'] as bool?) ?? false);
+        final isAnimated =
+            fileName.contains('gif') || ((data['animated'] as bool?) ?? false);
         final url = 'https:$baseUrl/$fileName';
         _emotes[name] = _ThirdPartyEmote(name, url, isAnimated: isAnimated);
       }

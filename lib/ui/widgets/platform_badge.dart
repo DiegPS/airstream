@@ -27,7 +27,8 @@ class PlatformBadge extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: spec.background,
-          borderRadius: BorderRadius.circular(mode == PlatformBadgeMode.overlay ? 4 : 3),
+          borderRadius:
+              BorderRadius.circular(mode == PlatformBadgeMode.overlay ? 4 : 3),
           border: mode == PlatformBadgeMode.overlay
               ? Border.all(color: const Color(0xCC0F0F0F), width: 1)
               : null,

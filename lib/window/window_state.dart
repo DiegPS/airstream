@@ -9,9 +9,9 @@ class WindowState {
   final bool excludeFromCapture;
 
   const WindowState({
-    this.frameless          = false,
-    this.clickThrough       = false,
-    this.alwaysOnTop        = false,
+    this.frameless = false,
+    this.clickThrough = false,
+    this.alwaysOnTop = false,
     this.excludeFromCapture = false,
   });
 
@@ -22,9 +22,9 @@ class WindowState {
     bool? excludeFromCapture,
   }) =>
       WindowState(
-        frameless:          frameless          ?? this.frameless,
-        clickThrough:       clickThrough       ?? this.clickThrough,
-        alwaysOnTop:        alwaysOnTop        ?? this.alwaysOnTop,
+        frameless: frameless ?? this.frameless,
+        clickThrough: clickThrough ?? this.clickThrough,
+        alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
         excludeFromCapture: excludeFromCapture ?? this.excludeFromCapture,
       );
 }
@@ -47,10 +47,11 @@ class WindowStateNotifier extends StateNotifier<WindowState> {
     await windowManager.setAlwaysOnTop(value);
   }
 
-  Future<void> toggleFrameless()    => setFrameless(!state.frameless);
+  Future<void> toggleFrameless() => setFrameless(!state.frameless);
   Future<void> toggleClickThrough() => setClickThrough(!state.clickThrough);
-  Future<void> toggleAlwaysOnTop()  => setAlwaysOnTop(!state.alwaysOnTop);
-  Future<void> toggleExcludeFromCapture() => setExcludeFromCapture(!state.excludeFromCapture);
+  Future<void> toggleAlwaysOnTop() => setAlwaysOnTop(!state.alwaysOnTop);
+  Future<void> toggleExcludeFromCapture() =>
+      setExcludeFromCapture(!state.excludeFromCapture);
 
   Future<void> setExcludeFromCapture(bool value) async {
     state = state.copyWith(excludeFromCapture: value);

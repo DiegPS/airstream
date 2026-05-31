@@ -9,12 +9,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Available options retained for compatibility, even though the app now
 /// forces a transparent window and handles all perceived opacity in the UI.
 enum AcrylicEffectOption {
-  disabled(label: 'Disabled',     effect: WindowEffect.disabled,     icon: Icons.block),
-  transparent(label: 'Transparent', effect: WindowEffect.transparent,  icon: Icons.lens_blur),
-  aero(label: 'Aero Blur',        effect: WindowEffect.aero,          icon: Icons.blur_on),
-  acrylic(label: 'Acrylic',       effect: WindowEffect.acrylic,       icon: Icons.blur_circular),
-  mica(label: 'Mica (Win 11)',     effect: WindowEffect.mica,          icon: Icons.water),
-  tabbed(label: 'Tabbed (Win 11)', effect: WindowEffect.tabbed,        icon: Icons.tab);
+  disabled(label: 'Disabled', effect: WindowEffect.disabled, icon: Icons.block),
+  transparent(
+      label: 'Transparent',
+      effect: WindowEffect.transparent,
+      icon: Icons.lens_blur),
+  aero(label: 'Aero Blur', effect: WindowEffect.aero, icon: Icons.blur_on),
+  acrylic(
+      label: 'Acrylic',
+      effect: WindowEffect.acrylic,
+      icon: Icons.blur_circular),
+  mica(label: 'Mica (Win 11)', effect: WindowEffect.mica, icon: Icons.water),
+  tabbed(
+      label: 'Tabbed (Win 11)', effect: WindowEffect.tabbed, icon: Icons.tab);
 
   const AcrylicEffectOption({
     required this.label,
@@ -22,33 +29,33 @@ enum AcrylicEffectOption {
     required this.icon,
   });
 
-  final String      label;
+  final String label;
   final WindowEffect effect;
-  final IconData    icon;
+  final IconData icon;
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 class AcrylicState {
   final AcrylicEffectOption effect;
-  final Color               tintColor;
-  final bool                dark;
+  final Color tintColor;
+  final bool dark;
 
   const AcrylicState({
-    this.effect    = AcrylicEffectOption.transparent,
+    this.effect = AcrylicEffectOption.transparent,
     this.tintColor = const Color(0x00000000), // fully transparent tint
-    this.dark      = true,
+    this.dark = true,
   });
 
   AcrylicState copyWith({
     AcrylicEffectOption? effect,
-    Color?              tintColor,
-    bool?               dark,
+    Color? tintColor,
+    bool? dark,
   }) =>
       AcrylicState(
-        effect:    effect    ?? this.effect,
+        effect: effect ?? this.effect,
         tintColor: tintColor ?? this.tintColor,
-        dark:      dark      ?? this.dark,
+        dark: dark ?? this.dark,
       );
 }
 
@@ -64,9 +71,9 @@ class AcrylicNotifier extends StateNotifier<AcrylicState> {
       tintColor: const Color(0x00000000),
     );
     await Window.setEffect(
-      effect:    WindowEffect.transparent,
-      color:     state.tintColor,
-      dark:      state.dark,
+      effect: WindowEffect.transparent,
+      color: state.tintColor,
+      dark: state.dark,
     );
   }
 
@@ -85,7 +92,6 @@ class AcrylicNotifier extends StateNotifier<AcrylicState> {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final acrylicProvider =
-    StateNotifierProvider<AcrylicNotifier, AcrylicState>(
+final acrylicProvider = StateNotifierProvider<AcrylicNotifier, AcrylicState>(
   (ref) => AcrylicNotifier(),
 );

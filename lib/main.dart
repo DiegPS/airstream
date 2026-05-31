@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/chat_screen.dart';
 
 void main() async {
@@ -33,14 +35,19 @@ void main() async {
   );
 }
 
-class AirstreamApp extends StatelessWidget {
+class AirstreamApp extends ConsumerWidget {
   const AirstreamApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+
     return MaterialApp(
       title: 'Airstream',
       debugShowCheckedModeBanner: false,
+      locale: Locale(settings.appLanguageCode),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: ThemeData(
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF53FC18),

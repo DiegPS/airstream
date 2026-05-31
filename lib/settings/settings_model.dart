@@ -2,6 +2,8 @@ import 'dart:convert';
 
 /// All persisted settings for the app.
 class SettingsModel {
+  final String appLanguageCode;
+
   // Platform connections
   final String youtubeHandle;
   final String youtubeLiveId;
@@ -91,6 +93,7 @@ class SettingsModel {
   final bool obsShowDroppedFrames;
 
   const SettingsModel({
+    this.appLanguageCode = 'en',
     this.youtubeHandle = '',
     this.youtubeLiveId = '',
     this.twitchChannel = '',
@@ -168,6 +171,7 @@ class SettingsModel {
   });
 
   SettingsModel copyWith({
+    String? appLanguageCode,
     String? youtubeHandle,
     String? youtubeLiveId,
     String? twitchChannel,
@@ -244,6 +248,7 @@ class SettingsModel {
     bool? obsShowDroppedFrames,
   }) =>
       SettingsModel(
+        appLanguageCode: appLanguageCode ?? this.appLanguageCode,
         youtubeHandle: youtubeHandle ?? this.youtubeHandle,
         youtubeLiveId: youtubeLiveId ?? this.youtubeLiveId,
         twitchChannel: twitchChannel ?? this.twitchChannel,
@@ -331,6 +336,7 @@ class SettingsModel {
       );
 
   Map<String, dynamic> toJson() => {
+        'appLanguageCode': appLanguageCode,
         'youtubeHandle': youtubeHandle,
         'youtubeLiveId': youtubeLiveId,
         'twitchChannel': twitchChannel,
@@ -408,6 +414,7 @@ class SettingsModel {
       };
 
   factory SettingsModel.fromJson(Map<String, dynamic> j) => SettingsModel(
+        appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
         youtubeHandle: j['youtubeHandle'] as String? ?? '',
         youtubeLiveId: j['youtubeLiveId'] as String? ?? '',
         twitchChannel: j['twitchChannel'] as String? ?? '',

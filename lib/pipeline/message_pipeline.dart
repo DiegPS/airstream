@@ -153,8 +153,7 @@ class MessagePipeline {
 
   static String _normalizeWordPattern(String value) {
     final lowered = value.toLowerCase();
-    final sanitized =
-        lowered.replaceAll(RegExp(r'[^a-z0-9áéíóúüñ]+'), ' ');
+    final sanitized = lowered.replaceAll(RegExp(r'[^a-z0-9áéíóúüñ]+'), ' ');
     return sanitized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }

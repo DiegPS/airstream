@@ -40,9 +40,7 @@ class WindowControlBar extends ConsumerWidget {
           tooltip: state.excludeFromCapture
               ? 'Modo privacidad activo — ventana oculta de capturas/OBS'
               : 'Ocultar de capturas / screen share',
-          icon: state.excludeFromCapture
-              ? Icons.shield
-              : Icons.shield_outlined,
+          icon: state.excludeFromCapture ? Icons.shield : Icons.shield_outlined,
           active: state.excludeFromCapture,
           activeColor: const Color(0xFFBB86FC),
           onTap: notifier.toggleExcludeFromCapture,

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:airstream/services/supertonic_helper.dart'
     show availableLangs, formatByteSize;
 import 'package:airstream/services/obs_service.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
@@ -182,6 +183,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _chatList() {
+    final l = AppLocalizations.of(context)!;
     final chat = ref.watch(chatProvider);
     final settings = ref.watch(settingsProvider);
     final obsState =
@@ -236,9 +238,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               settings.kickSlug.isNotEmpty;
           final text = hasChannels
               ? (isRunning
-                  ? 'Listening for messages...'
-                  : 'Channels saved.\nPress Start when you want to listen.')
-              : 'No channels configured.\nConfigure channels in the sidebar.';
+                  ? l.listeningForMessages
+                  : l.channelsSavedStartPrompt)
+              : l.noChannelsConfigured;
           return buildPane(
             Center(
               child: Text(
@@ -308,6 +310,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overlayUrl = ref.watch(overlayUrlProvider);
+    final l = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
     final isRunning = ref.watch(chatConnectionProvider);
     final hasChannels = settings.youtubeHandle.isNotEmpty ||
@@ -362,7 +365,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                   child: Row(
                     children: [
                       _TopBarActionButton(
-                        label: isRunning ? 'Stop' : 'Start',
+                        label: isRunning ? l.stop : l.start,
                         icon: isRunning
                             ? Icons.stop_circle_outlined
                             : Icons.play_arrow_rounded,
@@ -380,8 +383,8 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       const SizedBox(width: 8),
                       _TopBarIconButton(
                         tooltip: sidebarVisible
-                            ? 'Hide sidebar (Ctrl+B)'
-                            : 'Show sidebar (Ctrl+B)',
+                            ? l.hideSidebarTooltip
+                            : l.showSidebarTooltip,
                         icon: sidebarVisible
                             ? Icons.menu_open_rounded
                             : Icons.menu_rounded,
@@ -858,6 +861,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
+    final l = AppLocalizations.of(context)!;
     final notifier = ref.read(settingsProvider.notifier);
     final isRunning = ref.watch(chatConnectionProvider);
     final connectionStatus =
@@ -931,14 +935,26 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         padding: const EdgeInsets.all(16),
         children: [
           _sidebarHeader(
+            l: l,
             youtubeValue: youtubeBadgeValue ?? _youtubeInputValue(s),
             twitchValue: s.twitchChannel,
             kickValue: s.kickSlug,
             statusMap: connectionStatus,
           ),
           const SizedBox(height: 16),
-          _section('Connections'),
-          _label('YouTube handle, channel ID, video ID, or URL'),
+          _section(l.language),
+          _dropdownRow(
+            l.language,
+            s.appLanguageCode,
+            const ['en', 'es'],
+            (v) => notifier.update(s.copyWith(appLanguageCode: v)),
+            optionLabel: (v) => v == 'es' ? l.spanish : l.english,
+          ),
+          const SizedBox(height: 20),
+          const Divider(color: Color(0xFF2A2A2A)),
+          const SizedBox(height: 12),
+          _section(l.connections),
+          _label(l.youtubeInputLabel),
           _field(
             _ytHandle,
             '@xqc · UC... · youtube.com/watch?v=...',
@@ -956,10 +972,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
           if (youtubeError != null && youtubeError.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _inlineErrorMessage('YouTube', youtubeError),
+            _inlineErrorMessage(l, 'YouTube', youtubeError),
           ],
           const SizedBox(height: 12),
-          _label('Twitch channel'),
+          _label(l.twitchChannel),
           _field(
             _twitch,
             'xqc',
@@ -977,10 +993,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
           if (twitchError != null && twitchError.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _inlineErrorMessage('Twitch', twitchError),
+            _inlineErrorMessage(l, 'Twitch', twitchError),
           ],
           const SizedBox(height: 12),
-          _label('Kick slug'),
+          _label(l.kickSlug),
           _field(
             _kick,
             'xqc',
@@ -998,7 +1014,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
           if (kickError != null && kickError.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _inlineErrorMessage('Kick', kickError),
+            _inlineErrorMessage(l, 'Kick', kickError),
           ],
           const SizedBox(height: 12),
           SizedBox(
@@ -1007,7 +1023,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               onPressed:
                   isRunning ? _stopChat : (hasChannels ? _startChat : null),
               icon: Icon(isRunning ? Icons.stop : Icons.play_arrow, size: 18),
-              label: Text(isRunning ? 'Stop chat' : 'Start chat'),
+              label: Text(isRunning ? l.stopChat : l.startChat),
               style: ElevatedButton.styleFrom(
                 backgroundColor:
                     isRunning ? Colors.redAccent : const Color(0xFF53FC18),
@@ -1020,43 +1036,43 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _section('Appearance'),
-          _sliderRow('Font size', s.fontSize, 10, 28,
+          _section(l.appearance),
+          _sliderRow(l.fontSize, s.fontSize, 10, 28,
               (v) => notifier.update(s.copyWith(fontSize: v))),
-          _sliderRow('Background opacity', s.bgOpacity, 0, 1,
+          _sliderRow(l.backgroundOpacity, s.bgOpacity, 0, 1,
               (v) => notifier.update(s.copyWith(bgOpacity: v))),
-          _sliderRow('Bubble opacity', s.messageOpacity, 0, 1,
+          _sliderRow(l.bubbleOpacity, s.messageOpacity, 0, 1,
               (v) => notifier.update(s.copyWith(messageOpacity: v))),
-          _sliderRow('Border radius', s.borderRadius, 0, 24,
+          _sliderRow(l.borderRadius, s.borderRadius, 0, 24,
               (v) => notifier.update(s.copyWith(borderRadius: v))),
-          _sliderRow('Message gap', s.messageGap, 0, 16,
+          _sliderRow(l.messageGap, s.messageGap, 0, 16,
               (v) => notifier.update(s.copyWith(messageGap: v))),
-          _switchRow('Avatars', s.showAvatars,
+          _switchRow(l.avatars, s.showAvatars,
               (v) => notifier.update(s.copyWith(showAvatars: v))),
-          _switchRow('Platform icon', s.showPlatformIcons,
+          _switchRow(l.platformIcon, s.showPlatformIcons,
               (v) => notifier.update(s.copyWith(showPlatformIcons: v))),
-          _switchRow('Badges', s.showBadges,
+          _switchRow(l.badges, s.showBadges,
               (v) => notifier.update(s.copyWith(showBadges: v))),
-          _switchRow('Timestamp', s.showTimestamp,
+          _switchRow(l.timestamp, s.showTimestamp,
               (v) => notifier.update(s.copyWith(showTimestamp: v))),
-          _switchRow('Bubble', s.showBubble,
+          _switchRow(l.bubble, s.showBubble,
               (v) => notifier.update(s.copyWith(showBubble: v))),
-          _switchRow('Bubble shadow', s.showBubbleShadow,
+          _switchRow(l.bubbleShadow, s.showBubbleShadow,
               (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _section('Filters'),
-          const Text(
-            'Blocked users and words are filtered in the message pipeline, so they are removed for your local chat view, TTS and the Shelf overlay.',
-            style: TextStyle(
+          _section(l.filters),
+          Text(
+            l.filtersDescription,
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 12,
               height: 1.4,
             ),
           ),
           const SizedBox(height: 8),
-          _label('Blocked users'),
+          _label(l.blockedUsers),
           _field(
             _blockedUsersCtrl,
             '@nightbot\notrobot',
@@ -1072,16 +1088,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             maxLines: 5,
           ),
           const SizedBox(height: 6),
-          const Text(
-            'One per line. Prefixing with @ is optional.',
-            style: TextStyle(
+          Text(
+            l.blockedUsersHelp,
+            style: const TextStyle(
               color: Colors.white38,
               fontSize: 11,
               height: 1.35,
             ),
           ),
           const SizedBox(height: 12),
-          _label('Blocked words or phrases'),
+          _label(l.blockedWordsOrPhrases),
           _field(
             _blockedWordsCtrl,
             'palabra1\nfrase completa',
@@ -1097,9 +1113,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             maxLines: 6,
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Single words respect token boundaries. Phrases are matched after normalization.',
-            style: TextStyle(
+          Text(
+            l.blockedWordsHelp,
+            style: const TextStyle(
               color: Colors.white38,
               fontSize: 11,
               height: 1.35,
@@ -1109,30 +1125,30 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
           _section('TTS'),
-          const Text(
-            'Read chat messages aloud with configurable voice, language and command behavior.',
-            style: TextStyle(
+          Text(
+            l.ttsDescription,
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 12,
               height: 1.4,
             ),
           ),
           const SizedBox(height: 8),
-          _switchRow('Enabled', s.ttsEnabled,
+          _switchRow(l.enabled, s.ttsEnabled,
               (v) => notifier.update(s.copyWith(ttsEnabled: v))),
           if (s.ttsEnabled) ...[
             const SizedBox(height: 12),
             if (ttsLoadState != null) ...[
-              _ttsStatusCard(ttsLoadState),
+              _ttsStatusCard(l, ttsLoadState),
               const SizedBox(height: 12),
             ],
-            _switchRow('Members only', s.ttsMembersOnly,
+            _switchRow(l.membersOnly, s.ttsMembersOnly,
                 (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
-            _switchRow('Command mode (custom prefix)', s.ttsCommandMode,
+            _switchRow(l.commandMode, s.ttsCommandMode,
                 (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
             if (s.ttsCommandMode) ...[
               const SizedBox(height: 8),
-              _label('Command prefix'),
+              _label(l.commandPrefix),
               _field(
                 _ttsPrefixCtrl,
                 '!voz, !v, !say...',
@@ -1142,7 +1158,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ],
             const SizedBox(height: 8),
-            _label('Separator text'),
+            _label(l.separatorText),
             _field(
               _ttsSeparatorCtrl,
               'dice',
@@ -1152,19 +1168,21 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             const SizedBox(height: 12),
             _dropdownRow(
-              'Voice',
+              l.voice,
               s.ttsVoice,
               ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
               (v) => notifier.update(s.copyWith(ttsVoice: v)),
+              optionLabel: (v) => _voiceLabel(l, v),
             ),
             _dropdownRow(
-              'Language',
+              l.language,
               s.ttsLanguage,
               availableLangs,
               (v) => notifier.update(s.copyWith(ttsLanguage: v)),
+              optionLabel: _languageLabel,
             ),
             const SizedBox(height: 12),
-            _label('Test text'),
+            _label(l.testText),
             _field(_ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
             const SizedBox(height: 8),
             SizedBox(
@@ -1179,18 +1197,18 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 ),
                 child: Text(
                   ttsBusy
-                      ? 'Reproduciendo TTS...'
+                      ? l.playingTts
                       : (ttsLoadState?.isLoading ?? false)
-                          ? 'Cargando TTS...'
-                          : 'Probar TTS',
+                          ? l.loadingTts
+                          : l.testTts,
                 ),
               ),
             ),
           ] else ...[
             const SizedBox(height: 6),
-            const Text(
-              'Turn it on to configure voice, language and test playback.',
-              style: TextStyle(
+            Text(
+              l.ttsDisabledHelp,
+              style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 11,
                 height: 1.35,
@@ -1200,17 +1218,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _section('OBS Integration'),
-          const Text(
-            'Connect to OBS over WebSocket to show live status and the current program scene inside Airstream.',
-            style: TextStyle(
+          _section(l.obsIntegration),
+          Text(
+            l.obsDescription,
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 12,
               height: 1.4,
             ),
           ),
           const SizedBox(height: 8),
-          _switchRow('Enabled', s.obsEnabled, (v) {
+          _switchRow(l.enabled, s.obsEnabled, (v) {
             final next = s.copyWith(obsEnabled: v);
             if (!v) {
               unawaited(appController.disconnectObs());
@@ -1219,7 +1237,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           }),
           if (s.obsEnabled) ...[
             const SizedBox(height: 12),
-            _label('WebSocket host'),
+            _label(l.webSocketHost),
             _field(
               _obsHost,
               'localhost:4455',
@@ -1231,10 +1249,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               onSubmitted: (_) => _saveTextSettings(),
             ),
             const SizedBox(height: 8),
-            _label('Password'),
+            _label(l.password),
             _field(
               _obsPassword,
-              'Optional password',
+              l.optionalPassword,
               focusNode: _obsPasswordFocus,
               obscureText: true,
               onChanged: (_) => _queueTextSettingsSave(),
@@ -1262,13 +1280,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 ),
                 label: Text(
                   obsState.connecting
-                      ? 'Connecting to OBS...'
+                      ? l.connectingToObs
                       : obsState.connected
-                          ? 'Disconnect OBS'
+                          ? l.disconnectObs
                           : (obsState.error != null &&
                                   obsState.error!.isNotEmpty)
-                              ? 'Reconnect OBS'
-                              : 'Connect OBS',
+                              ? l.reconnectObs
+                              : l.connectObs,
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: obsState.connected
@@ -1287,9 +1305,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               displaySettings: s,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'HUD Elements',
-              style: TextStyle(
+            Text(
+              l.hudElements,
+              style: const TextStyle(
                 color: Colors.white54,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1297,21 +1315,21 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ),
             const SizedBox(height: 8),
-            _switchRow('Stream state', s.obsShowStreamState,
+            _switchRow(l.streamState, s.obsShowStreamState,
                 (v) => notifier.update(s.copyWith(obsShowStreamState: v))),
-            _switchRow('Current scene', s.obsShowCurrentScene,
+            _switchRow(l.currentScene, s.obsShowCurrentScene,
                 (v) => notifier.update(s.copyWith(obsShowCurrentScene: v))),
-            _switchRow('Bitrate', s.obsShowBitrate,
+            _switchRow(l.bitrate, s.obsShowBitrate,
                 (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
-            _switchRow('FPS', s.obsShowFps,
+            _switchRow(l.fps, s.obsShowFps,
                 (v) => notifier.update(s.copyWith(obsShowFps: v))),
-            _switchRow('Dropped frames', s.obsShowDroppedFrames,
+            _switchRow(l.droppedFrames, s.obsShowDroppedFrames,
                 (v) => notifier.update(s.copyWith(obsShowDroppedFrames: v))),
           ] else ...[
             const SizedBox(height: 6),
-            const Text(
-              'Turn it on to enter the OBS host, password and connect on demand.',
-              style: TextStyle(
+            Text(
+              l.obsDisabledHelp,
+              style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 11,
                 height: 1.35,
@@ -1321,21 +1339,21 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(height: 20),
           const Divider(color: Color(0xFF2A2A2A)),
           const SizedBox(height: 12),
-          _section('Overlay Server'),
-          const Text(
-            'Enable a local browser source for OBS. When active, Airstream serves an overlay URL that you can paste into OBS.',
-            style: TextStyle(
+          _section(l.overlayServer),
+          Text(
+            l.overlayServerDescription,
+            style: const TextStyle(
               color: Colors.white54,
               fontSize: 12,
               height: 1.4,
             ),
           ),
           const SizedBox(height: 8),
-          _switchRow('Enabled', s.overlayEnabled,
+          _switchRow(l.enabled, s.overlayEnabled,
               (v) => notifier.update(s.copyWith(overlayEnabled: v))),
           if (s.overlayEnabled) ...[
             const SizedBox(height: 12),
-            _label('Port'),
+            _label(l.port),
             _field(
               _port,
               '8080',
@@ -1345,33 +1363,34 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             const SizedBox(height: 10),
             _overlayUrlCard(
-              title: 'Chat OBS URL',
+              l: l,
+              title: l.chatObsUrl,
               overlayUrl: overlayCopyUrl,
-              description: 'Use this link as a Browser Source for chat in OBS.',
+              description: l.chatObsUrlDescription,
               onCopy: () async {
                 await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Chat overlay URL copied'),
-                    duration: Duration(milliseconds: 1400),
+                  SnackBar(
+                    content: Text(l.chatOverlayUrlCopied),
+                    duration: const Duration(milliseconds: 1400),
                   ),
                 );
               },
             ),
             const SizedBox(height: 8),
             _overlayUrlCard(
-              title: 'Alerts OBS URL',
+              l: l,
+              title: l.alertsObsUrl,
               overlayUrl: alertsCopyUrl,
-              description:
-                  'Use this as a separate Browser Source for Super Chats and memberships.',
+              description: l.alertsObsUrlDescription,
               onCopy: () async {
                 await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Alerts overlay URL copied'),
-                    duration: Duration(milliseconds: 1400),
+                  SnackBar(
+                    content: Text(l.alertsOverlayUrlCopied),
+                    duration: const Duration(milliseconds: 1400),
                   ),
                 );
               },
@@ -1379,8 +1398,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             const SizedBox(height: 6),
             Text(
               overlayClientCount == 1
-                  ? '1 overlay client connected'
-                  : '$overlayClientCount overlay clients connected',
+                  ? l.oneOverlayClientConnected
+                  : l.overlayClientsConnected(overlayClientCount),
               style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 11,
@@ -1398,8 +1417,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     SnackBar(
                       content: Text(
                         reloaded
-                            ? 'Overlay reload sent'
-                            : 'No overlay client connected',
+                            ? l.overlayReloadSent
+                            : l.noOverlayClientConnected,
                       ),
                       duration: const Duration(milliseconds: 1400),
                     ),
@@ -1411,27 +1430,30 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text(
-                  'Reload Overlay',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                label: Text(
+                  l.reloadOverlay,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
-            _section('Alerts'),
-            const Text(
-              'YouTube Super Chats and membership events show on /alerts. The alert payload keeps platform data so Twitch and Kick can be added later.',
-              style: TextStyle(
+            _section(l.alerts),
+            Text(
+              l.alertsDescription,
+              style: const TextStyle(
                 color: Colors.white54,
                 fontSize: 12,
                 height: 1.4,
               ),
             ),
             const SizedBox(height: 8),
-            _sliderRow('Alert font size', s.alertFontSize, 18, 56,
+            _sliderRow(l.alertFontSize, s.alertFontSize, 18, 56,
                 (v) => notifier.update(s.copyWith(alertFontSize: v))),
             _sliderRow(
-              'Alert duration',
+              l.alertDuration,
               s.alertDisplaySeconds.toDouble(),
               3,
               20,
@@ -1439,18 +1461,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 s.copyWith(alertDisplaySeconds: v.round()),
               ),
             ),
-            _switchRow('Alert avatars', s.alertShowAvatars,
+            _switchRow(l.alertAvatars, s.alertShowAvatars,
                 (v) => notifier.update(s.copyWith(alertShowAvatars: v))),
             const SizedBox(height: 8),
             _alertTestButtons(
+              l: l,
               onTest: (kind) {
                 final sent = appController.testOverlayAlert(kind);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      sent
-                          ? 'Test alert sent'
-                          : 'Open the alerts overlay in OBS/browser first',
+                      sent ? l.testAlertSent : l.openAlertsOverlayFirst,
                     ),
                     duration: const Duration(milliseconds: 1400),
                   ),
@@ -1458,16 +1479,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               },
             ),
             const SizedBox(height: 14),
-            _section('Overlay Mode'),
-            _switchRow('Chroma key', s.overlayChromaMode,
+            _section(l.overlayMode),
+            _switchRow(l.chromaKey, s.overlayChromaMode,
                 (v) => notifier.update(s.copyWith(overlayChromaMode: v))),
-            _switchRow('Show grid', s.overlayShowGrid,
+            _switchRow(l.showGrid, s.overlayShowGrid,
                 (v) => notifier.update(s.copyWith(overlayShowGrid: v))),
-            _switchRow('Hide scrollbar', s.overlayHideScrollbar,
+            _switchRow(l.hideScrollbar, s.overlayHideScrollbar,
                 (v) => notifier.update(s.copyWith(overlayHideScrollbar: v))),
             if (s.overlayChromaMode) ...[
               const SizedBox(height: 6),
-              _label('Chroma color'),
+              _label(l.chromaColor),
               _field(
                 _overlayChromaColorCtrl,
                 '#00FF00',
@@ -1477,42 +1498,42 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ],
             const SizedBox(height: 12),
-            _section('Platform Display'),
+            _section(l.platformDisplay),
             _switchRow(
-                'Platform icon',
+                l.platformIcon,
                 s.overlayShowPlatformIcons,
                 (v) =>
                     notifier.update(s.copyWith(overlayShowPlatformIcons: v))),
             _switchRow(
-                'Twitch accent',
+                l.twitchAccent,
                 s.overlayTwitchBubbleAccent,
                 (v) =>
                     notifier.update(s.copyWith(overlayTwitchBubbleAccent: v))),
-            _switchRow('Kick accent', s.overlayKickBubbleAccent,
+            _switchRow(l.kickAccent, s.overlayKickBubbleAccent,
                 (v) => notifier.update(s.copyWith(overlayKickBubbleAccent: v))),
             const SizedBox(height: 12),
-            _section('Style Settings'),
-            _sliderRow('Font size', s.overlayFontSize, 12, 32,
+            _section(l.styleSettings),
+            _sliderRow(l.fontSize, s.overlayFontSize, 12, 32,
                 (v) => notifier.update(s.copyWith(overlayFontSize: v))),
-            _sliderRow('Line height', s.overlayLineHeight, 1, 2,
+            _sliderRow(l.lineHeight, s.overlayLineHeight, 1, 2,
                 (v) => notifier.update(s.copyWith(overlayLineHeight: v))),
-            _sliderRow('Font weight', s.overlayFontWeight, 100, 900,
+            _sliderRow(l.fontWeight, s.overlayFontWeight, 100, 900,
                 (v) => notifier.update(s.copyWith(overlayFontWeight: v))),
-            _sliderRow('Overlay bg', s.overlayBgOpacity, 0, 1,
+            _sliderRow(l.overlayBg, s.overlayBgOpacity, 0, 1,
                 (v) => notifier.update(s.copyWith(overlayBgOpacity: v))),
-            _switchRow('Avatars', s.overlayShowAvatars,
+            _switchRow(l.avatars, s.overlayShowAvatars,
                 (v) => notifier.update(s.copyWith(overlayShowAvatars: v))),
-            _switchRow('Badges', s.overlayShowBadges,
+            _switchRow(l.badges, s.overlayShowBadges,
                 (v) => notifier.update(s.copyWith(overlayShowBadges: v))),
-            _switchRow('Timestamp', s.overlayShowTimestamp,
+            _switchRow(l.timestamp, s.overlayShowTimestamp,
                 (v) => notifier.update(s.copyWith(overlayShowTimestamp: v))),
-            _switchRow('Text shadow', s.overlayTextShadow,
+            _switchRow(l.textShadow, s.overlayTextShadow,
                 (v) => notifier.update(s.copyWith(overlayTextShadow: v))),
-            _sliderRow('Text outline', s.overlayTextStroke, 0, 4,
+            _sliderRow(l.textOutline, s.overlayTextStroke, 0, 4,
                 (v) => notifier.update(s.copyWith(overlayTextStroke: v))),
             if (s.overlayTextStroke > 0) ...[
               const SizedBox(height: 6),
-              _label('Outline color'),
+              _label(l.outlineColor),
               _field(
                 _overlayTextStrokeColorCtrl,
                 '#000000',
@@ -1522,30 +1543,30 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ],
             const SizedBox(height: 12),
-            _section('Message Design'),
-            _switchRow('Bubble background', s.overlayShowBubble,
+            _section(l.messageDesign),
+            _switchRow(l.bubbleBackground, s.overlayShowBubble,
                 (v) => notifier.update(s.copyWith(overlayShowBubble: v))),
             _dropdownRow(
-              'Text alignment',
+              l.textAlignment,
               s.overlayTextAlign,
               const ['left', 'center', 'right'],
               (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
             ),
-            _sliderRow('Bubble opacity', s.overlayMessageOpacity, 0, 1,
+            _sliderRow(l.bubbleOpacity, s.overlayMessageOpacity, 0, 1,
                 (v) => notifier.update(s.copyWith(overlayMessageOpacity: v))),
-            _sliderRow('Corner radius', s.overlayBorderRadius, 0, 30,
+            _sliderRow(l.cornerRadius, s.overlayBorderRadius, 0, 30,
                 (v) => notifier.update(s.copyWith(overlayBorderRadius: v))),
-            _sliderRow('Vertical gap', s.overlayMessageGap, 0, 30,
+            _sliderRow(l.verticalGap, s.overlayMessageGap, 0, 30,
                 (v) => notifier.update(s.copyWith(overlayMessageGap: v))),
             _sliderRow(
-                'Max messages',
+                l.maxMessages,
                 s.overlayMaxMessages.toDouble(),
                 10,
                 500,
                 (v) =>
                     notifier.update(s.copyWith(overlayMaxMessages: v.round()))),
             _sliderRow(
-              'Message lifetime',
+              l.messageLifetime,
               s.overlayMessageTtlSeconds.toDouble(),
               5,
               120,
@@ -1554,13 +1575,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ),
             _switchRow(
-                'SuperChat color bar',
+                l.superChatColorBar,
                 s.overlaySuperChatBarEnabled,
                 (v) =>
                     notifier.update(s.copyWith(overlaySuperChatBarEnabled: v))),
             if (s.overlaySuperChatBarEnabled) ...[
               const SizedBox(height: 6),
-              _label('SuperChat bar color'),
+              _label(l.superChatBarColor),
               _field(
                 _overlaySuperChatBarColorCtrl,
                 '#1DE9B6',
@@ -1569,7 +1590,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               _sliderRow(
-                'SuperChat width',
+                l.superChatWidth,
                 s.overlaySuperChatBarWidth,
                 1,
                 8,
@@ -1577,43 +1598,43 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ],
             const SizedBox(height: 12),
-            _section('Animation'),
+            _section(l.animation),
             _dropdownRow(
-              'Entrance',
+              l.entrance,
               s.overlayAnimation,
               const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
               (v) => notifier.update(s.copyWith(overlayAnimation: v)),
             ),
             _sliderRow(
-                'Duration',
+                l.duration,
                 s.overlayAnimationDuration,
                 0.1,
                 2,
                 (v) =>
                     notifier.update(s.copyWith(overlayAnimationDuration: v))),
             const SizedBox(height: 12),
-            _section('3D Transform'),
-            _switchRow('Enable 3D effect', s.overlayThreeDEnabled,
+            _section(l.transform3d),
+            _switchRow(l.enable3dEffect, s.overlayThreeDEnabled,
                 (v) => notifier.update(s.copyWith(overlayThreeDEnabled: v))),
             if (s.overlayThreeDEnabled) ...[
-              _sliderRow('Perspective', s.overlayPerspective, 500, 2500,
+              _sliderRow(l.perspective, s.overlayPerspective, 500, 2500,
                   (v) => notifier.update(s.copyWith(overlayPerspective: v))),
-              _sliderRow('Rotate X', s.overlayRotateX, -180, 180,
+              _sliderRow(l.rotateX, s.overlayRotateX, -180, 180,
                   (v) => notifier.update(s.copyWith(overlayRotateX: v))),
-              _sliderRow('Rotate Y', s.overlayRotateY, -180, 180,
+              _sliderRow(l.rotateY, s.overlayRotateY, -180, 180,
                   (v) => notifier.update(s.copyWith(overlayRotateY: v))),
-              _sliderRow('Rotate Z', s.overlayRotateZ, -180, 180,
+              _sliderRow(l.rotateZ, s.overlayRotateZ, -180, 180,
                   (v) => notifier.update(s.copyWith(overlayRotateZ: v))),
-              _sliderRow('Skew X', s.overlaySkewX, -45, 45,
+              _sliderRow(l.skewX, s.overlaySkewX, -45, 45,
                   (v) => notifier.update(s.copyWith(overlaySkewX: v))),
-              _sliderRow('Scale', s.overlayScale, 0.5, 2,
+              _sliderRow(l.scale, s.overlayScale, 0.5, 2,
                   (v) => notifier.update(s.copyWith(overlayScale: v))),
             ],
           ] else ...[
             const SizedBox(height: 6),
-            const Text(
-              'Turn it on to choose a port and reveal the OBS URL.',
-              style: TextStyle(
+            Text(
+              l.overlayDisabledHelp,
+              style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 11,
                 height: 1.35,
@@ -1626,17 +1647,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  static Widget _ttsStatusCard(TtsLoadState state) {
+  static Widget _ttsStatusCard(AppLocalizations l, TtsLoadState state) {
     final (label, color) = switch (state.phase) {
-      TtsLoadPhase.ready => ('Ready', const Color(0xFF53FC18)),
-      TtsLoadPhase.checking => ('Checking', Colors.lightBlueAccent),
-      TtsLoadPhase.downloading => ('Downloading', Colors.orangeAccent),
-      TtsLoadPhase.loading => ('Loading', Colors.amber),
-      TtsLoadPhase.error => ('Error', Colors.redAccent),
-      TtsLoadPhase.idle => ('Idle', Colors.white38),
+      TtsLoadPhase.ready => (l.ready, const Color(0xFF53FC18)),
+      TtsLoadPhase.checking => (l.checking, Colors.lightBlueAccent),
+      TtsLoadPhase.downloading => (l.downloading, Colors.orangeAccent),
+      TtsLoadPhase.loading => (l.loading, Colors.amber),
+      TtsLoadPhase.error => (l.error, Colors.redAccent),
+      TtsLoadPhase.idle => (l.idle, Colors.white38),
     };
     final progressText = state.totalAssets > 0
-        ? '${state.loadedAssets}/${state.totalAssets} assets'
+        ? l.assetsProgress(state.loadedAssets, state.totalAssets)
         : null;
     final bytesText = state.totalBytes > 0
         ? '${formatByteSize(state.loadedBytes)} / ${formatByteSize(state.totalBytes)}'
@@ -1703,7 +1724,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           if (currentFileLabel != null && currentFileLabel.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              'Current: $currentFileLabel',
+              l.currentFile(currentFileLabel),
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -1720,7 +1741,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           if (state.voiceStyle != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Voice: ${_voiceLabel(state.voiceStyle!)}',
+              l.voiceStatus(_voiceLabel(l, state.voiceStyle!)),
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -1764,7 +1785,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ),
       );
 
-  static Widget _field(
+  Widget _field(
     TextEditingController ctrl,
     String hint, {
     FocusNode? focusNode,
@@ -1796,7 +1817,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           suffixIcon: onClear != null && ctrl.text.isNotEmpty
               ? IconButton(
-                  tooltip: 'Clear',
+                  tooltip: AppLocalizations.of(context)!.clear,
                   onPressed: onClear,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
@@ -1828,6 +1849,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       );
 
   static Widget _sidebarHeader({
+    required AppLocalizations l,
     required String youtubeValue,
     required String twitchValue,
     required String kickValue,
@@ -1859,9 +1881,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       children: [
         Row(
           children: [
-            const Text(
-              'Dashboard',
-              style: TextStyle(
+            Text(
+              l.dashboard,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -2004,12 +2026,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ),
       );
 
-  static Widget _dropdownRow(
-    String label,
-    String value,
-    List<String> options,
-    ValueChanged<String> onChanged,
-  ) =>
+  static Widget _dropdownRow(String label, String value, List<String> options,
+          ValueChanged<String> onChanged,
+          {String Function(String value)? optionLabel}) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -2023,14 +2042,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               items: options
                   .map((e) => DropdownMenuItem(
                         value: e,
-                        child: Text(_ttsOptionLabel(label, e)),
+                        child: Text(optionLabel?.call(e) ?? e),
                       ))
                   .toList(),
               selectedItemBuilder: (context) => options
                   .map((e) => Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          _ttsOptionLabel(label, e),
+                          optionLabel?.call(e) ?? e,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ))
@@ -2043,19 +2062,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ),
       );
 
-  static String _ttsOptionLabel(String field, String value) {
-    return switch (field) {
-      'Voice' => _voiceLabel(value),
-      'Language' => _languageLabel(value),
-      _ => value,
-    };
-  }
-
-  static String _voiceLabel(String value) {
+  static String _voiceLabel(AppLocalizations l, String value) {
     final match = RegExp(r'^([MF])(\d+)$').firstMatch(value.trim());
     if (match == null) return value;
-    final prefix = match.group(1) == 'F' ? 'Female' : 'Male';
-    return '$prefix ${match.group(2)}';
+    final number = match.group(2)!;
+    return match.group(1) == 'F' ? l.femaleVoice(number) : l.maleVoice(number);
   }
 
   static String _languageLabel(String value) {
@@ -2095,7 +2106,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return labels[value] ?? value.toUpperCase();
   }
 
-  static Widget _inlineErrorMessage(String platform, String error) {
+  static Widget _inlineErrorMessage(
+    AppLocalizations l,
+    String platform,
+    String error,
+  ) {
     final normalized = error.replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
     return Container(
       width: double.infinity,
@@ -2121,7 +2136,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$platform error: $normalized',
+              l.platformError(platform, normalized),
               style: const TextStyle(
                 color: Color(0xFFFFB4AB),
                 fontSize: 11,
@@ -2135,6 +2150,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }
 
   static Widget _overlayUrlCard({
+    required AppLocalizations l,
     required String title,
     required String overlayUrl,
     required String description,
@@ -2173,9 +2189,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                   icon: const Icon(Icons.copy_rounded, size: 14),
-                  label: const Text(
-                    'Copy',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  label: Text(
+                    l.copy,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -2202,6 +2221,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }
 
   static Widget _alertTestButtons({
+    required AppLocalizations l,
     required void Function(String kind) onTest,
   }) {
     return Container(
@@ -2215,9 +2235,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Test alerts',
-            style: TextStyle(
+          Text(
+            l.testAlerts,
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -2229,15 +2249,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             runSpacing: 8,
             children: [
               _alertTestButton(
-                'SuperChat',
+                l.superChat,
                 () => onTest('superchat'),
               ),
               _alertTestButton(
-                'No message',
+                l.noMessage,
                 () => onTest('superchat-empty'),
               ),
               _alertTestButton(
-                'Member',
+                l.member,
                 () => onTest('membership'),
               ),
             ],

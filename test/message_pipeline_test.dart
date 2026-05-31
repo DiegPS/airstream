@@ -73,7 +73,8 @@ void main() {
     pipeline.dispose();
   });
 
-  test('blocks normalized word tokens and phrases without substring false positives',
+  test(
+      'blocks normalized word tokens and phrases without substring false positives',
       () async {
     final pipeline = MessagePipeline(const SettingsModel(
       maxMessages: 10,
