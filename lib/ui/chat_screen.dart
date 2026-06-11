@@ -1320,11 +1320,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   ),
                   const SizedBox(height: 8),
                   _switchRow(l.enabled, s.obsEnabled, (v) {
-                    final next = s.copyWith(obsEnabled: v);
-                    if (!v) {
-                      unawaited(appController.disconnectObs());
-                    }
-                    unawaited(notifier.update(next));
+                    unawaited(notifier.update(s.copyWith(obsEnabled: v)));
                   }),
                   if (s.obsEnabled) ...[
                     const SizedBox(height: 12),
@@ -1406,25 +1402,48 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _switchRow(
-                        l.streamState,
-                        s.obsShowStreamState,
-                        (v) =>
-                            notifier.update(s.copyWith(obsShowStreamState: v))),
+                    _obsHudGroupLabel(l.globalHud),
+                    const SizedBox(height: 2),
                     _switchRow(
                         l.currentScene,
                         s.obsShowCurrentScene,
                         (v) => notifier
                             .update(s.copyWith(obsShowCurrentScene: v))),
-                    _switchRow(l.bitrate, s.obsShowBitrate,
-                        (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
                     _switchRow(l.fps, s.obsShowFps,
                         (v) => notifier.update(s.copyWith(obsShowFps: v))),
+                    const SizedBox(height: 8),
+                    _obsHudGroupLabel(l.streamHud),
+                    const SizedBox(height: 2),
+                    _switchRow(
+                        l.streamState,
+                        s.obsShowStreamState,
+                        (v) =>
+                            notifier.update(s.copyWith(obsShowStreamState: v))),
+                    _switchRow(l.bitrate, s.obsShowBitrate,
+                        (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
                     _switchRow(
                         l.droppedFrames,
                         s.obsShowDroppedFrames,
                         (v) => notifier
                             .update(s.copyWith(obsShowDroppedFrames: v))),
+                    const SizedBox(height: 8),
+                    _obsHudGroupLabel(l.recordingHud),
+                    const SizedBox(height: 2),
+                    _switchRow(
+                        l.recordingState,
+                        s.obsShowRecordingState,
+                        (v) => notifier
+                            .update(s.copyWith(obsShowRecordingState: v))),
+                    _switchRow(
+                        l.recordingDuration,
+                        s.obsShowRecordingDuration,
+                        (v) => notifier
+                            .update(s.copyWith(obsShowRecordingDuration: v))),
+                    _switchRow(
+                        l.recordingSize,
+                        s.obsShowRecordingSize,
+                        (v) => notifier
+                            .update(s.copyWith(obsShowRecordingSize: v))),
                   ] else ...[
                     const SizedBox(height: 6),
                     Text(
@@ -2542,6 +2561,18 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }
 }
 
+Widget _obsHudGroupLabel(String label) {
+  return Text(
+    label.toUpperCase(),
+    style: const TextStyle(
+      color: Colors.white38,
+      fontSize: 9,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.8,
+    ),
+  );
+}
+
 class _ObsStatusCard extends StatelessWidget {
   const _ObsStatusCard({
     required this.state,
@@ -2643,6 +2674,14 @@ class _ObsStatusCard extends StatelessWidget {
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
+          if (_showObsRecordingState(displaySettings) &&
+              state.recordingActive) ...[
+            const SizedBox(height: 6),
+            Text(
+              state.recordingPaused ? 'Recording: Paused' : 'Recording: Active',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ],
           if (state.connected) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -2671,6 +2710,22 @@ class _ObsStatusCard extends StatelessWidget {
                     background: _obsDropBadgeBackground(state.dropTrend),
                     fontSize: 10,
                   ),
+                if (_showObsRecordingDuration(displaySettings) &&
+                    state.recordingActive)
+                  _ObsPillBadge(
+                    label: _formatObsDuration(state.recordingDurationMs),
+                    foreground: const Color(0xFFFFB4AB),
+                    background: const Color(0x33FF6B6B),
+                    fontSize: 10,
+                  ),
+                if (_showObsRecordingSize(displaySettings) &&
+                    state.recordingActive)
+                  _ObsPillBadge(
+                    label: _formatObsBytes(state.recordingBytes),
+                    foreground: const Color(0xFFE7E7E7),
+                    background: const Color(0xFF2A2A2A),
+                    fontSize: 10,
+                  ),
               ],
             ),
           ],
@@ -2696,15 +2751,15 @@ class _ObsStatusCard extends StatelessWidget {
     state.error,
     state.connecting,
     state.outputActive,
+    state.recordingActive,
     state.connected,
   )) {
-    (final String? error, _, _, _) when error != null && error.isNotEmpty => (
-        'OBS Error',
-        const Color(0xFFFF8A80)
-      ),
-    (_, true, _, _) => ('OBS Connecting', Colors.amberAccent),
-    (_, _, true, _) => ('OBS Live', const Color(0xFF53FC18)),
-    (_, _, _, true) => ('OBS Connected', const Color(0xFF86B8FF)),
+    (final String? error, _, _, _, _) when error != null && error.isNotEmpty =>
+      ('OBS Error', const Color(0xFFFF8A80)),
+    (_, true, _, _, _) => ('OBS Connecting', Colors.amberAccent),
+    (_, _, true, _, _) => ('OBS Live', const Color(0xFF53FC18)),
+    (_, _, _, true, _) => ('OBS Recording', const Color(0xFFFF6B6B)),
+    (_, _, _, _, true) => ('OBS Connected', const Color(0xFF86B8FF)),
     _ => ('OBS Ready', Colors.white54),
   };
 }
@@ -2728,6 +2783,33 @@ bool _showObsFps(SettingsModel? settings) => settings?.obsShowFps ?? true;
 
 bool _showObsDroppedFrames(SettingsModel? settings) =>
     settings?.obsShowDroppedFrames ?? true;
+
+bool _showObsRecordingState(SettingsModel? settings) =>
+    settings?.obsShowRecordingState ?? true;
+
+bool _showObsRecordingDuration(SettingsModel? settings) =>
+    settings?.obsShowRecordingDuration ?? true;
+
+bool _showObsRecordingSize(SettingsModel? settings) =>
+    settings?.obsShowRecordingSize ?? false;
+
+String _formatObsDuration(int durationMs) {
+  final duration = Duration(milliseconds: durationMs);
+  final hours = duration.inHours.toString().padLeft(2, '0');
+  final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+  final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+  return '$hours:$minutes:$seconds';
+}
+
+String _formatObsBytes(int bytes) {
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+}
 
 Color _obsDropBadgeForeground(ObsDropTrend trend) {
   return switch (trend) {
@@ -2818,6 +2900,36 @@ class _ObsCompactPill extends StatelessWidget {
               const SizedBox(width: 8),
               _ObsPillBadge(
                 label: outputLabel,
+                foreground: neutralForeground,
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
+              ),
+            ],
+            if (_showObsRecordingState(displaySettings) &&
+                state.recordingActive) ...[
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: state.recordingPaused ? 'PAUSED' : 'REC',
+                foreground: const Color(0xFFFFB4AB),
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
+              ),
+            ],
+            if (_showObsRecordingDuration(displaySettings) &&
+                state.recordingActive) ...[
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: _formatObsDuration(state.recordingDurationMs),
+                foreground: neutralForeground,
+                background: Colors.transparent,
+                fontSize: badgeFontSize,
+              ),
+            ],
+            if (_showObsRecordingSize(displaySettings) &&
+                state.recordingActive) ...[
+              const SizedBox(width: 6),
+              _ObsPillBadge(
+                label: _formatObsBytes(state.recordingBytes),
                 foreground: neutralForeground,
                 background: Colors.transparent,
                 fontSize: badgeFontSize,

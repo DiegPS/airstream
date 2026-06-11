@@ -170,7 +170,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get obsDescription =>
-      'Conecta con OBS por WebSocket para mostrar el estado en vivo y la escena actual dentro de Airstream.';
+      'Conecta con OBS por WebSocket para mostrar el estado del stream, grabacion y escena dentro de Airstream.';
 
   @override
   String get webSocketHost => 'Host WebSocket';
@@ -197,6 +197,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hudElements => 'Elementos del HUD';
 
   @override
+  String get globalHud => 'Global';
+
+  @override
+  String get streamHud => 'Stream';
+
+  @override
+  String get recordingHud => 'Grabacion';
+
+  @override
   String get streamState => 'Estado del stream';
 
   @override
@@ -210,6 +219,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get droppedFrames => 'Frames perdidos';
+
+  @override
+  String get recordingState => 'Estado de grabacion';
+
+  @override
+  String get recordingDuration => 'Duracion de grabacion';
+
+  @override
+  String get recordingSize => 'Tamano de grabacion';
 
   @override
   String get obsDisabledHelp =>

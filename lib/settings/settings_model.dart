@@ -98,6 +98,9 @@ class SettingsModel {
   final bool obsShowBitrate;
   final bool obsShowFps;
   final bool obsShowDroppedFrames;
+  final bool obsShowRecordingState;
+  final bool obsShowRecordingDuration;
+  final bool obsShowRecordingSize;
 
   const SettingsModel({
     this.appLanguageCode = 'en',
@@ -182,6 +185,9 @@ class SettingsModel {
     this.obsShowBitrate = true,
     this.obsShowFps = true,
     this.obsShowDroppedFrames = true,
+    this.obsShowRecordingState = true,
+    this.obsShowRecordingDuration = true,
+    this.obsShowRecordingSize = false,
   });
 
   SettingsModel copyWith({
@@ -267,6 +273,9 @@ class SettingsModel {
     bool? obsShowBitrate,
     bool? obsShowFps,
     bool? obsShowDroppedFrames,
+    bool? obsShowRecordingState,
+    bool? obsShowRecordingDuration,
+    bool? obsShowRecordingSize,
   }) =>
       SettingsModel(
         appLanguageCode: appLanguageCode ?? this.appLanguageCode,
@@ -362,6 +371,11 @@ class SettingsModel {
         obsShowBitrate: obsShowBitrate ?? this.obsShowBitrate,
         obsShowFps: obsShowFps ?? this.obsShowFps,
         obsShowDroppedFrames: obsShowDroppedFrames ?? this.obsShowDroppedFrames,
+        obsShowRecordingState:
+            obsShowRecordingState ?? this.obsShowRecordingState,
+        obsShowRecordingDuration:
+            obsShowRecordingDuration ?? this.obsShowRecordingDuration,
+        obsShowRecordingSize: obsShowRecordingSize ?? this.obsShowRecordingSize,
       );
 
   Map<String, dynamic> toJson() => {
@@ -447,6 +461,9 @@ class SettingsModel {
         'obsShowBitrate': obsShowBitrate,
         'obsShowFps': obsShowFps,
         'obsShowDroppedFrames': obsShowDroppedFrames,
+        'obsShowRecordingState': obsShowRecordingState,
+        'obsShowRecordingDuration': obsShowRecordingDuration,
+        'obsShowRecordingSize': obsShowRecordingSize,
       };
 
   factory SettingsModel.fromJson(Map<String, dynamic> j) => SettingsModel(
@@ -546,6 +563,10 @@ class SettingsModel {
         obsShowBitrate: j['obsShowBitrate'] as bool? ?? true,
         obsShowFps: j['obsShowFps'] as bool? ?? true,
         obsShowDroppedFrames: j['obsShowDroppedFrames'] as bool? ?? true,
+        obsShowRecordingState: j['obsShowRecordingState'] as bool? ?? true,
+        obsShowRecordingDuration:
+            j['obsShowRecordingDuration'] as bool? ?? true,
+        obsShowRecordingSize: j['obsShowRecordingSize'] as bool? ?? false,
       );
 
   factory SettingsModel.fromJsonString(String s) =>

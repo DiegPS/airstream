@@ -4,17 +4,23 @@ import 'package:obs_websocket/obs_websocket.dart';
 
 enum ObsDropTrend { normal, steady, rising }
 
+enum ObsPollFailureAction { preserve, unstable, reconnect }
+
 @immutable
 class ObsState {
   final bool connected;
   final bool connecting;
   final bool outputActive;
+  final bool recordingActive;
+  final bool recordingPaused;
   final bool reconnecting;
   final double bitrateKbps;
   final double fps;
   final int droppedFrames;
   final double dropPercentage;
   final String currentScene;
+  final int recordingDurationMs;
+  final int recordingBytes;
   final String statusMessage;
   final String? error;
   final String host;
@@ -25,12 +31,16 @@ class ObsState {
     this.connected = false,
     this.connecting = false,
     this.outputActive = false,
+    this.recordingActive = false,
+    this.recordingPaused = false,
     this.reconnecting = false,
     this.bitrateKbps = 0,
     this.fps = 0,
     this.droppedFrames = 0,
     this.dropPercentage = 0,
     this.currentScene = '',
+    this.recordingDurationMs = 0,
+    this.recordingBytes = 0,
     this.statusMessage = 'Ready to connect',
     this.error,
     this.host = '',
@@ -41,12 +51,16 @@ class ObsState {
     bool? connected,
     bool? connecting,
     bool? outputActive,
+    bool? recordingActive,
+    bool? recordingPaused,
     bool? reconnecting,
     double? bitrateKbps,
     double? fps,
     int? droppedFrames,
     double? dropPercentage,
     String? currentScene,
+    int? recordingDurationMs,
+    int? recordingBytes,
     String? statusMessage,
     String? error,
     bool clearError = false,
@@ -57,12 +71,16 @@ class ObsState {
         connected: connected ?? this.connected,
         connecting: connecting ?? this.connecting,
         outputActive: outputActive ?? this.outputActive,
+        recordingActive: recordingActive ?? this.recordingActive,
+        recordingPaused: recordingPaused ?? this.recordingPaused,
         reconnecting: reconnecting ?? this.reconnecting,
         bitrateKbps: bitrateKbps ?? this.bitrateKbps,
         fps: fps ?? this.fps,
         droppedFrames: droppedFrames ?? this.droppedFrames,
         dropPercentage: dropPercentage ?? this.dropPercentage,
         currentScene: currentScene ?? this.currentScene,
+        recordingDurationMs: recordingDurationMs ?? this.recordingDurationMs,
+        recordingBytes: recordingBytes ?? this.recordingBytes,
         statusMessage: statusMessage ?? this.statusMessage,
         error: clearError ? null : (error ?? this.error),
         host: host ?? this.host,
@@ -73,6 +91,8 @@ class ObsState {
 class ObsService {
   static const _statsPollInterval = Duration(seconds: 1);
   static const _dropRecoveryWindow = Duration(seconds: 10);
+  static const _unstablePollFailureThreshold = 3;
+  static const _reconnectPollFailureThreshold = 8;
 
   ObsWebSocket? _obs;
   final _stateController =
@@ -85,12 +105,25 @@ class ObsService {
   _ObsMetricsSample? _lastMetricsSample;
   DateTime? _lastObservedDropAt;
   bool _statsPollInFlight = false;
+  int _consecutivePollFailures = 0;
+  String _connectionPassword = '';
 
   ObsState get currentState => _state;
 
   Stream<ObsState> get stateStream async* {
     yield _state;
     yield* _stateController.stream;
+  }
+
+  @visibleForTesting
+  static ObsPollFailureAction pollFailureActionFor(int consecutiveFailures) {
+    if (consecutiveFailures >= _reconnectPollFailureThreshold) {
+      return ObsPollFailureAction.reconnect;
+    }
+    if (consecutiveFailures >= _unstablePollFailureThreshold) {
+      return ObsPollFailureAction.unstable;
+    }
+    return ObsPollFailureAction.preserve;
   }
 
   Future<void> connect({
@@ -114,6 +147,7 @@ class ObsService {
     }
 
     final generation = ++_generation;
+    _connectionPassword = password;
     await _closeCurrentSocket();
     _emit(
       _state.copyWith(
@@ -127,14 +161,16 @@ class ObsService {
       ),
     );
 
+    ObsWebSocket? connectingObs;
     try {
-      final obs = await ObsWebSocket.connect(
+      connectingObs = await ObsWebSocket.connect(
         _normalizeConnectUrl(trimmedHost),
         password: password.trim().isEmpty ? null : password,
-        onDone: () => _handleSocketDone(generation),
+        onDone: () => _handleSocketDone(generation, connectingObs),
         fallbackEventHandler: (event) =>
             _handleFallbackEvent(event, generation),
       );
+      final obs = connectingObs;
 
       if (generation != _generation) {
         await obs.close();
@@ -146,6 +182,7 @@ class ObsService {
 
       final currentScene = await obs.scenes.getCurrentProgramScene();
       final streamStatus = await obs.stream.getStreamStatus();
+      final recordStatus = await obs.record.getRecordStatus();
       final stats = await obs.general.getStats();
 
       if (generation != _generation) {
@@ -158,6 +195,7 @@ class ObsService {
         stats: stats,
       );
       _lastMetricsSample = metrics.sample;
+      _consecutivePollFailures = 0;
       final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
       _emit(
         _state.copyWith(
@@ -165,6 +203,10 @@ class ObsService {
           connecting: false,
           currentScene: currentScene,
           outputActive: streamStatus.outputActive,
+          recordingActive: recordStatus.outputActive,
+          recordingPaused: recordStatus.outputPaused,
+          recordingDurationMs: recordStatus.outputDuration,
+          recordingBytes: recordStatus.outputBytes,
           reconnecting: streamStatus.outputReconnecting,
           bitrateKbps: metrics.bitrateKbps,
           fps: metrics.fps,
@@ -181,20 +223,28 @@ class ObsService {
       );
       _startStatsPolling(generation);
     } catch (e) {
+      final failedObs = connectingObs;
+      if (identical(_obs, failedObs)) {
+        _obs = null;
+      }
+      await _closeSocket(failedObs);
       if (generation != _generation) return;
-      _obs = null;
       _stopStatsPolling();
       _emit(
         _state.copyWith(
           connected: false,
           connecting: false,
           outputActive: false,
+          recordingActive: false,
+          recordingPaused: false,
           reconnecting: false,
           bitrateKbps: 0,
           fps: 0,
           droppedFrames: 0,
           dropPercentage: 0,
           dropTrend: ObsDropTrend.normal,
+          recordingDurationMs: 0,
+          recordingBytes: 0,
           statusMessage: 'Connection failed',
           error: _formatError(e),
           host: trimmedHost,
@@ -205,6 +255,7 @@ class ObsService {
 
   Future<void> disconnect() async {
     ++_generation;
+    _connectionPassword = '';
     _stopStatsPolling();
     await _closeCurrentSocket();
     _emit(
@@ -212,12 +263,16 @@ class ObsService {
         connected: false,
         connecting: false,
         outputActive: false,
+        recordingActive: false,
+        recordingPaused: false,
         reconnecting: false,
         bitrateKbps: 0,
         fps: 0,
         droppedFrames: 0,
         dropPercentage: 0,
         dropTrend: ObsDropTrend.normal,
+        recordingDurationMs: 0,
+        recordingBytes: 0,
         currentScene: '',
         statusMessage: 'Disconnected',
         clearError: true,
@@ -230,14 +285,21 @@ class ObsService {
     _obs = null;
     _lastMetricsSample = null;
     _lastObservedDropAt = null;
+    _consecutivePollFailures = 0;
+    await _closeSocket(obs);
+  }
+
+  Future<void> _closeSocket(ObsWebSocket? obs) async {
     if (obs == null) return;
     try {
       await obs.close();
     } catch (_) {}
   }
 
-  void _handleSocketDone(int generation) {
-    if (generation != _generation) return;
+  void _handleSocketDone(int generation, ObsWebSocket? obs) {
+    if (generation != _generation || obs == null || !identical(_obs, obs)) {
+      return;
+    }
     _obs = null;
     _stopStatsPolling();
     _emit(
@@ -245,12 +307,16 @@ class ObsService {
         connected: false,
         connecting: false,
         outputActive: false,
+        recordingActive: false,
+        recordingPaused: false,
         reconnecting: false,
         bitrateKbps: 0,
         fps: 0,
         droppedFrames: 0,
         dropPercentage: 0,
         dropTrend: ObsDropTrend.normal,
+        recordingDurationMs: 0,
+        recordingBytes: 0,
         currentScene: '',
         statusMessage: 'Disconnected',
       ),
@@ -290,6 +356,14 @@ class ObsService {
         );
         unawaited(_pollStatsOnce(generation));
         break;
+      case 'RecordStateChanged':
+        _emit(
+          _state.copyWith(
+            recordingActive: data['outputActive'] == true,
+          ),
+        );
+        unawaited(_pollStatsOnce(generation));
+        break;
       default:
         break;
     }
@@ -318,6 +392,7 @@ class ObsService {
     _statsPollInFlight = true;
     try {
       final streamStatus = await obs.stream.getStreamStatus();
+      final recordStatus = await obs.record.getRecordStatus();
       final stats = await obs.general.getStats();
       if (generation != _generation) return;
 
@@ -326,10 +401,15 @@ class ObsService {
         stats: stats,
       );
       _lastMetricsSample = metrics.sample;
+      _consecutivePollFailures = 0;
       final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
       _emit(
         _state.copyWith(
           outputActive: streamStatus.outputActive,
+          recordingActive: recordStatus.outputActive,
+          recordingPaused: recordStatus.outputPaused,
+          recordingDurationMs: recordStatus.outputDuration,
+          recordingBytes: recordStatus.outputBytes,
           reconnecting: streamStatus.outputReconnecting,
           bitrateKbps: metrics.bitrateKbps,
           fps: metrics.fps,
@@ -343,7 +423,37 @@ class ObsService {
         ),
       );
     } catch (_) {
-      // Keep the last known UI state; connection lifecycle will be updated by socket callbacks.
+      if (generation != _generation) return;
+
+      _consecutivePollFailures++;
+      switch (pollFailureActionFor(_consecutivePollFailures)) {
+        case ObsPollFailureAction.preserve:
+          break;
+        case ObsPollFailureAction.unstable:
+          _emit(
+            _state.copyWith(
+              statusMessage:
+                  'OBS connection unstable ($_consecutivePollFailures/$_reconnectPollFailureThreshold)',
+            ),
+          );
+          break;
+        case ObsPollFailureAction.reconnect:
+          final host = _state.host;
+          final password = _connectionPassword;
+          _emit(
+            _state.copyWith(
+              connected: false,
+              connecting: true,
+              outputActive: false,
+              recordingActive: false,
+              recordingPaused: false,
+              reconnecting: true,
+              statusMessage: 'Reconnecting to OBS...',
+            ),
+          );
+          await connect(host: host, password: password);
+          break;
+      }
     } finally {
       _statsPollInFlight = false;
     }

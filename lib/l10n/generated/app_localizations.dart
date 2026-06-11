@@ -407,7 +407,7 @@ abstract class AppLocalizations {
   /// No description provided for @obsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Connect to OBS over WebSocket to show live status and the current program scene inside Airstream.'**
+  /// **'Connect to OBS over WebSocket to show stream, recording and scene status inside Airstream.'**
   String get obsDescription;
 
   /// No description provided for @webSocketHost.
@@ -458,6 +458,24 @@ abstract class AppLocalizations {
   /// **'HUD Elements'**
   String get hudElements;
 
+  /// No description provided for @globalHud.
+  ///
+  /// In en, this message translates to:
+  /// **'Global'**
+  String get globalHud;
+
+  /// No description provided for @streamHud.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream'**
+  String get streamHud;
+
+  /// No description provided for @recordingHud.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get recordingHud;
+
   /// No description provided for @streamState.
   ///
   /// In en, this message translates to:
@@ -487,6 +505,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dropped frames'**
   String get droppedFrames;
+
+  /// No description provided for @recordingState.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording state'**
+  String get recordingState;
+
+  /// No description provided for @recordingDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording duration'**
+  String get recordingDuration;
+
+  /// No description provided for @recordingSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording size'**
+  String get recordingSize;
 
   /// No description provided for @obsDisabledHelp.
   ///

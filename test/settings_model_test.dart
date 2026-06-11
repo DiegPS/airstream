@@ -23,4 +23,26 @@ void main() {
     expect(restored.chatTextShadow, isTrue);
     expect(restored.chatTextStroke, 1.5);
   });
+
+  test('persists OBS recording HUD settings', () {
+    const settings = SettingsModel(
+      obsShowRecordingState: false,
+      obsShowRecordingDuration: false,
+      obsShowRecordingSize: true,
+    );
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+
+    expect(restored.obsShowRecordingState, isFalse);
+    expect(restored.obsShowRecordingDuration, isFalse);
+    expect(restored.obsShowRecordingSize, isTrue);
+  });
+
+  test('uses practical OBS recording HUD defaults for older settings', () {
+    final restored = SettingsModel.fromJson(const {});
+
+    expect(restored.obsShowRecordingState, isTrue);
+    expect(restored.obsShowRecordingDuration, isTrue);
+    expect(restored.obsShowRecordingSize, isFalse);
+  });
 }
