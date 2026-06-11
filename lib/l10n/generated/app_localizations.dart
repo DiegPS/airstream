@@ -242,6 +242,18 @@ abstract class AppLocalizations {
   /// **'Message gap'**
   String get messageGap;
 
+  /// No description provided for @maxMessageWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Max message width'**
+  String get maxMessageWidth;
+
+  /// No description provided for @horizontalPadding.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal padding'**
+  String get horizontalPadding;
+
   /// No description provided for @avatars.
   ///
   /// In en, this message translates to:

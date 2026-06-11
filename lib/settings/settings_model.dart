@@ -24,6 +24,13 @@ class SettingsModel {
   final bool showBubbleShadow;
   final double borderRadius;
   final double messageGap;
+  final String chatTextAlign;
+  final double chatMaxMessageWidth;
+  final double chatHorizontalPadding;
+  final double chatLineHeight;
+  final double chatFontWeight;
+  final bool chatTextShadow;
+  final double chatTextStroke;
   final int maxMessages;
 
   // Filtering
@@ -109,6 +116,13 @@ class SettingsModel {
     this.showBubbleShadow = true,
     this.borderRadius = 8.0,
     this.messageGap = 4.0,
+    this.chatTextAlign = 'left',
+    this.chatMaxMessageWidth = 0.82,
+    this.chatHorizontalPadding = 24.0,
+    this.chatLineHeight = 1.5,
+    this.chatFontWeight = 400.0,
+    this.chatTextShadow = false,
+    this.chatTextStroke = 0.0,
     this.maxMessages = 200,
     this.blockedUsers = const [],
     this.blockedWords = const [],
@@ -187,6 +201,13 @@ class SettingsModel {
     bool? showBubbleShadow,
     double? borderRadius,
     double? messageGap,
+    String? chatTextAlign,
+    double? chatMaxMessageWidth,
+    double? chatHorizontalPadding,
+    double? chatLineHeight,
+    double? chatFontWeight,
+    bool? chatTextShadow,
+    double? chatTextStroke,
     int? maxMessages,
     List<String>? blockedUsers,
     List<String>? blockedWords,
@@ -264,6 +285,14 @@ class SettingsModel {
         showBubbleShadow: showBubbleShadow ?? this.showBubbleShadow,
         borderRadius: borderRadius ?? this.borderRadius,
         messageGap: messageGap ?? this.messageGap,
+        chatTextAlign: chatTextAlign ?? this.chatTextAlign,
+        chatMaxMessageWidth: chatMaxMessageWidth ?? this.chatMaxMessageWidth,
+        chatHorizontalPadding:
+            chatHorizontalPadding ?? this.chatHorizontalPadding,
+        chatLineHeight: chatLineHeight ?? this.chatLineHeight,
+        chatFontWeight: chatFontWeight ?? this.chatFontWeight,
+        chatTextShadow: chatTextShadow ?? this.chatTextShadow,
+        chatTextStroke: chatTextStroke ?? this.chatTextStroke,
         maxMessages: maxMessages ?? this.maxMessages,
         blockedUsers: blockedUsers ?? this.blockedUsers,
         blockedWords: blockedWords ?? this.blockedWords,
@@ -352,6 +381,13 @@ class SettingsModel {
         'showBubbleShadow': showBubbleShadow,
         'borderRadius': borderRadius,
         'messageGap': messageGap,
+        'chatTextAlign': chatTextAlign,
+        'chatMaxMessageWidth': chatMaxMessageWidth,
+        'chatHorizontalPadding': chatHorizontalPadding,
+        'chatLineHeight': chatLineHeight,
+        'chatFontWeight': chatFontWeight,
+        'chatTextShadow': chatTextShadow,
+        'chatTextStroke': chatTextStroke,
         'maxMessages': maxMessages,
         'blockedUsers': blockedUsers,
         'blockedWords': blockedWords,
@@ -430,6 +466,15 @@ class SettingsModel {
         showBubbleShadow: j['showBubbleShadow'] as bool? ?? true,
         borderRadius: (j['borderRadius'] as num?)?.toDouble() ?? 8.0,
         messageGap: (j['messageGap'] as num?)?.toDouble() ?? 4.0,
+        chatTextAlign: j['chatTextAlign'] as String? ?? 'left',
+        chatMaxMessageWidth:
+            (j['chatMaxMessageWidth'] as num?)?.toDouble() ?? 0.82,
+        chatHorizontalPadding:
+            (j['chatHorizontalPadding'] as num?)?.toDouble() ?? 24.0,
+        chatLineHeight: (j['chatLineHeight'] as num?)?.toDouble() ?? 1.5,
+        chatFontWeight: (j['chatFontWeight'] as num?)?.toDouble() ?? 400.0,
+        chatTextShadow: j['chatTextShadow'] as bool? ?? false,
+        chatTextStroke: (j['chatTextStroke'] as num?)?.toDouble() ?? 0.0,
         maxMessages: j['maxMessages'] as int? ?? 200,
         blockedUsers: List<String>.from(j['blockedUsers'] as List? ?? []),
         blockedWords: List<String>.from(j['blockedWords'] as List? ?? []),

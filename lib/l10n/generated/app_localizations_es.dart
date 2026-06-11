@@ -84,6 +84,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get messageGap => 'Espacio entre mensajes';
 
   @override
+  String get maxMessageWidth => 'Ancho maximo de mensaje';
+
+  @override
+  String get horizontalPadding => 'Padding horizontal';
+
+  @override
   String get avatars => 'Avatares';
 
   @override

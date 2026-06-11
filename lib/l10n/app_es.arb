@@ -24,6 +24,8 @@
   "bubbleOpacity": "Opacidad de burbuja",
   "borderRadius": "Radio de borde",
   "messageGap": "Espacio entre mensajes",
+  "maxMessageWidth": "Ancho maximo de mensaje",
+  "horizontalPadding": "Padding horizontal",
   "avatars": "Avatares",
   "platformIcon": "Icono de plataforma",
   "badges": "Insignias",

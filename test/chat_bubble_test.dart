@@ -1,0 +1,74 @@
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets(
+      'uses available chat width, aligns right, and does not duplicate emojis',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(
+        chatTextAlign: 'right',
+        chatMaxMessageWidth: 0.5,
+        chatTextStroke: 2,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => notifier),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              child: ChatBubble(message: _message()),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final bubbleConstraint = tester
+        .widgetList<ConstrainedBox>(find.byType(ConstrainedBox))
+        .map((widget) => widget.constraints.maxWidth)
+        .where((width) => width.isFinite)
+        .singleWhere((width) => width == 250);
+    expect(bubbleConstraint, 250);
+
+    expect(
+      tester.widgetList<Align>(find.byType(Align)).any(
+            (widget) => widget.alignment == Alignment.centerRight,
+          ),
+      isTrue,
+    );
+    expect(find.text(':wave:'), findsOneWidget);
+  });
+}
+
+class _TestSettingsNotifier extends SettingsNotifier {
+  _TestSettingsNotifier(SettingsModel settings) {
+    state = settings;
+  }
+}
+
+ChatMessage _message() {
+  return ChatMessage(
+    platform: Platform.youtube,
+    id: 'message',
+    author: const ChatAuthor(
+      name: 'Tester',
+      channelId: 'tester',
+    ),
+    items: const [
+      MessageItem.text('Hello '),
+      MessageItem.emoji(EmojiItem(url: '', alt: ':wave:')),
+    ],
+    timestamp: DateTime.utc(2026, 6, 10),
+  );
+}

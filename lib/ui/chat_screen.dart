@@ -300,9 +300,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 controller: _scrollController,
                 reverse: true,
                 padding: EdgeInsets.fromLTRB(
+                  settings.chatHorizontalPadding,
                   24,
-                  24,
-                  24,
+                  settings.chatHorizontalPadding,
                   showObsCard ? obsReservedSpace : 20,
                 ),
                 itemCount: messages.length,
@@ -1088,6 +1088,34 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       (v) => notifier.update(s.copyWith(borderRadius: v))),
                   _sliderRow(l.messageGap, s.messageGap, 0, 16,
                       (v) => notifier.update(s.copyWith(messageGap: v))),
+                  _dropdownRow(
+                    l.textAlignment,
+                    s.chatTextAlign,
+                    const ['left', 'center', 'right'],
+                    (v) => notifier.update(s.copyWith(chatTextAlign: v)),
+                  ),
+                  _sliderRow(
+                    l.maxMessageWidth,
+                    s.chatMaxMessageWidth * 100,
+                    40,
+                    100,
+                    (v) => notifier.update(
+                      s.copyWith(chatMaxMessageWidth: v / 100),
+                    ),
+                  ),
+                  _sliderRow(
+                    l.horizontalPadding,
+                    s.chatHorizontalPadding,
+                    0,
+                    64,
+                    (v) =>
+                        notifier.update(s.copyWith(chatHorizontalPadding: v)),
+                  ),
+                  _sliderRow(l.lineHeight, s.chatLineHeight, 1, 2,
+                      (v) => notifier.update(s.copyWith(chatLineHeight: v))),
+                  _sliderRow(l.fontWeight, s.chatFontWeight, 100, 900,
+                      (v) => notifier.update(s.copyWith(chatFontWeight: v)),
+                      divisions: 8),
                   _switchRow(l.avatars, s.showAvatars,
                       (v) => notifier.update(s.copyWith(showAvatars: v))),
                   _switchRow(l.platformIcon, s.showPlatformIcons,
@@ -1100,6 +1128,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       (v) => notifier.update(s.copyWith(showBubble: v))),
                   _switchRow(l.bubbleShadow, s.showBubbleShadow,
                       (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
+                  _switchRow(l.textShadow, s.chatTextShadow,
+                      (v) => notifier.update(s.copyWith(chatTextShadow: v))),
+                  _sliderRow(l.textOutline, s.chatTextStroke, 0, 4,
+                      (v) => notifier.update(s.copyWith(chatTextStroke: v))),
                 ],
               ),
               _sidebarSectionTile(
@@ -2217,8 +2249,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     double value,
     double min,
     double max,
-    ValueChanged<double> onChanged,
-  ) =>
+    ValueChanged<double> onChanged, {
+    int? divisions,
+  }) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
@@ -2233,6 +2266,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 value: value.clamp(min, max),
                 min: min,
                 max: max,
+                divisions: divisions,
                 activeColor: const Color(0xFF53FC18),
                 inactiveColor: const Color(0xFF2A2A2A),
                 onChanged: onChanged,

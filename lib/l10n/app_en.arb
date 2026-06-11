@@ -24,6 +24,8 @@
   "bubbleOpacity": "Bubble opacity",
   "borderRadius": "Border radius",
   "messageGap": "Message gap",
+  "maxMessageWidth": "Max message width",
+  "horizontalPadding": "Horizontal padding",
   "avatars": "Avatars",
   "platformIcon": "Platform icon",
   "badges": "Badges",
