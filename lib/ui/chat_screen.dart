@@ -389,19 +389,12 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                     child: ColoredBox(color: Colors.transparent),
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   left: 12,
                   top: 0,
                   bottom: 0,
                   child: IgnorePointer(
-                    child: _TitleBarCaption(),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Center(
-                    child: IgnorePointer(
-                      child: _TitleBarCenterStatus(overlayUrl: overlayUrl),
-                    ),
+                    child: _TitleBarCaption(overlayUrl: overlayUrl),
                   ),
                 ),
                 Positioned(
@@ -452,19 +445,21 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
 }
 
 class _TitleBarCaption extends StatelessWidget {
-  const _TitleBarCaption();
+  const _TitleBarCaption({required this.overlayUrl});
+
+  final String? overlayUrl;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Icon(
+        const Icon(
           Icons.forum_outlined,
           color: Color(0xFFD7D7D7),
           size: 14,
         ),
-        SizedBox(width: 8),
-        Text(
+        const SizedBox(width: 8),
+        const Text(
           'AIRSTREAM',
           style: TextStyle(
             color: Color(0xFFA8A8A8),
@@ -473,6 +468,8 @@ class _TitleBarCaption extends StatelessWidget {
             letterSpacing: 1.2,
           ),
         ),
+        const SizedBox(width: 14),
+        _TitleBarCenterStatus(overlayUrl: overlayUrl),
       ],
     );
   }
