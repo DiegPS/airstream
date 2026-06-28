@@ -82,6 +82,15 @@ class KickService {
     if (badges.isNotEmpty) {
       badge = AuthorBadge(label: badges.first.text);
     }
+    final isSubscriber = badges.any((badge) {
+      final type = badge.type.toLowerCase();
+      final text = badge.text.toLowerCase();
+      return type.contains('subscriber') ||
+          type == 'sub' ||
+          type.contains('founder') ||
+          text.contains('subscriber') ||
+          text.contains('sub');
+    });
 
     return ChatMessage(
       platform: Platform.kick,
@@ -95,6 +104,7 @@ class KickService {
         badge: badge,
       ),
       items: items,
+      isMembership: isSubscriber,
       timestamp: msg.createdAt,
     );
   }

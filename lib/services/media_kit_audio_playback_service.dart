@@ -7,6 +7,7 @@ class MediaKitAudioPlaybackService {
   Player? _player;
   Completer<void>? _activePlayback;
   StreamSubscription<bool>? _completedSub;
+  StreamSubscription<String>? _errorSub;
 
   Future<List<AudioDevice>> getAudioDevices() async {
     final player = _ensurePlayer();
@@ -26,10 +27,15 @@ class MediaKitAudioPlaybackService {
     return _ensurePlayer().setAudioDevice(AudioDevice.auto());
   }
 
-  Future<void> playFile(File file) async {
+  Future<void> playFile(
+    File file, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
     final player = _ensurePlayer();
     await _completedSub?.cancel();
     _completedSub = null;
+    await _errorSub?.cancel();
+    _errorSub = null;
     await player.stop();
     _completeActivePlayback();
 
@@ -40,16 +46,26 @@ class MediaKitAudioPlaybackService {
         playback.complete();
       }
     });
+    _errorSub = player.stream.error.listen((error) {
+      if (!playback.isCompleted) {
+        playback.completeError(StateError(error));
+      }
+    });
 
     try {
       await player.open(Media(file.absolute.uri.toString()));
-      await playback.future;
+      await playback.future.timeout(timeout);
+    } on TimeoutException {
+      await player.stop();
+      rethrow;
     } finally {
       if (identical(_activePlayback, playback)) {
         _activePlayback = null;
       }
       await _completedSub?.cancel();
       _completedSub = null;
+      await _errorSub?.cancel();
+      _errorSub = null;
     }
   }
 
@@ -58,12 +74,16 @@ class MediaKitAudioPlaybackService {
     _completeActivePlayback();
     await _completedSub?.cancel();
     _completedSub = null;
+    await _errorSub?.cancel();
+    _errorSub = null;
   }
 
   Future<void> dispose() async {
     _completeActivePlayback();
     await _completedSub?.cancel();
     _completedSub = null;
+    await _errorSub?.cancel();
+    _errorSub = null;
     final player = _player;
     _player = null;
     await player?.dispose();

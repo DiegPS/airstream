@@ -74,6 +74,12 @@ class TtsLoadState {
 }
 
 class TtsService {
+  static const int _maxQueuedUtterances = 8;
+  static const int _maxUtteranceRunes = 260;
+  static const Duration _synthesisTimeout = Duration(seconds: 45);
+  static const Duration _minimumPlaybackTimeout = Duration(seconds: 8);
+  static const Duration _playbackTimeoutPadding = Duration(seconds: 4);
+
   final Queue<String> _queue = Queue<String>();
   final _loadStateController = StreamController<TtsLoadState>.broadcast();
   final _busyController = StreamController<bool>.broadcast();
@@ -297,10 +303,29 @@ class TtsService {
 
   void speak(String text) {
     if (_isDisposed) return;
-    if (text.trim().isEmpty) return;
-    _queue.add(text);
+    final speakableText = _prepareTextForSpeech(text);
+    if (speakableText.isEmpty) return;
+    while (_queue.length >= _maxQueuedUtterances) {
+      _queue.removeFirst();
+    }
+    _queue.add(speakableText);
     _setBusy(true);
     _processQueue();
+  }
+
+  String _prepareTextForSpeech(String text) {
+    final withoutUrls = text.replaceAll(
+      RegExp(r'https?:\/\/\S+|www\.\S+', caseSensitive: false),
+      ' ',
+    );
+    final normalized = withoutUrls.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.isEmpty) return '';
+
+    final runes = normalized.runes.toList();
+    if (runes.length <= _maxUtteranceRunes) {
+      return normalized;
+    }
+    return '${String.fromCharCodes(runes.take(_maxUtteranceRunes)).trim()}...';
   }
 
   Future<void> stop() async {
@@ -320,6 +345,7 @@ class TtsService {
       } else {
         // Models failed to load, clear queue to prevent memory leak
         _queue.clear();
+        _setBusy(false);
         return;
       }
     }
@@ -345,13 +371,15 @@ class TtsService {
     if (textToSpeech == null || style == null) return;
     _activeSyntheses++;
     try {
-      final result = await textToSpeech.call(
-        text,
-        _selectedLang,
-        style,
-        _totalSteps,
-        speed: _speed,
-      );
+      final result = await textToSpeech
+          .call(
+            text,
+            _selectedLang,
+            style,
+            _totalSteps,
+            speed: _speed,
+          )
+          .timeout(_synthesisTimeout);
 
       final wav = result['wav'] is List<double>
           ? result['wav']
@@ -368,7 +396,10 @@ class TtsService {
         throw Exception('Failed to create WAV file');
       }
 
-      await _playAudioFile(file);
+      await _playAudioFile(file, timeout: _playbackTimeout(result));
+    } on TimeoutException catch (e) {
+      debugPrint('TTS timed out and was skipped: $e');
+      await _audioPlayback.stop();
     } catch (e) {
       debugPrint('TTS generation/playback error: $e');
     } finally {
@@ -417,8 +448,23 @@ class TtsService {
     }
   }
 
-  Future<void> _playAudioFile(File file) async {
-    await _audioPlayback.playFile(file);
+  Duration _playbackTimeout(Map<String, dynamic> result) {
+    final duration = result['duration'];
+    final seconds = duration is List && duration.isNotEmpty
+        ? (duration.first as num?)?.toDouble()
+        : null;
+    if (seconds == null || seconds <= 0) {
+      return const Duration(seconds: 20);
+    }
+    final expected = Duration(milliseconds: (seconds * 1000).ceil()) +
+        _playbackTimeoutPadding;
+    return expected < _minimumPlaybackTimeout
+        ? _minimumPlaybackTimeout
+        : expected;
+  }
+
+  Future<void> _playAudioFile(File file, {required Duration timeout}) async {
+    await _audioPlayback.playFile(file, timeout: timeout);
   }
 
   Future<void> dispose() async {
