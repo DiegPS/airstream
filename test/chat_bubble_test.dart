@@ -1,12 +1,19 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('maps chat position to horizontal alignment', () {
+    expect(chatHorizontalAlignment('left'), Alignment.centerLeft);
+    expect(chatHorizontalAlignment('center'), Alignment.center);
+    expect(chatHorizontalAlignment('right'), Alignment.centerRight);
+  });
+
   testWidgets(
       'uses available chat width, aligns right, and does not duplicate emojis',
       (tester) async {

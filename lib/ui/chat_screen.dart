@@ -7,6 +7,7 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/window_control_bar.dart';
 import 'package:airstream/window/window_state.dart';
@@ -241,14 +242,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Positioned.fill(child: child),
           Positioned(
             left: 24,
+            right: 24,
             bottom: obsBottomSpacing,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: _ObsStatusCard(
-                state: obsState,
-                compact: true,
-                styleSettings: settings,
-                displaySettings: settings,
+            child: Align(
+              alignment: chatHorizontalAlignment(settings.chatTextAlign),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: _ObsStatusCard(
+                  state: obsState,
+                  compact: true,
+                  styleSettings: settings,
+                  displaySettings: settings,
+                ),
               ),
             ),
           ),

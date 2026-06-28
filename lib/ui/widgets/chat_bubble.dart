@@ -1,6 +1,7 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/author_avatar.dart';
+import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:extended_image/extended_image.dart';
@@ -51,7 +52,7 @@ class ChatBubble extends ConsumerWidget {
 
     final showPlatformBadge = s.showPlatformIcons;
     final textAlign = _textAlign(s.chatTextAlign);
-    final alignment = _bubbleAlignment(s.chatTextAlign);
+    final alignment = chatHorizontalAlignment(s.chatTextAlign);
     final contentCrossAxisAlignment =
         _contentCrossAxisAlignment(s.chatTextAlign);
     final contentTextStyle = _chatTextStyle(
@@ -279,14 +280,6 @@ class ChatBubble extends ConsumerWidget {
       Platform.twitch => 'New Subscriber!',
       Platform.kick => 'Subscription Update',
       Platform.youtube => 'Membership Update',
-    };
-  }
-
-  static Alignment _bubbleAlignment(String value) {
-    return switch (value) {
-      'center' => Alignment.center,
-      'right' => Alignment.centerRight,
-      _ => Alignment.centerLeft,
     };
   }
 
