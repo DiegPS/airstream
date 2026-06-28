@@ -1237,6 +1237,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                         onChanged: (_) => _queueTextSettingsSave(),
                         onSubmitted: (_) => _saveTextSettings(),
                       ),
+                      _switchRow(
+                        l.ignoreCommandCase,
+                        s.ttsCommandIgnoreCase,
+                        (v) => notifier.update(
+                          s.copyWith(ttsCommandIgnoreCase: v),
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 8),
                     _label(l.separatorText),

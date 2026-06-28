@@ -274,9 +274,13 @@ class AppController {
     if (text.isEmpty) return;
 
     if (settings.ttsCommandMode) {
-      final prefix = settings.ttsCommandPrefix.trim().toLowerCase();
+      final prefix = settings.ttsCommandPrefix.trim();
       if (prefix.isNotEmpty) {
-        if (!text.toLowerCase().startsWith(prefix)) return;
+        final messageText =
+            settings.ttsCommandIgnoreCase ? text.toLowerCase() : text;
+        final commandPrefix =
+            settings.ttsCommandIgnoreCase ? prefix.toLowerCase() : prefix;
+        if (!messageText.startsWith(commandPrefix)) return;
         text = text.substring(prefix.length).trim();
         if (text.isEmpty) return;
       }

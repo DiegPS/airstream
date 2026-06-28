@@ -212,6 +212,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   })),
                 onChanged: (v) =>
                     notifier.update(s.copyWith(ttsCommandPrefix: v))),
+          if (s.ttsCommandMode)
+            _switchTile(
+              'Ignore uppercase/lowercase in prefix',
+              s.ttsCommandIgnoreCase,
+              (v) => notifier.update(s.copyWith(ttsCommandIgnoreCase: v)),
+            ),
 
           _textField('Separator Text (e.g "says")',
               TextEditingController(text: s.ttsSeparatorText),

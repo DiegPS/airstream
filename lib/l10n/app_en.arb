@@ -43,6 +43,7 @@
   "membersOnly": "Members only",
   "commandMode": "Command mode (custom prefix)",
   "commandPrefix": "Command prefix",
+  "ignoreCommandCase": "Ignore uppercase/lowercase in prefix",
   "separatorText": "Separator text",
   "voice": "Voice",
   "testText": "Test text",

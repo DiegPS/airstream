@@ -356,6 +356,12 @@ abstract class AppLocalizations {
   /// **'Command prefix'**
   String get commandPrefix;
 
+  /// No description provided for @ignoreCommandCase.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore uppercase/lowercase in prefix'**
+  String get ignoreCommandCase;
+
   /// No description provided for @separatorText.
   ///
   /// In en, this message translates to:

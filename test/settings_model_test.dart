@@ -45,4 +45,13 @@ void main() {
     expect(restored.obsShowRecordingDuration, isTrue);
     expect(restored.obsShowRecordingSize, isFalse);
   });
+
+  test('persists TTS command case sensitivity setting', () {
+    const settings = SettingsModel(ttsCommandIgnoreCase: false);
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+
+    expect(restored.ttsCommandIgnoreCase, isFalse);
+    expect(SettingsModel.fromJson(const {}).ttsCommandIgnoreCase, isTrue);
+  });
 }

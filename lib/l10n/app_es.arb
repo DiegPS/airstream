@@ -43,6 +43,7 @@
   "membersOnly": "Solo miembros",
   "commandMode": "Modo comando (prefijo personalizado)",
   "commandPrefix": "Prefijo del comando",
+  "ignoreCommandCase": "Ignorar mayusculas/minusculas en el prefijo",
   "separatorText": "Texto separador",
   "voice": "Voz",
   "testText": "Texto de prueba",

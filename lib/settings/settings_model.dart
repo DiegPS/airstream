@@ -41,6 +41,7 @@ class SettingsModel {
   final bool ttsEnabled;
   final bool ttsMembersOnly;
   final bool ttsCommandMode;
+  final bool ttsCommandIgnoreCase;
   final String ttsCommandPrefix;
   final String ttsSeparatorText;
   final String ttsVoice;
@@ -132,6 +133,7 @@ class SettingsModel {
     this.ttsEnabled = false,
     this.ttsMembersOnly = false,
     this.ttsCommandMode = false,
+    this.ttsCommandIgnoreCase = true,
     this.ttsCommandPrefix = '!voz',
     this.ttsSeparatorText = 'dice',
     this.ttsVoice = 'M1',
@@ -220,6 +222,7 @@ class SettingsModel {
     bool? ttsEnabled,
     bool? ttsMembersOnly,
     bool? ttsCommandMode,
+    bool? ttsCommandIgnoreCase,
     String? ttsCommandPrefix,
     String? ttsSeparatorText,
     String? ttsVoice,
@@ -308,6 +311,7 @@ class SettingsModel {
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
         ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,
         ttsCommandMode: ttsCommandMode ?? this.ttsCommandMode,
+        ttsCommandIgnoreCase: ttsCommandIgnoreCase ?? this.ttsCommandIgnoreCase,
         ttsCommandPrefix: ttsCommandPrefix ?? this.ttsCommandPrefix,
         ttsSeparatorText: ttsSeparatorText ?? this.ttsSeparatorText,
         ttsVoice: ttsVoice ?? this.ttsVoice,
@@ -408,6 +412,7 @@ class SettingsModel {
         'ttsEnabled': ttsEnabled,
         'ttsMembersOnly': ttsMembersOnly,
         'ttsCommandMode': ttsCommandMode,
+        'ttsCommandIgnoreCase': ttsCommandIgnoreCase,
         'ttsCommandPrefix': ttsCommandPrefix,
         'ttsSeparatorText': ttsSeparatorText,
         'ttsVoice': ttsVoice,
@@ -498,6 +503,7 @@ class SettingsModel {
         ttsEnabled: j['ttsEnabled'] as bool? ?? false,
         ttsMembersOnly: j['ttsMembersOnly'] as bool? ?? false,
         ttsCommandMode: j['ttsCommandMode'] as bool? ?? false,
+        ttsCommandIgnoreCase: j['ttsCommandIgnoreCase'] as bool? ?? true,
         ttsCommandPrefix: j['ttsCommandPrefix'] as String? ?? '!voz',
         ttsSeparatorText: j['ttsSeparatorText'] as String? ?? 'dice',
         ttsVoice: j['ttsVoice'] as String? ?? 'M1',

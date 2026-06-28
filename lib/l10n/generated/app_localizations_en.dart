@@ -144,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandPrefix => 'Command prefix';
 
   @override
+  String get ignoreCommandCase => 'Ignore uppercase/lowercase in prefix';
+
+  @override
   String get separatorText => 'Separator text';
 
   @override

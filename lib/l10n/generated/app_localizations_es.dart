@@ -144,6 +144,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get commandPrefix => 'Prefijo del comando';
 
   @override
+  String get ignoreCommandCase => 'Ignorar mayusculas/minusculas en el prefijo';
+
+  @override
   String get separatorText => 'Texto separador';
 
   @override
