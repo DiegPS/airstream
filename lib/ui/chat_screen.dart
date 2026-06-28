@@ -2106,27 +2106,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ? IconButton(
                   tooltip: AppLocalizations.of(context)!.clear,
                   onPressed: onClear,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  visualDensity: const VisualDensity(
-                    horizontal: -4,
-                    vertical: -4,
-                  ),
-                  splashRadius: 14,
+                  splashRadius: 20,
                   icon: const Icon(
                     Icons.close_rounded,
-                    size: 16,
-                    color: Colors.white38,
+                    size: 18,
+                    color: Colors.white54,
                   ),
                 )
               : null,
-          suffixIconConstraints: const BoxConstraints(
-            minWidth: 28,
-            minHeight: 28,
-          ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(6),
