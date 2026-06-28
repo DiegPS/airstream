@@ -985,9 +985,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             children: [
               _sidebarHeader(
                 l: l,
-                youtubeValue: youtubeBadgeValue ?? _youtubeInputValue(s),
-                twitchValue: s.twitchChannel,
-                kickValue: s.kickSlug,
+                youtubeValue: isRunning ? youtubeBadgeValue : null,
+                twitchValue: isRunning ? s.twitchChannel : '',
+                kickValue: isRunning ? s.kickSlug : '',
                 statusMap: connectionStatus,
               ),
               const SizedBox(height: 16),
@@ -2106,13 +2106,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   static Widget _sidebarHeader({
     required AppLocalizations l,
-    required String youtubeValue,
+    required String? youtubeValue,
     required String twitchValue,
     required String kickValue,
     required Map<String, (ServiceStatus, String?)> statusMap,
   }) {
     final badges = <Widget>[
-      if (youtubeValue.trim().isNotEmpty)
+      if (youtubeValue != null && youtubeValue.trim().isNotEmpty)
         _platformStatusBadge(
           'YouTube',
           youtubeValue.trim(),
