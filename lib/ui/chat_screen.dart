@@ -1002,14 +1002,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     focusNode: _ytFocus,
                     onChanged: (_) {
                       setState(() {});
-                      _queueTextSettingsSave();
                     },
                     onSubmitted: (_) => _saveTextSettings(),
-                    onClear: () {
-                      _ytHandle.clear();
-                      setState(() {});
-                      _queueTextSettingsSave();
-                    },
                   ),
                   if (youtubeError != null && youtubeError.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -1023,14 +1017,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     focusNode: _twitchFocus,
                     onChanged: (_) {
                       setState(() {});
-                      _queueTextSettingsSave();
                     },
                     onSubmitted: (_) => _saveTextSettings(),
-                    onClear: () {
-                      _twitch.clear();
-                      setState(() {});
-                      _queueTextSettingsSave();
-                    },
                   ),
                   if (twitchError != null && twitchError.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -1044,14 +1032,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     focusNode: _kickFocus,
                     onChanged: (_) {
                       setState(() {});
-                      _queueTextSettingsSave();
                     },
                     onSubmitted: (_) => _saveTextSettings(),
-                    onClear: () {
-                      _kick.clear();
-                      setState(() {});
-                      _queueTextSettingsSave();
-                    },
                   ),
                   if (kickError != null && kickError.isNotEmpty) ...[
                     const SizedBox(height: 8),
