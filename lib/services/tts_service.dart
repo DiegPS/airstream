@@ -194,6 +194,7 @@ class TtsService {
         await _queueVoiceStyleLoad(_selectedVoice, announceReady: true);
       }
       if (_isDisposed) return;
+      await _audioPlayback.startKeepAlive();
       debugPrint('TTS: Supertonic loaded successfully');
     } catch (e) {
       if (_isDisposed) return;
