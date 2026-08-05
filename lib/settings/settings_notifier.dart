@@ -270,7 +270,7 @@ class AppController {
     if (_spokenMessageKeys.contains(speakKey)) return;
 
     final authorName = sanitizeTtsAuthorName(msg.author.name);
-    var text = msg.plainText.trim();
+    var text = msg.ttsText.trim();
     if (text.isEmpty) return;
 
     if (settings.ttsCommandMode) {

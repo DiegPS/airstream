@@ -83,6 +83,9 @@ class ChatMessage {
   String get plainText =>
       items.map((i) => i.isEmoji ? i.emoji!.alt : i.text).join();
 
+  String get ttsText =>
+      items.map((i) => i.isEmoji ? '' : i.text).join();
+
   String get normalizedPlainText =>
       plainText.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
