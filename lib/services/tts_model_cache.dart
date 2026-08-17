@@ -85,7 +85,7 @@ class TtsModelCache {
       if (metadata is! Map ||
           metadata['id'] != model.id ||
           metadata['version'] != model.version ||
-          metadata['sha256'] != model.sha256) {
+          metadata['integrity'] != model.integrityKey) {
         return null;
       }
       for (final relativePath in model.requiredFiles) {
@@ -106,7 +106,7 @@ class TtsModelCache {
     void Function(TtsInstallProgress progress)? onProgress,
     TtsDownloadCancellation? cancellation,
   }) async {
-    cancellation ??= TtsDownloadCancellation();
+    final activeCancellation = cancellation ?? TtsDownloadCancellation();
     onProgress?.call(const TtsInstallProgress(
         phase: TtsInstallPhase.checking, message: 'Checking installed model…'));
     final existing = await installed(model);
@@ -114,8 +114,8 @@ class TtsModelCache {
       onProgress?.call(TtsInstallProgress(
           phase: TtsInstallPhase.installed,
           message: '${model.name} is installed.',
-          receivedBytes: model.archiveBytes,
-          totalBytes: model.archiveBytes,
+          receivedBytes: model.downloadBytes,
+          totalBytes: model.downloadBytes,
           path: existing.directory.path));
       return existing;
     }
@@ -123,25 +123,58 @@ class TtsModelCache {
     await root.create(recursive: true);
     final downloads = Directory(p.join(root.path, '.downloads'));
     await downloads.create(recursive: true);
-    final partial =
-        File(p.join(downloads.path, '${model.storageKey}.tar.bz2.part'));
-    await _download(model, partial, onProgress, cancellation);
-    cancellation.throwIfCancelled();
-    onProgress?.call(TtsInstallProgress(
+    final receivedByFile = <String, int>{};
+    final partials = <TtsModelDownload, File>{};
+    await Future.wait(model.downloads.map((download) async {
+      final partial = _partialFile(downloads, model, download);
+      partials[download] = partial;
+      await _download(
+        download,
+        partial,
+        (received) {
+          receivedByFile[download.fileName] = received;
+          final totalReceived = receivedByFile.values.fold(0, (a, b) => a + b);
+          onProgress?.call(TtsInstallProgress(
+            phase: TtsInstallPhase.downloading,
+            message: 'Downloading ${download.fileName}…',
+            receivedBytes: totalReceived,
+            totalBytes: model.downloadBytes,
+            path: partial.path,
+          ));
+        },
+        activeCancellation,
+      );
+    }));
+    activeCancellation.throwIfCancelled();
+    var verifiedBytes = 0;
+    for (final download in model.downloads) {
+      onProgress?.call(TtsInstallProgress(
         phase: TtsInstallPhase.verifying,
-        message: 'Verifying SHA-256 integrity…',
-        receivedBytes: model.archiveBytes,
-        totalBytes: model.archiveBytes));
-    final digest = await sha256.bind(partial.openRead()).first;
-    if (digest.toString() != model.sha256) {
-      if (await partial.exists()) await partial.delete();
-      throw StateError('The downloaded model failed its SHA-256 check.');
+        message: 'Verifying ${download.fileName}…',
+        receivedBytes: verifiedBytes,
+        totalBytes: model.downloadBytes,
+      ));
+      final partial = partials[download]!;
+      final digest = await sha256.bind(partial.openRead()).first;
+      if (digest.toString() != download.sha256) {
+        if (await partial.exists()) await partial.delete();
+        throw StateError('${download.fileName} failed its SHA-256 check.');
+      }
+      verifiedBytes += download.bytes;
+      activeCancellation.throwIfCancelled();
     }
-    cancellation.throwIfCancelled();
-    final verifiedArchive =
-        File(partial.path.substring(0, partial.path.length - '.part'.length));
-    if (await verifiedArchive.exists()) await verifiedArchive.delete();
-    await partial.rename(verifiedArchive.path);
+    final archiveDownload = model.downloads.singleWhere(
+      (download) => download.isArchive,
+    );
+    final verifiedArchive = partials[archiveDownload]!;
+    // `archive_io` selects the decoder from the filename extension. Keep the
+    // resumable `.part` file untouched and extract from a verified copy whose
+    // name retains the real archive extension.
+    final extractionArchive = File(
+      p.join(downloads.path, '${model.storageKey}.verified.tar.bz2'),
+    );
+    if (await extractionArchive.exists()) await extractionArchive.delete();
+    await verifiedArchive.copy(extractionArchive.path);
     final staging =
         Directory(p.join(root.path, '.${model.storageKey}.staging'));
     if (await staging.exists()) await staging.delete(recursive: true);
@@ -149,18 +182,39 @@ class TtsModelCache {
     onProgress?.call(TtsInstallProgress(
         phase: TtsInstallPhase.extracting,
         message: 'Installing ${model.name}…',
-        receivedBytes: model.archiveBytes,
-        totalBytes: model.archiveBytes));
+        receivedBytes: model.downloadBytes,
+        totalBytes: model.downloadBytes));
     try {
       await _extractArchive(
-        verifiedArchive.path,
+        extractionArchive.path,
         staging.path,
-        cancellation,
+        activeCancellation,
       );
-      cancellation.throwIfCancelled();
+      activeCancellation.throwIfCancelled();
       final extracted = Directory(p.join(staging.path, model.archiveRoot));
       if (!await extracted.exists()) {
         throw StateError('The model archive has an unexpected structure.');
+      }
+      for (final download in model.downloads.where((item) => !item.isArchive)) {
+        final targetPath = download.targetPath;
+        if (targetPath == null || targetPath.isEmpty) {
+          throw StateError('${download.fileName} has no installation path.');
+        }
+        final target = File(
+          p.joinAll([extracted.path, ...targetPath.split('/')]),
+        );
+        await target.parent.create(recursive: true);
+        await partials[download]!.copy(target.path);
+      }
+      for (final relativePath in model.removeAfterExtract) {
+        final entityPath =
+            p.joinAll([extracted.path, ...relativePath.split('/')]);
+        final type = await FileSystemEntity.type(entityPath);
+        if (type == FileSystemEntityType.file) {
+          await File(entityPath).delete();
+        } else if (type == FileSystemEntityType.directory) {
+          await Directory(entityPath).delete(recursive: true);
+        }
       }
       for (final relativePath in model.requiredFiles) {
         final path = p.joinAll([extracted.path, ...relativePath.split('/')]);
@@ -173,7 +227,7 @@ class TtsModelCache {
           jsonEncode({
             'id': model.id,
             'version': model.version,
-            'sha256': model.sha256,
+            'integrity': model.integrityKey,
             'installedAt': DateTime.now().toUtc().toIso8601String()
           }),
           flush: true);
@@ -181,19 +235,20 @@ class TtsModelCache {
       if (await target.exists()) await target.delete(recursive: true);
       await extracted.rename(target.path);
       await staging.delete(recursive: true);
-      await verifiedArchive.delete();
+      if (await extractionArchive.exists()) await extractionArchive.delete();
+      for (final partial in partials.values) {
+        if (await partial.exists()) await partial.delete();
+      }
       onProgress?.call(TtsInstallProgress(
           phase: TtsInstallPhase.installed,
           message: '${model.name} is ready.',
-          receivedBytes: model.archiveBytes,
-          totalBytes: model.archiveBytes,
+          receivedBytes: model.downloadBytes,
+          totalBytes: model.downloadBytes,
           path: target.path));
       return TtsModelInstallation(model, target);
     } catch (_) {
       if (await staging.exists()) await staging.delete(recursive: true);
-      if (await verifiedArchive.exists() && !await partial.exists()) {
-        await verifiedArchive.rename(partial.path);
-      }
+      if (await extractionArchive.exists()) await extractionArchive.delete();
       rethrow;
     }
   }
@@ -262,24 +317,37 @@ class TtsModelCache {
     }
   }
 
+  File _partialFile(
+    Directory downloads,
+    TtsModelDefinition model,
+    TtsModelDownload download,
+  ) {
+    final suffix = download.isArchive
+        ? 'tar.bz2'
+        : download.fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    return File(p.join(downloads.path, '${model.storageKey}.$suffix.part'));
+  }
+
   Future<void> _download(
-      TtsModelDefinition model,
+      TtsModelDownload download,
       File partial,
-      void Function(TtsInstallProgress progress)? onProgress,
+      void Function(int received) onProgress,
       TtsDownloadCancellation cancellation) async {
     var offset = await partial.exists() ? await partial.length() : 0;
-    if (offset > model.archiveBytes) {
+    if (offset > download.bytes) {
       await partial.delete();
       offset = 0;
     }
-    final request = http.Request('GET', model.archiveUri);
+    onProgress(offset);
+    if (offset == download.bytes) return;
+    final request = http.Request('GET', download.uri);
     if (offset > 0) request.headers[HttpHeaders.rangeHeader] = 'bytes=$offset-';
     final response = await _client.send(request);
     if (response.statusCode != HttpStatus.ok &&
         response.statusCode != HttpStatus.partialContent) {
       throw HttpException(
-          'Model download failed (HTTP ${response.statusCode}).',
-          uri: model.archiveUri);
+          '${download.fileName} download failed (HTTP ${response.statusCode}).',
+          uri: download.uri);
     }
     if (offset > 0 && response.statusCode != HttpStatus.partialContent) {
       await partial.delete();
@@ -293,20 +361,15 @@ class TtsModelCache {
         cancellation.throwIfCancelled();
         sink.add(chunk);
         received += chunk.length;
-        onProgress?.call(TtsInstallProgress(
-            phase: TtsInstallPhase.downloading,
-            message: 'Downloading ${model.name}…',
-            receivedBytes: received,
-            totalBytes: model.archiveBytes,
-            path: partial.path));
+        onProgress(received);
       }
     } finally {
       await sink.flush();
       await sink.close();
     }
-    if (received != model.archiveBytes) {
-      throw StateError(
-          'Incomplete model download: $received of ${model.archiveBytes} bytes.');
+    if (received != download.bytes) {
+      throw StateError('Incomplete ${download.fileName} download: '
+          '$received of ${download.bytes} bytes.');
     }
   }
 

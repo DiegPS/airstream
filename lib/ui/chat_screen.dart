@@ -13,6 +13,8 @@ import 'package:airstream/window/window_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 String _formatByteSize(int bytes) {
@@ -653,6 +655,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ttsTestCtrl;
   late TextEditingController _ttsPrefixCtrl;
   late TextEditingController _ttsSeparatorCtrl;
+  late TextEditingController _ttsReferenceTextCtrl;
   late TextEditingController _blockedUsersCtrl;
   late TextEditingController _blockedWordsCtrl;
 
@@ -667,6 +670,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _overlaySuperChatBarColorFocus;
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
+  late FocusNode _ttsReferenceTextFocus;
   late FocusNode _blockedUsersFocus;
   late FocusNode _blockedWordsFocus;
   Timer? _textSettingsDebounce;
@@ -690,6 +694,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         TextEditingController(text: 'Hola, probando sistema Text to Speech.');
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
     _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
+    _ttsReferenceTextCtrl = TextEditingController(text: s.ttsReferenceText);
     _blockedUsersCtrl =
         TextEditingController(text: _formatFilterList(s.blockedUsers));
     _blockedWordsCtrl =
@@ -706,6 +711,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _overlaySuperChatBarColorFocus = FocusNode();
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
+    _ttsReferenceTextFocus = FocusNode();
     _blockedUsersFocus = FocusNode();
     _blockedWordsFocus = FocusNode();
 
@@ -721,6 +727,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _overlaySuperChatBarColorFocus,
       _ttsPrefixFocus,
       _ttsSeparatorFocus,
+      _ttsReferenceTextFocus,
       _blockedUsersFocus,
       _blockedWordsFocus,
     ]) {
@@ -747,6 +754,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsTestCtrl.dispose();
     _ttsPrefixCtrl.dispose();
     _ttsSeparatorCtrl.dispose();
+    _ttsReferenceTextCtrl.dispose();
     _blockedUsersCtrl.dispose();
     _blockedWordsCtrl.dispose();
 
@@ -761,6 +769,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _overlaySuperChatBarColorFocus.dispose();
     _ttsPrefixFocus.dispose();
     _ttsSeparatorFocus.dispose();
+    _ttsReferenceTextFocus.dispose();
     _blockedUsersFocus.dispose();
     _blockedWordsFocus.dispose();
     super.dispose();
@@ -806,6 +815,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       obsPassword: _obsPassword.text,
       ttsCommandPrefix: _ttsPrefixCtrl.text,
       ttsSeparatorText: _ttsSeparatorCtrl.text,
+      ttsReferenceText: _ttsReferenceTextCtrl.text,
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
@@ -820,7 +830,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.obsHost == next.obsHost &&
         current.obsPassword == next.obsPassword &&
         current.ttsCommandPrefix == next.ttsCommandPrefix &&
-        current.ttsSeparatorText == next.ttsSeparatorText) {
+        current.ttsSeparatorText == next.ttsSeparatorText &&
+        current.ttsReferenceText == next.ttsReferenceText) {
       return;
     }
 
@@ -954,6 +965,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _ttsSeparatorCtrl,
       _ttsSeparatorFocus,
       s.ttsSeparatorText,
+    );
+    _syncController(
+      _ttsReferenceTextCtrl,
+      _ttsReferenceTextFocus,
+      s.ttsReferenceText,
     );
     _syncController(
       _blockedUsersCtrl,
@@ -1218,6 +1234,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                                 ttsModelId: next.id,
                                 ttsVoice: next.voices.first.id,
                                 ttsLanguage: next.languages.first.code,
+                                ttsSteps: next.defaultSteps,
                               ));
                             },
                             optionLabel: (id) => TtsModelCatalog.byId(id).name,
@@ -1225,11 +1242,22 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '${model.description} · ${_formatByteSize(model.archiveBytes)}',
+                              '${model.description} · ${_formatByteSize(model.downloadBytes)}',
                               style: const TextStyle(
                                   color: Colors.white38, fontSize: 11),
                             ),
                           ),
+                          if (model.licenseNotice != null)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                model.licenseNotice!,
+                                style: const TextStyle(
+                                  color: Colors.amberAccent,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     }),
@@ -1344,34 +1372,109 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                           ? s.ttsLanguage
                           : model.languages.first.code;
                       return Column(children: [
-                        if (model.family == TtsModelFamily.supertonic)
-                          _dropdownRow(
-                              l.voice,
-                              voice,
-                              model.voices.map((v) => v.id).toList(),
-                              (v) => notifier.update(s.copyWith(ttsVoice: v)),
-                              optionLabel: (id) => _voiceLabel(l, id)),
+                        _dropdownRow(
+                            l.voice,
+                            voice,
+                            model.voices.map((v) => v.id).toList(),
+                            (v) => notifier.update(s.copyWith(ttsVoice: v)),
+                            optionLabel: (id) => model.voice(id).label),
                         _dropdownRow(
                             l.language,
                             language,
                             model.languages.map((v) => v.code).toList(),
                             (v) => notifier.update(s.copyWith(ttsLanguage: v)),
-                            optionLabel: _languageLabel),
-                        _dropdownRow(
-                            l.quality,
-                            const [4, 6, 8, 12].contains(s.ttsSteps)
-                                ? s.ttsSteps.toString()
-                                : '8',
-                            const ['4', '6', '8', '12'],
-                            (v) => notifier
-                                .update(s.copyWith(ttsSteps: int.parse(v))),
-                            optionLabel: (v) => v == '8'
-                                ? l.qualityBalanced
-                                : v == '12'
-                                    ? l.qualityMaximum
-                                    : v == '4'
-                                        ? l.qualityFast
-                                        : l.qualityHigh),
+                            optionLabel: (id) => model.languages
+                                .firstWhere((item) => item.code == id)
+                                .label),
+                        if (model.referenceMode != TtsReferenceMode.none) ...[
+                          const SizedBox(height: 8),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Clonación de voz (WAV)',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(children: [
+                            Expanded(
+                              child: Text(
+                                s.ttsReferenceAudioPath.isEmpty
+                                    ? 'Usando muestra incluida: ${model.voice(voice).label}'
+                                    : p.basename(s.ttsReferenceAudioPath),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () async {
+                                final selected = await openFile(
+                                  acceptedTypeGroups: const [
+                                    XTypeGroup(
+                                      label: 'WAV audio',
+                                      extensions: ['wav'],
+                                    ),
+                                  ],
+                                );
+                                if (selected == null || !context.mounted) {
+                                  return;
+                                }
+                                await notifier.update(s.copyWith(
+                                  ttsReferenceAudioPath: selected.path,
+                                ));
+                              },
+                              icon: const Icon(Icons.audio_file, size: 16),
+                              label: const Text('Elegir WAV'),
+                            ),
+                            if (s.ttsReferenceAudioPath.isNotEmpty)
+                              IconButton(
+                                tooltip: 'Usar muestra incluida',
+                                onPressed: () => notifier.update(s.copyWith(
+                                  ttsReferenceAudioPath: '',
+                                  ttsReferenceText: '',
+                                )),
+                                icon: const Icon(Icons.close, size: 16),
+                              ),
+                          ]),
+                          if (model.needsReferenceText &&
+                              s.ttsReferenceAudioPath.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            _label('Transcripción exacta del WAV'),
+                            _field(
+                              _ttsReferenceTextCtrl,
+                              'Escribe exactamente lo que dice el audio…',
+                              focusNode: _ttsReferenceTextFocus,
+                              onChanged: (_) => _queueTextSettingsSave(),
+                              onSubmitted: (_) => _saveTextSettings(),
+                            ),
+                          ],
+                        ],
+                        if (model.family == TtsModelFamily.supertonic ||
+                            model.family == TtsModelFamily.zipvoice ||
+                            model.family == TtsModelFamily.pocket)
+                          _dropdownRow(
+                              l.quality,
+                              const [3, 4, 5, 6, 8, 12].contains(s.ttsSteps)
+                                  ? s.ttsSteps.toString()
+                                  : model.defaultSteps.toString(),
+                              const ['3', '4', '5', '6', '8', '12'],
+                              (v) => notifier
+                                  .update(s.copyWith(ttsSteps: int.parse(v))),
+                              optionLabel: (v) => v == '5'
+                                  ? l.qualityBalanced
+                                  : v == '12'
+                                      ? l.qualityMaximum
+                                      : int.parse(v) <= 4
+                                          ? l.qualityFast
+                                          : l.qualityHigh),
                         _sliderRow(
                           l.speed,
                           s.ttsSpeed,
@@ -2445,43 +2548,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     if (match == null) return value;
     final number = match.group(2)!;
     return match.group(1) == 'F' ? l.femaleVoice(number) : l.maleVoice(number);
-  }
-
-  static String _languageLabel(String value) {
-    const labels = {
-      'en': 'English',
-      'ko': 'Korean',
-      'ja': 'Japanese',
-      'ar': 'Arabic',
-      'bg': 'Bulgarian',
-      'cs': 'Czech',
-      'da': 'Danish',
-      'de': 'German',
-      'el': 'Greek',
-      'es': 'Spanish',
-      'et': 'Estonian',
-      'fi': 'Finnish',
-      'fr': 'French',
-      'hi': 'Hindi',
-      'hr': 'Croatian',
-      'hu': 'Hungarian',
-      'id': 'Indonesian',
-      'it': 'Italian',
-      'lt': 'Lithuanian',
-      'lv': 'Latvian',
-      'nl': 'Dutch',
-      'pl': 'Polish',
-      'pt': 'Portuguese',
-      'ro': 'Romanian',
-      'ru': 'Russian',
-      'sk': 'Slovak',
-      'sl': 'Slovenian',
-      'sv': 'Swedish',
-      'tr': 'Turkish',
-      'uk': 'Ukrainian',
-      'vi': 'Vietnamese',
-    };
-    return labels[value] ?? value.toUpperCase();
   }
 
   static Widget _inlineErrorMessage(

@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   air_window_control
+  file_selector_windows
   flutter_acrylic
   media_kit_libs_windows_audio
   screen_retriever_windows

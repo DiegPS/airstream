@@ -62,6 +62,8 @@ void main() {
       ttsLanguage: 'es',
       ttsSpeed: 1.25,
       ttsSteps: 12,
+      ttsReferenceAudioPath: r'C:\voice\reference.wav',
+      ttsReferenceText: 'Exact reference words.',
     );
 
     final restored = SettingsModel.fromJsonString(settings.toJsonString());
@@ -71,5 +73,7 @@ void main() {
     expect(restored.ttsLanguage, 'es');
     expect(restored.ttsSpeed, 1.25);
     expect(restored.ttsSteps, 12);
+    expect(restored.ttsReferenceAudioPath, r'C:\voice\reference.wav');
+    expect(restored.ttsReferenceText, 'Exact reference words.');
   });
 }

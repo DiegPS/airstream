@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:path/path.dart' as p;
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/services/tts/tts_model_catalog.dart';
@@ -230,7 +232,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             notifier.update(s.copyWith(
                 ttsModelId: id,
                 ttsVoice: model.voices.first.id,
-                ttsLanguage: model.languages.first.code));
+                ttsLanguage: model.languages.first.code,
+                ttsSteps: model.defaultSteps));
           }),
 
           Builder(builder: (context) {
@@ -248,6 +251,57 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       : model.languages.first.code,
                   model.languages.map((language) => language.code).toList(),
                   (v) => notifier.update(s.copyWith(ttsLanguage: v))),
+              if (model.referenceMode != TtsReferenceMode.none) ...[
+                ListTile(
+                  title: const Text(
+                    'Voice reference (WAV)',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    s.ttsReferenceAudioPath.isEmpty
+                        ? 'Using bundled sample'
+                        : p.basename(s.ttsReferenceAudioPath),
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                  trailing: Wrap(children: [
+                    TextButton(
+                      onPressed: () async {
+                        final selected = await openFile(
+                          acceptedTypeGroups: const [
+                            XTypeGroup(
+                              label: 'WAV audio',
+                              extensions: ['wav'],
+                            ),
+                          ],
+                        );
+                        if (selected != null && context.mounted) {
+                          await notifier.update(s.copyWith(
+                            ttsReferenceAudioPath: selected.path,
+                          ));
+                        }
+                      },
+                      child: const Text('Choose'),
+                    ),
+                    if (s.ttsReferenceAudioPath.isNotEmpty)
+                      IconButton(
+                        onPressed: () => notifier.update(s.copyWith(
+                          ttsReferenceAudioPath: '',
+                          ttsReferenceText: '',
+                        )),
+                        icon: const Icon(Icons.close),
+                      ),
+                  ]),
+                ),
+                if (model.needsReferenceText &&
+                    s.ttsReferenceAudioPath.isNotEmpty)
+                  _textField(
+                    'Exact reference transcript',
+                    TextEditingController(text: s.ttsReferenceText),
+                    onChanged: (value) => notifier.update(
+                      s.copyWith(ttsReferenceText: value),
+                    ),
+                  ),
+              ],
             ]);
           }),
 

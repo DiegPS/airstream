@@ -40,7 +40,7 @@ class TtsLoadState {
     this.error,
     this.cacheDirectory,
     this.fromCache = false,
-    this.modelId = 'supertonic-3-int8',
+    this.modelId = 'supertonic-3-hybrid',
   });
 
   bool get isLoading =>
@@ -80,6 +80,8 @@ class TtsService {
   String _language = 'es';
   double _speed = 1.05;
   int _steps = 8;
+  String _referenceAudioPath = '';
+  String _referenceText = '';
 
   TtsService({
     TtsModelCache? modelCache,
@@ -102,6 +104,8 @@ class TtsService {
     required String language,
     required double speed,
     required int steps,
+    required String referenceAudioPath,
+    required String referenceText,
   }) async {
     if (_disposed) return;
     final revision = ++_configurationRevision;
@@ -114,6 +118,8 @@ class TtsService {
         : model.languages.first.code;
     _speed = speed.clamp(0.6, 1.6);
     _steps = steps.clamp(2, 16);
+    _referenceAudioPath = referenceAudioPath.trim();
+    _referenceText = referenceText.trim();
     if (!enabled) {
       await stop(unload: true);
       if (revision == _configurationRevision) {
@@ -207,8 +213,8 @@ class TtsService {
       _emit(TtsLoadState(
           phase: TtsLoadPhase.loading,
           message: 'Loading ${model.name} with Sherpa-ONNX…',
-          loadedBytes: model.archiveBytes,
-          totalBytes: model.archiveBytes,
+          loadedBytes: model.downloadBytes,
+          totalBytes: model.downloadBytes,
           voiceStyle: _voice,
           cacheDirectory: installation.directory.path,
           fromCache: true,
@@ -219,10 +225,10 @@ class TtsService {
       _emit(TtsLoadState(
           phase: TtsLoadPhase.ready,
           message: '${model.name} is ready.',
-          loadedAssets: 1,
-          totalAssets: 1,
-          loadedBytes: model.archiveBytes,
-          totalBytes: model.archiveBytes,
+          loadedAssets: model.downloadFiles,
+          totalAssets: model.downloadFiles,
+          loadedBytes: model.downloadBytes,
+          totalBytes: model.downloadBytes,
           voiceStyle: _voice,
           cacheDirectory: installation.directory.path,
           fromCache: true,
@@ -305,12 +311,27 @@ class TtsService {
     final generation = _generation;
     try {
       final model = selectedModel;
+      final voice = model.voice(_voice);
+      final customReference = _referenceAudioPath.isNotEmpty
+          ? _referenceAudioPath
+          : voice.referenceAudio;
+      final customReferenceText =
+          _referenceAudioPath.isNotEmpty ? _referenceText : voice.referenceText;
+      if (model.referenceMode != TtsReferenceMode.none &&
+          (customReference == null || customReference.isEmpty)) {
+        throw StateError('${model.name} requires a reference WAV file.');
+      }
+      if (model.needsReferenceText && customReferenceText.isEmpty) {
+        throw StateError('${model.name} requires the reference transcript.');
+      }
       final audio = await _engine.synthesize(
           text: text,
-          speakerId: model.voice(_voice).speakerId,
+          speakerId: voice.speakerId,
           language: _language,
           speed: _speed,
-          steps: _steps);
+          steps: _steps,
+          referenceAudio: customReference,
+          referenceText: customReferenceText);
       if (_disposed || generation != _generation || audio.samples.isEmpty) {
         return;
       }

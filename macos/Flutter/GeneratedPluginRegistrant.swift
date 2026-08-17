@@ -6,6 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import air_window_control
+import file_selector_macos
 import macos_window_utils
 import media_kit_libs_macos_audio
 import network_info_plus
@@ -17,6 +18,7 @@ import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AirWindowControlPlugin.register(with: registry.registrar(forPlugin: "AirWindowControlPlugin"))
+  FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   MacOSWindowUtilsPlugin.register(with: registry.registrar(forPlugin: "MacOSWindowUtilsPlugin"))
   MediaKitLibsMacosAudioPlugin.register(with: registry.registrar(forPlugin: "MediaKitLibsMacosAudioPlugin"))
   NetworkInfoPlusPlugin.register(with: registry.registrar(forPlugin: "NetworkInfoPlusPlugin"))

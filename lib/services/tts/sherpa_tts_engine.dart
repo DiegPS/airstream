@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import 'package:ffi/ffi.dart';
+import 'package:path/path.dart' as p;
 
 import '../tts_model_cache.dart';
 import 'tts_model_catalog.dart';
@@ -73,6 +74,8 @@ class SherpaTtsEngine {
     required String language,
     required double speed,
     required int steps,
+    String? referenceAudio,
+    String referenceText = '',
   }) async {
     final commands = _commands;
     if (commands == null) throw StateError('TTS engine is not ready.');
@@ -89,6 +92,11 @@ class SherpaTtsEngine {
       'language': language,
       'speed': speed,
       'steps': steps,
+      if (referenceAudio != null && referenceAudio.isNotEmpty)
+        'referenceAudio': p.isAbsolute(referenceAudio)
+            ? referenceAudio
+            : p.join(_installation!.directory.path, referenceAudio),
+      'referenceText': referenceText,
       'cancelAddress': cancelFlag.address,
     });
     try {
@@ -162,6 +170,9 @@ class SherpaTtsEngine {
     return {
       'family': model.family.name,
       'directory': installation.directory.path,
+      'files': model.modelFiles,
+      'maxSentences': model.maxSentences,
+      'silenceScale': model.silenceScale,
       'threads': _ortDefaultThreadCount(),
     };
   }
@@ -224,35 +235,88 @@ class SherpaTtsEngine {
       final directory = model['directory']! as String;
       final separator = directory.contains('\\') ? '\\' : '/';
       String file(String name) => '$directory$separator$name';
+      final files = Map<String, String>.from(model['files']! as Map);
+      String modelFile(String key) {
+        final relative = files[key];
+        return relative == null || relative.isEmpty ? '' : file(relative);
+      }
+
       final family = model['family'] as String;
-      final modelConfig = family == TtsModelFamily.supertonic.name
-          ? sherpa.OfflineTtsModelConfig(
-              supertonic: sherpa.OfflineTtsSupertonicModelConfig(
-                durationPredictor: file('duration_predictor.int8.onnx'),
-                textEncoder: file('text_encoder.int8.onnx'),
-                vectorEstimator: file('vector_estimator.int8.onnx'),
-                vocoder: file('vocoder.int8.onnx'),
-                ttsJson: file('tts.json'),
-                unicodeIndexer: file('unicode_indexer.bin'),
-                voiceStyle: file('voice.bin'),
-              ),
-              numThreads: model['threads'] as int,
-              debug: false,
-              provider: 'cpu',
-            )
-          : sherpa.OfflineTtsModelConfig(
-              vits: sherpa.OfflineTtsVitsModelConfig(
-                model: file('es_ES-sharvard-medium.onnx'),
-                tokens: file('tokens.txt'),
-                dataDir: file('espeak-ng-data'),
-              ),
-              numThreads: model['threads'] as int,
-              debug: false,
-              provider: 'cpu',
-            );
+      final modelConfig = sherpa.OfflineTtsModelConfig(
+        supertonic: family == TtsModelFamily.supertonic.name
+            ? sherpa.OfflineTtsSupertonicModelConfig(
+                durationPredictor: modelFile('durationPredictor'),
+                textEncoder: modelFile('textEncoder'),
+                vectorEstimator: modelFile('vectorEstimator'),
+                vocoder: modelFile('vocoder'),
+                ttsJson: modelFile('ttsJson'),
+                unicodeIndexer: modelFile('unicodeIndexer'),
+                voiceStyle: modelFile('voiceStyle'),
+              )
+            : const sherpa.OfflineTtsSupertonicModelConfig(),
+        vits: family == TtsModelFamily.vits.name
+            ? sherpa.OfflineTtsVitsModelConfig(
+                model: modelFile('model'),
+                lexicon: modelFile('lexicon'),
+                tokens: modelFile('tokens'),
+                dataDir: modelFile('dataDir'),
+              )
+            : const sherpa.OfflineTtsVitsModelConfig(),
+        matcha: family == TtsModelFamily.matcha.name
+            ? sherpa.OfflineTtsMatchaModelConfig(
+                acousticModel: modelFile('acousticModel'),
+                vocoder: modelFile('vocoder'),
+                lexicon: modelFile('lexicon'),
+                tokens: modelFile('tokens'),
+                dataDir: modelFile('dataDir'),
+              )
+            : const sherpa.OfflineTtsMatchaModelConfig(),
+        kokoro: family == TtsModelFamily.kokoro.name
+            ? sherpa.OfflineTtsKokoroModelConfig(
+                model: modelFile('model'),
+                voices: modelFile('voices'),
+                tokens: modelFile('tokens'),
+                dataDir: modelFile('dataDir'),
+                lexicon: modelFile('lexicon'),
+              )
+            : const sherpa.OfflineTtsKokoroModelConfig(),
+        kitten: family == TtsModelFamily.kitten.name
+            ? sherpa.OfflineTtsKittenModelConfig(
+                model: modelFile('model'),
+                voices: modelFile('voices'),
+                tokens: modelFile('tokens'),
+                dataDir: modelFile('dataDir'),
+              )
+            : const sherpa.OfflineTtsKittenModelConfig(),
+        zipvoice: family == TtsModelFamily.zipvoice.name
+            ? sherpa.OfflineTtsZipVoiceModelConfig(
+                tokens: modelFile('tokens'),
+                encoder: modelFile('encoder'),
+                decoder: modelFile('decoder'),
+                vocoder: modelFile('vocoder'),
+                dataDir: modelFile('dataDir'),
+                lexicon: modelFile('lexicon'),
+              )
+            : const sherpa.OfflineTtsZipVoiceModelConfig(),
+        pocket: family == TtsModelFamily.pocket.name
+            ? sherpa.OfflineTtsPocketModelConfig(
+                lmFlow: modelFile('lmFlow'),
+                lmMain: modelFile('lmMain'),
+                encoder: modelFile('encoder'),
+                decoder: modelFile('decoder'),
+                textConditioner: modelFile('textConditioner'),
+                vocabJson: modelFile('vocabJson'),
+                tokenScoresJson: modelFile('tokenScoresJson'),
+              )
+            : const sherpa.OfflineTtsPocketModelConfig(),
+        numThreads: model['threads'] as int,
+        debug: false,
+        provider: 'cpu',
+      );
       tts = sherpa.OfflineTts(sherpa.OfflineTtsConfig(
         model: modelConfig,
-        maxNumSenetences: 1,
+        maxNumSenetences: model['maxSentences'] as int,
+        silenceScale: model['silenceScale'] as double,
       ));
       final commands = ReceivePort();
       owner.send(commands.sendPort);
@@ -269,15 +333,30 @@ class SherpaTtsEngine {
         if (message['type'] != 'synthesize') return;
         final reply = message['reply'] as SendPort;
         try {
+          final referencePath = message['referenceAudio'] as String?;
+          final reference =
+              referencePath == null ? null : sherpa.readWave(referencePath);
+          if (referencePath != null &&
+              (reference == null ||
+                  reference.samples.isEmpty ||
+                  reference.sampleRate <= 0)) {
+            throw StateError('Unable to read reference WAV: $referencePath');
+          }
           final audio = tts!.generateWithConfig(
             text: message['text'] as String,
             config: sherpa.OfflineTtsGenerationConfig(
               sid: message['speakerId'] as int,
               speed: message['speed'] as double,
               numSteps: message['steps'] as int,
+              silenceScale: model['silenceScale'] as double,
+              referenceAudio: reference?.samples,
+              referenceSampleRate: reference?.sampleRate ?? 0,
+              referenceText: message['referenceText'] as String? ?? '',
               extra: family == TtsModelFamily.supertonic.name
                   ? {'lang': message['language'] as String}
-                  : const {},
+                  : family == TtsModelFamily.zipvoice.name
+                      ? const {'min_char_in_sentence': 1}
+                      : const {},
             ),
             onProgress: (_, __) => Pointer<Uint8>.fromAddress(
                       message['cancelAddress'] as int,

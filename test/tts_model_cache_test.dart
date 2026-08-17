@@ -23,13 +23,20 @@ void main() {
       version: '1',
       name: 'Fixture',
       description: 'Test model',
-      family: TtsModelFamily.piper,
-      archiveUri: Uri.parse('https://example.test/model.tar.bz2'),
-      archiveBytes: archiveBytes.length,
+      family: TtsModelFamily.vits,
+      downloads: [
+        TtsModelDownload(
+          uri: Uri.parse('https://example.test/model.tar.bz2'),
+          fileName: 'model.tar.bz2',
+          bytes: archiveBytes.length,
+          sha256: sha256.convert(archiveBytes).toString(),
+          isArchive: true,
+        ),
+      ],
       installedBytes: 5,
-      sha256: sha256.convert(archiveBytes).toString(),
       archiveRoot: 'fixture',
       requiredFiles: const ['model.onnx'],
+      modelFiles: const {'model': 'model.onnx'},
       languages: const [TtsLanguageOption('es', 'Español')],
       voices: const [TtsVoiceOption('voice', 'Voice', 0)],
       licenseName: 'Test',
@@ -73,6 +80,64 @@ void main() {
     ).ensureAvailable(model);
 
     expect(await File(installation.file('model.onnx')).exists(), isTrue);
+  });
+
+  test('installs supplementary files and removes replaced artifacts', () async {
+    const vocoderBytes = [9, 8, 7, 6];
+    final archive = Archive()
+      ..addFile(ArchiveFile('fixture/model.onnx', 1, [1]))
+      ..addFile(ArchiveFile('fixture/old-vocoder.onnx', 1, [2]));
+    final bytes = BZip2Encoder().encode(TarEncoder().encode(archive));
+    final multiFileModel = TtsModelDefinition(
+      id: 'multi-file-fixture',
+      version: '1',
+      name: 'Multi-file fixture',
+      description: 'Test model',
+      family: TtsModelFamily.matcha,
+      downloads: [
+        TtsModelDownload(
+          uri: Uri.parse('https://example.test/model.tar.bz2'),
+          fileName: 'model.tar.bz2',
+          bytes: bytes.length,
+          sha256: sha256.convert(bytes).toString(),
+          isArchive: true,
+        ),
+        TtsModelDownload(
+          uri: Uri.parse('https://example.test/vocoder.onnx'),
+          fileName: 'vocoder.onnx',
+          targetPath: 'vocoder.onnx',
+          bytes: vocoderBytes.length,
+          sha256: sha256.convert(vocoderBytes).toString(),
+        ),
+      ],
+      installedBytes: 5,
+      archiveRoot: 'fixture',
+      requiredFiles: const ['model.onnx', 'vocoder.onnx'],
+      removeAfterExtract: const ['old-vocoder.onnx'],
+      modelFiles: const {
+        'acousticModel': 'model.onnx',
+        'vocoder': 'vocoder.onnx',
+      },
+      languages: const [TtsLanguageOption('en', 'English')],
+      voices: const [TtsVoiceOption('voice', 'Voice', 0)],
+      licenseName: 'Test',
+      licenseUri: Uri.parse('https://example.test/license'),
+    );
+    final client = MockClient((request) async {
+      return http.Response.bytes(
+        request.url.path.endsWith('vocoder.onnx') ? vocoderBytes : bytes,
+        HttpStatus.ok,
+      );
+    });
+
+    final installation = await TtsModelCache(
+      client: client,
+      rootDirectory: root,
+    ).ensureAvailable(multiFileModel);
+
+    expect(await File(installation.file('vocoder.onnx')).readAsBytes(),
+        vocoderBytes);
+    expect(await File(installation.file('old-vocoder.onnx')).exists(), isFalse);
   });
 
   test('rejects and removes an archive with the wrong digest', () async {

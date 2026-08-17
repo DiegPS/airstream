@@ -350,6 +350,8 @@ class AppController {
       language: s.ttsLanguage,
       speed: s.ttsSpeed,
       steps: s.ttsSteps,
+      referenceAudioPath: s.ttsReferenceAudioPath,
+      referenceText: s.ttsReferenceText,
     ));
 
     // Reconnect YouTube if connection params changed.

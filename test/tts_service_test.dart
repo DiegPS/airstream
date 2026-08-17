@@ -32,11 +32,13 @@ void main() {
     try {
       await service.updateConfig(
         enabled: true,
-        modelId: 'supertonic-3-int8',
+        modelId: 'supertonic-3-hybrid',
         voice: 'M1',
         language: 'es',
         speed: 1.05,
         steps: 8,
+        referenceAudioPath: '',
+        referenceText: '',
       );
       service.speak('Este mensaje no debe iniciar una descarga.');
       await Future<void>.delayed(const Duration(milliseconds: 150));

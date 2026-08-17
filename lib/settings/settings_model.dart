@@ -49,6 +49,8 @@ class SettingsModel {
   final String ttsLanguage;
   final double ttsSpeed;
   final int ttsSteps;
+  final String ttsReferenceAudioPath;
+  final String ttsReferenceText;
 
   // OBS overlay server
   final int overlayPort;
@@ -139,11 +141,13 @@ class SettingsModel {
     this.ttsCommandIgnoreCase = true,
     this.ttsCommandPrefix = '!voz',
     this.ttsSeparatorText = 'dice',
-    this.ttsModelId = 'supertonic-3-int8',
+    this.ttsModelId = 'supertonic-3-hybrid',
     this.ttsVoice = 'M1',
     this.ttsLanguage = 'es',
     this.ttsSpeed = 1.05,
     this.ttsSteps = 8,
+    this.ttsReferenceAudioPath = '',
+    this.ttsReferenceText = '',
     this.overlayPort = 8080,
     this.overlayEnabled = true,
     this.overlayChromaMode = false,
@@ -236,6 +240,8 @@ class SettingsModel {
     String? ttsLanguage,
     double? ttsSpeed,
     int? ttsSteps,
+    String? ttsReferenceAudioPath,
+    String? ttsReferenceText,
     int? overlayPort,
     bool? overlayEnabled,
     bool? overlayChromaMode,
@@ -328,6 +334,9 @@ class SettingsModel {
         ttsLanguage: ttsLanguage ?? this.ttsLanguage,
         ttsSpeed: ttsSpeed ?? this.ttsSpeed,
         ttsSteps: ttsSteps ?? this.ttsSteps,
+        ttsReferenceAudioPath:
+            ttsReferenceAudioPath ?? this.ttsReferenceAudioPath,
+        ttsReferenceText: ttsReferenceText ?? this.ttsReferenceText,
         overlayPort: overlayPort ?? this.overlayPort,
         overlayEnabled: overlayEnabled ?? this.overlayEnabled,
         overlayChromaMode: overlayChromaMode ?? this.overlayChromaMode,
@@ -432,6 +441,8 @@ class SettingsModel {
         'ttsLanguage': ttsLanguage,
         'ttsSpeed': ttsSpeed,
         'ttsSteps': ttsSteps,
+        'ttsReferenceAudioPath': ttsReferenceAudioPath,
+        'ttsReferenceText': ttsReferenceText,
         'overlayPort': overlayPort,
         'overlayEnabled': overlayEnabled,
         'overlayChromaMode': overlayChromaMode,
@@ -521,11 +532,13 @@ class SettingsModel {
         ttsCommandIgnoreCase: j['ttsCommandIgnoreCase'] as bool? ?? true,
         ttsCommandPrefix: j['ttsCommandPrefix'] as String? ?? '!voz',
         ttsSeparatorText: j['ttsSeparatorText'] as String? ?? 'dice',
-        ttsModelId: j['ttsModelId'] as String? ?? 'supertonic-3-int8',
+        ttsModelId: j['ttsModelId'] as String? ?? 'supertonic-3-hybrid',
         ttsVoice: j['ttsVoice'] as String? ?? 'M1',
         ttsLanguage: j['ttsLanguage'] as String? ?? 'es',
         ttsSpeed: (j['ttsSpeed'] as num?)?.toDouble() ?? 1.05,
         ttsSteps: (j['ttsSteps'] as num?)?.round() ?? 8,
+        ttsReferenceAudioPath: j['ttsReferenceAudioPath'] as String? ?? '',
+        ttsReferenceText: j['ttsReferenceText'] as String? ?? '',
         overlayPort: j['overlayPort'] as int? ?? 8080,
         overlayEnabled: j['overlayEnabled'] as bool? ?? true,
         overlayChromaMode: j['overlayChromaMode'] as bool? ?? false,
