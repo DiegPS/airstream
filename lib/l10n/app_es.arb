@@ -54,6 +54,7 @@
   "qualityMaximum": "Máxima (12 pasos)",
   "speed": "Velocidad",
   "removeTtsModel": "Eliminar modelo descargado",
+  "downloadTtsModel": "Descargar modelo",
   "removeTtsModelConfirmation": "El TTS se desactivará y el modelo seleccionado se eliminará de este dispositivo. Podrás descargarlo de nuevo después.",
   "remove": "Eliminar",
   "cancel": "Cancelar",

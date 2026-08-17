@@ -240,9 +240,11 @@ class AppController {
   bool testTts(String text) {
     if (text.isEmpty) return false;
     if (_tts.currentLoadState.isLoading || _tts.isBusy) return false;
-    _tts.speak(text);
+    _tts.speak(text, allowDownload: true);
     return true;
   }
+
+  Future<void> downloadTtsModel() => _tts.prepareModel();
 
   Future<void> removeTtsModel(String modelId) => _tts.removeModel(modelId);
 

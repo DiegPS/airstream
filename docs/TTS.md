@@ -1,8 +1,10 @@
 # Local text to speech
 
 Airstream uses the official `sherpa_onnx` Flutter package and performs all
-synthesis locally. Models are not bundled in the application; the selected
-model is downloaded when TTS is enabled or tested for the first time.
+synthesis locally. Models are not bundled in the application. Enabling TTS
+never authorizes a download: the user must explicitly choose **Download model**
+or **Test TTS**. If the model is already installed, Airstream may load it from
+disk automatically without using the network.
 
 ## Production behavior
 

@@ -422,6 +422,12 @@ abstract class AppLocalizations {
   /// **'Remove downloaded model'**
   String get removeTtsModel;
 
+  /// No description provided for @downloadTtsModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download model'**
+  String get downloadTtsModel;
+
   /// No description provided for @removeTtsModelConfirmation.
   ///
   /// In en, this message translates to:

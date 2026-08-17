@@ -1236,6 +1236,22 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     const SizedBox(height: 12),
                     if (ttsLoadState != null) ...[
                       _ttsStatusCard(l, ttsLoadState),
+                      if (ttsLoadState.phase == TtsLoadPhase.idle ||
+                          ttsLoadState.phase == TtsLoadPhase.error) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              try {
+                                await appController.downloadTtsModel();
+                              } catch (_) {}
+                            },
+                            icon: const Icon(Icons.download, size: 18),
+                            label: Text(l.downloadTtsModel),
+                          ),
+                        ),
+                      ],
                       if (ttsLoadState.isReady) ...[
                         const SizedBox(height: 6),
                         Align(

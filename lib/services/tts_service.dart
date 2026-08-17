@@ -74,6 +74,7 @@ class TtsService {
   bool _disposed = false;
   int _generation = 0;
   int _configurationRevision = 0;
+  String? _knownMissingModelId;
   String _modelId = TtsModelCatalog.supertonic.id;
   String _voice = 'M1';
   String _language = 'es';
@@ -120,65 +121,88 @@ class TtsService {
       }
       return;
     }
-    if (previousModel != _modelId) await stop(unload: true);
+    if (previousModel != _modelId) {
+      _knownMissingModelId = null;
+      await stop(unload: true);
+    }
     if (revision != _configurationRevision) return;
     unawaited(_prepareForConfiguration(revision));
   }
 
   Future<void> _prepareForConfiguration(int revision) async {
     try {
-      await ensureReady();
+      await ensureReady(allowDownload: false);
       // A previous initialization may have been cancelled by a near-simultaneous
       // settings update. Retry once after its whenComplete clears the slot.
       if (revision == _configurationRevision && !_engine.isReady) {
         await Future<void>.delayed(Duration.zero);
-        await ensureReady();
+        await ensureReady(allowDownload: false);
       }
     } catch (_) {}
   }
 
-  Future<void> ensureReady() {
+  Future<void> ensureReady({required bool allowDownload}) async {
     if (_disposed) return Future.error(StateError('TTS is disposed.'));
     if (_engine.isReady && _loadState.modelId == _modelId) {
-      return Future.value();
+      return;
     }
-    return _initialization ??= _initialize().whenComplete(() {
+    if (!allowDownload && _knownMissingModelId == _modelId) return;
+    final inFlight = _initialization;
+    if (inFlight != null) {
+      await inFlight;
+      if (allowDownload && !_engine.isReady) {
+        await Future<void>.delayed(Duration.zero);
+        await ensureReady(allowDownload: true);
+      }
+      return;
+    }
+    await (_initialization =
+        _initialize(allowDownload: allowDownload).whenComplete(() {
       _initialization = null;
-    });
+    }));
   }
 
-  Future<void> _initialize() async {
+  Future<void> _initialize({required bool allowDownload}) async {
     final generation = _generation;
     final model = selectedModel;
     final cancellation = TtsDownloadCancellation();
     _downloadCancellation = cancellation;
     try {
-      final installation = await _modelCache.ensureAvailable(
-        model,
-        cancellation: cancellation,
-        onProgress: (progress) {
-          if (_disposed || generation != _generation) return;
-          final phase = switch (progress.phase) {
-            TtsInstallPhase.downloading => TtsLoadPhase.downloading,
-            TtsInstallPhase.extracting => TtsLoadPhase.loading,
-            TtsInstallPhase.verifying ||
-            TtsInstallPhase.checking =>
-              TtsLoadPhase.checking,
-            TtsInstallPhase.error => TtsLoadPhase.error,
-            _ => TtsLoadPhase.loading,
-          };
-          _emit(TtsLoadState(
-            phase: phase,
-            message: progress.message,
-            currentFile: progress.path,
-            loadedBytes: progress.receivedBytes,
-            totalBytes: progress.totalBytes,
-            voiceStyle: _voice,
-            cacheDirectory: progress.path,
-            modelId: model.id,
-          ));
-        },
-      );
+      var installation = await _modelCache.installed(model);
+      if (installation == null && !allowDownload) {
+        _knownMissingModelId = model.id;
+        _emit(TtsLoadState(
+          message:
+              '${model.name} is not downloaded. Choose Download model or Test TTS.',
+          voiceStyle: _voice,
+          modelId: model.id,
+        ));
+        return;
+      }
+      installation ??= await _modelCache.ensureAvailable(model,
+          cancellation: cancellation, onProgress: (progress) {
+        if (_disposed || generation != _generation) return;
+        final phase = switch (progress.phase) {
+          TtsInstallPhase.downloading => TtsLoadPhase.downloading,
+          TtsInstallPhase.extracting => TtsLoadPhase.loading,
+          TtsInstallPhase.verifying ||
+          TtsInstallPhase.checking =>
+            TtsLoadPhase.checking,
+          TtsInstallPhase.error => TtsLoadPhase.error,
+          _ => TtsLoadPhase.loading,
+        };
+        _emit(TtsLoadState(
+          phase: phase,
+          message: progress.message,
+          currentFile: progress.path,
+          loadedBytes: progress.receivedBytes,
+          totalBytes: progress.totalBytes,
+          voiceStyle: _voice,
+          cacheDirectory: progress.path,
+          modelId: model.id,
+        ));
+      });
+      _knownMissingModelId = null;
       if (_disposed || generation != _generation) return;
       _emit(TtsLoadState(
           phase: TtsLoadPhase.loading,
@@ -227,7 +251,12 @@ class TtsService {
     }
   }
 
-  void speak(String text) {
+  Future<void> prepareModel() {
+    _knownMissingModelId = null;
+    return ensureReady(allowDownload: true);
+  }
+
+  void speak(String text, {bool allowDownload = false}) {
     if (_disposed) return;
     final prepared = prepareTextForSpeech(text);
     if (prepared.isEmpty) return;
@@ -236,7 +265,7 @@ class TtsService {
     }
     _queue.add(prepared);
     _setBusy(true);
-    unawaited(_processQueue());
+    unawaited(_processQueue(allowDownload: allowDownload));
   }
 
   @visibleForTesting
@@ -250,11 +279,15 @@ class TtsService {
     return '${String.fromCharCodes(runes.take(_maxUtteranceRunes)).trim()}…';
   }
 
-  Future<void> _processQueue() async {
+  Future<void> _processQueue({bool allowDownload = false}) async {
     if (_disposed || _processing || _queue.isEmpty) return;
     _processing = true;
     try {
-      await ensureReady();
+      await ensureReady(allowDownload: allowDownload);
+      if (!_engine.isReady) {
+        _queue.clear();
+        return;
+      }
       while (!_disposed && _queue.isNotEmpty && _engine.isReady) {
         final text = _queue.removeFirst();
         await _generateAndPlay(text);
@@ -350,6 +383,7 @@ class TtsService {
     final model = TtsModelCatalog.byId(modelId);
     if (_modelId == model.id) await stop(unload: true);
     await _modelCache.remove(model);
+    _knownMissingModelId = model.id;
     if (_modelId == model.id) _emit(TtsLoadState(modelId: model.id));
   }
 

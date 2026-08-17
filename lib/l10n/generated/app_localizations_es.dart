@@ -177,6 +177,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get removeTtsModel => 'Eliminar modelo descargado';
 
   @override
+  String get downloadTtsModel => 'Descargar modelo';
+
+  @override
   String get removeTtsModelConfirmation =>
       'El TTS se desactivará y el modelo seleccionado se eliminará de este dispositivo. Podrás descargarlo de nuevo después.';
 
