@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:airstream/services/tts/tts_model_catalog.dart';
+import 'package:airstream/services/speech/live_captions_service.dart';
+import 'package:airstream/services/speech/speech_model_catalog.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -656,6 +658,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _ttsPrefixCtrl;
   late TextEditingController _ttsSeparatorCtrl;
   late TextEditingController _ttsReferenceTextCtrl;
+  late TextEditingController _voiceWakeWordCtrl;
   late TextEditingController _blockedUsersCtrl;
   late TextEditingController _blockedWordsCtrl;
 
@@ -671,6 +674,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late FocusNode _ttsPrefixFocus;
   late FocusNode _ttsSeparatorFocus;
   late FocusNode _ttsReferenceTextFocus;
+  late FocusNode _voiceWakeWordFocus;
   late FocusNode _blockedUsersFocus;
   late FocusNode _blockedWordsFocus;
   Timer? _textSettingsDebounce;
@@ -695,6 +699,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
     _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
     _ttsReferenceTextCtrl = TextEditingController(text: s.ttsReferenceText);
+    _voiceWakeWordCtrl = TextEditingController(text: s.voiceCommandsWakeWord);
     _blockedUsersCtrl =
         TextEditingController(text: _formatFilterList(s.blockedUsers));
     _blockedWordsCtrl =
@@ -712,6 +717,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsPrefixFocus = FocusNode();
     _ttsSeparatorFocus = FocusNode();
     _ttsReferenceTextFocus = FocusNode();
+    _voiceWakeWordFocus = FocusNode();
     _blockedUsersFocus = FocusNode();
     _blockedWordsFocus = FocusNode();
 
@@ -728,6 +734,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _ttsPrefixFocus,
       _ttsSeparatorFocus,
       _ttsReferenceTextFocus,
+      _voiceWakeWordFocus,
       _blockedUsersFocus,
       _blockedWordsFocus,
     ]) {
@@ -755,6 +762,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsPrefixCtrl.dispose();
     _ttsSeparatorCtrl.dispose();
     _ttsReferenceTextCtrl.dispose();
+    _voiceWakeWordCtrl.dispose();
     _blockedUsersCtrl.dispose();
     _blockedWordsCtrl.dispose();
 
@@ -770,6 +778,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _ttsPrefixFocus.dispose();
     _ttsSeparatorFocus.dispose();
     _ttsReferenceTextFocus.dispose();
+    _voiceWakeWordFocus.dispose();
     _blockedUsersFocus.dispose();
     _blockedWordsFocus.dispose();
     super.dispose();
@@ -816,6 +825,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       ttsCommandPrefix: _ttsPrefixCtrl.text,
       ttsSeparatorText: _ttsSeparatorCtrl.text,
       ttsReferenceText: _ttsReferenceTextCtrl.text,
+      voiceCommandsWakeWord: _voiceWakeWordCtrl.text.trim(),
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
@@ -831,7 +841,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.obsPassword == next.obsPassword &&
         current.ttsCommandPrefix == next.ttsCommandPrefix &&
         current.ttsSeparatorText == next.ttsSeparatorText &&
-        current.ttsReferenceText == next.ttsReferenceText) {
+        current.ttsReferenceText == next.ttsReferenceText &&
+        current.voiceCommandsWakeWord == next.voiceCommandsWakeWord) {
       return;
     }
 
@@ -931,6 +942,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
+    final captionsState = ref.watch(liveCaptionsStateProvider).valueOrNull ??
+        const LiveCaptionsState();
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final overlayUrl = ref.watch(overlayUrlProvider);
@@ -938,6 +951,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ref.watch(overlayClientCountProvider).valueOrNull ?? 0;
     final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
     final alertsCopyUrl = '$overlayCopyUrl/alerts';
+    final captionsCopyUrl = '$overlayCopyUrl/captions';
 
     _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
@@ -970,6 +984,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _ttsReferenceTextCtrl,
       _ttsReferenceTextFocus,
       s.ttsReferenceText,
+    );
+    _syncController(
+      _voiceWakeWordCtrl,
+      _voiceWakeWordFocus,
+      s.voiceCommandsWakeWord,
     );
     _syncController(
       _blockedUsersCtrl,
@@ -1388,11 +1407,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                                 .label),
                         if (model.referenceMode != TtsReferenceMode.none) ...[
                           const SizedBox(height: 8),
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              'Clonación de voz (WAV)',
-                              style: TextStyle(
+                              l.voiceCloning,
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -1404,7 +1423,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                             Expanded(
                               child: Text(
                                 s.ttsReferenceAudioPath.isEmpty
-                                    ? 'Usando muestra incluida: ${model.voice(voice).label}'
+                                    ? l.usingBundledVoice(
+                                        model.voice(voice).label,
+                                      )
                                     : p.basename(s.ttsReferenceAudioPath),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1432,11 +1453,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                                 ));
                               },
                               icon: const Icon(Icons.audio_file, size: 16),
-                              label: const Text('Elegir WAV'),
+                              label: Text(l.chooseWav),
                             ),
                             if (s.ttsReferenceAudioPath.isNotEmpty)
                               IconButton(
-                                tooltip: 'Usar muestra incluida',
+                                tooltip: l.useBundledSample,
                                 onPressed: () => notifier.update(s.copyWith(
                                   ttsReferenceAudioPath: '',
                                   ttsReferenceText: '',
@@ -1447,10 +1468,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                           if (model.needsReferenceText &&
                               s.ttsReferenceAudioPath.isNotEmpty) ...[
                             const SizedBox(height: 6),
-                            _label('Transcripción exacta del WAV'),
+                            _label(l.referenceTranscript),
                             _field(
                               _ttsReferenceTextCtrl,
-                              'Escribe exactamente lo que dice el audio…',
+                              l.referenceTranscriptHint,
                               focusNode: _ttsReferenceTextFocus,
                               onChanged: (_) => _queueTextSettingsSave(),
                               onSubmitted: (_) => _saveTextSettings(),
@@ -1520,6 +1541,177 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                         height: 1.35,
                       ),
                     ),
+                  ],
+                ],
+              ),
+              _sidebarSectionTile(
+                title: l.localCaptions,
+                initiallyExpanded: s.liveCaptionsEnabled,
+                children: [
+                  Text(
+                    l.captionsDescription,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _switchRow(l.captionsEnabled, s.liveCaptionsEnabled, (value) {
+                    unawaited(notifier.update(
+                      s.copyWith(liveCaptionsEnabled: value),
+                    ));
+                  }),
+                  if (s.liveCaptionsEnabled) ...[
+                    const SizedBox(height: 8),
+                    Builder(builder: (context) {
+                      final model = SpeechModelCatalog.byId(
+                        s.liveCaptionsModelId,
+                      );
+                      final source =
+                          model.supportsLanguage(s.liveCaptionsSourceLanguage)
+                              ? s.liveCaptionsSourceLanguage
+                              : 'es';
+                      final targets = model.targetsFor(source);
+                      return Column(children: [
+                        _dropdownRow(
+                          l.spokenLanguage,
+                          source,
+                          model.languages.map((item) => item.code).toList(),
+                          (value) => notifier.update(s.copyWith(
+                            liveCaptionsSourceLanguage: value,
+                            liveCaptionsTargetLanguage: value,
+                          )),
+                          optionLabel: (value) => model.languages
+                              .firstWhere((item) => item.code == value)
+                              .label,
+                        ),
+                        _dropdownRow(
+                          l.captionOutput,
+                          model.supportsDirection(
+                                  source, s.liveCaptionsTargetLanguage)
+                              ? s.liveCaptionsTargetLanguage
+                              : source,
+                          targets.map((item) => item.code).toList(),
+                          (value) => notifier.update(s.copyWith(
+                            liveCaptionsTargetLanguage: value,
+                          )),
+                          optionLabel: (value) => targets
+                              .firstWhere((item) => item.code == value)
+                              .label,
+                        ),
+                      ]);
+                    }),
+                    _switchRow(
+                      l.sendCaptionsToObs,
+                      s.liveCaptionsOverlayEnabled,
+                      (value) => notifier.update(
+                        s.copyWith(liveCaptionsOverlayEnabled: value),
+                      ),
+                    ),
+                    _switchRow(
+                      l.noiseReduction,
+                      s.liveCaptionsDenoiseEnabled,
+                      (value) => notifier.update(
+                        s.copyWith(liveCaptionsDenoiseEnabled: value),
+                      ),
+                    ),
+                    _switchRow(
+                      l.voiceCommandsObs,
+                      s.voiceCommandsEnabled,
+                      (value) => notifier.update(
+                        s.copyWith(voiceCommandsEnabled: value),
+                      ),
+                    ),
+                    if (s.voiceCommandsEnabled) ...[
+                      const SizedBox(height: 6),
+                      _label(l.wakeWord),
+                      _field(
+                        _voiceWakeWordCtrl,
+                        'airstream',
+                        focusNode: _voiceWakeWordFocus,
+                        onChanged: (_) => _queueTextSettingsSave(),
+                        onSubmitted: (_) => _saveTextSettings(),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        l.voiceCommandsExamples,
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            captionsState.message.isEmpty
+                                ? '${l.captionModelManual} '
+                                    '(${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})'
+                                : captionsState.message,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (captionsState.caption.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              captionsState.caption,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          if (captionsState.progress case final progress?) ...[
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(value: progress),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (captionsState.phase == LiveCaptionsPhase.missingModel ||
+                        captionsState.phase == LiveCaptionsPhase.error) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: captionsState.phase ==
+                                  LiveCaptionsPhase.downloading
+                              ? null
+                              : appController.downloadLiveCaptionsModel,
+                          icon: const Icon(Icons.download),
+                          label: Text(
+                            '${l.downloadCaptionModel} '
+                            '(${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})',
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (s.liveCaptionsOverlayEnabled) ...[
+                      const SizedBox(height: 8),
+                      _overlayUrlCard(
+                        l: l,
+                        title: l.obsCaptions,
+                        overlayUrl: captionsCopyUrl,
+                        description: l.obsCaptionsDescription,
+                        onCopy: () => Clipboard.setData(
+                          ClipboardData(text: captionsCopyUrl),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

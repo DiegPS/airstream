@@ -115,6 +115,47 @@ class ObsService {
     yield* _stateController.stream;
   }
 
+  Future<void> startRecording() => _runControl(
+        'start recording',
+        (obs) => obs.record.startRecord(),
+      );
+
+  Future<void> stopRecording() => _runControl(
+        'stop recording',
+        (obs) async => obs.record.stopRecord(),
+      );
+
+  Future<void> pauseRecording() => _runControl(
+        'pause recording',
+        (obs) => obs.record.pauseRecord(),
+      );
+
+  Future<void> resumeRecording() => _runControl(
+        'resume recording',
+        (obs) => obs.record.resumeRecord(),
+      );
+
+  Future<void> switchScene(String sceneName) => _runControl(
+        'switch scene',
+        (obs) => obs.scenes.setCurrentProgramScene(sceneName),
+      );
+
+  Future<void> _runControl(
+    String label,
+    Future<void> Function(ObsWebSocket obs) action,
+  ) async {
+    final obs = _obs;
+    if (obs == null || !_state.connected) {
+      throw StateError('OBS must be connected to $label.');
+    }
+    try {
+      await action(obs);
+    } catch (error) {
+      _emit(_state.copyWith(error: 'Could not $label: $error'));
+      rethrow;
+    }
+  }
+
   @visibleForTesting
   static ObsPollFailureAction pollFailureActionFor(int consecutiveFailures) {
     if (consecutiveFailures >= _reconnectPollFailureThreshold) {

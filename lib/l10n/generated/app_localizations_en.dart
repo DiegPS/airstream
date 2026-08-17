@@ -525,4 +525,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get member => 'Member';
+
+  @override
+  String get voiceCloning => 'Voice cloning (WAV)';
+
+  @override
+  String usingBundledVoice(String voice) {
+    return 'Using bundled sample: $voice';
+  }
+
+  @override
+  String get chooseWav => 'Choose WAV';
+
+  @override
+  String get useBundledSample => 'Use bundled sample';
+
+  @override
+  String get referenceTranscript => 'Exact WAV transcript';
+
+  @override
+  String get referenceTranscriptHint => 'Type exactly what the audio says…';
+
+  @override
+  String get localCaptions => 'Local captions';
+
+  @override
+  String get captionsDescription =>
+      'Sherpa listens to the microphone, detects speech, and creates captions or translations without sending audio to the Internet.';
+
+  @override
+  String get captionsEnabled => 'Enabled';
+
+  @override
+  String get spokenLanguage => 'Spoken language';
+
+  @override
+  String get captionOutput => 'Output / translation';
+
+  @override
+  String get sendCaptionsToObs => 'Send to OBS overlay';
+
+  @override
+  String get noiseReduction => 'GTCRN noise reduction';
+
+  @override
+  String get voiceCommandsObs => 'OBS voice commands';
+
+  @override
+  String get wakeWord => 'Wake word';
+
+  @override
+  String get voiceCommandsExamples =>
+      'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.';
+
+  @override
+  String get captionModelManual => 'Canary model · manual download';
+
+  @override
+  String get downloadCaptionModel => 'Download caption model';
+
+  @override
+  String get obsCaptions => 'OBS captions';
+
+  @override
+  String get obsCaptionsDescription =>
+      'Independent browser source for live captions and translation.';
 }

@@ -526,4 +526,70 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get member => 'Miembro';
+
+  @override
+  String get voiceCloning => 'Clonación de voz (WAV)';
+
+  @override
+  String usingBundledVoice(String voice) {
+    return 'Usando muestra incluida: $voice';
+  }
+
+  @override
+  String get chooseWav => 'Elegir WAV';
+
+  @override
+  String get useBundledSample => 'Usar muestra incluida';
+
+  @override
+  String get referenceTranscript => 'Transcripción exacta del WAV';
+
+  @override
+  String get referenceTranscriptHint =>
+      'Escribe exactamente lo que dice el audio…';
+
+  @override
+  String get localCaptions => 'Subtítulos locales';
+
+  @override
+  String get captionsDescription =>
+      'Sherpa escucha el micrófono, detecta voz y crea subtítulos o traducción sin enviar audio a Internet.';
+
+  @override
+  String get captionsEnabled => 'Activados';
+
+  @override
+  String get spokenLanguage => 'Idioma hablado';
+
+  @override
+  String get captionOutput => 'Salida / traducción';
+
+  @override
+  String get sendCaptionsToObs => 'Enviar al overlay de OBS';
+
+  @override
+  String get noiseReduction => 'Reducción de ruido GTCRN';
+
+  @override
+  String get voiceCommandsObs => 'Comandos de voz para OBS';
+
+  @override
+  String get wakeWord => 'Palabra de activación';
+
+  @override
+  String get voiceCommandsExamples =>
+      'Ejemplos: “Airstream inicia grabación”, “Airstream pausa grabación” o “Airstream cambia a escena cámara”.';
+
+  @override
+  String get captionModelManual => 'Modelo Canary · descarga manual';
+
+  @override
+  String get downloadCaptionModel => 'Descargar modelo de subtítulos';
+
+  @override
+  String get obsCaptions => 'Subtítulos OBS';
+
+  @override
+  String get obsCaptionsDescription =>
+      'Fuente de navegador independiente para subtítulos y traducción en vivo.';
 }

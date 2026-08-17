@@ -15,6 +15,8 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/services/tts_service.dart';
+import 'package:airstream/services/speech/live_captions_service.dart';
+import 'package:airstream/services/speech/voice_command.dart';
 import 'package:airstream/settings/tts_message_policy.dart';
 import 'package:airstream/settings/settings_model.dart';
 
@@ -63,6 +65,11 @@ final ttsLoadStateProvider = StreamProvider<TtsLoadState>((ref) {
 final ttsBusyProvider = StreamProvider<bool>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.ttsBusyStream;
+});
+
+final liveCaptionsStateProvider = StreamProvider<LiveCaptionsState>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.liveCaptionsStateStream;
 });
 
 final obsStateProvider = StreamProvider<ObsState>((ref) {
@@ -118,10 +125,12 @@ class AppController {
   final _overlay = OverlayServer();
   final _obs = ObsService();
   final _tts = TtsService();
+  final _captions = LiveCaptionsService();
   late final MessagePipeline _pipeline;
   StreamSubscription<ChatMessage>? _pipelineSub;
   StreamSubscription<(ServiceStatus, String?)>? _youtubeStatusSub;
   StreamSubscription<(ServiceStatus, String?)>? _kickStatusSub;
+  StreamSubscription<LiveCaptionsState>? _captionsSub;
   final _spokenMessageKeys = <String>{};
   final _spokenMessageOrder = Queue<String>();
 
@@ -161,6 +170,20 @@ class AppController {
     _youtubeStatusSub =
         _youtube.statusStream.listen((s) => _updateStatus('youtube', s));
     _kickStatusSub = _kick.statusStream.listen((s) => _updateStatus('kick', s));
+    _captionsSub = _captions.states.listen((state) {
+      if (state.captionFinal &&
+          (_lastSettings?.liveCaptionsOverlayEnabled ?? false)) {
+        _overlay.broadcastCaption(state.caption);
+      }
+      if (state.captionFinal &&
+          (_lastSettings?.voiceCommandsEnabled ?? false)) {
+        final command = VoiceCommand.parse(
+          state.caption,
+          wakeWord: _lastSettings?.voiceCommandsWakeWord ?? 'airstream',
+        );
+        if (command != null) unawaited(_executeVoiceCommand(command));
+      }
+    });
   }
 
   Future<void> _connectYoutube(SettingsModel s) async {
@@ -226,6 +249,8 @@ class AppController {
     yield* _tts.busyStream;
   }
 
+  Stream<LiveCaptionsState> get liveCaptionsStateStream => _captions.states;
+
   Stream<ObsState> get obsStateStream async* {
     yield _obs.currentState;
     yield* _obs.stateStream;
@@ -247,6 +272,32 @@ class AppController {
   Future<void> downloadTtsModel() => _tts.prepareModel();
 
   Future<void> removeTtsModel(String modelId) => _tts.removeModel(modelId);
+
+  Future<void> downloadLiveCaptionsModel() => _captions.prepareModel();
+
+  Future<void> _executeVoiceCommand(VoiceCommand command) async {
+    try {
+      switch (command.type) {
+        case VoiceCommandType.startRecording:
+          await _obs.startRecording();
+          return;
+        case VoiceCommandType.stopRecording:
+          await _obs.stopRecording();
+          return;
+        case VoiceCommandType.pauseRecording:
+          await _obs.pauseRecording();
+          return;
+        case VoiceCommandType.resumeRecording:
+          await _obs.resumeRecording();
+          return;
+        case VoiceCommandType.switchScene:
+          await _obs.switchScene(command.argument);
+          return;
+      }
+    } catch (error) {
+      debugPrint('Voice command failed: $error');
+    }
+  }
 
   Future<void> connectObs() async {
     final settings = _lastSettings;
@@ -353,6 +404,12 @@ class AppController {
       referenceAudioPath: s.ttsReferenceAudioPath,
       referenceText: s.ttsReferenceText,
     ));
+    unawaited(_captions.updateConfig(
+      enabled: s.liveCaptionsEnabled,
+      sourceLanguage: s.liveCaptionsSourceLanguage,
+      targetLanguage: s.liveCaptionsTargetLanguage,
+      denoise: s.liveCaptionsDenoiseEnabled,
+    ));
 
     // Reconnect YouTube if connection params changed.
     final connectionChanged = prev == null ||
@@ -452,12 +509,14 @@ class AppController {
     await _pipelineSub?.cancel();
     await _youtubeStatusSub?.cancel();
     await _kickStatusSub?.cancel();
+    await _captionsSub?.cancel();
     _youtube.dispose();
     _kick.dispose();
     _twitch.dispose();
     await _overlay.dispose();
     _obs.dispose();
     await _tts.dispose();
+    await _captions.dispose();
     _pipeline.dispose();
     await _listController.close();
     await _statusController.close();

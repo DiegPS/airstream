@@ -19,6 +19,8 @@ class OverlayServer {
   SettingsModel _settings = const SettingsModel();
 
   int _port = 8080;
+  int _networkLookupGeneration = 0;
+  int _lifecycleGeneration = 0;
   int get port => _port;
 
   String? _localIp;
@@ -38,9 +40,16 @@ class OverlayServer {
     int port = 8080,
   }) async {
     await stop();
+    final lifecycleGeneration = ++_lifecycleGeneration;
     _settings = settings;
     _port = port;
-    _localIp = await NetworkInfo().getWifiIP();
+    _localIp = null;
+    final lookupGeneration = ++_networkLookupGeneration;
+    unawaited(NetworkInfo().getWifiIP().then((address) {
+      if (lookupGeneration == _networkLookupGeneration) {
+        _localIp = address;
+      }
+    }).catchError((_) {}));
 
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
@@ -62,18 +71,30 @@ class OverlayServer {
           headers: {'content-type': 'text/html; charset=utf-8'},
         );
       }
+      if (req.url.path == 'captions') {
+        return Response.ok(
+          _captionsHtml(),
+          headers: {'content-type': 'text/html; charset=utf-8'},
+        );
+      }
       return Response.ok(
         _overlayHtml(),
         headers: {'content-type': 'text/html; charset=utf-8'},
       );
     });
 
+    late final HttpServer server;
     try {
-      _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, _port);
+      server = await shelf_io.serve(handler, InternetAddress.anyIPv4, _port);
     } on SocketException {
-      _server =
+      server =
           await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
     }
+    if (lifecycleGeneration != _lifecycleGeneration) {
+      await server.close(force: true);
+      return;
+    }
+    _server = server;
     _msgSub = messages.listen(_broadcastMessage);
   }
 
@@ -146,7 +167,18 @@ class OverlayServer {
     return true;
   }
 
+  void broadcastCaption(String text) {
+    final caption = text.trim();
+    if (caption.isEmpty) return;
+    _broadcastEnvelope({
+      'type': 'caption',
+      'data': {'text': caption}
+    });
+  }
+
   Future<void> stop() async {
+    _lifecycleGeneration++;
+    _networkLookupGeneration++;
     await _msgSub?.cancel();
     _msgSub = null;
     await _server?.close(force: true);
@@ -533,6 +565,64 @@ function AlertsApp() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
+</script>
+</body>
+</html>''';
+
+  static String _captionsHtml() => '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airstream Captions</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+  body { display: flex; align-items: flex-end; justify-content: center; padding: 4vh 4vw; }
+  #caption {
+    max-width: 92vw;
+    padding: .35em .65em;
+    border-radius: .35em;
+    color: white;
+    background: rgba(0, 0, 0, .72);
+    font: 700 clamp(24px, 4vw, 64px)/1.25 system-ui, sans-serif;
+    text-align: center;
+    text-shadow: 0 2px 4px #000;
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+  #caption.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="caption" role="status" aria-live="polite"></div>
+<script>
+(() => {
+  const caption = document.getElementById('caption');
+  let retry;
+  let hide;
+  const connect = () => {
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const ws = new WebSocket(protocol + location.host + '/ws');
+    ws.onmessage = (event) => {
+      try {
+        const envelope = JSON.parse(event.data);
+        if (envelope.type === 'reload') return location.reload();
+        if (envelope.type !== 'caption') return;
+        caption.textContent = envelope.data.text || '';
+        caption.classList.toggle('visible', Boolean(caption.textContent));
+        window.clearTimeout(hide);
+        hide = window.setTimeout(() => caption.classList.remove('visible'), 7000);
+      } catch (_) {}
+    };
+    ws.onclose = () => { retry = window.setTimeout(connect, 3000); };
+  };
+  connect();
+  window.addEventListener('beforeunload', () => {
+    window.clearTimeout(retry);
+    window.clearTimeout(hide);
+  });
+})();
 </script>
 </body>
 </html>''';

@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_linux
   flutter_acrylic
   media_kit_libs_linux
+  record_linux
   screen_retriever_linux
   window_manager
 )

@@ -1069,6 +1069,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Member'**
   String get member;
+
+  /// No description provided for @voiceCloning.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice cloning (WAV)'**
+  String get voiceCloning;
+
+  /// No description provided for @usingBundledVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Using bundled sample: {voice}'**
+  String usingBundledVoice(String voice);
+
+  /// No description provided for @chooseWav.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose WAV'**
+  String get chooseWav;
+
+  /// No description provided for @useBundledSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Use bundled sample'**
+  String get useBundledSample;
+
+  /// No description provided for @referenceTranscript.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact WAV transcript'**
+  String get referenceTranscript;
+
+  /// No description provided for @referenceTranscriptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type exactly what the audio says…'**
+  String get referenceTranscriptHint;
+
+  /// No description provided for @localCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Local captions'**
+  String get localCaptions;
+
+  /// No description provided for @captionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sherpa listens to the microphone, detects speech, and creates captions or translations without sending audio to the Internet.'**
+  String get captionsDescription;
+
+  /// No description provided for @captionsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get captionsEnabled;
+
+  /// No description provided for @spokenLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Spoken language'**
+  String get spokenLanguage;
+
+  /// No description provided for @captionOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output / translation'**
+  String get captionOutput;
+
+  /// No description provided for @sendCaptionsToObs.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to OBS overlay'**
+  String get sendCaptionsToObs;
+
+  /// No description provided for @noiseReduction.
+  ///
+  /// In en, this message translates to:
+  /// **'GTCRN noise reduction'**
+  String get noiseReduction;
+
+  /// No description provided for @voiceCommandsObs.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS voice commands'**
+  String get voiceCommandsObs;
+
+  /// No description provided for @wakeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake word'**
+  String get wakeWord;
+
+  /// No description provided for @voiceCommandsExamples.
+  ///
+  /// In en, this message translates to:
+  /// **'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.'**
+  String get voiceCommandsExamples;
+
+  /// No description provided for @captionModelManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Canary model · manual download'**
+  String get captionModelManual;
+
+  /// No description provided for @downloadCaptionModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download caption model'**
+  String get downloadCaptionModel;
+
+  /// No description provided for @obsCaptions.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS captions'**
+  String get obsCaptions;
+
+  /// No description provided for @obsCaptionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Independent browser source for live captions and translation.'**
+  String get obsCaptionsDescription;
 }
 
 class _AppLocalizationsDelegate

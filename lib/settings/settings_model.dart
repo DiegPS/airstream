@@ -52,6 +52,16 @@ class SettingsModel {
   final String ttsReferenceAudioPath;
   final String ttsReferenceText;
 
+  // Local speech tools
+  final bool liveCaptionsEnabled;
+  final String liveCaptionsModelId;
+  final String liveCaptionsSourceLanguage;
+  final String liveCaptionsTargetLanguage;
+  final bool liveCaptionsOverlayEnabled;
+  final bool liveCaptionsDenoiseEnabled;
+  final bool voiceCommandsEnabled;
+  final String voiceCommandsWakeWord;
+
   // OBS overlay server
   final int overlayPort;
   final bool overlayEnabled;
@@ -148,6 +158,14 @@ class SettingsModel {
     this.ttsSteps = 8,
     this.ttsReferenceAudioPath = '',
     this.ttsReferenceText = '',
+    this.liveCaptionsEnabled = false,
+    this.liveCaptionsModelId = 'canary-180m-int8',
+    this.liveCaptionsSourceLanguage = 'es',
+    this.liveCaptionsTargetLanguage = 'es',
+    this.liveCaptionsOverlayEnabled = true,
+    this.liveCaptionsDenoiseEnabled = true,
+    this.voiceCommandsEnabled = false,
+    this.voiceCommandsWakeWord = 'airstream',
     this.overlayPort = 8080,
     this.overlayEnabled = true,
     this.overlayChromaMode = false,
@@ -242,6 +260,14 @@ class SettingsModel {
     int? ttsSteps,
     String? ttsReferenceAudioPath,
     String? ttsReferenceText,
+    bool? liveCaptionsEnabled,
+    String? liveCaptionsModelId,
+    String? liveCaptionsSourceLanguage,
+    String? liveCaptionsTargetLanguage,
+    bool? liveCaptionsOverlayEnabled,
+    bool? liveCaptionsDenoiseEnabled,
+    bool? voiceCommandsEnabled,
+    String? voiceCommandsWakeWord,
     int? overlayPort,
     bool? overlayEnabled,
     bool? overlayChromaMode,
@@ -337,6 +363,19 @@ class SettingsModel {
         ttsReferenceAudioPath:
             ttsReferenceAudioPath ?? this.ttsReferenceAudioPath,
         ttsReferenceText: ttsReferenceText ?? this.ttsReferenceText,
+        liveCaptionsEnabled: liveCaptionsEnabled ?? this.liveCaptionsEnabled,
+        liveCaptionsModelId: liveCaptionsModelId ?? this.liveCaptionsModelId,
+        liveCaptionsSourceLanguage:
+            liveCaptionsSourceLanguage ?? this.liveCaptionsSourceLanguage,
+        liveCaptionsTargetLanguage:
+            liveCaptionsTargetLanguage ?? this.liveCaptionsTargetLanguage,
+        liveCaptionsOverlayEnabled:
+            liveCaptionsOverlayEnabled ?? this.liveCaptionsOverlayEnabled,
+        liveCaptionsDenoiseEnabled:
+            liveCaptionsDenoiseEnabled ?? this.liveCaptionsDenoiseEnabled,
+        voiceCommandsEnabled: voiceCommandsEnabled ?? this.voiceCommandsEnabled,
+        voiceCommandsWakeWord:
+            voiceCommandsWakeWord ?? this.voiceCommandsWakeWord,
         overlayPort: overlayPort ?? this.overlayPort,
         overlayEnabled: overlayEnabled ?? this.overlayEnabled,
         overlayChromaMode: overlayChromaMode ?? this.overlayChromaMode,
@@ -443,6 +482,14 @@ class SettingsModel {
         'ttsSteps': ttsSteps,
         'ttsReferenceAudioPath': ttsReferenceAudioPath,
         'ttsReferenceText': ttsReferenceText,
+        'liveCaptionsEnabled': liveCaptionsEnabled,
+        'liveCaptionsModelId': liveCaptionsModelId,
+        'liveCaptionsSourceLanguage': liveCaptionsSourceLanguage,
+        'liveCaptionsTargetLanguage': liveCaptionsTargetLanguage,
+        'liveCaptionsOverlayEnabled': liveCaptionsOverlayEnabled,
+        'liveCaptionsDenoiseEnabled': liveCaptionsDenoiseEnabled,
+        'voiceCommandsEnabled': voiceCommandsEnabled,
+        'voiceCommandsWakeWord': voiceCommandsWakeWord,
         'overlayPort': overlayPort,
         'overlayEnabled': overlayEnabled,
         'overlayChromaMode': overlayChromaMode,
@@ -539,6 +586,20 @@ class SettingsModel {
         ttsSteps: (j['ttsSteps'] as num?)?.round() ?? 8,
         ttsReferenceAudioPath: j['ttsReferenceAudioPath'] as String? ?? '',
         ttsReferenceText: j['ttsReferenceText'] as String? ?? '',
+        liveCaptionsEnabled: j['liveCaptionsEnabled'] as bool? ?? false,
+        liveCaptionsModelId:
+            j['liveCaptionsModelId'] as String? ?? 'canary-180m-int8',
+        liveCaptionsSourceLanguage:
+            j['liveCaptionsSourceLanguage'] as String? ?? 'es',
+        liveCaptionsTargetLanguage:
+            j['liveCaptionsTargetLanguage'] as String? ?? 'es',
+        liveCaptionsOverlayEnabled:
+            j['liveCaptionsOverlayEnabled'] as bool? ?? true,
+        liveCaptionsDenoiseEnabled:
+            j['liveCaptionsDenoiseEnabled'] as bool? ?? true,
+        voiceCommandsEnabled: j['voiceCommandsEnabled'] as bool? ?? false,
+        voiceCommandsWakeWord:
+            j['voiceCommandsWakeWord'] as String? ?? 'airstream',
         overlayPort: j['overlayPort'] as int? ?? 8080,
         overlayEnabled: j['overlayEnabled'] as bool? ?? true,
         overlayChromaMode: j['overlayChromaMode'] as bool? ?? false,

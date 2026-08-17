@@ -9,9 +9,13 @@ speech. It is designed to keep the streaming workflow in one lightweight app.
 - Unified, deduplicated multi-platform chat.
 - Browser-source OBS overlay and stream/recording telemetry.
 - Fully local TTS powered by Sherpa-ONNX; chat text never leaves the device.
-- Curated quality and lightweight voice models with verified, resumable
-  downloads.
-- Multilingual Supertonic 3 voices plus a fast Spanish Piper option.
+- Every Sherpa TTS family: Supertonic, Piper/VITS, Kitten, Kokoro, Matcha,
+  PocketTTS, and ZipVoice, including custom offline voice cloning.
+- Verified, resumable, explicit model downloads; enabling a feature never
+  starts a download.
+- Local microphone captions and EN/ES/DE/FR translation with Silero VAD,
+  optional GTCRN noise reduction, and a dedicated OBS browser source.
+- Wake-word protected OBS voice commands for recording and scene changes.
 - Persistent visual, filtering, connection, overlay, and TTS settings.
 
 ## Development
@@ -28,5 +32,5 @@ flutter run -d windows
 
 Create a Windows release build with `flutter build windows`.
 
-The TTS architecture, model integrity guarantees, and attribution are described
-in [docs/TTS.md](docs/TTS.md).
+The model integrity guarantees, architecture, and licensing notes are described
+in [docs/TTS.md](docs/TTS.md) and [docs/SPEECH.md](docs/SPEECH.md).

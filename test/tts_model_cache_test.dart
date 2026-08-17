@@ -82,6 +82,37 @@ void main() {
     expect(await File(installation.file('model.onnx')).exists(), isTrue);
   });
 
+  test('uses four resumable ranges for large model downloads', () async {
+    final ranges = <String>[];
+    final client = MockClient((request) async {
+      final range = request.headers[HttpHeaders.rangeHeader]!;
+      ranges.add(range);
+      final match = RegExp(r'bytes=(\d+)-(\d*)').firstMatch(range)!;
+      final start = int.parse(match.group(1)!);
+      final end = match.group(2)!.isEmpty
+          ? archiveBytes.length - 1
+          : int.parse(match.group(2)!);
+      return http.Response.bytes(
+        archiveBytes.sublist(start, end + 1),
+        HttpStatus.partialContent,
+        headers: {
+          HttpHeaders.contentRangeHeader:
+              'bytes $start-$end/${archiveBytes.length}',
+        },
+      );
+    });
+
+    final installation = await TtsModelCache(
+      client: client,
+      rootDirectory: root,
+      segmentedDownloadThreshold: 1,
+    ).ensureAvailable(model);
+
+    expect(await File(installation.file('model.onnx')).exists(), isTrue);
+    expect(ranges, contains('bytes=0-0'));
+    expect(ranges.where((range) => range != 'bytes=0-0'), hasLength(4));
+  });
+
   test('installs supplementary files and removes replaced artifacts', () async {
     const vocoderBytes = [9, 8, 7, 6];
     final archive = Archive()

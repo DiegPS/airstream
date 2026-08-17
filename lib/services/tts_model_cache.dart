@@ -64,9 +64,14 @@ class TtsModelCache {
   final http.Client _client;
   final Directory? _rootOverride;
   final bool _ownsClient;
-  TtsModelCache({http.Client? client, Directory? rootDirectory})
-      : _client = client ?? http.Client(),
+  final int _segmentedDownloadThreshold;
+  TtsModelCache({
+    http.Client? client,
+    Directory? rootDirectory,
+    int segmentedDownloadThreshold = 32 * 1024 * 1024,
+  })  : _client = client ?? http.Client(),
         _rootOverride = rootDirectory,
+        _segmentedDownloadThreshold = segmentedDownloadThreshold,
         _ownsClient = client == null;
 
   Future<Directory> get rootDirectory async {
@@ -340,6 +345,18 @@ class TtsModelCache {
     }
     onProgress(offset);
     if (offset == download.bytes) return;
+    if (offset == 0 && download.bytes >= _segmentedDownloadThreshold) {
+      final supportsRanges = await _supportsRanges(download, cancellation);
+      if (supportsRanges) {
+        await _downloadSegmented(
+          download,
+          partial,
+          onProgress,
+          cancellation,
+        );
+        return;
+      }
+    }
     final request = http.Request('GET', download.uri);
     if (offset > 0) request.headers[HttpHeaders.rangeHeader] = 'bytes=$offset-';
     final response = await _client.send(request);
@@ -367,6 +384,106 @@ class TtsModelCache {
       await sink.flush();
       await sink.close();
     }
+    if (received != download.bytes) {
+      throw StateError('Incomplete ${download.fileName} download: '
+          '$received of ${download.bytes} bytes.');
+    }
+  }
+
+  Future<bool> _supportsRanges(
+    TtsModelDownload download,
+    TtsDownloadCancellation cancellation,
+  ) async {
+    cancellation.throwIfCancelled();
+    final request = http.Request('GET', download.uri)
+      ..headers[HttpHeaders.rangeHeader] = 'bytes=0-0';
+    final response = await _client.send(request);
+    try {
+      return response.statusCode == HttpStatus.partialContent &&
+          response.headers[HttpHeaders.contentRangeHeader]
+                  ?.startsWith('bytes 0-0/') ==
+              true;
+    } finally {
+      final subscription = response.stream.listen((_) {});
+      await subscription.cancel();
+    }
+  }
+
+  Future<void> _downloadSegmented(
+    TtsModelDownload download,
+    File partial,
+    void Function(int received) onProgress,
+    TtsDownloadCancellation cancellation,
+  ) async {
+    const segmentCount = 4;
+    final baseSize = download.bytes ~/ segmentCount;
+    final receivedBySegment = List<int>.filled(segmentCount, 0);
+    final segments = List.generate(
+      segmentCount,
+      (index) => File('${partial.path}.segment.$index'),
+    );
+
+    await Future.wait(List.generate(segmentCount, (index) async {
+      final start = index * baseSize;
+      final end = index == segmentCount - 1
+          ? download.bytes - 1
+          : (index + 1) * baseSize - 1;
+      final expected = end - start + 1;
+      final segment = segments[index];
+      var existing = await segment.exists() ? await segment.length() : 0;
+      if (existing > expected) {
+        await segment.delete();
+        existing = 0;
+      }
+      receivedBySegment[index] = existing;
+      onProgress(receivedBySegment.fold(0, (sum, value) => sum + value));
+      if (existing == expected) return;
+
+      final request = http.Request('GET', download.uri)
+        ..headers[HttpHeaders.rangeHeader] = 'bytes=${start + existing}-$end';
+      final response = await _client.send(request);
+      if (response.statusCode != HttpStatus.partialContent) {
+        throw HttpException(
+          '${download.fileName} server stopped supporting ranged downloads.',
+          uri: download.uri,
+        );
+      }
+      final sink = segment.openWrite(
+        mode: existing == 0 ? FileMode.write : FileMode.append,
+      );
+      try {
+        await for (final chunk in response.stream) {
+          cancellation.throwIfCancelled();
+          sink.add(chunk);
+          existing += chunk.length;
+          receivedBySegment[index] = existing;
+          onProgress(receivedBySegment.fold(0, (sum, value) => sum + value));
+        }
+      } finally {
+        await sink.flush();
+        await sink.close();
+      }
+      if (existing != expected) {
+        throw StateError('Incomplete ${download.fileName} segment: '
+            '$existing of $expected bytes.');
+      }
+    }));
+
+    cancellation.throwIfCancelled();
+    final sink = partial.openWrite();
+    try {
+      for (final segment in segments) {
+        await sink.addStream(segment.openRead());
+      }
+    } finally {
+      await sink.flush();
+      await sink.close();
+    }
+    for (final segment in segments) {
+      if (await segment.exists()) await segment.delete();
+    }
+    final received = await partial.length();
+    onProgress(received);
     if (received != download.bytes) {
       throw StateError('Incomplete ${download.fileName} download: '
           '$received of ${download.bytes} bytes.');

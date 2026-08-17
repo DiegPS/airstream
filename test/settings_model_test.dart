@@ -64,6 +64,13 @@ void main() {
       ttsSteps: 12,
       ttsReferenceAudioPath: r'C:\voice\reference.wav',
       ttsReferenceText: 'Exact reference words.',
+      liveCaptionsEnabled: true,
+      liveCaptionsSourceLanguage: 'es',
+      liveCaptionsTargetLanguage: 'en',
+      liveCaptionsOverlayEnabled: false,
+      liveCaptionsDenoiseEnabled: false,
+      voiceCommandsEnabled: true,
+      voiceCommandsWakeWord: 'computadora',
     );
 
     final restored = SettingsModel.fromJsonString(settings.toJsonString());
@@ -75,5 +82,12 @@ void main() {
     expect(restored.ttsSteps, 12);
     expect(restored.ttsReferenceAudioPath, r'C:\voice\reference.wav');
     expect(restored.ttsReferenceText, 'Exact reference words.');
+    expect(restored.liveCaptionsEnabled, isTrue);
+    expect(restored.liveCaptionsSourceLanguage, 'es');
+    expect(restored.liveCaptionsTargetLanguage, 'en');
+    expect(restored.liveCaptionsOverlayEnabled, isFalse);
+    expect(restored.liveCaptionsDenoiseEnabled, isFalse);
+    expect(restored.voiceCommandsEnabled, isTrue);
+    expect(restored.voiceCommandsWakeWord, 'computadora');
   });
 }

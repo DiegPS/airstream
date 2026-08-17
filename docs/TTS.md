@@ -26,10 +26,16 @@ disk automatically without using the network.
 
 ## Curated models
 
-| Model | Use case | Languages | Voices | Download |
-| --- | --- | ---: | ---: | ---: |
-| Supertonic 3 INT8 | Default, best balance of quality and reach | 31 | 10 | ~123 MB |
-| Piper `es_ES-sharvard-medium` | Fast, low-resource Spanish | 1 | 2 | ~77 MB |
+| Model | Family | Use case | Languages / voices |
+| --- | --- | --- | --- |
+| Supertonic 3 Hybrid | Supertonic | Recommended multilingual model; INT8 acoustic stack with clean FP32 vocoder | 31 / 10 |
+| Piper Claude | VITS/Piper | Fast Mexican Spanish | 1 / 1 |
+| Piper DaveFX | VITS/Piper | Fast European Spanish | 1 / 1 |
+| Kitten Nano 0.8 INT8 | Kitten | Tiny English model | 1 / 8 |
+| Kokoro 82M INT8 | Kokoro | Natural US/UK English | 1 / 11 |
+| Matcha LJSpeech | Matcha + Vocos | Expressive English | 1 / 1 |
+| PocketTTS INT8 | Pocket | Zero-shot cloning from a WAV | 2 / bundled samples or custom WAV |
+| ZipVoice INT8 | ZipVoice + Vocos | Cloning from a WAV and exact transcript | 2 / bundled samples or custom WAV |
 
 Model URLs, versions, required files, sizes, and hashes live in
 `lib/services/tts/tts_model_catalog.dart`. Updating a model is an intentional
@@ -39,10 +45,11 @@ digest.
 ## Licensing
 
 - Sherpa-ONNX is Apache-2.0 licensed.
-- Supertonic is distributed under Apache-2.0 by Supertone.
-- Piper software is MIT licensed. The included SHaRVaRD catalog entry reports
-  its upstream dataset/model license as CC BY 3.0; its bundled `MODEL_CARD`
-  remains the authority for attribution.
+- Each catalog entry exposes its model-specific license and upstream page.
+- PocketTTS displays an additional warning because its upstream materials have
+  carried differing usage notices; users should inspect the bundled license.
+- Custom voice cloning should only use audio the user owns or is authorized to
+  process.
 
 Airstream does not redistribute these archives. Their upstream release pages
 are the source of truth for licenses and notices.
