@@ -434,6 +434,18 @@ abstract class AppLocalizations {
   /// **'TTS will be disabled and the selected model will be deleted from this device. It can be downloaded again later.'**
   String get removeTtsModelConfirmation;
 
+  /// No description provided for @removeTtsModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {model}?'**
+  String removeTtsModelTitle(String model);
+
+  /// No description provided for @removeTtsModelConfirmationNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} will be deleted from this device and TTS will be turned off. You can download it again later.'**
+  String removeTtsModelConfirmationNamed(String model);
+
   /// No description provided for @remove.
   ///
   /// In en, this message translates to:
@@ -1115,7 +1127,7 @@ abstract class AppLocalizations {
   /// No description provided for @captionsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Sherpa listens to the microphone, detects speech, and creates captions or translations without sending audio to the Internet.'**
+  /// **'Listens to your microphone, detects speech, and creates live captions or translations in real-time without sending audio to the Internet.'**
   String get captionsDescription;
 
   /// No description provided for @captionsEnabled.
@@ -1145,7 +1157,7 @@ abstract class AppLocalizations {
   /// No description provided for @noiseReduction.
   ///
   /// In en, this message translates to:
-  /// **'GTCRN noise reduction'**
+  /// **'Reduce microphone background noise'**
   String get noiseReduction;
 
   /// No description provided for @voiceCommandsObs.
@@ -1169,7 +1181,7 @@ abstract class AppLocalizations {
   /// No description provided for @captionModelManual.
   ///
   /// In en, this message translates to:
-  /// **'Canary model · manual download'**
+  /// **'Offline captions · manual download'**
   String get captionModelManual;
 
   /// No description provided for @downloadCaptionModel.
@@ -1177,6 +1189,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download caption model'**
   String get downloadCaptionModel;
+
+  /// No description provided for @captionStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline captions are off.'**
+  String get captionStatusIdle;
+
+  /// No description provided for @captionStatusMissingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download offline speech recognition to begin.'**
+  String get captionStatusMissingModel;
+
+  /// No description provided for @captionStatusDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading offline speech recognition…'**
+  String get captionStatusDownloading;
+
+  /// No description provided for @captionStatusLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing offline speech recognition…'**
+  String get captionStatusLoading;
+
+  /// No description provided for @captionStatusListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening to the microphone…'**
+  String get captionStatusListening;
+
+  /// No description provided for @captionStatusTranscribing.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating captions locally…'**
+  String get captionStatusTranscribing;
+
+  /// No description provided for @captionStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline captions could not start.'**
+  String get captionStatusError;
 
   /// No description provided for @obsCaptions.
   ///
@@ -1189,6 +1243,415 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Independent browser source for live captions and translation.'**
   String get obsCaptionsDescription;
+
+  /// No description provided for @ttsAndVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS & Voice'**
+  String get ttsAndVoice;
+
+  /// No description provided for @obsAndOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS & Overlay'**
+  String get obsAndOverlay;
+
+  /// No description provided for @systemTab.
+  ///
+  /// In en, this message translates to:
+  /// **'System & Window'**
+  String get systemTab;
+
+  /// No description provided for @desktopWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop Window'**
+  String get desktopWindow;
+
+  /// No description provided for @frameless.
+  ///
+  /// In en, this message translates to:
+  /// **'Frameless'**
+  String get frameless;
+
+  /// No description provided for @framelessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No title bar, transparent borders'**
+  String get framelessDescription;
+
+  /// No description provided for @clickThrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Click-Through'**
+  String get clickThrough;
+
+  /// No description provided for @clickThroughDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Clicks pass through the window (WS_EX_TRANSPARENT)'**
+  String get clickThroughDescription;
+
+  /// No description provided for @alwaysOnTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on Top'**
+  String get alwaysOnTop;
+
+  /// No description provided for @alwaysOnTopDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep on top of all other windows'**
+  String get alwaysOnTopDescription;
+
+  /// No description provided for @antiCapture.
+  ///
+  /// In en, this message translates to:
+  /// **'Anti-Capture / Privacy'**
+  String get antiCapture;
+
+  /// No description provided for @antiCaptureDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide window from screen capture and OBS'**
+  String get antiCaptureDescription;
+
+  /// No description provided for @keyboardShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard Shortcuts'**
+  String get keyboardShortcuts;
+
+  /// No description provided for @toggleTopBarShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle top bar'**
+  String get toggleTopBarShortcut;
+
+  /// No description provided for @toggleAlwaysOnTopShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Always on Top'**
+  String get toggleAlwaysOnTopShortcut;
+
+  /// No description provided for @toggleClickThroughShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Click-Through'**
+  String get toggleClickThroughShortcut;
+
+  /// No description provided for @alwaysOnTopActiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable Always on Top (Ctrl+Shift+P)'**
+  String get alwaysOnTopActiveTooltip;
+
+  /// No description provided for @alwaysOnTopInactiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Always on Top (Ctrl+Shift+P)'**
+  String get alwaysOnTopInactiveTooltip;
+
+  /// No description provided for @clickThroughActiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Click-Through active. Disable (Ctrl+Shift+C)'**
+  String get clickThroughActiveTooltip;
+
+  /// No description provided for @clickThroughInactiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Click-Through (Ctrl+Shift+C)'**
+  String get clickThroughInactiveTooltip;
+
+  /// No description provided for @antiCaptureActiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy mode active — window hidden from screen share/OBS'**
+  String get antiCaptureActiveTooltip;
+
+  /// No description provided for @antiCaptureInactiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide from screen share / captures'**
+  String get antiCaptureInactiveTooltip;
+
+  /// No description provided for @minimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get minimize;
+
+  /// No description provided for @maximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get maximize;
+
+  /// No description provided for @restore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get restore;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @obsStatusConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Connecting...'**
+  String get obsStatusConnecting;
+
+  /// No description provided for @obsStatusDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Disconnected'**
+  String get obsStatusDisconnected;
+
+  /// No description provided for @obsStatusLiveAndRec.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Live + Rec'**
+  String get obsStatusLiveAndRec;
+
+  /// No description provided for @obsStatusLive.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Live'**
+  String get obsStatusLive;
+
+  /// No description provided for @obsStatusRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Recording'**
+  String get obsStatusRecording;
+
+  /// No description provided for @obsStatusConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Connected'**
+  String get obsStatusConnected;
+
+  /// No description provided for @obsScenePrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene: {scene}'**
+  String obsScenePrefix(String scene);
+
+  /// No description provided for @obsOutputLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Output: Live'**
+  String get obsOutputLive;
+
+  /// No description provided for @obsOutputOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Output: Offline'**
+  String get obsOutputOffline;
+
+  /// No description provided for @obsRecordingPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording: Paused'**
+  String get obsRecordingPaused;
+
+  /// No description provided for @obsRecordingActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording: Active'**
+  String get obsRecordingActive;
+
+  /// No description provided for @ttsCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Reader (TTS)'**
+  String get ttsCardTitle;
+
+  /// No description provided for @voiceStatusBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice: {status}'**
+  String voiceStatusBadge(String status);
+
+  /// No description provided for @voiceStatusNotDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not downloaded'**
+  String get voiceStatusNotDownloaded;
+
+  /// No description provided for @ttsSelectedModel.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS'**
+  String get ttsSelectedModel;
+
+  /// No description provided for @ttsModelStatusBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} · {status}'**
+  String ttsModelStatusBadge(String model, String status);
+
+  /// No description provided for @ttsModelTechnicalDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {download} · Installed {installed} · {license} · Version {version}'**
+  String ttsModelTechnicalDetails(
+      String download, String installed, String license, String version);
+
+  /// No description provided for @ttsModelStorageDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {download} · Disk space {installed}'**
+  String ttsModelStorageDetails(String download, String installed);
+
+  /// No description provided for @ttsModelVariant.
+  ///
+  /// In en, this message translates to:
+  /// **'Variant: {variant}'**
+  String ttsModelVariant(String variant);
+
+  /// No description provided for @ttsModelSupertonicDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'10 built-in voices optimized for quality and speed.'**
+  String get ttsModelSupertonicDescription;
+
+  /// No description provided for @ttsModelPiperMexicoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast, efficient single-speaker synthesis.'**
+  String get ttsModelPiperMexicoDescription;
+
+  /// No description provided for @ttsModelPiperSpainDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast, efficient single-speaker synthesis.'**
+  String get ttsModelPiperSpainDescription;
+
+  /// No description provided for @ttsModelKittenDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact model with four female and four male voices.'**
+  String get ttsModelKittenDescription;
+
+  /// No description provided for @ttsModelKokoroDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Expressive model with 11 named voices.'**
+  String get ttsModelKokoroDescription;
+
+  /// No description provided for @ttsModelMatchaDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Smooth, natural single-voice synthesis.'**
+  String get ttsModelMatchaDescription;
+
+  /// No description provided for @ttsModelPocketDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast zero-shot voice cloning from a reference WAV.'**
+  String get ttsModelPocketDescription;
+
+  /// No description provided for @ttsModelZipVoiceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced voice cloning using a WAV and its exact transcript.'**
+  String get ttsModelZipVoiceDescription;
+
+  /// No description provided for @spanishMexico.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish (Mexico)'**
+  String get spanishMexico;
+
+  /// No description provided for @spanishSpain.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish (Spain)'**
+  String get spanishSpain;
+
+  /// No description provided for @ttsStatusIdleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Download this exact model when you want to use it.'**
+  String get ttsStatusIdleDescription;
+
+  /// No description provided for @ttsStatusCheckingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking local model files and integrity…'**
+  String get ttsStatusCheckingDescription;
+
+  /// No description provided for @ttsStatusDownloadingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading verified model files…'**
+  String get ttsStatusDownloadingDescription;
+
+  /// No description provided for @ttsStatusLoadingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the selected model into memory…'**
+  String get ttsStatusLoadingDescription;
+
+  /// No description provided for @ttsStatusReadyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready for local synthesis.'**
+  String get ttsStatusReadyDescription;
+
+  /// No description provided for @ttsStatusErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected model could not be prepared.'**
+  String get ttsStatusErrorDescription;
+
+  /// No description provided for @ttsInferenceSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} inference steps'**
+  String ttsInferenceSteps(int count);
+
+  /// No description provided for @ttsTestTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type something to test the selected TTS…'**
+  String get ttsTestTextHint;
+
+  /// No description provided for @ttsDefaultTestText.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello, this is a test of the selected voice.'**
+  String get ttsDefaultTestText;
+
+  /// No description provided for @separatorTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'says'**
+  String get separatorTextHint;
+
+  /// No description provided for @male.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get male;
+
+  /// No description provided for @female.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get female;
+
+  /// No description provided for @includedSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Included sample'**
+  String get includedSample;
 }
 
 class _AppLocalizationsDelegate

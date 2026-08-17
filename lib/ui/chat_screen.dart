@@ -1,23 +1,27 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
-import 'package:airstream/services/tts/tts_model_catalog.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
+
+import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/speech_model_catalog.dart';
-import 'package:airstream/services/obs_service.dart';
-import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
+import 'package:airstream/ui/widgets/styled_slider_row.dart';
+import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:airstream/ui/widgets/window_control_bar.dart';
 import 'package:airstream/window/window_state.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_selector/file_selector.dart';
-import 'package:path/path.dart' as p;
-import 'package:window_manager/window_manager.dart';
 
 String _formatByteSize(int bytes) {
   if (bytes >= 1024 * 1024) {
@@ -35,7 +39,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  static const _sidebarWidth = 360.0;
+  static const _sidebarWidth = 380.0;
   static const _minInlineChatWidth = 360.0;
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -208,7 +212,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
                   width: _sidebarVisible ? 1 : 0,
-                  color: const Color(0xFF2A2A2A),
+                  color: const Color(0xFF242424),
                 ),
                 Expanded(
                   child: _chatList(),
@@ -355,8 +359,8 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     required this.onToggleSidebar,
   });
 
-  static const _barHeight = 36.0;
-  static const _accent = Color(0xFF5B9CFF);
+  static const _barHeight = 38.0;
+  static const _accent = Color(0xFF53FC18);
 
   final bool sidebarVisible;
   final VoidCallback onToggleSidebar;
@@ -379,14 +383,9 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
       color: Colors.transparent,
       child: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              Color(0xCC6A0F0F),
-              Color(0x66101010),
-              Color(0xCC8A1414),
-            ],
+          color: Color(0xFF141414),
+          border: Border(
+            bottom: BorderSide(color: Color(0xFF222222)),
           ),
         ),
         child: SafeArea(
@@ -417,11 +416,11 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       _TopBarActionButton(
                         label: isRunning ? l.stop : l.start,
                         icon: isRunning
-                            ? Icons.stop_circle_outlined
+                            ? Icons.stop_circle_rounded
                             : Icons.play_arrow_rounded,
                         enabled: hasChannels,
                         accentColor:
-                            isRunning ? const Color(0xFFE37D76) : _accent,
+                            isRunning ? const Color(0xFFFF5252) : _accent,
                         onTap: hasChannels
                             ? () {
                                 ref
@@ -430,7 +429,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                               }
                             : null,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       _TopBarIconButton(
                         tooltip: sidebarVisible
                             ? l.hideSidebarTooltip
@@ -441,7 +440,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                         active: sidebarVisible,
                         onTap: onToggleSidebar,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       const WindowControlBar(),
                     ],
                   ),
@@ -464,22 +463,36 @@ class _TitleBarCaption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(
-          Icons.forum_outlined,
-          color: Color(0xFFD7D7D7),
-          size: 14,
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: const Color(0xFF53FC18).withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: const Color(0xFF53FC18).withValues(alpha: 0.4),
+              width: 1,
+            ),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.forum_rounded,
+              color: Color(0xFF53FC18),
+              size: 11,
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         const Text(
           'AIRSTREAM',
           style: TextStyle(
-            color: Color(0xFFA8A8A8),
+            color: Colors.white,
             fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.3,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         _TitleBarCenterStatus(overlayUrl: overlayUrl),
       ],
     );
@@ -500,22 +513,22 @@ class _TitleBarCenterStatus extends ConsumerWidget {
         children: [
           _ConnectionDots(),
           if (overlayUrl != null) ...[
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             const Text(
               '•',
               style: TextStyle(
-                color: Color(0xFF7A7A7A),
+                color: Color(0xFF555555),
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Flexible(
               child: Text(
                 overlayUrl!,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFFACCBFF),
+                  color: Color(0xFF888888),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'monospace',
@@ -547,8 +560,8 @@ class _TopBarActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor =
-        enabled ? accentColor.withValues(alpha: 0.14) : Colors.transparent;
-    final foregroundColor = enabled ? accentColor : const Color(0xFF6E6E6E);
+        enabled ? accentColor.withValues(alpha: 0.16) : Colors.transparent;
+    final foregroundColor = enabled ? accentColor : const Color(0xFF5E5E5E);
 
     return Tooltip(
       message: label,
@@ -558,13 +571,21 @@ class _TopBarActionButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: enabled
+                    ? accentColor.withValues(alpha: 0.3)
+                    : Colors.transparent,
+              ),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 15, color: foregroundColor),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Text(
                   label,
                   style: TextStyle(
@@ -598,10 +619,10 @@ class _TopBarIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = active
-        ? const Color(0xFF5B9CFF).withValues(alpha: 0.14)
+        ? const Color(0xFF53FC18).withValues(alpha: 0.15)
         : Colors.transparent;
     final foregroundColor =
-        active ? const Color(0xFF86B8FF) : const Color(0xFFB8B8B8);
+        active ? const Color(0xFF53FC18) : const Color(0xFFAAAAAA);
 
     return Tooltip(
       message: tooltip,
@@ -611,10 +632,18 @@ class _TopBarIconButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: onTap,
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Icon(icon, size: 16, color: foregroundColor),
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: active
+                    ? const Color(0xFF53FC18).withValues(alpha: 0.3)
+                    : const Color(0xFF2E2E2E),
+              ),
+            ),
+            child: Icon(icon, size: 15, color: foregroundColor),
           ),
         ),
       ),
@@ -645,6 +674,8 @@ class _SettingsSidebar extends ConsumerStatefulWidget {
 }
 
 class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
+  int _selectedTab = 0;
+
   late TextEditingController _ytHandle;
   late TextEditingController _twitch;
   late TextEditingController _kick;
@@ -694,8 +725,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         TextEditingController(text: s.overlayTextStrokeColor);
     _overlaySuperChatBarColorCtrl =
         TextEditingController(text: s.overlaySuperChatBarColor);
-    _ttsTestCtrl =
-        TextEditingController(text: 'Hola, probando sistema Text to Speech.');
+    _ttsTestCtrl = TextEditingController();
     _ttsPrefixCtrl = TextEditingController(text: s.ttsCommandPrefix);
     _ttsSeparatorCtrl = TextEditingController(text: s.ttsSeparatorText);
     _ttsReferenceTextCtrl = TextEditingController(text: s.ttsReferenceText);
@@ -738,17 +768,35 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _blockedUsersFocus,
       _blockedWordsFocus,
     ]) {
-      node.addListener(() {
-        if (!node.hasFocus) {
-          unawaited(_saveTextSettings());
-        }
-      });
+      node.addListener(_handleFocusChange);
     }
   }
 
   @override
   void dispose() {
     _textSettingsDebounce?.cancel();
+
+    for (final node in [
+      _ytFocus,
+      _twitchFocus,
+      _kickFocus,
+      _portFocus,
+      _obsHostFocus,
+      _obsPasswordFocus,
+      _overlayChromaColorFocus,
+      _overlayTextStrokeColorFocus,
+      _overlaySuperChatBarColorFocus,
+      _ttsPrefixFocus,
+      _ttsSeparatorFocus,
+      _ttsReferenceTextFocus,
+      _voiceWakeWordFocus,
+      _blockedUsersFocus,
+      _blockedWordsFocus,
+    ]) {
+      node.removeListener(_handleFocusChange);
+      node.dispose();
+    }
+
     _ytHandle.dispose();
     _twitch.dispose();
     _kick.dispose();
@@ -765,31 +813,40 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _voiceWakeWordCtrl.dispose();
     _blockedUsersCtrl.dispose();
     _blockedWordsCtrl.dispose();
-
-    _ytFocus.dispose();
-    _twitchFocus.dispose();
-    _kickFocus.dispose();
-    _portFocus.dispose();
-    _obsHostFocus.dispose();
-    _obsPasswordFocus.dispose();
-    _overlayChromaColorFocus.dispose();
-    _overlayTextStrokeColorFocus.dispose();
-    _overlaySuperChatBarColorFocus.dispose();
-    _ttsPrefixFocus.dispose();
-    _ttsSeparatorFocus.dispose();
-    _ttsReferenceTextFocus.dispose();
-    _voiceWakeWordFocus.dispose();
-    _blockedUsersFocus.dispose();
-    _blockedWordsFocus.dispose();
     super.dispose();
+  }
+
+  void _handleFocusChange() {
+    final anyHasFocus = [
+      _ytFocus,
+      _twitchFocus,
+      _kickFocus,
+      _portFocus,
+      _obsHostFocus,
+      _obsPasswordFocus,
+      _overlayChromaColorFocus,
+      _overlayTextStrokeColorFocus,
+      _overlaySuperChatBarColorFocus,
+      _ttsPrefixFocus,
+      _ttsSeparatorFocus,
+      _ttsReferenceTextFocus,
+      _voiceWakeWordFocus,
+      _blockedUsersFocus,
+      _blockedWordsFocus,
+    ].any((n) => n.hasFocus);
+
+    if (!anyHasFocus) {
+      _saveTextSettings();
+    }
   }
 
   void _queueTextSettingsSave() {
     _textSettingsDebounce?.cancel();
-    _textSettingsDebounce = Timer(
-      const Duration(milliseconds: 250),
-      () => unawaited(_saveTextSettings()),
-    );
+    _textSettingsDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _saveTextSettings();
+      }
+    });
   }
 
   Future<void> _saveTextSettings() async {
@@ -1014,1383 +1071,1920 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final kickError =
         kickState?.$1 == ServiceStatus.error ? kickState?.$2 : null;
 
+    final tabs = [
+      SidebarTabItem(
+        icon: Icons.sensors_rounded,
+        label: l.connections,
+        badgeColor: isRunning ? const Color(0xFF53FC18) : null,
+      ),
+      SidebarTabItem(
+        icon: Icons.record_voice_over_rounded,
+        label: l.ttsAndVoice,
+        badgeColor: (s.ttsEnabled || s.liveCaptionsEnabled)
+            ? const Color(0xFF53FC18)
+            : null,
+      ),
+      SidebarTabItem(
+        icon: Icons.palette_outlined,
+        label: l.appearance,
+      ),
+      SidebarTabItem(
+        icon: Icons.videocam_outlined,
+        label: l.obsAndOverlay,
+        badgeColor: obsState.connected ? const Color(0xFF5B9CFF) : null,
+      ),
+      SidebarTabItem(
+        icon: Icons.tune_rounded,
+        label: l.systemTab,
+      ),
+    ];
+
     return SizedBox.expand(
       child: ColoredBox(
         color: const Color(0xFF141414),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sidebarHeader(
-                l: l,
-                youtubeValue: isRunning ? youtubeBadgeValue : null,
-                twitchValue: isRunning ? s.twitchChannel : '',
-                kickValue: isRunning ? s.kickSlug : '',
-                statusMap: connectionStatus,
-              ),
-              const SizedBox(height: 16),
-              _sidebarSectionTile(
-                title: l.connections,
-                initiallyExpanded: true,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _label(l.youtubeInputLabel),
-                  _field(
-                    _ytHandle,
-                    '@xqc · UC... · youtube.com/watch?v=...',
-                    focusNode: _ytFocus,
-                    onChanged: (_) {
-                      setState(() {});
-                    },
-                    onSubmitted: (_) => _saveTextSettings(),
-                  ),
-                  if (youtubeError != null && youtubeError.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _inlineErrorMessage(l, 'YouTube', youtubeError),
-                  ],
-                  const SizedBox(height: 12),
-                  _label(l.twitchChannel),
-                  _field(
-                    _twitch,
-                    'xqc',
-                    focusNode: _twitchFocus,
-                    onChanged: (_) {
-                      setState(() {});
-                    },
-                    onSubmitted: (_) => _saveTextSettings(),
-                  ),
-                  if (twitchError != null && twitchError.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _inlineErrorMessage(l, 'Twitch', twitchError),
-                  ],
-                  const SizedBox(height: 12),
-                  _label(l.kickSlug),
-                  _field(
-                    _kick,
-                    'xqc',
-                    focusNode: _kickFocus,
-                    onChanged: (_) {
-                      setState(() {});
-                    },
-                    onSubmitted: (_) => _saveTextSettings(),
-                  ),
-                  if (kickError != null && kickError.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _inlineErrorMessage(l, 'Kick', kickError),
-                  ],
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: isRunning
-                          ? _stopChat
-                          : (hasChannels ? _startChat : null),
-                      icon: Icon(isRunning ? Icons.stop : Icons.play_arrow,
-                          size: 18),
-                      label: Text(isRunning ? l.stopChat : l.startChat),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isRunning
-                            ? Colors.redAccent
-                            : const Color(0xFF53FC18),
-                        foregroundColor: Colors.black,
-                        disabledBackgroundColor: const Color(0xFF2A2A2A),
-                        disabledForegroundColor: Colors.white38,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              _sidebarSectionTile(
-                title: l.appearance,
-                initiallyExpanded: true,
-                children: [
-                  _sliderRow(l.fontSize, s.fontSize, 10, 28,
-                      (v) => notifier.update(s.copyWith(fontSize: v))),
-                  _sliderRow(l.backgroundOpacity, s.bgOpacity, 0, 1,
-                      (v) => notifier.update(s.copyWith(bgOpacity: v))),
-                  _sliderRow(l.bubbleOpacity, s.messageOpacity, 0, 1,
-                      (v) => notifier.update(s.copyWith(messageOpacity: v))),
-                  _sliderRow(l.borderRadius, s.borderRadius, 0, 24,
-                      (v) => notifier.update(s.copyWith(borderRadius: v))),
-                  _sliderRow(l.messageGap, s.messageGap, 0, 16,
-                      (v) => notifier.update(s.copyWith(messageGap: v))),
-                  _dropdownRow(
-                    l.textAlignment,
-                    s.chatTextAlign,
-                    const ['left', 'center', 'right'],
-                    (v) => notifier.update(s.copyWith(chatTextAlign: v)),
-                  ),
-                  _sliderRow(
-                    l.maxMessageWidth,
-                    s.chatMaxMessageWidth * 100,
-                    40,
-                    100,
-                    (v) => notifier.update(
-                      s.copyWith(chatMaxMessageWidth: v / 100),
-                    ),
-                  ),
-                  _sliderRow(
-                    l.horizontalPadding,
-                    s.chatHorizontalPadding,
-                    0,
-                    64,
-                    (v) =>
-                        notifier.update(s.copyWith(chatHorizontalPadding: v)),
-                  ),
-                  _sliderRow(l.lineHeight, s.chatLineHeight, 1, 2,
-                      (v) => notifier.update(s.copyWith(chatLineHeight: v))),
-                  _sliderRow(l.fontWeight, s.chatFontWeight, 100, 900,
-                      (v) => notifier.update(s.copyWith(chatFontWeight: v)),
-                      divisions: 8),
-                  _switchRow(l.avatars, s.showAvatars,
-                      (v) => notifier.update(s.copyWith(showAvatars: v))),
-                  _switchRow(l.platformIcon, s.showPlatformIcons,
-                      (v) => notifier.update(s.copyWith(showPlatformIcons: v))),
-                  _switchRow(l.badges, s.showBadges,
-                      (v) => notifier.update(s.copyWith(showBadges: v))),
-                  _switchRow(l.timestamp, s.showTimestamp,
-                      (v) => notifier.update(s.copyWith(showTimestamp: v))),
-                  _switchRow(l.bubble, s.showBubble,
-                      (v) => notifier.update(s.copyWith(showBubble: v))),
-                  _switchRow(l.bubbleShadow, s.showBubbleShadow,
-                      (v) => notifier.update(s.copyWith(showBubbleShadow: v))),
-                  _switchRow(l.textShadow, s.chatTextShadow,
-                      (v) => notifier.update(s.copyWith(chatTextShadow: v))),
-                  _sliderRow(l.textOutline, s.chatTextStroke, 0, 4,
-                      (v) => notifier.update(s.copyWith(chatTextStroke: v))),
-                ],
-              ),
-              _sidebarSectionTile(
-                title: l.filters,
-                children: [
-                  Text(
-                    l.filtersDescription,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _label(l.blockedUsers),
-                  _field(
-                    _blockedUsersCtrl,
-                    '@nightbot\notrobot',
-                    focusNode: _blockedUsersFocus,
-                    onChanged: (_) => _queueTextSettingsSave(),
-                    onSubmitted: (_) => _saveTextSettings(),
-                    onClear: () {
-                      _blockedUsersCtrl.clear();
-                      setState(() {});
-                      _queueTextSettingsSave();
-                    },
-                    minLines: 3,
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.blockedUsersHelp,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                      height: 1.35,
-                    ),
+                  _sidebarHeader(
+                    l: l,
+                    youtubeValue: isRunning ? youtubeBadgeValue : null,
+                    twitchValue: isRunning ? s.twitchChannel : '',
+                    kickValue: isRunning ? s.kickSlug : '',
+                    statusMap: connectionStatus,
                   ),
                   const SizedBox(height: 12),
-                  _label(l.blockedWordsOrPhrases),
-                  _field(
-                    _blockedWordsCtrl,
-                    'palabra1\nfrase completa',
-                    focusNode: _blockedWordsFocus,
-                    onChanged: (_) => _queueTextSettingsSave(),
-                    onSubmitted: (_) => _saveTextSettings(),
-                    onClear: () {
-                      _blockedWordsCtrl.clear();
-                      setState(() {});
-                      _queueTextSettingsSave();
-                    },
-                    minLines: 3,
-                    maxLines: 6,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.blockedWordsHelp,
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                      height: 1.35,
-                    ),
+                  SidebarTabBar(
+                    selectedIndex: _selectedTab,
+                    onTabSelected: (index) =>
+                        setState(() => _selectedTab = index),
+                    tabs: tabs,
                   ),
                 ],
               ),
-              _sidebarSectionTile(
-                title: 'TTS',
-                initiallyExpanded: s.ttsEnabled,
-                children: [
-                  Text(
-                    l.ttsDescription,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.4,
+            ),
+            const Divider(height: 1, color: Color(0xFF242424)),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+                child: switch (_selectedTab) {
+                  0 => _buildChannelsTab(
+                      context,
+                      l,
+                      s,
+                      notifier,
+                      isRunning,
+                      hasChannels,
+                      youtubeError,
+                      twitchError,
+                      kickError,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _switchRow(l.enabled, s.ttsEnabled,
-                      (v) => notifier.update(s.copyWith(ttsEnabled: v))),
-                  if (s.ttsEnabled) ...[
-                    Builder(builder: (context) {
-                      final model = TtsModelCatalog.byId(s.ttsModelId);
-                      return Column(
-                        children: [
-                          _dropdownRow(
-                            l.ttsEngine,
-                            model.id,
-                            TtsModelCatalog.models.map((m) => m.id).toList(),
-                            (id) {
-                              final next = TtsModelCatalog.byId(id);
-                              notifier.update(s.copyWith(
-                                ttsModelId: next.id,
-                                ttsVoice: next.voices.first.id,
-                                ttsLanguage: next.languages.first.code,
-                                ttsSteps: next.defaultSteps,
-                              ));
-                            },
-                            optionLabel: (id) => TtsModelCatalog.byId(id).name,
-                          ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              '${model.description} · ${_formatByteSize(model.downloadBytes)}',
-                              style: const TextStyle(
-                                  color: Colors.white38, fontSize: 11),
-                            ),
-                          ),
-                          if (model.licenseNotice != null)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                model.licenseNotice!,
-                                style: const TextStyle(
-                                  color: Colors.amberAccent,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                    if (ttsLoadState != null) ...[
-                      _ttsStatusCard(l, ttsLoadState),
-                      if (ttsLoadState.phase == TtsLoadPhase.idle ||
-                          ttsLoadState.phase == TtsLoadPhase.error) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              try {
-                                await appController.downloadTtsModel();
-                              } catch (_) {}
-                            },
-                            icon: const Icon(Icons.download, size: 18),
-                            label: Text(l.downloadTtsModel),
-                          ),
-                        ),
-                      ],
-                      if (ttsLoadState.isReady) ...[
-                        const SizedBox(height: 6),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () async {
-                              final remove = await showDialog<bool>(
-                                context: context,
-                                builder: (dialogContext) => AlertDialog(
-                                  title: Text(l.removeTtsModel),
-                                  content: Text(l.removeTtsModelConfirmation),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, false),
-                                      child: Text(l.cancel),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, true),
-                                      child: Text(l.remove),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (remove != true || !context.mounted) return;
-                              try {
-                                await notifier
-                                    .update(s.copyWith(ttsEnabled: false));
-                                await appController
-                                    .removeTtsModel(s.ttsModelId);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(l.ttsModelRemoved)),
-                                  );
-                                }
-                              } catch (error) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(l.ttsModelRemovalFailed(
-                                            error.toString()))),
-                                  );
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.delete_outline, size: 16),
-                            label: Text(l.removeTtsModel),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                    ],
-                    _switchRow(l.membersOnly, s.ttsMembersOnly,
-                        (v) => notifier.update(s.copyWith(ttsMembersOnly: v))),
-                    _switchRow(l.commandMode, s.ttsCommandMode,
-                        (v) => notifier.update(s.copyWith(ttsCommandMode: v))),
-                    if (s.ttsCommandMode) ...[
-                      const SizedBox(height: 8),
-                      _label(l.commandPrefix),
-                      _field(
-                        _ttsPrefixCtrl,
-                        '!voz, !v, !say...',
-                        focusNode: _ttsPrefixFocus,
-                        onChanged: (_) => _queueTextSettingsSave(),
-                        onSubmitted: (_) => _saveTextSettings(),
-                      ),
-                      _switchRow(
-                        l.ignoreCommandCase,
-                        s.ttsCommandIgnoreCase,
-                        (v) => notifier.update(
-                          s.copyWith(ttsCommandIgnoreCase: v),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    _label(l.separatorText),
-                    _field(
-                      _ttsSeparatorCtrl,
-                      'dice',
-                      focusNode: _ttsSeparatorFocus,
-                      onChanged: (_) => _queueTextSettingsSave(),
-                      onSubmitted: (_) => _saveTextSettings(),
+                  1 => _buildAudioTab(
+                      context,
+                      l,
+                      s,
+                      notifier,
+                      appController,
+                      ttsLoadState,
+                      ttsBusy,
+                      captionsState,
+                      captionsCopyUrl,
                     ),
-                    const SizedBox(height: 12),
-                    Builder(builder: (context) {
-                      final model = TtsModelCatalog.byId(s.ttsModelId);
-                      final voice = model.voice(s.ttsVoice).id;
-                      final language = model.supportsLanguage(s.ttsLanguage)
-                          ? s.ttsLanguage
-                          : model.languages.first.code;
-                      return Column(children: [
-                        _dropdownRow(
-                            l.voice,
-                            voice,
-                            model.voices.map((v) => v.id).toList(),
-                            (v) => notifier.update(s.copyWith(ttsVoice: v)),
-                            optionLabel: (id) => model.voice(id).label),
-                        _dropdownRow(
-                            l.language,
-                            language,
-                            model.languages.map((v) => v.code).toList(),
-                            (v) => notifier.update(s.copyWith(ttsLanguage: v)),
-                            optionLabel: (id) => model.languages
-                                .firstWhere((item) => item.code == id)
-                                .label),
-                        if (model.referenceMode != TtsReferenceMode.none) ...[
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              l.voiceCloning,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(children: [
-                            Expanded(
-                              child: Text(
-                                s.ttsReferenceAudioPath.isEmpty
-                                    ? l.usingBundledVoice(
-                                        model.voice(voice).label,
-                                      )
-                                    : p.basename(s.ttsReferenceAudioPath),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () async {
-                                final selected = await openFile(
-                                  acceptedTypeGroups: const [
-                                    XTypeGroup(
-                                      label: 'WAV audio',
-                                      extensions: ['wav'],
-                                    ),
-                                  ],
-                                );
-                                if (selected == null || !context.mounted) {
-                                  return;
-                                }
-                                await notifier.update(s.copyWith(
-                                  ttsReferenceAudioPath: selected.path,
-                                ));
-                              },
-                              icon: const Icon(Icons.audio_file, size: 16),
-                              label: Text(l.chooseWav),
-                            ),
-                            if (s.ttsReferenceAudioPath.isNotEmpty)
-                              IconButton(
-                                tooltip: l.useBundledSample,
-                                onPressed: () => notifier.update(s.copyWith(
-                                  ttsReferenceAudioPath: '',
-                                  ttsReferenceText: '',
-                                )),
-                                icon: const Icon(Icons.close, size: 16),
-                              ),
-                          ]),
-                          if (model.needsReferenceText &&
-                              s.ttsReferenceAudioPath.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            _label(l.referenceTranscript),
-                            _field(
-                              _ttsReferenceTextCtrl,
-                              l.referenceTranscriptHint,
-                              focusNode: _ttsReferenceTextFocus,
-                              onChanged: (_) => _queueTextSettingsSave(),
-                              onSubmitted: (_) => _saveTextSettings(),
-                            ),
-                          ],
-                        ],
-                        if (model.family == TtsModelFamily.supertonic ||
-                            model.family == TtsModelFamily.zipvoice ||
-                            model.family == TtsModelFamily.pocket)
-                          _dropdownRow(
-                              l.quality,
-                              const [3, 4, 5, 6, 8, 12].contains(s.ttsSteps)
-                                  ? s.ttsSteps.toString()
-                                  : model.defaultSteps.toString(),
-                              const ['3', '4', '5', '6', '8', '12'],
-                              (v) => notifier
-                                  .update(s.copyWith(ttsSteps: int.parse(v))),
-                              optionLabel: (v) => v == '5'
-                                  ? l.qualityBalanced
-                                  : v == '12'
-                                      ? l.qualityMaximum
-                                      : int.parse(v) <= 4
-                                          ? l.qualityFast
-                                          : l.qualityHigh),
-                        _sliderRow(
-                          l.speed,
-                          s.ttsSpeed,
-                          0.6,
-                          1.6,
-                          (v) => notifier.update(s.copyWith(ttsSpeed: v)),
-                          divisions: 20,
-                        ),
-                      ]);
-                    }),
-                    const SizedBox(height: 12),
-                    _label(l.testText),
-                    _field(
-                        _ttsTestCtrl, 'Hola, probando sistema Text to Speech.'),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: (ttsBusy ||
-                                (ttsLoadState?.isLoading ?? false))
-                            ? null
-                            : () => appController.testTts(_ttsTestCtrl.text),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF53FC18),
-                          foregroundColor: Colors.black,
-                        ),
-                        child: Text(
-                          ttsBusy
-                              ? l.playingTts
-                              : (ttsLoadState?.isLoading ?? false)
-                                  ? l.loadingTts
-                                  : l.testTts,
-                        ),
-                      ),
+                  2 => _buildStyleTab(
+                      context,
+                      l,
+                      s,
+                      notifier,
                     ),
-                  ] else ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      l.ttsDisabledHelp,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
+                  3 => _buildObsTab(
+                      context,
+                      l,
+                      s,
+                      notifier,
+                      appController,
+                      obsState,
+                      overlayClientCount,
+                      overlayCopyUrl,
+                      alertsCopyUrl,
                     ),
-                  ],
-                ],
+                  _ => _buildSystemTab(
+                      context,
+                      l,
+                      s,
+                      notifier,
+                    ),
+                },
               ),
-              _sidebarSectionTile(
-                title: l.localCaptions,
-                initiallyExpanded: s.liveCaptionsEnabled,
-                children: [
-                  Text(
-                    l.captionsDescription,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _switchRow(l.captionsEnabled, s.liveCaptionsEnabled, (value) {
-                    unawaited(notifier.update(
-                      s.copyWith(liveCaptionsEnabled: value),
-                    ));
-                  }),
-                  if (s.liveCaptionsEnabled) ...[
-                    const SizedBox(height: 8),
-                    Builder(builder: (context) {
-                      final model = SpeechModelCatalog.byId(
-                        s.liveCaptionsModelId,
-                      );
-                      final source =
-                          model.supportsLanguage(s.liveCaptionsSourceLanguage)
-                              ? s.liveCaptionsSourceLanguage
-                              : 'es';
-                      final targets = model.targetsFor(source);
-                      return Column(children: [
-                        _dropdownRow(
-                          l.spokenLanguage,
-                          source,
-                          model.languages.map((item) => item.code).toList(),
-                          (value) => notifier.update(s.copyWith(
-                            liveCaptionsSourceLanguage: value,
-                            liveCaptionsTargetLanguage: value,
-                          )),
-                          optionLabel: (value) => model.languages
-                              .firstWhere((item) => item.code == value)
-                              .label,
-                        ),
-                        _dropdownRow(
-                          l.captionOutput,
-                          model.supportsDirection(
-                                  source, s.liveCaptionsTargetLanguage)
-                              ? s.liveCaptionsTargetLanguage
-                              : source,
-                          targets.map((item) => item.code).toList(),
-                          (value) => notifier.update(s.copyWith(
-                            liveCaptionsTargetLanguage: value,
-                          )),
-                          optionLabel: (value) => targets
-                              .firstWhere((item) => item.code == value)
-                              .label,
-                        ),
-                      ]);
-                    }),
-                    _switchRow(
-                      l.sendCaptionsToObs,
-                      s.liveCaptionsOverlayEnabled,
-                      (value) => notifier.update(
-                        s.copyWith(liveCaptionsOverlayEnabled: value),
-                      ),
-                    ),
-                    _switchRow(
-                      l.noiseReduction,
-                      s.liveCaptionsDenoiseEnabled,
-                      (value) => notifier.update(
-                        s.copyWith(liveCaptionsDenoiseEnabled: value),
-                      ),
-                    ),
-                    _switchRow(
-                      l.voiceCommandsObs,
-                      s.voiceCommandsEnabled,
-                      (value) => notifier.update(
-                        s.copyWith(voiceCommandsEnabled: value),
-                      ),
-                    ),
-                    if (s.voiceCommandsEnabled) ...[
-                      const SizedBox(height: 6),
-                      _label(l.wakeWord),
-                      _field(
-                        _voiceWakeWordCtrl,
-                        'airstream',
-                        focusNode: _voiceWakeWordFocus,
-                        onChanged: (_) => _queueTextSettingsSave(),
-                        onSubmitted: (_) => _saveTextSettings(),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        l.voiceCommandsExamples,
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 10,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            captionsState.message.isEmpty
-                                ? '${l.captionModelManual} '
-                                    '(${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})'
-                                : captionsState.message,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                          ),
-                          if (captionsState.caption.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              captionsState.caption,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                          if (captionsState.progress case final progress?) ...[
-                            const SizedBox(height: 8),
-                            LinearProgressIndicator(value: progress),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (captionsState.phase == LiveCaptionsPhase.missingModel ||
-                        captionsState.phase == LiveCaptionsPhase.error) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: captionsState.phase ==
-                                  LiveCaptionsPhase.downloading
-                              ? null
-                              : appController.downloadLiveCaptionsModel,
-                          icon: const Icon(Icons.download),
-                          label: Text(
-                            '${l.downloadCaptionModel} '
-                            '(${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})',
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (s.liveCaptionsOverlayEnabled) ...[
-                      const SizedBox(height: 8),
-                      _overlayUrlCard(
-                        l: l,
-                        title: l.obsCaptions,
-                        overlayUrl: captionsCopyUrl,
-                        description: l.obsCaptionsDescription,
-                        onCopy: () => Clipboard.setData(
-                          ClipboardData(text: captionsCopyUrl),
-                        ),
-                      ),
-                    ],
-                  ],
-                ],
-              ),
-              _sidebarSectionTile(
-                title: l.obsIntegration,
-                initiallyExpanded: s.obsEnabled,
-                children: [
-                  Text(
-                    l.obsDescription,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _switchRow(l.enabled, s.obsEnabled, (v) {
-                    unawaited(notifier.update(s.copyWith(obsEnabled: v)));
-                  }),
-                  if (s.obsEnabled) ...[
-                    const SizedBox(height: 12),
-                    _label(l.webSocketHost),
-                    _field(
-                      _obsHost,
-                      'localhost:4455',
-                      focusNode: _obsHostFocus,
-                      onChanged: (_) {
-                        setState(() {});
-                        _queueTextSettingsSave();
-                      },
-                      onSubmitted: (_) => _saveTextSettings(),
-                    ),
-                    const SizedBox(height: 8),
-                    _label(l.password),
-                    _field(
-                      _obsPassword,
-                      l.optionalPassword,
-                      focusNode: _obsPasswordFocus,
-                      obscureText: true,
-                      onChanged: (_) => _queueTextSettingsSave(),
-                      onSubmitted: (_) => _saveTextSettings(),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: obsState.connecting
-                            ? null
-                            : () async {
-                                if (obsState.connected) {
-                                  await appController.disconnectObs();
-                                  return;
-                                }
-                                await _saveTextSettings();
-                                await appController.connectObs();
-                              },
-                        icon: Icon(
-                          obsState.connected
-                              ? Icons.link_off_rounded
-                              : Icons.link_rounded,
-                          size: 18,
-                        ),
-                        label: Text(
-                          obsState.connecting
-                              ? l.connectingToObs
-                              : obsState.connected
-                                  ? l.disconnectObs
-                                  : (obsState.error != null &&
-                                          obsState.error!.isNotEmpty)
-                                      ? l.reconnectObs
-                                      : l.connectObs,
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: obsState.connected
-                              ? const Color(0xFFB54040)
-                              : const Color(0xFF5B9CFF),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(0xFF2A2A2A),
-                          disabledForegroundColor: Colors.white38,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _ObsStatusCard(
-                      state: obsState,
-                      showHost: true,
-                      displaySettings: s,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      l.hudElements,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _obsHudGroupLabel(l.globalHud),
-                    const SizedBox(height: 2),
-                    _switchRow(
-                        l.currentScene,
-                        s.obsShowCurrentScene,
-                        (v) => notifier
-                            .update(s.copyWith(obsShowCurrentScene: v))),
-                    _switchRow(l.fps, s.obsShowFps,
-                        (v) => notifier.update(s.copyWith(obsShowFps: v))),
-                    const SizedBox(height: 8),
-                    _obsHudGroupLabel(l.streamHud),
-                    const SizedBox(height: 2),
-                    _switchRow(
-                        l.streamState,
-                        s.obsShowStreamState,
-                        (v) =>
-                            notifier.update(s.copyWith(obsShowStreamState: v))),
-                    _switchRow(l.bitrate, s.obsShowBitrate,
-                        (v) => notifier.update(s.copyWith(obsShowBitrate: v))),
-                    _switchRow(
-                        l.droppedFrames,
-                        s.obsShowDroppedFrames,
-                        (v) => notifier
-                            .update(s.copyWith(obsShowDroppedFrames: v))),
-                    const SizedBox(height: 8),
-                    _obsHudGroupLabel(l.recordingHud),
-                    const SizedBox(height: 2),
-                    _switchRow(
-                        l.recordingState,
-                        s.obsShowRecordingState,
-                        (v) => notifier
-                            .update(s.copyWith(obsShowRecordingState: v))),
-                    _switchRow(
-                        l.recordingDuration,
-                        s.obsShowRecordingDuration,
-                        (v) => notifier
-                            .update(s.copyWith(obsShowRecordingDuration: v))),
-                    _switchRow(
-                        l.recordingSize,
-                        s.obsShowRecordingSize,
-                        (v) => notifier
-                            .update(s.copyWith(obsShowRecordingSize: v))),
-                  ] else ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      l.obsDisabledHelp,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              _sidebarSectionTile(
-                title: l.overlayServer,
-                initiallyExpanded: s.overlayEnabled,
-                children: [
-                  Text(
-                    l.overlayServerDescription,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _switchRow(l.enabled, s.overlayEnabled,
-                      (v) => notifier.update(s.copyWith(overlayEnabled: v))),
-                  if (s.overlayEnabled) ...[
-                    const SizedBox(height: 12),
-                    _label(l.port),
-                    _field(
-                      _port,
-                      '8080',
-                      focusNode: _portFocus,
-                      onChanged: (_) => _queueTextSettingsSave(),
-                      onSubmitted: (_) => _saveTextSettings(),
-                    ),
-                    const SizedBox(height: 10),
-                    _overlayUrlCard(
-                      l: l,
-                      title: l.chatObsUrl,
-                      overlayUrl: overlayCopyUrl,
-                      description: l.chatObsUrlDescription,
-                      onCopy: () async {
-                        await Clipboard.setData(
-                            ClipboardData(text: overlayCopyUrl));
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l.chatOverlayUrlCopied),
-                            duration: const Duration(milliseconds: 1400),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _overlayUrlCard(
-                      l: l,
-                      title: l.alertsObsUrl,
-                      overlayUrl: alertsCopyUrl,
-                      description: l.alertsObsUrlDescription,
-                      onCopy: () async {
-                        await Clipboard.setData(
-                            ClipboardData(text: alertsCopyUrl));
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l.alertsOverlayUrlCopied),
-                            duration: const Duration(milliseconds: 1400),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      overlayClientCount == 1
-                          ? l.oneOverlayClientConnected
-                          : l.overlayClientsConnected(overlayClientCount),
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          final reloaded = appController.reloadOverlay();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                reloaded
-                                    ? l.overlayReloadSent
-                                    : l.noOverlayClientConnected,
-                              ),
-                              duration: const Duration(milliseconds: 1400),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFFFC877),
-                          side: const BorderSide(color: Color(0xFF6A4C1D)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        icon: const Icon(Icons.refresh_rounded, size: 16),
-                        label: Text(
-                          l.reloadOverlay,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _section(l.alerts),
-                    Text(
-                      l.alertsDescription,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _sliderRow(l.alertFontSize, s.alertFontSize, 18, 56,
-                        (v) => notifier.update(s.copyWith(alertFontSize: v))),
-                    _sliderRow(
-                      l.alertDuration,
-                      s.alertDisplaySeconds.toDouble(),
-                      3,
-                      20,
-                      (v) => notifier.update(
-                        s.copyWith(alertDisplaySeconds: v.round()),
-                      ),
-                    ),
-                    _switchRow(
-                        l.alertAvatars,
-                        s.alertShowAvatars,
-                        (v) =>
-                            notifier.update(s.copyWith(alertShowAvatars: v))),
-                    const SizedBox(height: 8),
-                    _alertTestButtons(
-                      l: l,
-                      onTest: (kind) {
-                        final sent = appController.testOverlayAlert(kind);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              sent ? l.testAlertSent : l.openAlertsOverlayFirst,
-                            ),
-                            duration: const Duration(milliseconds: 1400),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _section(l.overlayMode),
-                    _switchRow(
-                        l.chromaKey,
-                        s.overlayChromaMode,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayChromaMode: v))),
-                    _switchRow(l.showGrid, s.overlayShowGrid,
-                        (v) => notifier.update(s.copyWith(overlayShowGrid: v))),
-                    _switchRow(
-                        l.hideScrollbar,
-                        s.overlayHideScrollbar,
-                        (v) => notifier
-                            .update(s.copyWith(overlayHideScrollbar: v))),
-                    if (s.overlayChromaMode) ...[
-                      const SizedBox(height: 6),
-                      _label(l.chromaColor),
-                      _field(
-                        _overlayChromaColorCtrl,
-                        '#00FF00',
-                        focusNode: _overlayChromaColorFocus,
-                        onChanged: (_) => _queueTextSettingsSave(),
-                        onSubmitted: (_) => _saveTextSettings(),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _section(l.platformDisplay),
-                    _switchRow(
-                        l.platformIcon,
-                        s.overlayShowPlatformIcons,
-                        (v) => notifier
-                            .update(s.copyWith(overlayShowPlatformIcons: v))),
-                    _switchRow(
-                        l.twitchAccent,
-                        s.overlayTwitchBubbleAccent,
-                        (v) => notifier
-                            .update(s.copyWith(overlayTwitchBubbleAccent: v))),
-                    _switchRow(
-                        l.kickAccent,
-                        s.overlayKickBubbleAccent,
-                        (v) => notifier
-                            .update(s.copyWith(overlayKickBubbleAccent: v))),
-                    const SizedBox(height: 12),
-                    _section(l.styleSettings),
-                    _sliderRow(l.fontSize, s.overlayFontSize, 12, 32,
-                        (v) => notifier.update(s.copyWith(overlayFontSize: v))),
-                    _sliderRow(
-                        l.lineHeight,
-                        s.overlayLineHeight,
-                        1,
-                        2,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayLineHeight: v))),
-                    _sliderRow(
-                        l.fontWeight,
-                        s.overlayFontWeight,
-                        100,
-                        900,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayFontWeight: v))),
-                    _sliderRow(
-                        l.overlayBg,
-                        s.overlayBgOpacity,
-                        0,
-                        1,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayBgOpacity: v))),
-                    _switchRow(
-                        l.avatars,
-                        s.overlayShowAvatars,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayShowAvatars: v))),
-                    _switchRow(
-                        l.badges,
-                        s.overlayShowBadges,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayShowBadges: v))),
-                    _switchRow(
-                        l.timestamp,
-                        s.overlayShowTimestamp,
-                        (v) => notifier
-                            .update(s.copyWith(overlayShowTimestamp: v))),
-                    _switchRow(
-                        l.textShadow,
-                        s.overlayTextShadow,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayTextShadow: v))),
-                    _sliderRow(
-                        l.textOutline,
-                        s.overlayTextStroke,
-                        0,
-                        4,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayTextStroke: v))),
-                    if (s.overlayTextStroke > 0) ...[
-                      const SizedBox(height: 6),
-                      _label(l.outlineColor),
-                      _field(
-                        _overlayTextStrokeColorCtrl,
-                        '#000000',
-                        focusNode: _overlayTextStrokeColorFocus,
-                        onChanged: (_) => _queueTextSettingsSave(),
-                        onSubmitted: (_) => _saveTextSettings(),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _section(l.messageDesign),
-                    _switchRow(
-                        l.bubbleBackground,
-                        s.overlayShowBubble,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayShowBubble: v))),
-                    _dropdownRow(
-                      l.textAlignment,
-                      s.overlayTextAlign,
-                      const ['left', 'center', 'right'],
-                      (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
-                    ),
-                    _sliderRow(
-                        l.bubbleOpacity,
-                        s.overlayMessageOpacity,
-                        0,
-                        1,
-                        (v) => notifier
-                            .update(s.copyWith(overlayMessageOpacity: v))),
-                    _sliderRow(
-                        l.cornerRadius,
-                        s.overlayBorderRadius,
-                        0,
-                        30,
-                        (v) => notifier
-                            .update(s.copyWith(overlayBorderRadius: v))),
-                    _sliderRow(
-                        l.verticalGap,
-                        s.overlayMessageGap,
-                        0,
-                        30,
-                        (v) =>
-                            notifier.update(s.copyWith(overlayMessageGap: v))),
-                    _sliderRow(
-                        l.maxMessages,
-                        s.overlayMaxMessages.toDouble(),
-                        10,
-                        500,
-                        (v) => notifier
-                            .update(s.copyWith(overlayMaxMessages: v.round()))),
-                    _sliderRow(
-                      l.messageLifetime,
-                      s.overlayMessageTtlSeconds.toDouble(),
-                      5,
-                      120,
-                      (v) => notifier.update(
-                        s.copyWith(overlayMessageTtlSeconds: v.round()),
-                      ),
-                    ),
-                    _switchRow(
-                        l.superChatColorBar,
-                        s.overlaySuperChatBarEnabled,
-                        (v) => notifier
-                            .update(s.copyWith(overlaySuperChatBarEnabled: v))),
-                    if (s.overlaySuperChatBarEnabled) ...[
-                      const SizedBox(height: 6),
-                      _label(l.superChatBarColor),
-                      _field(
-                        _overlaySuperChatBarColorCtrl,
-                        '#1DE9B6',
-                        focusNode: _overlaySuperChatBarColorFocus,
-                        onChanged: (_) => _queueTextSettingsSave(),
-                        onSubmitted: (_) => _saveTextSettings(),
-                      ),
-                      _sliderRow(
-                        l.superChatWidth,
-                        s.overlaySuperChatBarWidth,
-                        1,
-                        8,
-                        (v) => notifier
-                            .update(s.copyWith(overlaySuperChatBarWidth: v)),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _section(l.animation),
-                    _dropdownRow(
-                      l.entrance,
-                      s.overlayAnimation,
-                      const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
-                      (v) => notifier.update(s.copyWith(overlayAnimation: v)),
-                    ),
-                    _sliderRow(
-                        l.duration,
-                        s.overlayAnimationDuration,
-                        0.1,
-                        2,
-                        (v) => notifier
-                            .update(s.copyWith(overlayAnimationDuration: v))),
-                    const SizedBox(height: 12),
-                    _section(l.transform3d),
-                    _switchRow(
-                        l.enable3dEffect,
-                        s.overlayThreeDEnabled,
-                        (v) => notifier
-                            .update(s.copyWith(overlayThreeDEnabled: v))),
-                    if (s.overlayThreeDEnabled) ...[
-                      _sliderRow(
-                          l.perspective,
-                          s.overlayPerspective,
-                          500,
-                          2500,
-                          (v) => notifier
-                              .update(s.copyWith(overlayPerspective: v))),
-                      _sliderRow(
-                          l.rotateX,
-                          s.overlayRotateX,
-                          -180,
-                          180,
-                          (v) =>
-                              notifier.update(s.copyWith(overlayRotateX: v))),
-                      _sliderRow(
-                          l.rotateY,
-                          s.overlayRotateY,
-                          -180,
-                          180,
-                          (v) =>
-                              notifier.update(s.copyWith(overlayRotateY: v))),
-                      _sliderRow(
-                          l.rotateZ,
-                          s.overlayRotateZ,
-                          -180,
-                          180,
-                          (v) =>
-                              notifier.update(s.copyWith(overlayRotateZ: v))),
-                      _sliderRow(l.skewX, s.overlaySkewX, -45, 45,
-                          (v) => notifier.update(s.copyWith(overlaySkewX: v))),
-                      _sliderRow(l.scale, s.overlayScale, 0.5, 2,
-                          (v) => notifier.update(s.copyWith(overlayScale: v))),
-                    ],
-                  ] else ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      l.overlayDisabledHelp,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              _sidebarSectionTile(
-                title: l.language,
-                children: [
-                  _dropdownRow(
-                    l.language,
-                    s.appLanguageCode,
-                    const ['en', 'es'],
-                    (v) => notifier.update(s.copyWith(appLanguageCode: v)),
-                    optionLabel: (v) => v == 'es' ? l.spanish : l.english,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  static Widget _ttsStatusCard(AppLocalizations l, TtsLoadState state) {
+  Widget _buildChannelsTab(
+    BuildContext context,
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+    bool isRunning,
+    bool hasChannels,
+    String? youtubeError,
+    String? twitchError,
+    String? kickError,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        UiCard(
+          title: l.connections,
+          icon: Icons.sensors_rounded,
+          children: [
+            _label(l.youtubeInputLabel),
+            _field(
+              _ytHandle,
+              '@handle · channel ID · video ID',
+              focusNode: _ytFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _ytHandle.clear();
+                setState(() {});
+                _saveTextSettings();
+              },
+            ),
+            if (youtubeError != null && youtubeError.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _inlineErrorMessage(l, 'YouTube', youtubeError),
+            ],
+            const SizedBox(height: 12),
+            _label(l.twitchChannel),
+            _field(
+              _twitch,
+              'channel_name',
+              focusNode: _twitchFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _twitch.clear();
+                setState(() {});
+                _saveTextSettings();
+              },
+            ),
+            if (twitchError != null && twitchError.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _inlineErrorMessage(l, 'Twitch', twitchError),
+            ],
+            const SizedBox(height: 12),
+            _label(l.kickSlug),
+            _field(
+              _kick,
+              'channel_slug',
+              focusNode: _kickFocus,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _kick.clear();
+                setState(() {});
+                _saveTextSettings();
+              },
+            ),
+            if (kickError != null && kickError.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _inlineErrorMessage(l, 'Kick', kickError),
+            ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed:
+                    isRunning ? _stopChat : (hasChannels ? _startChat : null),
+                icon: Icon(
+                  isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                  size: 20,
+                ),
+                label: Text(
+                  isRunning ? l.stopChat : l.startChat,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isRunning
+                      ? const Color(0xFFFF5252)
+                      : const Color(0xFF53FC18),
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  disabledBackgroundColor: const Color(0xFF262626),
+                  disabledForegroundColor: Colors.white38,
+                ),
+              ),
+            ),
+          ],
+        ),
+        UiCard(
+          title: l.filters,
+          icon: Icons.filter_alt_outlined,
+          description: l.filtersDescription,
+          isCollapsible: true,
+          initiallyExpanded:
+              s.blockedUsers.isNotEmpty || s.blockedWords.isNotEmpty,
+          children: [
+            _label(l.blockedUsers),
+            _field(
+              _blockedUsersCtrl,
+              '@nightbot\notrobot',
+              focusNode: _blockedUsersFocus,
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _blockedUsersCtrl.clear();
+                setState(() {});
+                _queueTextSettingsSave();
+              },
+              minLines: 2,
+              maxLines: 4,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l.blockedUsersHelp,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            _label(l.blockedWordsOrPhrases),
+            _field(
+              _blockedWordsCtrl,
+              'palabra1\nfrase completa',
+              focusNode: _blockedWordsFocus,
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _blockedWordsCtrl.clear();
+                setState(() {});
+                _queueTextSettingsSave();
+              },
+              minLines: 2,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l.blockedWordsHelp,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAudioTab(
+    BuildContext context,
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+    AppController appController,
+    TtsLoadState? ttsLoadState,
+    bool ttsBusy,
+    LiveCaptionsState captionsState,
+    String captionsCopyUrl,
+  ) {
+    Future<void> removeSelectedTtsModel() async {
+      final model = TtsModelCatalog.byId(s.ttsModelId);
+      final remove = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(l.removeTtsModelTitle(model.name)),
+          content: Text(l.removeTtsModelConfirmationNamed(model.name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(l.remove),
+            ),
+          ],
+        ),
+      );
+      if (remove != true || !context.mounted) return;
+      try {
+        await notifier.update(s.copyWith(ttsEnabled: false));
+        await appController.removeTtsModel(s.ttsModelId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.ttsModelRemoved)),
+          );
+        }
+      } catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.ttsModelRemovalFailed(error.toString()))),
+          );
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        UiCard(
+          title: l.ttsCardTitle,
+          icon: Icons.record_voice_over_rounded,
+          description: l.ttsDescription,
+          trailing: Switch(
+            value: s.ttsEnabled,
+            onChanged: (v) => notifier.update(s.copyWith(ttsEnabled: v)),
+            activeThumbColor: const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          children: [
+            if (s.ttsEnabled) ...[
+              if (ttsLoadState != null) ...[
+                _ttsStatusCard(
+                  l,
+                  ttsLoadState,
+                  onDownload: () async {
+                    try {
+                      await appController.downloadTtsModel();
+                    } catch (_) {}
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+              Builder(builder: (context) {
+                final model = TtsModelCatalog.byId(s.ttsModelId);
+                final engineId =
+                    model.family == TtsModelFamily.vits ? 'piper' : model.id;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _dropdownRow(
+                      l.ttsSelectedModel,
+                      engineId,
+                      const [
+                        'supertonic-3-hybrid',
+                        'piper',
+                        'kitten-nano-en-v0-8-int8',
+                        'kokoro-en-v0-19-int8',
+                        'matcha-ljspeech-en',
+                        'pocket-tts-int8',
+                        'zipvoice-distill-int8-zh-en',
+                      ],
+                      (id) {
+                        final next = id == 'piper'
+                            ? (s.ttsLanguage == 'es-ES'
+                                ? TtsModelCatalog.piperSpain
+                                : TtsModelCatalog.piperMexico)
+                            : TtsModelCatalog.byId(id);
+                        notifier.update(s.copyWith(
+                          ttsModelId: next.id,
+                          ttsVoice: next.voices.first.id,
+                          ttsLanguage: next.languages.first.code,
+                          ttsSteps: next.defaultSteps,
+                        ));
+                      },
+                      optionLabel: _ttsEngineName,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Text(
+                        _ttsModelDescription(l, model.id),
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        l.ttsModelStorageDetails(
+                          _formatByteSize(model.downloadBytes),
+                          _formatByteSize(model.installedBytes),
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    if (model.licenseNotice != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          model.licenseNotice!,
+                          style: const TextStyle(
+                            color: Colors.amberAccent,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
+              if (ttsLoadState?.isReady ?? false) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: removeSelectedTtsModel,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 14),
+                    label: Text(l.removeTtsModel),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white38,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+              Builder(builder: (context) {
+                final model = TtsModelCatalog.byId(s.ttsModelId);
+                final voice = model.voice(s.ttsVoice).id;
+                final languageOptions = model.family == TtsModelFamily.vits
+                    ? const ['es-MX', 'es-ES']
+                    : model.languages.map((item) => item.code).toList();
+                final language = model.family == TtsModelFamily.vits
+                    ? (model.id == TtsModelCatalog.piperSpain.id
+                        ? 'es-ES'
+                        : 'es-MX')
+                    : (model.supportsLanguage(s.ttsLanguage)
+                        ? s.ttsLanguage
+                        : model.languages.first.code);
+
+                return Column(
+                  children: [
+                    _dropdownRow(
+                      l.voice,
+                      voice,
+                      model.voices.map((v) => v.id).toList(),
+                      (v) => notifier.update(s.copyWith(ttsVoice: v)),
+                      optionLabel: (id) => _ttsVoiceLabel(l, model, id),
+                    ),
+                    _dropdownRow(
+                      l.language,
+                      language,
+                      languageOptions,
+                      (value) {
+                        if (model.family != TtsModelFamily.vits) {
+                          notifier.update(s.copyWith(ttsLanguage: value));
+                          return;
+                        }
+                        final next = value == 'es-ES'
+                            ? TtsModelCatalog.piperSpain
+                            : TtsModelCatalog.piperMexico;
+                        notifier.update(s.copyWith(
+                          ttsModelId: next.id,
+                          ttsVoice: next.voices.first.id,
+                          ttsLanguage: value,
+                          ttsSteps: next.defaultSteps,
+                        ));
+                      },
+                      optionLabel: (id) => _ttsLanguageLabel(l, model, id),
+                    ),
+                    if (model.referenceMode != TtsReferenceMode.none) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              s.ttsReferenceAudioPath.isEmpty
+                                  ? l.usingBundledVoice(
+                                      _ttsVoiceLabel(l, model, voice))
+                                  : p.basename(s.ttsReferenceAudioPath),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              final selected = await openFile(
+                                acceptedTypeGroups: const [
+                                  XTypeGroup(
+                                    label: 'WAV',
+                                    extensions: ['wav'],
+                                  ),
+                                ],
+                              );
+                              if (selected == null || !context.mounted) return;
+                              await notifier.update(s.copyWith(
+                                ttsReferenceAudioPath: selected.path,
+                              ));
+                            },
+                            icon:
+                                const Icon(Icons.audio_file_rounded, size: 15),
+                            label: Text(l.chooseWav),
+                          ),
+                          if (s.ttsReferenceAudioPath.isNotEmpty)
+                            IconButton(
+                              tooltip: l.useBundledSample,
+                              onPressed: () => notifier.update(s.copyWith(
+                                ttsReferenceAudioPath: '',
+                                ttsReferenceText: '',
+                              )),
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                            ),
+                        ],
+                      ),
+                      if (model.needsReferenceText &&
+                          s.ttsReferenceAudioPath.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        _label(l.referenceTranscript),
+                        _field(
+                          _ttsReferenceTextCtrl,
+                          l.referenceTranscriptHint,
+                          focusNode: _ttsReferenceTextFocus,
+                          onChanged: (_) => _queueTextSettingsSave(),
+                          onSubmitted: (_) => _saveTextSettings(),
+                        ),
+                      ],
+                    ],
+                    if (model.family == TtsModelFamily.supertonic ||
+                        model.family == TtsModelFamily.zipvoice ||
+                        model.family == TtsModelFamily.pocket)
+                      _dropdownRow(
+                        l.quality,
+                        const [3, 4, 5, 6, 8, 12].contains(s.ttsSteps)
+                            ? s.ttsSteps.toString()
+                            : model.defaultSteps.toString(),
+                        const ['3', '4', '5', '6', '8', '12'],
+                        (v) =>
+                            notifier.update(s.copyWith(ttsSteps: int.parse(v))),
+                        optionLabel: (v) => l.ttsInferenceSteps(int.parse(v)),
+                      ),
+                    StyledSliderRow(
+                      label: l.speed,
+                      value: s.ttsSpeed,
+                      min: 0.6,
+                      max: 1.6,
+                      divisions: 20,
+                      unit: 'x',
+                      onChanged: (v) =>
+                          notifier.update(s.copyWith(ttsSpeed: v)),
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 8),
+              _label(l.testText),
+              _field(_ttsTestCtrl, l.ttsTestTextHint),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
+                      ? null
+                      : () => appController.testTts(
+                            _ttsTestCtrl.text.trim().isEmpty
+                                ? l.ttsDefaultTestText
+                                : _ttsTestCtrl.text,
+                          ),
+                  icon: const Icon(Icons.volume_up_rounded, size: 16),
+                  label: Text(
+                    ttsBusy
+                        ? l.playingTts
+                        : (ttsLoadState?.isLoading ?? false)
+                            ? l.loadingTts
+                            : l.testTts,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF53FC18),
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _switchRow(
+                l.membersOnly,
+                s.ttsMembersOnly,
+                (v) => notifier.update(s.copyWith(ttsMembersOnly: v)),
+              ),
+              _switchRow(
+                l.commandMode,
+                s.ttsCommandMode,
+                (v) => notifier.update(s.copyWith(ttsCommandMode: v)),
+              ),
+              if (s.ttsCommandMode) ...[
+                const SizedBox(height: 8),
+                _label(l.commandPrefix),
+                _field(
+                  _ttsPrefixCtrl,
+                  '!voz, !v, !say...',
+                  focusNode: _ttsPrefixFocus,
+                  onChanged: (_) => _queueTextSettingsSave(),
+                  onSubmitted: (_) => _saveTextSettings(),
+                ),
+                _switchRow(
+                  l.ignoreCommandCase,
+                  s.ttsCommandIgnoreCase,
+                  (v) => notifier.update(s.copyWith(ttsCommandIgnoreCase: v)),
+                ),
+              ],
+              const SizedBox(height: 8),
+              _label(l.separatorText),
+              _field(
+                _ttsSeparatorCtrl,
+                l.separatorTextHint,
+                focusNode: _ttsSeparatorFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+            ] else ...[
+              Text(
+                l.ttsDisabledHelp,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
+          ],
+        ),
+        UiCard(
+          title: l.localCaptions,
+          icon: Icons.subtitles_rounded,
+          description: l.captionsDescription,
+          trailing: Switch(
+            value: s.liveCaptionsEnabled,
+            onChanged: (v) => unawaited(notifier.update(
+              s.copyWith(liveCaptionsEnabled: v),
+            )),
+            activeThumbColor: const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          children: [
+            if (s.liveCaptionsEnabled) ...[
+              Builder(builder: (context) {
+                final model = SpeechModelCatalog.byId(s.liveCaptionsModelId);
+                final source =
+                    model.supportsLanguage(s.liveCaptionsSourceLanguage)
+                        ? s.liveCaptionsSourceLanguage
+                        : 'es';
+                final targets = model.targetsFor(source);
+
+                return Column(
+                  children: [
+                    _dropdownRow(
+                      l.spokenLanguage,
+                      source,
+                      model.languages.map((item) => item.code).toList(),
+                      (value) => notifier.update(s.copyWith(
+                        liveCaptionsSourceLanguage: value,
+                        liveCaptionsTargetLanguage: value,
+                      )),
+                      optionLabel: (value) => model.languages
+                          .firstWhere((item) => item.code == value)
+                          .label,
+                    ),
+                    _dropdownRow(
+                      l.captionOutput,
+                      model.supportsDirection(
+                              source, s.liveCaptionsTargetLanguage)
+                          ? s.liveCaptionsTargetLanguage
+                          : source,
+                      targets.map((item) => item.code).toList(),
+                      (value) => notifier.update(s.copyWith(
+                        liveCaptionsTargetLanguage: value,
+                      )),
+                      optionLabel: (value) => targets
+                          .firstWhere((item) => item.code == value)
+                          .label,
+                    ),
+                  ],
+                );
+              }),
+              _switchRow(
+                l.sendCaptionsToObs,
+                s.liveCaptionsOverlayEnabled,
+                (value) => notifier.update(
+                  s.copyWith(liveCaptionsOverlayEnabled: value),
+                ),
+              ),
+              _switchRow(
+                l.noiseReduction,
+                s.liveCaptionsDenoiseEnabled,
+                (value) => notifier.update(
+                  s.copyWith(liveCaptionsDenoiseEnabled: value),
+                ),
+              ),
+              _switchRow(
+                l.voiceCommandsObs,
+                s.voiceCommandsEnabled,
+                (value) => notifier.update(
+                  s.copyWith(voiceCommandsEnabled: value),
+                ),
+              ),
+              if (s.voiceCommandsEnabled) ...[
+                const SizedBox(height: 6),
+                _label(l.wakeWord),
+                _field(
+                  _voiceWakeWordCtrl,
+                  'airstream',
+                  focusNode: _voiceWakeWordFocus,
+                  onChanged: (_) => _queueTextSettingsSave(),
+                  onSubmitted: (_) => _saveTextSettings(),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l.voiceCommandsExamples,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF333333)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _captionStatusDescription(l, captionsState.phase),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                    if (captionsState.caption.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        captionsState.caption,
+                        style: const TextStyle(
+                          color: Color(0xFF53FC18),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    if (captionsState.progress case final progress?) ...[
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: const Color(0xFF333333),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF53FC18),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (captionsState.phase == LiveCaptionsPhase.missingModel ||
+                  captionsState.phase == LiveCaptionsPhase.error) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        captionsState.phase == LiveCaptionsPhase.downloading
+                            ? null
+                            : appController.downloadLiveCaptionsModel,
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: Text(
+                      '${l.downloadCaptionModel} (${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF53FC18),
+                      side: const BorderSide(color: Color(0xFF53FC18)),
+                    ),
+                  ),
+                ),
+              ],
+              if (s.liveCaptionsOverlayEnabled) ...[
+                const SizedBox(height: 8),
+                _overlayUrlCard(
+                  l: l,
+                  title: l.obsCaptions,
+                  overlayUrl: captionsCopyUrl,
+                  description: l.obsCaptionsDescription,
+                  onCopy: () => Clipboard.setData(
+                    ClipboardData(text: captionsCopyUrl),
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStyleTab(
+    BuildContext context,
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        UiCard(
+          title: l.appearance,
+          icon: Icons.format_size_rounded,
+          children: [
+            StyledSliderRow(
+              label: l.fontSize,
+              value: s.fontSize,
+              min: 10,
+              max: 28,
+              unit: 'px',
+              onChanged: (v) => notifier.update(s.copyWith(fontSize: v)),
+            ),
+            StyledSliderRow(
+              label: l.lineHeight,
+              value: s.chatLineHeight,
+              min: 1,
+              max: 2,
+              onChanged: (v) => notifier.update(s.copyWith(chatLineHeight: v)),
+            ),
+            StyledSliderRow(
+              label: l.fontWeight,
+              value: s.chatFontWeight,
+              min: 100,
+              max: 900,
+              divisions: 8,
+              onChanged: (v) => notifier.update(s.copyWith(chatFontWeight: v)),
+            ),
+            _dropdownRow(
+              l.textAlignment,
+              s.chatTextAlign,
+              const ['left', 'center', 'right'],
+              (v) => notifier.update(s.copyWith(chatTextAlign: v)),
+            ),
+            StyledSliderRow(
+              label: l.maxMessageWidth,
+              value: s.chatMaxMessageWidth,
+              min: 0.4,
+              max: 1.0,
+              unit: '%',
+              onChanged: (v) =>
+                  notifier.update(s.copyWith(chatMaxMessageWidth: v)),
+            ),
+            StyledSliderRow(
+              label: l.horizontalPadding,
+              value: s.chatHorizontalPadding,
+              min: 0,
+              max: 64,
+              unit: 'px',
+              onChanged: (v) =>
+                  notifier.update(s.copyWith(chatHorizontalPadding: v)),
+            ),
+          ],
+        ),
+        UiCard(
+          title: l.messageDesign,
+          icon: Icons.layers_outlined,
+          children: [
+            StyledSliderRow(
+              label: l.backgroundOpacity,
+              value: s.bgOpacity,
+              min: 0,
+              max: 1,
+              unit: '%',
+              onChanged: (v) => notifier.update(s.copyWith(bgOpacity: v)),
+            ),
+            StyledSliderRow(
+              label: l.bubbleOpacity,
+              value: s.messageOpacity,
+              min: 0,
+              max: 1,
+              unit: '%',
+              onChanged: (v) => notifier.update(s.copyWith(messageOpacity: v)),
+            ),
+            StyledSliderRow(
+              label: l.borderRadius,
+              value: s.borderRadius,
+              min: 0,
+              max: 24,
+              unit: 'px',
+              onChanged: (v) => notifier.update(s.copyWith(borderRadius: v)),
+            ),
+            StyledSliderRow(
+              label: l.messageGap,
+              value: s.messageGap,
+              min: 0,
+              max: 16,
+              unit: 'px',
+              onChanged: (v) => notifier.update(s.copyWith(messageGap: v)),
+            ),
+            _switchRow(
+              l.bubble,
+              s.showBubble,
+              (v) => notifier.update(s.copyWith(showBubble: v)),
+            ),
+            _switchRow(
+              l.bubbleShadow,
+              s.showBubbleShadow,
+              (v) => notifier.update(s.copyWith(showBubbleShadow: v)),
+            ),
+            _switchRow(
+              l.textShadow,
+              s.chatTextShadow,
+              (v) => notifier.update(s.copyWith(chatTextShadow: v)),
+            ),
+            StyledSliderRow(
+              label: l.textOutline,
+              value: s.chatTextStroke,
+              min: 0,
+              max: 4,
+              unit: 'px',
+              onChanged: (v) => notifier.update(s.copyWith(chatTextStroke: v)),
+            ),
+          ],
+        ),
+        UiCard(
+          title: l.platformDisplay,
+          icon: Icons.account_circle_outlined,
+          children: [
+            _switchRow(
+              l.avatars,
+              s.showAvatars,
+              (v) => notifier.update(s.copyWith(showAvatars: v)),
+            ),
+            _switchRow(
+              l.platformIcon,
+              s.showPlatformIcons,
+              (v) => notifier.update(s.copyWith(showPlatformIcons: v)),
+            ),
+            _switchRow(
+              l.badges,
+              s.showBadges,
+              (v) => notifier.update(s.copyWith(showBadges: v)),
+            ),
+            _switchRow(
+              l.timestamp,
+              s.showTimestamp,
+              (v) => notifier.update(s.copyWith(showTimestamp: v)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildObsTab(
+    BuildContext context,
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+    AppController appController,
+    ObsState obsState,
+    int overlayClientCount,
+    String overlayCopyUrl,
+    String alertsCopyUrl,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        UiCard(
+          title: l.obsIntegration,
+          icon: Icons.camera_indoor_rounded,
+          description: l.obsDescription,
+          trailing: Switch(
+            value: s.obsEnabled,
+            onChanged: (v) =>
+                unawaited(notifier.update(s.copyWith(obsEnabled: v))),
+            activeThumbColor: const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          children: [
+            if (s.obsEnabled) ...[
+              _label(l.webSocketHost),
+              _field(
+                _obsHost,
+                'localhost:4455',
+                focusNode: _obsHostFocus,
+                onChanged: (_) {
+                  setState(() {});
+                  _queueTextSettingsSave();
+                },
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+              const SizedBox(height: 8),
+              _label(l.password),
+              _field(
+                _obsPassword,
+                l.optionalPassword,
+                focusNode: _obsPasswordFocus,
+                obscureText: true,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: obsState.connecting
+                      ? null
+                      : () async {
+                          if (obsState.connected) {
+                            await appController.disconnectObs();
+                            return;
+                          }
+                          await _saveTextSettings();
+                          await appController.connectObs();
+                        },
+                  icon: Icon(
+                    obsState.connected
+                        ? Icons.link_off_rounded
+                        : Icons.link_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    obsState.connecting
+                        ? l.connectingToObs
+                        : obsState.connected
+                            ? l.disconnectObs
+                            : (obsState.error != null &&
+                                    obsState.error!.isNotEmpty)
+                                ? l.reconnectObs
+                                : l.connectObs,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: obsState.connected
+                        ? const Color(0xFFFF5252)
+                        : const Color(0xFF5B9CFF),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _ObsStatusCard(
+                state: obsState,
+                showHost: true,
+                displaySettings: s,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l.hudElements,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _obsHudGroupLabel(l.globalHud),
+              _switchRow(
+                l.currentScene,
+                s.obsShowCurrentScene,
+                (v) => notifier.update(s.copyWith(obsShowCurrentScene: v)),
+              ),
+              _switchRow(
+                l.fps,
+                s.obsShowFps,
+                (v) => notifier.update(s.copyWith(obsShowFps: v)),
+              ),
+              const SizedBox(height: 6),
+              _obsHudGroupLabel(l.streamHud),
+              _switchRow(
+                l.streamState,
+                s.obsShowStreamState,
+                (v) => notifier.update(s.copyWith(obsShowStreamState: v)),
+              ),
+              _switchRow(
+                l.bitrate,
+                s.obsShowBitrate,
+                (v) => notifier.update(s.copyWith(obsShowBitrate: v)),
+              ),
+              _switchRow(
+                l.droppedFrames,
+                s.obsShowDroppedFrames,
+                (v) => notifier.update(s.copyWith(obsShowDroppedFrames: v)),
+              ),
+              const SizedBox(height: 6),
+              _obsHudGroupLabel(l.recordingHud),
+              _switchRow(
+                l.recordingState,
+                s.obsShowRecordingState,
+                (v) => notifier.update(s.copyWith(obsShowRecordingState: v)),
+              ),
+              _switchRow(
+                l.recordingDuration,
+                s.obsShowRecordingDuration,
+                (v) => notifier.update(s.copyWith(obsShowRecordingDuration: v)),
+              ),
+              _switchRow(
+                l.recordingSize,
+                s.obsShowRecordingSize,
+                (v) => notifier.update(s.copyWith(obsShowRecordingSize: v)),
+              ),
+            ] else ...[
+              Text(
+                l.obsDisabledHelp,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
+          ],
+        ),
+        UiCard(
+          title: l.overlayServer,
+          icon: Icons.desktop_windows_rounded,
+          description: l.overlayServerDescription,
+          trailing: Switch(
+            value: s.overlayEnabled,
+            onChanged: (v) => notifier.update(s.copyWith(overlayEnabled: v)),
+            activeThumbColor: const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          children: [
+            if (s.overlayEnabled) ...[
+              _label(l.port),
+              _field(
+                _port,
+                '8080',
+                focusNode: _portFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+              ),
+              const SizedBox(height: 10),
+              _overlayUrlCard(
+                l: l,
+                title: l.chatObsUrl,
+                overlayUrl: overlayCopyUrl,
+                description: l.chatObsUrlDescription,
+                onCopy: () async {
+                  await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l.chatOverlayUrlCopied),
+                      duration: const Duration(milliseconds: 1400),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              _overlayUrlCard(
+                l: l,
+                title: l.alertsObsUrl,
+                overlayUrl: alertsCopyUrl,
+                description: l.alertsObsUrlDescription,
+                onCopy: () async {
+                  await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l.alertsOverlayUrlCopied),
+                      duration: const Duration(milliseconds: 1400),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              Text(
+                overlayClientCount == 1
+                    ? l.oneOverlayClientConnected
+                    : l.overlayClientsConnected(overlayClientCount),
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final reloaded = appController.reloadOverlay();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          reloaded
+                              ? l.overlayReloadSent
+                              : l.noOverlayClientConnected,
+                        ),
+                        duration: const Duration(milliseconds: 1400),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFC877),
+                    side: const BorderSide(color: Color(0xFF6A4C1D)),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(l.reloadOverlay),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _section(l.alerts),
+              Text(
+                l.alertsDescription,
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+              StyledSliderRow(
+                label: l.alertFontSize,
+                value: s.alertFontSize,
+                min: 18,
+                max: 56,
+                unit: 'px',
+                onChanged: (v) => notifier.update(s.copyWith(alertFontSize: v)),
+              ),
+              StyledSliderRow(
+                label: l.alertDuration,
+                value: s.alertDisplaySeconds.toDouble(),
+                min: 3,
+                max: 20,
+                unit: 's',
+                onChanged: (v) => notifier.update(
+                  s.copyWith(alertDisplaySeconds: v.round()),
+                ),
+              ),
+              _switchRow(
+                l.alertAvatars,
+                s.alertShowAvatars,
+                (v) => notifier.update(s.copyWith(alertShowAvatars: v)),
+              ),
+              const SizedBox(height: 8),
+              _alertTestButtons(
+                l: l,
+                onTest: (kind) {
+                  final sent = appController.testOverlayAlert(kind);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        sent ? l.testAlertSent : l.openAlertsOverlayFirst,
+                      ),
+                      duration: const Duration(milliseconds: 1400),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _section(l.overlayMode),
+              _switchRow(
+                l.chromaKey,
+                s.overlayChromaMode,
+                (v) => notifier.update(s.copyWith(overlayChromaMode: v)),
+              ),
+              _switchRow(
+                l.showGrid,
+                s.overlayShowGrid,
+                (v) => notifier.update(s.copyWith(overlayShowGrid: v)),
+              ),
+              _switchRow(
+                l.hideScrollbar,
+                s.overlayHideScrollbar,
+                (v) => notifier.update(s.copyWith(overlayHideScrollbar: v)),
+              ),
+              if (s.overlayChromaMode) ...[
+                const SizedBox(height: 6),
+                _label(l.chromaColor),
+                _field(
+                  _overlayChromaColorCtrl,
+                  '#00FF00',
+                  focusNode: _overlayChromaColorFocus,
+                  onChanged: (_) => _queueTextSettingsSave(),
+                  onSubmitted: (_) => _saveTextSettings(),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _section(l.platformDisplay),
+              _switchRow(
+                l.platformIcon,
+                s.overlayShowPlatformIcons,
+                (v) => notifier.update(
+                  s.copyWith(overlayShowPlatformIcons: v),
+                ),
+              ),
+              _switchRow(
+                l.twitchAccent,
+                s.overlayTwitchBubbleAccent,
+                (v) => notifier.update(
+                  s.copyWith(overlayTwitchBubbleAccent: v),
+                ),
+              ),
+              _switchRow(
+                l.kickAccent,
+                s.overlayKickBubbleAccent,
+                (v) => notifier.update(
+                  s.copyWith(overlayKickBubbleAccent: v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _section(l.styleSettings),
+              StyledSliderRow(
+                label: l.fontSize,
+                value: s.overlayFontSize,
+                min: 12,
+                max: 32,
+                unit: 'px',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayFontSize: v)),
+              ),
+              StyledSliderRow(
+                label: l.lineHeight,
+                value: s.overlayLineHeight,
+                min: 1,
+                max: 2,
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayLineHeight: v)),
+              ),
+              StyledSliderRow(
+                label: l.fontWeight,
+                value: s.overlayFontWeight,
+                min: 100,
+                max: 900,
+                divisions: 8,
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayFontWeight: v)),
+              ),
+              StyledSliderRow(
+                label: l.overlayBg,
+                value: s.overlayBgOpacity,
+                min: 0,
+                max: 1,
+                unit: '%',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayBgOpacity: v)),
+              ),
+              _switchRow(
+                l.avatars,
+                s.overlayShowAvatars,
+                (v) => notifier.update(s.copyWith(overlayShowAvatars: v)),
+              ),
+              _switchRow(
+                l.badges,
+                s.overlayShowBadges,
+                (v) => notifier.update(s.copyWith(overlayShowBadges: v)),
+              ),
+              _switchRow(
+                l.timestamp,
+                s.overlayShowTimestamp,
+                (v) => notifier.update(s.copyWith(overlayShowTimestamp: v)),
+              ),
+              _switchRow(
+                l.textShadow,
+                s.overlayTextShadow,
+                (v) => notifier.update(s.copyWith(overlayTextShadow: v)),
+              ),
+              StyledSliderRow(
+                label: l.textOutline,
+                value: s.overlayTextStroke,
+                min: 0,
+                max: 4,
+                unit: 'px',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayTextStroke: v)),
+              ),
+              if (s.overlayTextStroke > 0) ...[
+                const SizedBox(height: 6),
+                _label(l.outlineColor),
+                _field(
+                  _overlayTextStrokeColorCtrl,
+                  '#000000',
+                  focusNode: _overlayTextStrokeColorFocus,
+                  onChanged: (_) => _queueTextSettingsSave(),
+                  onSubmitted: (_) => _saveTextSettings(),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _section(l.messageDesign),
+              _switchRow(
+                l.bubbleBackground,
+                s.overlayShowBubble,
+                (v) => notifier.update(s.copyWith(overlayShowBubble: v)),
+              ),
+              _dropdownRow(
+                l.textAlignment,
+                s.overlayTextAlign,
+                const ['left', 'center', 'right'],
+                (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
+              ),
+              StyledSliderRow(
+                label: l.bubbleOpacity,
+                value: s.overlayMessageOpacity,
+                min: 0,
+                max: 1,
+                unit: '%',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayMessageOpacity: v)),
+              ),
+              StyledSliderRow(
+                label: l.cornerRadius,
+                value: s.overlayBorderRadius,
+                min: 0,
+                max: 30,
+                unit: 'px',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayBorderRadius: v)),
+              ),
+              StyledSliderRow(
+                label: l.verticalGap,
+                value: s.overlayMessageGap,
+                min: 0,
+                max: 30,
+                unit: 'px',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayMessageGap: v)),
+              ),
+              StyledSliderRow(
+                label: l.maxMessages,
+                value: s.overlayMaxMessages.toDouble(),
+                min: 10,
+                max: 500,
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(overlayMaxMessages: v.round())),
+              ),
+              StyledSliderRow(
+                label: l.messageLifetime,
+                value: s.overlayMessageTtlSeconds.toDouble(),
+                min: 5,
+                max: 120,
+                unit: 's',
+                onChanged: (v) => notifier.update(
+                  s.copyWith(overlayMessageTtlSeconds: v.round()),
+                ),
+              ),
+              _switchRow(
+                l.superChatColorBar,
+                s.overlaySuperChatBarEnabled,
+                (v) => notifier.update(
+                  s.copyWith(overlaySuperChatBarEnabled: v),
+                ),
+              ),
+              if (s.overlaySuperChatBarEnabled) ...[
+                const SizedBox(height: 6),
+                _label(l.superChatBarColor),
+                _field(
+                  _overlaySuperChatBarColorCtrl,
+                  '#1DE9B6',
+                  focusNode: _overlaySuperChatBarColorFocus,
+                  onChanged: (_) => _queueTextSettingsSave(),
+                  onSubmitted: (_) => _saveTextSettings(),
+                ),
+                StyledSliderRow(
+                  label: l.superChatWidth,
+                  value: s.overlaySuperChatBarWidth,
+                  min: 1,
+                  max: 8,
+                  unit: 'px',
+                  onChanged: (v) => notifier.update(
+                    s.copyWith(overlaySuperChatBarWidth: v),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _section(l.animation),
+              _dropdownRow(
+                l.entrance,
+                s.overlayAnimation,
+                const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
+                (v) => notifier.update(s.copyWith(overlayAnimation: v)),
+              ),
+              StyledSliderRow(
+                label: l.duration,
+                value: s.overlayAnimationDuration,
+                min: 0.1,
+                max: 2,
+                unit: 's',
+                onChanged: (v) => notifier.update(
+                  s.copyWith(overlayAnimationDuration: v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _section(l.transform3d),
+              _switchRow(
+                l.enable3dEffect,
+                s.overlayThreeDEnabled,
+                (v) => notifier.update(s.copyWith(overlayThreeDEnabled: v)),
+              ),
+              if (s.overlayThreeDEnabled) ...[
+                StyledSliderRow(
+                  label: l.perspective,
+                  value: s.overlayPerspective,
+                  min: 500,
+                  max: 2500,
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlayPerspective: v)),
+                ),
+                StyledSliderRow(
+                  label: l.rotateX,
+                  value: s.overlayRotateX,
+                  min: -180,
+                  max: 180,
+                  unit: '°',
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlayRotateX: v)),
+                ),
+                StyledSliderRow(
+                  label: l.rotateY,
+                  value: s.overlayRotateY,
+                  min: -180,
+                  max: 180,
+                  unit: '°',
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlayRotateY: v)),
+                ),
+                StyledSliderRow(
+                  label: l.rotateZ,
+                  value: s.overlayRotateZ,
+                  min: -180,
+                  max: 180,
+                  unit: '°',
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlayRotateZ: v)),
+                ),
+                StyledSliderRow(
+                  label: l.skewX,
+                  value: s.overlaySkewX,
+                  min: -45,
+                  max: 45,
+                  unit: '°',
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlaySkewX: v)),
+                ),
+                StyledSliderRow(
+                  label: l.scale,
+                  value: s.overlayScale,
+                  min: 0.5,
+                  max: 2,
+                  unit: 'x',
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(overlayScale: v)),
+                ),
+              ],
+            ] else ...[
+              Text(
+                l.overlayDisabledHelp,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSystemTab(
+    BuildContext context,
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+  ) {
+    final win = ref.watch(windowStateProvider);
+    final winNotifier = ref.read(windowStateProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        UiCard(
+          title: l.desktopWindow,
+          icon: Icons.window_rounded,
+          children: [
+            _switchTileWithSubtitle(
+              l.frameless,
+              l.framelessDescription,
+              win.frameless,
+              (v) => winNotifier.setFrameless(v),
+            ),
+            _switchTileWithSubtitle(
+              l.clickThrough,
+              l.clickThroughDescription,
+              win.clickThrough,
+              (v) => winNotifier.setClickThrough(v),
+              activeThumbColor: const Color(0xFFFFB15C),
+            ),
+            _switchTileWithSubtitle(
+              l.alwaysOnTop,
+              l.alwaysOnTopDescription,
+              win.alwaysOnTop,
+              (v) => winNotifier.setAlwaysOnTop(v),
+            ),
+            _switchTileWithSubtitle(
+              l.antiCapture,
+              l.antiCaptureDescription,
+              win.excludeFromCapture,
+              (v) => winNotifier.setExcludeFromCapture(v),
+              activeThumbColor: const Color(0xFFBB86FC),
+            ),
+          ],
+        ),
+        UiCard(
+          title: l.language,
+          icon: Icons.language_rounded,
+          children: [
+            _dropdownRow(
+              l.language,
+              s.appLanguageCode,
+              const ['en', 'es'],
+              (v) => notifier.update(s.copyWith(appLanguageCode: v)),
+              optionLabel: (v) => v == 'es' ? l.spanish : l.english,
+            ),
+          ],
+        ),
+        UiCard(
+          title: l.keyboardShortcuts,
+          icon: Icons.keyboard_rounded,
+          children: [
+            _shortcutRow('Ctrl + B', l.hideSidebarTooltip),
+            _shortcutRow('Ctrl + Shift + T', l.toggleTopBarShortcut),
+            _shortcutRow('Ctrl + Shift + P', l.toggleAlwaysOnTopShortcut),
+            _shortcutRow('Ctrl + Shift + C', l.toggleClickThroughShortcut),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static Widget _shortcutRow(String keys, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              description,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF262626),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFF333333)),
+            ),
+            child: Text(
+              keys,
+              style: const TextStyle(
+                color: Color(0xFF53FC18),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _switchTileWithSubtitle(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    Color? activeThumbColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: activeThumbColor ?? const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _ttsEngineName(String engineId) => switch (engineId) {
+        'supertonic-3-hybrid' => 'Supertonic',
+        'piper' => 'Piper',
+        'kitten-nano-en-v0-8-int8' => 'KittenTTS',
+        'kokoro-en-v0-19-int8' => 'Kokoro',
+        'matcha-ljspeech-en' => 'Matcha-TTS',
+        'pocket-tts-int8' => 'Pocket TTS',
+        'zipvoice-distill-int8-zh-en' => 'ZipVoice',
+        _ => TtsModelCatalog.byId(engineId).name,
+      };
+
+  static String _ttsLanguageLabel(
+    AppLocalizations l,
+    TtsModelDefinition model,
+    String languageCode,
+  ) {
+    if (languageCode == 'es-MX') return l.spanishMexico;
+    if (languageCode == 'es-ES') return l.spanishSpain;
+    return model.languages
+        .firstWhere(
+          (item) => item.code == languageCode,
+          orElse: () => TtsLanguageOption(languageCode, languageCode),
+        )
+        .label;
+  }
+
+  static String _ttsModelDescription(AppLocalizations l, String modelId) =>
+      switch (modelId) {
+        'supertonic-3-hybrid' => l.ttsModelSupertonicDescription,
+        'piper-es-mx-claude-high-int8' => l.ttsModelPiperMexicoDescription,
+        'piper-es-es-davefx-medium-int8' => l.ttsModelPiperSpainDescription,
+        'kitten-nano-en-v0-8-int8' => l.ttsModelKittenDescription,
+        'kokoro-en-v0-19-int8' => l.ttsModelKokoroDescription,
+        'matcha-ljspeech-en' => l.ttsModelMatchaDescription,
+        'pocket-tts-int8' => l.ttsModelPocketDescription,
+        'zipvoice-distill-int8-zh-en' => l.ttsModelZipVoiceDescription,
+        _ => TtsModelCatalog.byId(modelId).description,
+      };
+
+  static String _ttsVoiceLabel(
+    AppLocalizations l,
+    TtsModelDefinition model,
+    String voiceId,
+  ) {
+    final compactVoice = RegExp(r'^([FM])(\d)$').firstMatch(voiceId);
+    if (compactVoice != null) {
+      final number = compactVoice.group(2)!;
+      final description = compactVoice.group(1) == 'F'
+          ? l.femaleVoice(number)
+          : l.maleVoice(number);
+      return '$voiceId · $description';
+    }
+    final kittenVoice = RegExp(r'^(female|male)-(\d)$').firstMatch(voiceId);
+    if (kittenVoice != null) {
+      final number = kittenVoice.group(2)!;
+      return kittenVoice.group(1) == 'female'
+          ? l.femaleVoice(number)
+          : l.maleVoice(number);
+    }
+    return switch (voiceId) {
+      'claude' => 'Claude · ${l.male}',
+      'davefx' => 'DaveFX · ${l.male}',
+      'af' => 'Default US · ${l.female}',
+      'ljspeech' => 'LJSpeech · ${l.female}',
+      'bria' => 'Bria · ${l.includedSample}',
+      'news-female' => 'News Female · ${l.includedSample}',
+      'news-female-2' => 'News Female 2 · ${l.includedSample}',
+      'leijun' => 'Lei Jun · ${l.includedSample}',
+      _ => model.voice(voiceId).label,
+    };
+  }
+
+  static String _ttsStatusDescription(
+    AppLocalizations l,
+    TtsLoadPhase phase,
+  ) =>
+      switch (phase) {
+        TtsLoadPhase.ready => l.ttsStatusReadyDescription,
+        TtsLoadPhase.checking => l.ttsStatusCheckingDescription,
+        TtsLoadPhase.downloading => l.ttsStatusDownloadingDescription,
+        TtsLoadPhase.loading => l.ttsStatusLoadingDescription,
+        TtsLoadPhase.error => l.ttsStatusErrorDescription,
+        TtsLoadPhase.idle => l.ttsStatusIdleDescription,
+      };
+
+  static String _captionStatusDescription(
+    AppLocalizations l,
+    LiveCaptionsPhase phase,
+  ) =>
+      switch (phase) {
+        LiveCaptionsPhase.idle => l.captionStatusIdle,
+        LiveCaptionsPhase.missingModel => l.captionStatusMissingModel,
+        LiveCaptionsPhase.downloading => l.captionStatusDownloading,
+        LiveCaptionsPhase.loading => l.captionStatusLoading,
+        LiveCaptionsPhase.listening => l.captionStatusListening,
+        LiveCaptionsPhase.transcribing => l.captionStatusTranscribing,
+        LiveCaptionsPhase.error => l.captionStatusError,
+      };
+
+  static Widget _ttsStatusCard(
+    AppLocalizations l,
+    TtsLoadState state, {
+    VoidCallback? onDownload,
+  }) {
+    final model = TtsModelCatalog.byId(state.modelId);
     final (label, color) = switch (state.phase) {
       TtsLoadPhase.ready => (l.ready, const Color(0xFF53FC18)),
       TtsLoadPhase.checking => (l.checking, Colors.lightBlueAccent),
       TtsLoadPhase.downloading => (l.downloading, Colors.orangeAccent),
       TtsLoadPhase.loading => (l.loading, Colors.amber),
       TtsLoadPhase.error => (l.error, Colors.redAccent),
-      TtsLoadPhase.idle => (l.idle, Colors.white38),
+      TtsLoadPhase.idle => (l.voiceStatusNotDownloaded, Colors.white38),
     };
-    final progressText = state.totalAssets > 0
-        ? l.assetsProgress(state.loadedAssets, state.totalAssets)
-        : null;
+
+    final isDownloading = state.phase == TtsLoadPhase.downloading;
+    final isLoading = state.phase == TtsLoadPhase.loading ||
+        state.phase == TtsLoadPhase.checking;
+    final isBusy = isDownloading || isLoading;
+
     final bytesText = state.totalBytes > 0
         ? '${_formatByteSize(state.loadedBytes)} / ${_formatByteSize(state.totalBytes)}'
         : null;
-    final assetText = state.currentFile
-        ?.split(RegExp(r'[\\/]'))
-        .where((segment) => segment.isNotEmpty)
-        .toList();
-    final currentFileLabel = assetText == null || assetText.isEmpty
-        ? null
-        : assetText.length >= 2
-            ? '${assetText[assetText.length - 2]}/${assetText.last}'
-            : assetText.last;
+    final percentageText = state.progress != null
+        ? '${((state.progress ?? 0) * 100).clamp(0, 100).toStringAsFixed(0)}%'
+        : null;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1B),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2E2E2E)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 7,
+                height: 7,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                'Sherpa TTS: $label',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  l.ttsModelStatusBadge(model.name, label),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
+              if (percentageText != null && isDownloading)
+                Text(
+                  percentageText,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 3),
           Text(
-            state.message,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            _ttsStatusDescription(l, state.phase),
+            maxLines: 2,
+            style: const TextStyle(color: Colors.white70, fontSize: 11),
           ),
-          if (state.progress != null) ...[
-            const SizedBox(height: 8),
+          if (isBusy) ...[
+            const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                minHeight: 6,
+                minHeight: 4,
                 value: state.progress,
                 backgroundColor: const Color(0xFF2A2A2A),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
+            if (bytesText != null) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  bytesText,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                ),
+              ),
+            ],
           ],
-          if (currentFileLabel != null && currentFileLabel.isNotEmpty) ...[
+          if (onDownload != null &&
+              (state.phase == TtsLoadPhase.idle ||
+                  state.phase == TtsLoadPhase.error)) ...[
             const SizedBox(height: 6),
-            Text(
-              l.currentFile(currentFileLabel),
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-          ],
-          if (progressText != null || bytesText != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              [progressText, bytesText]
-                  .whereType<String>()
-                  .where((v) => v.isNotEmpty)
-                  .join(' · '),
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
-            ),
-          ],
-          if (state.voiceStyle != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              l.voiceStatus(_voiceLabel(l, state.voiceStyle!)),
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-          ],
-          if (state.fromCache && state.cacheDirectory != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Cache: ${state.cacheDirectory}',
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
-            ),
-          ],
-          if (state.error != null && state.error!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              state.error!,
-              style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+            OutlinedButton.icon(
+              onPressed: onDownload,
+              icon: const Icon(Icons.download_rounded, size: 15),
+              label: Text(l.downloadTtsModel),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF53FC18),
+                side: const BorderSide(color: Color(0xFF3B6B2B)),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ],
         ],
@@ -2398,65 +2992,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  static Widget _sidebarSectionTile({
-    required String title,
-    required List<Widget> children,
-    bool initiallyExpanded = false,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Builder(
-          builder: (context) {
-            final theme = Theme.of(context);
-            return Theme(
-              data: theme.copyWith(
-                splashColor: Colors.white10,
-                highlightColor: Colors.white10,
-                dividerColor: Colors.transparent,
-              ),
-              child: ExpansionTile(
-                initiallyExpanded: initiallyExpanded,
-                maintainState: true,
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(bottom: 12),
-                iconColor: const Color(0xFF53FC18),
-                collapsedIconColor: Colors.white54,
-                shape: const Border(
-                  bottom: BorderSide(color: Color(0xFF2A2A2A)),
-                ),
-                collapsedShape: const Border(
-                  bottom: BorderSide(color: Color(0xFF2A2A2A)),
-                ),
-                title: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFF53FC18),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: children,
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-
   static Widget _section(String t) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(top: 6, bottom: 6),
         child: Text(
-          t,
+          t.toUpperCase(),
           style: const TextStyle(
             color: Color(0xFF53FC18),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
           ),
         ),
       );
@@ -2465,7 +3009,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         padding: const EdgeInsets.only(bottom: 4),
         child: Text(
           t,
-          style: const TextStyle(color: Colors.white54, fontSize: 12),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       );
 
@@ -2493,9 +3041,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
+          hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
           filled: true,
-          fillColor: const Color(0xFF2A2A2A),
+          fillColor: const Color(0xFF222222),
           isDense: true,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -2503,18 +3051,25 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ? IconButton(
                   tooltip: AppLocalizations.of(context)!.clear,
                   onPressed: onClear,
-                  splashRadius: 20,
+                  splashRadius: 16,
                   icon: const Icon(
                     Icons.close_rounded,
-                    size: 18,
+                    size: 16,
                     color: Colors.white54,
                   ),
                 )
               : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF333333)),
+          ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(6),
-            borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF333333)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF53FC18)),
           ),
         ),
       );
@@ -2556,17 +3111,18 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               l.dashboard,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
               ),
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: const Color(0xFF1E1E1E),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFF2F2F2F)),
+                border: Border.all(color: const Color(0xFF303030)),
               ),
               child: const Text(
                 'Ctrl+B',
@@ -2574,16 +3130,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   color: Colors.white54,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
+                  fontFamily: 'monospace',
                 ),
               ),
             ),
           ],
         ),
         if (badges.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: badges,
           ),
         ],
@@ -2604,9 +3161,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1B),
+        color: const Color(0xFF1F1F1F),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0xFF2C2C2C)),
       ),
@@ -2614,23 +3171,23 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 6,
+            height: 6,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Flexible(
             child: Text(
-              '$platform - $value',
+              '$platform: $value',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               softWrap: false,
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2645,102 +3202,93 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     bool value,
     ValueChanged<bool> onChanged,
   ) =>
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: const Color(0xFF53FC18),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ],
-      );
-
-  static Widget _sliderRow(
-    String label,
-    double value,
-    double min,
-    double max,
-    ValueChanged<double> onChanged, {
-    int? divisions,
-  }) =>
       Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              width: 120,
-              child: Text(label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            ),
             Expanded(
-              child: Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                divisions: divisions,
-                activeColor: const Color(0xFF53FC18),
-                inactiveColor: const Color(0xFF2A2A2A),
-                onChanged: onChanged,
+              flex: 2,
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
-            SizedBox(
-              width: 36,
-              child: Text(
-                value.toStringAsFixed(value < 2 ? 2 : 0),
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-                textAlign: TextAlign.right,
-              ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: const Color(0xFF53FC18),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],
         ),
       );
 
-  static Widget _dropdownRow(String label, String value, List<String> options,
-          ValueChanged<String> onChanged,
-          {String Function(String value)? optionLabel}) =>
+  static Widget _dropdownRow(
+    String label,
+    String value,
+    List<String> options,
+    ValueChanged<String> onChanged, {
+    String Function(String value)? optionLabel,
+  }) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            DropdownButton<String>(
-              value: value,
-              dropdownColor: const Color(0xFF1E1E1E),
-              items: options
-                  .map((e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(optionLabel?.call(e) ?? e),
-                      ))
-                  .toList(),
-              selectedItemBuilder: (context) => options
-                  .map((e) => Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          optionLabel?.call(e) ?? e,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) onChanged(v);
-              },
+            Expanded(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF222222),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF333333)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: value,
+                    isDense: true,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    items: options
+                        .map((e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(optionLabel?.call(e) ?? e),
+                            ))
+                        .toList(),
+                    selectedItemBuilder: (context) => options
+                        .map((e) => Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                optionLabel?.call(e) ?? e,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) onChanged(v);
+                    },
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       );
-
-  static String _voiceLabel(AppLocalizations l, String value) {
-    final match = RegExp(r'^([MF])(\d+)$').firstMatch(value.trim());
-    if (match == null) return value;
-    final number = match.group(2)!;
-    return match.group(1) == 'F' ? l.femaleVoice(number) : l.maleVoice(number);
-  }
 
   static Widget _inlineErrorMessage(
     AppLocalizations l,
@@ -2750,12 +3298,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final normalized = error.replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFB3261E).withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFFFF6B6B).withValues(alpha: 0.5),
+          color: const Color(0xFFFF6B6B).withValues(alpha: 0.4),
         ),
       ),
       child: Row(
@@ -2765,18 +3313,18 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             padding: EdgeInsets.only(top: 1),
             child: Icon(
               Icons.error_outline_rounded,
-              size: 16,
+              size: 15,
               color: Color(0xFFFF8A80),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               l.platformError(platform, normalized),
               style: const TextStyle(
                 color: Color(0xFFFFB4AB),
                 fontSize: 11,
-                height: 1.35,
+                height: 1.3,
               ),
             ),
           ),
@@ -2794,11 +3342,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1B),
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2E2E2E)),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2810,25 +3358,25 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   title,
                   style: const TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               SizedBox(
-                height: 28,
+                height: 26,
                 child: OutlinedButton.icon(
                   onPressed: onCopy,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFACCBFF),
                     side: const BorderSide(color: Color(0xFF35527A)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  icon: const Icon(Icons.copy_rounded, size: 14),
+                  icon: const Icon(Icons.copy_rounded, size: 12),
                   label: Text(
                     l.copy,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -2836,20 +3384,24 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SelectableText(
             overlayUrl,
             style: const TextStyle(
               color: Color(0xFFACCBFF),
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             description,
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 10,
+              height: 1.3,
+            ),
           ),
         ],
       ),
@@ -2862,11 +3414,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: const Color(0xFF2C2C2C)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2875,14 +3427,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             l.testAlerts,
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               _alertTestButton(
                 l.superChat,
@@ -2909,12 +3461,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFFACCBFF),
         side: const BorderSide(color: Color(0xFF35527A)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -2949,7 +3501,8 @@ class _ObsStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (title, color) = _obsStatusVisuals(state);
+    final l = AppLocalizations.of(context);
+    final (title, color) = _obsStatusVisuals(state, l);
     final showSecondaryStatus =
         !_obsStatusMessageDuplicatesTitle(title, state.statusMessage);
 
@@ -3020,7 +3573,9 @@ class _ObsStatusCard extends StatelessWidget {
           if (_showObsScene(displaySettings, state)) ...[
             const SizedBox(height: 6),
             Text(
-              'Scene: ${state.currentScene}',
+              l != null
+                  ? l.obsScenePrefix(state.currentScene)
+                  : 'Scene: ${state.currentScene}',
               style: const TextStyle(color: Colors.white54, fontSize: 11),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -3029,7 +3584,9 @@ class _ObsStatusCard extends StatelessWidget {
           if (_showObsStreamState(displaySettings)) ...[
             const SizedBox(height: 6),
             Text(
-              state.outputActive ? 'Output: Live' : 'Output: Offline',
+              state.outputActive
+                  ? (l?.obsOutputLive ?? 'Output: Live')
+                  : (l?.obsOutputOffline ?? 'Output: Offline'),
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
@@ -3037,7 +3594,9 @@ class _ObsStatusCard extends StatelessWidget {
               state.recordingActive) ...[
             const SizedBox(height: 6),
             Text(
-              state.recordingPaused ? 'Recording: Paused' : 'Recording: Active',
+              state.recordingPaused
+                  ? (l?.obsRecordingPaused ?? 'Recording: Paused')
+                  : (l?.obsRecordingActive ?? 'Recording: Active'),
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -3105,87 +3664,6 @@ class _ObsStatusCard extends StatelessWidget {
   }
 }
 
-(String, Color) _obsStatusVisuals(ObsState state) {
-  return switch ((
-    state.error,
-    state.connecting,
-    state.outputActive,
-    state.recordingActive,
-    state.connected,
-  )) {
-    (final String? error, _, _, _, _) when error != null && error.isNotEmpty =>
-      ('OBS Error', const Color(0xFFFF8A80)),
-    (_, true, _, _, _) => ('OBS Connecting', Colors.amberAccent),
-    (_, _, true, _, _) => ('OBS Live', const Color(0xFF53FC18)),
-    (_, _, _, true, _) => ('OBS Recording', const Color(0xFFFF6B6B)),
-    (_, _, _, _, true) => ('OBS Connected', const Color(0xFF86B8FF)),
-    _ => ('OBS Ready', Colors.white54),
-  };
-}
-
-bool _obsStatusMessageDuplicatesTitle(String title, String statusMessage) {
-  final normalizedTitle = title.toLowerCase().replaceFirst('obs ', '').trim();
-  final normalizedStatus = statusMessage.toLowerCase().trim();
-  return normalizedTitle == normalizedStatus;
-}
-
-bool _showObsStreamState(SettingsModel? settings) =>
-    settings?.obsShowStreamState ?? true;
-
-bool _showObsScene(SettingsModel? settings, ObsState state) =>
-    (settings?.obsShowCurrentScene ?? true) && state.currentScene.isNotEmpty;
-
-bool _showObsBitrate(SettingsModel? settings) =>
-    settings?.obsShowBitrate ?? true;
-
-bool _showObsFps(SettingsModel? settings) => settings?.obsShowFps ?? true;
-
-bool _showObsDroppedFrames(SettingsModel? settings) =>
-    settings?.obsShowDroppedFrames ?? true;
-
-bool _showObsRecordingState(SettingsModel? settings) =>
-    settings?.obsShowRecordingState ?? true;
-
-bool _showObsRecordingDuration(SettingsModel? settings) =>
-    settings?.obsShowRecordingDuration ?? true;
-
-bool _showObsRecordingSize(SettingsModel? settings) =>
-    settings?.obsShowRecordingSize ?? false;
-
-String _formatObsDuration(int durationMs) {
-  final duration = Duration(milliseconds: durationMs);
-  final hours = duration.inHours.toString().padLeft(2, '0');
-  final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-  final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-  return '$hours:$minutes:$seconds';
-}
-
-String _formatObsBytes(int bytes) {
-  if (bytes < 1024 * 1024) {
-    return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  }
-  if (bytes < 1024 * 1024 * 1024) {
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-}
-
-Color _obsDropBadgeForeground(ObsDropTrend trend) {
-  return switch (trend) {
-    ObsDropTrend.rising => const Color(0xFFFF6B6B),
-    ObsDropTrend.steady => const Color(0xFFFFD166),
-    ObsDropTrend.normal => const Color(0xFFE7E7E7),
-  };
-}
-
-Color _obsDropBadgeBackground(ObsDropTrend trend) {
-  return switch (trend) {
-    ObsDropTrend.rising => const Color(0x33FF6B6B),
-    ObsDropTrend.steady => const Color(0x33FFD166),
-    ObsDropTrend.normal => const Color(0xFF2A2A2A),
-  };
-}
-
 class _ObsCompactPill extends StatelessWidget {
   const _ObsCompactPill({
     required this.state,
@@ -3203,151 +3681,70 @@ class _ObsCompactPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final outputLabel = state.outputActive ? 'LIVE' : 'OFF';
-    final sceneLabel =
-        state.currentScene.trim().isEmpty ? null : state.currentScene.trim();
+    final showBubble = styleSettings.showBubble;
     final bubbleOpacity = styleSettings.messageOpacity.clamp(0.0, 1.0);
-    const neutralForeground = Color(0xFFE7E7E7);
     final backgroundColor = _obsCompactBackground(
-      showBubble: styleSettings.showBubble,
+      showBubble: showBubble,
       bubbleOpacity: bubbleOpacity,
     );
-    final shadow = styleSettings.showBubble && styleSettings.showBubbleShadow
-        ? const [
-            BoxShadow(
-              color: Color(0x4D000000),
-              blurRadius: 32,
-              offset: Offset(0, 8),
-            ),
-          ]
-        : const <BoxShadow>[];
     final border = _obsCompactBorder(
-      showBubble: styleSettings.showBubble,
+      showBubble: showBubble,
       bubbleOpacity: bubbleOpacity,
     );
-    final fontSize = styleSettings.fontSize;
-    final badgeFontSize = (fontSize * 0.68).clamp(9.0, 12.0);
-    final pillRadius = (styleSettings.borderRadius + 18).clamp(18.0, 30.0);
+    final radius = BorderRadius.circular(styleSettings.borderRadius);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(pillRadius),
+        borderRadius: radius,
         border: border,
-        boxShadow: shadow,
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 8,
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  state.connected && _showObsScene(displaySettings, state)
+                      ? state.currentScene
+                      : title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            if (_showObsStreamState(displaySettings)) ...[
-              const SizedBox(width: 8),
-              _ObsPillBadge(
-                label: outputLabel,
-                foreground: neutralForeground,
-                background: Colors.transparent,
-                fontSize: badgeFontSize,
-              ),
-            ],
-            if (_showObsRecordingState(displaySettings) &&
-                state.recordingActive) ...[
-              const SizedBox(width: 6),
-              _ObsPillBadge(
-                label: state.recordingPaused ? 'PAUSED' : 'REC',
-                foreground: const Color(0xFFFFB4AB),
-                background: Colors.transparent,
-                fontSize: badgeFontSize,
-              ),
-            ],
-            if (_showObsRecordingDuration(displaySettings) &&
-                state.recordingActive) ...[
-              const SizedBox(width: 6),
-              _ObsPillBadge(
-                label: _formatObsDuration(state.recordingDurationMs),
-                foreground: neutralForeground,
-                background: Colors.transparent,
-                fontSize: badgeFontSize,
-              ),
-            ],
-            if (_showObsRecordingSize(displaySettings) &&
-                state.recordingActive) ...[
-              const SizedBox(width: 6),
-              _ObsPillBadge(
-                label: _formatObsBytes(state.recordingBytes),
-                foreground: neutralForeground,
-                background: Colors.transparent,
-                fontSize: badgeFontSize,
-              ),
-            ],
-            if (state.connected) ...[
-              if (_showObsBitrate(displaySettings)) ...[
+              if (state.connected && _showObsFps(displaySettings)) ...[
                 const SizedBox(width: 6),
+                _ObsPillBadge(
+                  label: '${state.fps.toStringAsFixed(0)} FPS',
+                  foreground: const Color(0xFFE7E7E7),
+                  background: const Color(0xFF242424),
+                  fontSize: 10,
+                ),
+              ],
+              if (state.connected && _showObsBitrate(displaySettings)) ...[
+                const SizedBox(width: 4),
                 _ObsPillBadge(
                   label: '${state.bitrateKbps.toStringAsFixed(0)}k',
-                  foreground: neutralForeground,
-                  background: Colors.transparent,
-                  fontSize: badgeFontSize,
-                ),
-              ],
-              if (_showObsFps(displaySettings)) ...[
-                const SizedBox(width: 6),
-                _ObsPillBadge(
-                  label: '${state.fps.toStringAsFixed(0)}fps',
-                  foreground: neutralForeground,
-                  background: Colors.transparent,
-                  fontSize: badgeFontSize,
-                ),
-              ],
-              if (_showObsDroppedFrames(displaySettings)) ...[
-                const SizedBox(width: 6),
-                _ObsPillBadge(
-                  label: state.dropPercentage > 0
-                      ? 'drop ${state.dropPercentage.toStringAsFixed(1)}%'
-                      : 'drop 0',
-                  foreground: _obsDropBadgeForeground(state.dropTrend),
-                  background: Colors.transparent,
-                  fontSize: badgeFontSize,
+                  foreground: const Color(0xFFE7E7E7),
+                  background: const Color(0xFF242424),
+                  fontSize: 10,
                 ),
               ],
             ],
-            if (_showObsScene(displaySettings, state) &&
-                sceneLabel != null) ...[
-              const SizedBox(width: 6),
-              _ObsPillBadge(
-                label: sceneLabel,
-                foreground: neutralForeground,
-                background: Colors.transparent,
-                maxWidth: 150,
-                fontSize: badgeFontSize,
-              ),
-            ],
-            if (state.error != null && state.error!.isNotEmpty) ...[
-              const SizedBox(width: 6),
-              Tooltip(
-                message: state.error!,
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  size: 14,
-                  color: Color(0xFFFF8A80),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -3360,41 +3757,138 @@ class _ObsPillBadge extends StatelessWidget {
     required this.foreground,
     required this.background,
     required this.fontSize,
-    this.maxWidth,
   });
 
   final String label;
   final Color foreground;
   final Color background;
   final double fontSize;
-  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: foreground,
           fontSize: fontSize,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'monospace',
         ),
       ),
     );
+  }
+}
 
-    if (maxWidth == null) return badge;
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth!),
-      child: badge,
+(String, Color) _obsStatusVisuals(ObsState state, [AppLocalizations? l]) {
+  if (state.connecting) {
+    return (l?.obsStatusConnecting ?? 'OBS: Connecting...', Colors.amber);
+  }
+  if (!state.connected) {
+    return (l?.obsStatusDisconnected ?? 'OBS: Disconnected', Colors.white38);
+  }
+  if (state.outputActive && state.recordingActive) {
+    return (
+      l?.obsStatusLiveAndRec ?? 'OBS: Live + Rec',
+      const Color(0xFF53FC18)
     );
   }
+  if (state.outputActive) {
+    return (l?.obsStatusLive ?? 'OBS: Live', const Color(0xFF53FC18));
+  }
+  if (state.recordingActive) {
+    return (l?.obsStatusRecording ?? 'OBS: Recording', const Color(0xFFFF8A80));
+  }
+  return (l?.obsStatusConnected ?? 'OBS: Connected', const Color(0xFF5B9CFF));
+}
+
+bool _obsStatusMessageDuplicatesTitle(String title, String message) {
+  final cleanTitle = title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  final cleanMessage =
+      message.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  return cleanTitle.contains(cleanMessage) || cleanMessage.contains(cleanTitle);
+}
+
+bool _showObsScene(SettingsModel? settings, ObsState state) {
+  if (settings == null) return state.currentScene.isNotEmpty;
+  return settings.obsShowCurrentScene && state.currentScene.isNotEmpty;
+}
+
+bool _showObsStreamState(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowStreamState;
+}
+
+bool _showObsFps(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowFps;
+}
+
+bool _showObsBitrate(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowBitrate;
+}
+
+bool _showObsDroppedFrames(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowDroppedFrames;
+}
+
+bool _showObsRecordingState(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowRecordingState;
+}
+
+bool _showObsRecordingDuration(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowRecordingDuration;
+}
+
+bool _showObsRecordingSize(SettingsModel? settings) {
+  if (settings == null) return true;
+  return settings.obsShowRecordingSize;
+}
+
+Color _obsDropBadgeForeground(ObsDropTrend trend) {
+  return switch (trend) {
+    ObsDropTrend.rising => const Color(0xFFFFB4AB),
+    ObsDropTrend.steady => Colors.amber,
+    ObsDropTrend.normal => Colors.white70,
+  };
+}
+
+Color _obsDropBadgeBackground(ObsDropTrend trend) {
+  return switch (trend) {
+    ObsDropTrend.rising => const Color(0x44FF5252),
+    ObsDropTrend.steady => const Color(0x33FFC107),
+    ObsDropTrend.normal => const Color(0xFF2A2A2A),
+  };
+}
+
+String _formatObsDuration(int ms) {
+  final totalSeconds = (ms / 1000).floor();
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+  return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+}
+
+String _formatObsBytes(int bytes) {
+  if (bytes <= 0) return '0 MB';
+  final mb = bytes / (1024 * 1024);
+  if (mb >= 1024) {
+    return '${(mb / 1024).toStringAsFixed(1)} GB';
+  }
+  return '${mb.toStringAsFixed(1)} MB';
 }
 
 Color _obsCompactBackground({

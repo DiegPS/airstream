@@ -184,6 +184,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'TTS will be disabled and the selected model will be deleted from this device. It can be downloaded again later.';
 
   @override
+  String removeTtsModelTitle(String model) {
+    return 'Remove $model?';
+  }
+
+  @override
+  String removeTtsModelConfirmationNamed(String model) {
+    return '$model will be deleted from this device and TTS will be turned off. You can download it again later.';
+  }
+
+  @override
   String get remove => 'Remove';
 
   @override
@@ -551,7 +561,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captionsDescription =>
-      'Sherpa listens to the microphone, detects speech, and creates captions or translations without sending audio to the Internet.';
+      'Listens to your microphone, detects speech, and creates live captions or translations in real-time without sending audio to the Internet.';
 
   @override
   String get captionsEnabled => 'Enabled';
@@ -566,7 +576,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sendCaptionsToObs => 'Send to OBS overlay';
 
   @override
-  String get noiseReduction => 'GTCRN noise reduction';
+  String get noiseReduction => 'Reduce microphone background noise';
 
   @override
   String get voiceCommandsObs => 'OBS voice commands';
@@ -579,10 +589,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.';
 
   @override
-  String get captionModelManual => 'Canary model · manual download';
+  String get captionModelManual => 'Offline captions · manual download';
 
   @override
   String get downloadCaptionModel => 'Download caption model';
+
+  @override
+  String get captionStatusIdle => 'Offline captions are off.';
+
+  @override
+  String get captionStatusMissingModel =>
+      'Download offline speech recognition to begin.';
+
+  @override
+  String get captionStatusDownloading =>
+      'Downloading offline speech recognition…';
+
+  @override
+  String get captionStatusLoading => 'Preparing offline speech recognition…';
+
+  @override
+  String get captionStatusListening => 'Listening to the microphone…';
+
+  @override
+  String get captionStatusTranscribing => 'Creating captions locally…';
+
+  @override
+  String get captionStatusError => 'Offline captions could not start.';
 
   @override
   String get obsCaptions => 'OBS captions';
@@ -590,4 +623,242 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get obsCaptionsDescription =>
       'Independent browser source for live captions and translation.';
+
+  @override
+  String get ttsAndVoice => 'TTS & Voice';
+
+  @override
+  String get obsAndOverlay => 'OBS & Overlay';
+
+  @override
+  String get systemTab => 'System & Window';
+
+  @override
+  String get desktopWindow => 'Desktop Window';
+
+  @override
+  String get frameless => 'Frameless';
+
+  @override
+  String get framelessDescription => 'No title bar, transparent borders';
+
+  @override
+  String get clickThrough => 'Click-Through';
+
+  @override
+  String get clickThroughDescription =>
+      'Clicks pass through the window (WS_EX_TRANSPARENT)';
+
+  @override
+  String get alwaysOnTop => 'Always on Top';
+
+  @override
+  String get alwaysOnTopDescription => 'Keep on top of all other windows';
+
+  @override
+  String get antiCapture => 'Anti-Capture / Privacy';
+
+  @override
+  String get antiCaptureDescription =>
+      'Hide window from screen capture and OBS';
+
+  @override
+  String get keyboardShortcuts => 'Keyboard Shortcuts';
+
+  @override
+  String get toggleTopBarShortcut => 'Toggle top bar';
+
+  @override
+  String get toggleAlwaysOnTopShortcut => 'Toggle Always on Top';
+
+  @override
+  String get toggleClickThroughShortcut => 'Toggle Click-Through';
+
+  @override
+  String get alwaysOnTopActiveTooltip => 'Disable Always on Top (Ctrl+Shift+P)';
+
+  @override
+  String get alwaysOnTopInactiveTooltip => 'Always on Top (Ctrl+Shift+P)';
+
+  @override
+  String get clickThroughActiveTooltip =>
+      'Click-Through active. Disable (Ctrl+Shift+C)';
+
+  @override
+  String get clickThroughInactiveTooltip =>
+      'Enable Click-Through (Ctrl+Shift+C)';
+
+  @override
+  String get antiCaptureActiveTooltip =>
+      'Privacy mode active — window hidden from screen share/OBS';
+
+  @override
+  String get antiCaptureInactiveTooltip => 'Hide from screen share / captures';
+
+  @override
+  String get minimize => 'Minimize';
+
+  @override
+  String get maximize => 'Maximize';
+
+  @override
+  String get restore => 'Restore';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get obsStatusConnecting => 'OBS: Connecting...';
+
+  @override
+  String get obsStatusDisconnected => 'OBS: Disconnected';
+
+  @override
+  String get obsStatusLiveAndRec => 'OBS: Live + Rec';
+
+  @override
+  String get obsStatusLive => 'OBS: Live';
+
+  @override
+  String get obsStatusRecording => 'OBS: Recording';
+
+  @override
+  String get obsStatusConnected => 'OBS: Connected';
+
+  @override
+  String obsScenePrefix(String scene) {
+    return 'Scene: $scene';
+  }
+
+  @override
+  String get obsOutputLive => 'Output: Live';
+
+  @override
+  String get obsOutputOffline => 'Output: Offline';
+
+  @override
+  String get obsRecordingPaused => 'Recording: Paused';
+
+  @override
+  String get obsRecordingActive => 'Recording: Active';
+
+  @override
+  String get ttsCardTitle => 'Voice Reader (TTS)';
+
+  @override
+  String voiceStatusBadge(String status) {
+    return 'Voice: $status';
+  }
+
+  @override
+  String get voiceStatusNotDownloaded => 'Not downloaded';
+
+  @override
+  String get ttsSelectedModel => 'TTS';
+
+  @override
+  String ttsModelStatusBadge(String model, String status) {
+    return '$model · $status';
+  }
+
+  @override
+  String ttsModelTechnicalDetails(
+      String download, String installed, String license, String version) {
+    return 'Download $download · Installed $installed · $license · Version $version';
+  }
+
+  @override
+  String ttsModelStorageDetails(String download, String installed) {
+    return 'Download $download · Disk space $installed';
+  }
+
+  @override
+  String ttsModelVariant(String variant) {
+    return 'Variant: $variant';
+  }
+
+  @override
+  String get ttsModelSupertonicDescription =>
+      '10 built-in voices optimized for quality and speed.';
+
+  @override
+  String get ttsModelPiperMexicoDescription =>
+      'Fast, efficient single-speaker synthesis.';
+
+  @override
+  String get ttsModelPiperSpainDescription =>
+      'Fast, efficient single-speaker synthesis.';
+
+  @override
+  String get ttsModelKittenDescription =>
+      'Compact model with four female and four male voices.';
+
+  @override
+  String get ttsModelKokoroDescription =>
+      'Expressive model with 11 named voices.';
+
+  @override
+  String get ttsModelMatchaDescription =>
+      'Smooth, natural single-voice synthesis.';
+
+  @override
+  String get ttsModelPocketDescription =>
+      'Fast zero-shot voice cloning from a reference WAV.';
+
+  @override
+  String get ttsModelZipVoiceDescription =>
+      'Advanced voice cloning using a WAV and its exact transcript.';
+
+  @override
+  String get spanishMexico => 'Spanish (Mexico)';
+
+  @override
+  String get spanishSpain => 'Spanish (Spain)';
+
+  @override
+  String get ttsStatusIdleDescription =>
+      'Download this exact model when you want to use it.';
+
+  @override
+  String get ttsStatusCheckingDescription =>
+      'Checking local model files and integrity…';
+
+  @override
+  String get ttsStatusDownloadingDescription =>
+      'Downloading verified model files…';
+
+  @override
+  String get ttsStatusLoadingDescription =>
+      'Loading the selected model into memory…';
+
+  @override
+  String get ttsStatusReadyDescription => 'Ready for local synthesis.';
+
+  @override
+  String get ttsStatusErrorDescription =>
+      'The selected model could not be prepared.';
+
+  @override
+  String ttsInferenceSteps(int count) {
+    return '$count inference steps';
+  }
+
+  @override
+  String get ttsTestTextHint => 'Type something to test the selected TTS…';
+
+  @override
+  String get ttsDefaultTestText =>
+      'Hello, this is a test of the selected voice.';
+
+  @override
+  String get separatorTextHint => 'says';
+
+  @override
+  String get male => 'Male';
+
+  @override
+  String get female => 'Female';
+
+  @override
+  String get includedSample => 'Included sample';
 }

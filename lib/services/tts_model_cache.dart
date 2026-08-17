@@ -373,12 +373,18 @@ class TtsModelCache {
     final sink =
         partial.openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
     var received = offset;
+    var lastReported = DateTime.now();
     try {
       await for (final chunk in response.stream) {
         cancellation.throwIfCancelled();
         sink.add(chunk);
         received += chunk.length;
-        onProgress(received);
+        final now = DateTime.now();
+        if (now.difference(lastReported).inMilliseconds >= 50 ||
+            received == download.bytes) {
+          lastReported = now;
+          onProgress(received);
+        }
       }
     } finally {
       await sink.flush();
@@ -423,6 +429,8 @@ class TtsModelCache {
       (index) => File('${partial.path}.segment.$index'),
     );
 
+    var lastReported = DateTime.now();
+
     await Future.wait(List.generate(segmentCount, (index) async {
       final start = index * baseSize;
       final end = index == segmentCount - 1
@@ -457,7 +465,13 @@ class TtsModelCache {
           sink.add(chunk);
           existing += chunk.length;
           receivedBySegment[index] = existing;
-          onProgress(receivedBySegment.fold(0, (sum, value) => sum + value));
+          final total = receivedBySegment.fold(0, (sum, value) => sum + value);
+          final now = DateTime.now();
+          if (now.difference(lastReported).inMilliseconds >= 50 ||
+              total == download.bytes) {
+            lastReported = now;
+            onProgress(total);
+          }
         }
       } finally {
         await sink.flush();

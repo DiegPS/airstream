@@ -189,8 +189,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition supertonic = TtsModelDefinition(
     id: 'supertonic-3-hybrid',
     version: '2026-05-11-v1',
-    name: 'Supertonic 3 Hybrid',
-    description: 'Recommended · 31 languages · 10 voices · clean FP32 vocoder',
+    name: 'Supertonic',
+    description: '31 languages, 10 voices, hybrid quantization',
     family: TtsModelFamily.supertonic,
     downloads: [
       TtsModelDownload(
@@ -241,8 +241,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition piperMexico = TtsModelDefinition(
     id: 'piper-es-mx-claude-high-int8',
     version: '2025-12-05',
-    name: 'Piper Claude · Español México',
-    description: 'Fast · Mexican Spanish · high quality · 1 voice',
+    name: 'Piper',
+    description: 'Mexican Spanish, high-quality Claude voice',
     family: TtsModelFamily.vits,
     downloads: [
       TtsModelDownload(
@@ -266,7 +266,7 @@ class TtsModelCatalog {
       'tokens': 'tokens.txt',
       'dataDir': 'espeak-ng-data',
     },
-    languages: const [TtsLanguageOption('es', 'Español México')],
+    languages: const [TtsLanguageOption('es-MX', 'Español (México)')],
     voices: const [TtsVoiceOption('claude', 'Claude · Masculina', 0)],
     licenseName: 'Apache-2.0',
     licenseUri:
@@ -276,8 +276,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition piperSpain = TtsModelDefinition(
     id: 'piper-es-es-davefx-medium-int8',
     version: '2025-12-05',
-    name: 'Piper DaveFX · Español España',
-    description: 'Fast · European Spanish · medium quality · 1 voice',
+    name: 'Piper',
+    description: 'European Spanish, medium-quality DaveFX voice',
     family: TtsModelFamily.vits,
     downloads: [
       TtsModelDownload(
@@ -301,7 +301,7 @@ class TtsModelCatalog {
       'tokens': 'tokens.txt',
       'dataDir': 'espeak-ng-data',
     },
-    languages: const [TtsLanguageOption('es', 'Español España')],
+    languages: const [TtsLanguageOption('es-ES', 'Español (España)')],
     voices: const [TtsVoiceOption('davefx', 'DaveFX · Masculina', 0)],
     licenseName: 'Model-specific Piper license',
     licenseUri: Uri.parse('https://github.com/rhasspy/piper'),
@@ -310,8 +310,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition kitten = TtsModelDefinition(
     id: 'kitten-nano-en-v0-8-int8',
     version: '2026-05-12',
-    name: 'Kitten Nano 0.8',
-    description: 'Tiny · English · 8 voices · INT8',
+    name: 'KittenTTS',
+    description: 'Compact English model with 8 voices',
     family: TtsModelFamily.kitten,
     downloads: [
       TtsModelDownload(
@@ -346,8 +346,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition kokoro = TtsModelDefinition(
     id: 'kokoro-en-v0-19-int8',
     version: '2025-08-10',
-    name: 'Kokoro 82M',
-    description: 'Natural English · US/UK · 11 voices · INT8',
+    name: 'Kokoro',
+    description: 'English model with 11 US and UK voices',
     family: TtsModelFamily.kokoro,
     downloads: [
       TtsModelDownload(
@@ -382,8 +382,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition matcha = TtsModelDefinition(
     id: 'matcha-ljspeech-en',
     version: '2026-07-16',
-    name: 'Matcha LJSpeech',
-    description: 'Expressive English · female · flow matching',
+    name: 'Matcha-TTS',
+    description: 'English LJSpeech acoustic model with Vocos vocoder',
     family: TtsModelFamily.matcha,
     downloads: [
       TtsModelDownload(
@@ -428,8 +428,8 @@ class TtsModelCatalog {
   static final TtsModelDefinition pocket = TtsModelDefinition(
     id: 'pocket-tts-int8',
     version: '2026-01-26',
-    name: 'PocketTTS Voice Clone',
-    description: 'Offline voice cloning · reference audio only',
+    name: 'Pocket TTS',
+    description: 'English zero-shot voice cloning from a reference WAV',
     family: TtsModelFamily.pocket,
     downloads: [
       TtsModelDownload(
@@ -448,53 +448,43 @@ class TtsModelCatalog {
       'lm_main.int8.onnx',
       'encoder.onnx',
       'decoder.int8.onnx',
-      'text_conditioner.onnx',
-      'vocab.json',
-      'token_scores.json',
-      'test_wavs/loona.wav',
+      'tokens.txt',
+      'espeak-ng-data',
+      'test_wavs/bria.wav',
     ],
     modelFiles: const {
       'lmFlow': 'lm_flow.int8.onnx',
       'lmMain': 'lm_main.int8.onnx',
       'encoder': 'encoder.onnx',
       'decoder': 'decoder.int8.onnx',
-      'textConditioner': 'text_conditioner.onnx',
-      'vocabJson': 'vocab.json',
-      'tokenScoresJson': 'token_scores.json',
+      'tokens': 'tokens.txt',
+      'dataDir': 'espeak-ng-data',
     },
-    languages: const [
-      TtsLanguageOption('en', 'English'),
-      TtsLanguageOption('fr', 'Français'),
-    ],
+    languages: const [TtsLanguageOption('en', 'English')],
     voices: const [
-      TtsVoiceOption('loona', 'Loona · Sample', 0,
-          referenceAudio: 'test_wavs/loona.wav'),
       TtsVoiceOption('bria', 'Bria · Sample', 0,
           referenceAudio: 'test_wavs/bria.wav'),
-      TtsVoiceOption('hibiki', 'Hibiki · Sample', 0,
-          referenceAudio: 'test_wavs/sample_fr_hibiki_crepes.wav'),
     ],
     referenceMode: TtsReferenceMode.audio,
-    licenseName: 'CC BY 4.0; upstream usage restrictions may apply',
+    defaultSteps: 4,
+    licenseName: 'Apache-2.0',
     licenseUri: Uri.parse('https://github.com/kyutai-labs/pocket-tts'),
-    licenseNotice:
-        'Review the bundled model license before public or commercial use.',
   );
 
   static final TtsModelDefinition zipVoice = TtsModelDefinition(
-    id: 'zipvoice-distill-zh-en-int8',
-    version: '2025-12-11',
-    name: 'ZipVoice Voice Clone',
-    description: 'English/Chinese cloning · reference audio + transcript',
+    id: 'zipvoice-distill-int8-zh-en',
+    version: '2026-06-18',
+    name: 'ZipVoice',
+    description: 'Chinese and English voice cloning with a transcript',
     family: TtsModelFamily.zipvoice,
     downloads: [
       TtsModelDownload(
         uri:
             _ttsAsset('sherpa-onnx-zipvoice-distill-int8-zh-en-emilia.tar.bz2'),
         fileName: 'sherpa-onnx-zipvoice-distill-int8-zh-en-emilia.tar.bz2',
-        bytes: 109162785,
+        bytes: 147573432,
         sha256:
-            '77219c8b40f4ee8d73a7f902305ff6c1128ef9b54461c41b4ca6ed890b6c2803',
+            '6be8482431cb7f1bfa9bf17b6a1209b5526d17dfd1ec676be981d39235cb994f',
         isArchive: true,
       ),
       TtsModelDownload(

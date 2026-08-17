@@ -56,11 +56,25 @@
   "removeTtsModel": "Remove downloaded model",
   "downloadTtsModel": "Download model",
   "removeTtsModelConfirmation": "TTS will be disabled and the selected model will be deleted from this device. It can be downloaded again later.",
+  "removeTtsModelTitle": "Remove {model}?",
+  "@removeTtsModelTitle": {
+    "placeholders": { "model": { "type": "String" } }
+  },
+  "removeTtsModelConfirmationNamed": "{model} will be deleted from this device and TTS will be turned off. You can download it again later.",
+  "@removeTtsModelConfirmationNamed": {
+    "placeholders": { "model": { "type": "String" } }
+  },
   "remove": "Remove",
   "cancel": "Cancel",
   "ttsModelRemoved": "The TTS model was removed.",
   "ttsModelRemovalFailed": "The TTS model could not be removed: {error}",
-  "@ttsModelRemovalFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@ttsModelRemovalFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "testText": "Test text",
   "playingTts": "Playing TTS...",
   "loadingTts": "Loading TTS...",
@@ -99,7 +113,13 @@
   "alertsOverlayUrlCopied": "Alerts overlay URL copied",
   "oneOverlayClientConnected": "1 overlay client connected",
   "overlayClientsConnected": "{count} overlay clients connected",
-  "@overlayClientsConnected": {"placeholders": {"count": {"type": "int"}}},
+  "@overlayClientsConnected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "overlayReloadSent": "Overlay reload sent",
   "noOverlayClientConnected": "No overlay client connected",
   "reloadOverlay": "Reload Overlay",
@@ -154,17 +174,59 @@
   "error": "Error",
   "idle": "Idle",
   "assetsProgress": "{loaded}/{total} assets",
-  "@assetsProgress": {"placeholders": {"loaded": {"type": "int"}, "total": {"type": "int"}}},
+  "@assetsProgress": {
+    "placeholders": {
+      "loaded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "currentFile": "Current: {file}",
-  "@currentFile": {"placeholders": {"file": {"type": "String"}}},
+  "@currentFile": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
   "voiceStatus": "Voice: {voice}",
-  "@voiceStatus": {"placeholders": {"voice": {"type": "String"}}},
+  "@voiceStatus": {
+    "placeholders": {
+      "voice": {
+        "type": "String"
+      }
+    }
+  },
   "maleVoice": "Male {number}",
-  "@maleVoice": {"placeholders": {"number": {"type": "String"}}},
+  "@maleVoice": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
   "femaleVoice": "Female {number}",
-  "@femaleVoice": {"placeholders": {"number": {"type": "String"}}},
+  "@femaleVoice": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
   "platformError": "{platform} error: {error}",
-  "@platformError": {"placeholders": {"platform": {"type": "String"}, "error": {"type": "String"}}},
+  "@platformError": {
+    "placeholders": {
+      "platform": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "copy": "Copy",
   "testAlerts": "Test alerts",
   "superChat": "SuperChat",
@@ -172,23 +234,144 @@
   "member": "Member",
   "voiceCloning": "Voice cloning (WAV)",
   "usingBundledVoice": "Using bundled sample: {voice}",
-  "@usingBundledVoice": {"placeholders": {"voice": {"type": "String"}}},
+  "@usingBundledVoice": {
+    "placeholders": {
+      "voice": {
+        "type": "String"
+      }
+    }
+  },
   "chooseWav": "Choose WAV",
   "useBundledSample": "Use bundled sample",
   "referenceTranscript": "Exact WAV transcript",
   "referenceTranscriptHint": "Type exactly what the audio says…",
   "localCaptions": "Local captions",
-  "captionsDescription": "Sherpa listens to the microphone, detects speech, and creates captions or translations without sending audio to the Internet.",
+  "captionsDescription": "Listens to your microphone, detects speech, and creates live captions or translations in real-time without sending audio to the Internet.",
   "captionsEnabled": "Enabled",
   "spokenLanguage": "Spoken language",
   "captionOutput": "Output / translation",
   "sendCaptionsToObs": "Send to OBS overlay",
-  "noiseReduction": "GTCRN noise reduction",
+  "noiseReduction": "Reduce microphone background noise",
   "voiceCommandsObs": "OBS voice commands",
   "wakeWord": "Wake word",
   "voiceCommandsExamples": "Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.",
-  "captionModelManual": "Canary model · manual download",
+  "captionModelManual": "Offline captions · manual download",
   "downloadCaptionModel": "Download caption model",
+  "captionStatusIdle": "Offline captions are off.",
+  "captionStatusMissingModel": "Download offline speech recognition to begin.",
+  "captionStatusDownloading": "Downloading offline speech recognition…",
+  "captionStatusLoading": "Preparing offline speech recognition…",
+  "captionStatusListening": "Listening to the microphone…",
+  "captionStatusTranscribing": "Creating captions locally…",
+  "captionStatusError": "Offline captions could not start.",
   "obsCaptions": "OBS captions",
-  "obsCaptionsDescription": "Independent browser source for live captions and translation."
+  "obsCaptionsDescription": "Independent browser source for live captions and translation.",
+  "ttsAndVoice": "TTS & Voice",
+  "obsAndOverlay": "OBS & Overlay",
+  "systemTab": "System & Window",
+  "desktopWindow": "Desktop Window",
+  "frameless": "Frameless",
+  "framelessDescription": "No title bar, transparent borders",
+  "clickThrough": "Click-Through",
+  "clickThroughDescription": "Clicks pass through the window (WS_EX_TRANSPARENT)",
+  "alwaysOnTop": "Always on Top",
+  "alwaysOnTopDescription": "Keep on top of all other windows",
+  "antiCapture": "Anti-Capture / Privacy",
+  "antiCaptureDescription": "Hide window from screen capture and OBS",
+  "keyboardShortcuts": "Keyboard Shortcuts",
+  "toggleTopBarShortcut": "Toggle top bar",
+  "toggleAlwaysOnTopShortcut": "Toggle Always on Top",
+  "toggleClickThroughShortcut": "Toggle Click-Through",
+  "alwaysOnTopActiveTooltip": "Disable Always on Top (Ctrl+Shift+P)",
+  "alwaysOnTopInactiveTooltip": "Always on Top (Ctrl+Shift+P)",
+  "clickThroughActiveTooltip": "Click-Through active. Disable (Ctrl+Shift+C)",
+  "clickThroughInactiveTooltip": "Enable Click-Through (Ctrl+Shift+C)",
+  "antiCaptureActiveTooltip": "Privacy mode active — window hidden from screen share/OBS",
+  "antiCaptureInactiveTooltip": "Hide from screen share / captures",
+  "minimize": "Minimize",
+  "maximize": "Maximize",
+  "restore": "Restore",
+  "close": "Close",
+  "obsStatusConnecting": "OBS: Connecting...",
+  "obsStatusDisconnected": "OBS: Disconnected",
+  "obsStatusLiveAndRec": "OBS: Live + Rec",
+  "obsStatusLive": "OBS: Live",
+  "obsStatusRecording": "OBS: Recording",
+  "obsStatusConnected": "OBS: Connected",
+  "obsScenePrefix": "Scene: {scene}",
+  "@obsScenePrefix": {
+    "placeholders": {
+      "scene": {
+        "type": "String"
+      }
+    }
+  },
+  "obsOutputLive": "Output: Live",
+  "obsOutputOffline": "Output: Offline",
+  "obsRecordingPaused": "Recording: Paused",
+  "obsRecordingActive": "Recording: Active",
+  "ttsCardTitle": "Voice Reader (TTS)",
+  "voiceStatusBadge": "Voice: {status}",
+  "@voiceStatusBadge": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceStatusNotDownloaded": "Not downloaded",
+  "ttsSelectedModel": "TTS",
+  "ttsModelStatusBadge": "{model} · {status}",
+  "@ttsModelStatusBadge": {
+    "placeholders": {
+      "model": { "type": "String" },
+      "status": { "type": "String" }
+    }
+  },
+  "ttsModelTechnicalDetails": "Download {download} · Installed {installed} · {license} · Version {version}",
+  "@ttsModelTechnicalDetails": {
+    "placeholders": {
+      "download": { "type": "String" },
+      "installed": { "type": "String" },
+      "license": { "type": "String" },
+      "version": { "type": "String" }
+    }
+  },
+  "ttsModelStorageDetails": "Download {download} · Disk space {installed}",
+  "@ttsModelStorageDetails": {
+    "placeholders": {
+      "download": { "type": "String" },
+      "installed": { "type": "String" }
+    }
+  },
+  "ttsModelVariant": "Variant: {variant}",
+  "@ttsModelVariant": {
+    "placeholders": { "variant": { "type": "String" } }
+  },
+  "ttsModelSupertonicDescription": "10 built-in voices optimized for quality and speed.",
+  "ttsModelPiperMexicoDescription": "Fast, efficient single-speaker synthesis.",
+  "ttsModelPiperSpainDescription": "Fast, efficient single-speaker synthesis.",
+  "ttsModelKittenDescription": "Compact model with four female and four male voices.",
+  "ttsModelKokoroDescription": "Expressive model with 11 named voices.",
+  "ttsModelMatchaDescription": "Smooth, natural single-voice synthesis.",
+  "ttsModelPocketDescription": "Fast zero-shot voice cloning from a reference WAV.",
+  "ttsModelZipVoiceDescription": "Advanced voice cloning using a WAV and its exact transcript.",
+  "spanishMexico": "Spanish (Mexico)",
+  "spanishSpain": "Spanish (Spain)",
+  "ttsStatusIdleDescription": "Download this exact model when you want to use it.",
+  "ttsStatusCheckingDescription": "Checking local model files and integrity…",
+  "ttsStatusDownloadingDescription": "Downloading verified model files…",
+  "ttsStatusLoadingDescription": "Loading the selected model into memory…",
+  "ttsStatusReadyDescription": "Ready for local synthesis.",
+  "ttsStatusErrorDescription": "The selected model could not be prepared.",
+  "ttsInferenceSteps": "{count} inference steps",
+  "@ttsInferenceSteps": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "ttsTestTextHint": "Type something to test the selected TTS…",
+  "ttsDefaultTestText": "Hello, this is a test of the selected voice.",
+  "separatorTextHint": "says",
+  "male": "Male",
+  "female": "Female",
+  "includedSample": "Included sample"
 }

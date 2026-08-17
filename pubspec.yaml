@@ -27,8 +27,6 @@ dependencies:
 
   # Local TTS (Sherpa-ONNX)
   sherpa_onnx: ^1.13.5
-  media_kit: ^1.2.6
-  media_kit_libs_audio: ^1.0.7
   path_provider: ^2.1.1
   path: ^1.9.1
   archive: ^4.0.9

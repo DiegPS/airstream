@@ -12,10 +12,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get language => 'Idioma';
 
   @override
-  String get english => 'Ingles';
+  String get english => 'Inglés';
 
   @override
-  String get spanish => 'Espanol';
+  String get spanish => 'Español';
 
   @override
   String get listeningForMessages => 'Escuchando mensajes...';
@@ -26,7 +26,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get noChannelsConfigured =>
-      'No hay canales configurados.\nConfiguralos en el menu lateral.';
+      'No hay canales configurados.\nConfigúralos en el menú lateral.';
 
   @override
   String get start => 'Iniciar';
@@ -35,10 +35,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stop => 'Detener';
 
   @override
-  String get hideSidebarTooltip => 'Ocultar menu lateral (Ctrl+B)';
+  String get hideSidebarTooltip => 'Ocultar menú lateral (Ctrl+B)';
 
   @override
-  String get showSidebarTooltip => 'Mostrar menu lateral (Ctrl+B)';
+  String get showSidebarTooltip => 'Mostrar menú lateral (Ctrl+B)';
 
   @override
   String get dashboard => 'Panel';
@@ -69,7 +69,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get appearance => 'Apariencia';
 
   @override
-  String get fontSize => 'Tamano de fuente';
+  String get fontSize => 'Tamaño de fuente';
 
   @override
   String get backgroundOpacity => 'Opacidad del fondo';
@@ -84,7 +84,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get messageGap => 'Espacio entre mensajes';
 
   @override
-  String get maxMessageWidth => 'Ancho maximo de mensaje';
+  String get maxMessageWidth => 'Ancho máximo de mensaje';
 
   @override
   String get horizontalPadding => 'Padding horizontal';
@@ -93,7 +93,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get avatars => 'Avatares';
 
   @override
-  String get platformIcon => 'Icono de plataforma';
+  String get platformIcon => 'Ícono de plataforma';
 
   @override
   String get badges => 'Insignias';
@@ -118,14 +118,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get blockedUsers => 'Usuarios bloqueados';
 
   @override
-  String get blockedUsersHelp => 'Uno por linea. El prefijo @ es opcional.';
+  String get blockedUsersHelp => 'Uno por línea. El prefijo @ es opcional.';
 
   @override
   String get blockedWordsOrPhrases => 'Palabras o frases bloqueadas';
 
   @override
   String get blockedWordsHelp =>
-      'Las palabras sueltas respetan limites de token. Las frases se comparan despues de normalizar.';
+      'Las palabras sueltas respetan límites de token. Las frases se comparan después de normalizar.';
 
   @override
   String get ttsDescription =>
@@ -144,7 +144,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get commandPrefix => 'Prefijo del comando';
 
   @override
-  String get ignoreCommandCase => 'Ignorar mayusculas/minusculas en el prefijo';
+  String get ignoreCommandCase => 'Ignorar mayúsculas/minúsculas en el prefijo';
 
   @override
   String get separatorText => 'Texto separador';
@@ -184,6 +184,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'El TTS se desactivará y el modelo seleccionado se eliminará de este dispositivo. Podrás descargarlo de nuevo después.';
 
   @override
+  String removeTtsModelTitle(String model) {
+    return '¿Eliminar $model?';
+  }
+
+  @override
+  String removeTtsModelConfirmationNamed(String model) {
+    return '$model se eliminará de este dispositivo y el TTS se desactivará. Podrás descargarlo nuevamente después.';
+  }
+
+  @override
   String get remove => 'Eliminar';
 
   @override
@@ -211,23 +221,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get ttsDisabledHelp =>
-      'Activalo para configurar voz, idioma y probar la reproduccion.';
+      'Actívalo para configurar voz, idioma y probar la reproducción.';
 
   @override
-  String get obsIntegration => 'Integracion OBS';
+  String get obsIntegration => 'Integración OBS';
 
   @override
   String get obsDescription =>
-      'Conecta con OBS por WebSocket para mostrar el estado del stream, grabacion y escena dentro de Airstream.';
+      'Conecta con OBS por WebSocket para mostrar el estado del stream, grabación y escena dentro de Airstream.';
 
   @override
   String get webSocketHost => 'Host WebSocket';
 
   @override
-  String get password => 'Contrasena';
+  String get password => 'Contraseña';
 
   @override
-  String get optionalPassword => 'Contrasena opcional';
+  String get optionalPassword => 'Contraseña opcional';
 
   @override
   String get connectingToObs => 'Conectando con OBS...';
@@ -251,7 +261,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get streamHud => 'Stream';
 
   @override
-  String get recordingHud => 'Grabacion';
+  String get recordingHud => 'Grabación';
 
   @override
   String get streamState => 'Estado del stream';
@@ -269,24 +279,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get droppedFrames => 'Frames perdidos';
 
   @override
-  String get recordingState => 'Estado de grabacion';
+  String get recordingState => 'Estado de grabación';
 
   @override
-  String get recordingDuration => 'Duracion de grabacion';
+  String get recordingDuration => 'Duración de grabación';
 
   @override
-  String get recordingSize => 'Tamano de grabacion';
+  String get recordingSize => 'Tamaño de grabación';
 
   @override
   String get obsDisabledHelp =>
-      'Activalo para ingresar el host, la contrasena y conectar cuando quieras.';
+      'Actívalo para ingresar el host, la contraseña y conectar cuando quieras.';
 
   @override
   String get overlayServer => 'Servidor de overlay';
 
   @override
   String get overlayServerDescription =>
-      'Activa una fuente local de navegador para OBS. Cuando esta activo, Airstream sirve una URL de overlay que puedes pegar en OBS.';
+      'Activa una fuente local de navegador para OBS. Cuando está activo, Airstream sirve una URL de overlay que puedes pegar en OBS.';
 
   @override
   String get port => 'Puerto';
@@ -306,7 +316,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertsObsUrlDescription =>
-      'Usalo como una Browser Source separada para Super Chats y membresias.';
+      'Úsalo como una Browser Source separada para Super Chats y membresías.';
 
   @override
   String get alertsOverlayUrlCopied => 'URL del overlay de alertas copiada';
@@ -334,13 +344,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertsDescription =>
-      'Los Super Chats de YouTube y eventos de membresia se muestran en /alerts. El payload de alerta mantiene datos de plataforma para agregar Twitch y Kick mas adelante.';
+      'Los Super Chats de YouTube y eventos de membresía se muestran en /alerts. El payload de alerta mantiene datos de plataforma para agregar Twitch y Kick más adelante.';
 
   @override
-  String get alertFontSize => 'Tamano de fuente de alerta';
+  String get alertFontSize => 'Tamaño de fuente de alerta';
 
   @override
-  String get alertDuration => 'Duracion de alerta';
+  String get alertDuration => 'Duración de alerta';
 
   @override
   String get alertAvatars => 'Avatares de alerta';
@@ -362,13 +372,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get showGrid => 'Mostrar grilla';
 
   @override
-  String get hideScrollbar => 'Ocultar scrollbar';
+  String get hideScrollbar => 'Ocultar barra de desplazamiento';
 
   @override
   String get chromaColor => 'Color chroma';
 
   @override
-  String get platformDisplay => 'Visualizacion de plataforma';
+  String get platformDisplay => 'Visualización de plataforma';
 
   @override
   String get twitchAccent => 'Acento Twitch';
@@ -380,7 +390,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get styleSettings => 'Ajustes de estilo';
 
   @override
-  String get lineHeight => 'Altura de linea';
+  String get lineHeight => 'Altura de línea';
 
   @override
   String get fontWeight => 'Grosor de fuente';
@@ -398,13 +408,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outlineColor => 'Color del contorno';
 
   @override
-  String get messageDesign => 'Diseno de mensajes';
+  String get messageDesign => 'Diseño de mensajes';
 
   @override
   String get bubbleBackground => 'Fondo de burbuja';
 
   @override
-  String get textAlignment => 'Alineacion de texto';
+  String get textAlignment => 'Alineación de texto';
 
   @override
   String get cornerRadius => 'Radio de esquina';
@@ -413,10 +423,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get verticalGap => 'Espacio vertical';
 
   @override
-  String get maxMessages => 'Maximo de mensajes';
+  String get maxMessages => 'Máximo de mensajes';
 
   @override
-  String get messageLifetime => 'Duracion del mensaje';
+  String get messageLifetime => 'Duración del mensaje';
 
   @override
   String get superChatColorBar => 'Barra de color SuperChat';
@@ -428,16 +438,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get superChatWidth => 'Ancho SuperChat';
 
   @override
-  String get animation => 'Animacion';
+  String get animation => 'Animación';
 
   @override
   String get entrance => 'Entrada';
 
   @override
-  String get duration => 'Duracion';
+  String get duration => 'Duración';
 
   @override
-  String get transform3d => 'Transformacion 3D';
+  String get transform3d => 'Transformación 3D';
 
   @override
   String get enable3dEffect => 'Activar efecto 3D';
@@ -462,7 +472,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get overlayDisabledHelp =>
-      'Activalo para elegir un puerto y mostrar la URL de OBS.';
+      'Actívalo para elegir un puerto y mostrar la URL de OBS.';
 
   @override
   String get ready => 'Listo';
@@ -553,7 +563,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get captionsDescription =>
-      'Sherpa escucha el micrófono, detecta voz y crea subtítulos o traducción sin enviar audio a Internet.';
+      'Escucha el micrófono, detecta la voz y crea subtítulos o traducción en tiempo real sin enviar audio a Internet.';
 
   @override
   String get captionsEnabled => 'Activados';
@@ -568,7 +578,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sendCaptionsToObs => 'Enviar al overlay de OBS';
 
   @override
-  String get noiseReduction => 'Reducción de ruido GTCRN';
+  String get noiseReduction => 'Reducir el ruido de fondo del micrófono';
 
   @override
   String get voiceCommandsObs => 'Comandos de voz para OBS';
@@ -581,10 +591,36 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ejemplos: “Airstream inicia grabación”, “Airstream pausa grabación” o “Airstream cambia a escena cámara”.';
 
   @override
-  String get captionModelManual => 'Modelo Canary · descarga manual';
+  String get captionModelManual => 'Subtítulos sin conexión · descarga manual';
 
   @override
   String get downloadCaptionModel => 'Descargar modelo de subtítulos';
+
+  @override
+  String get captionStatusIdle =>
+      'Los subtítulos sin conexión están desactivados.';
+
+  @override
+  String get captionStatusMissingModel =>
+      'Descarga el reconocimiento de voz para comenzar.';
+
+  @override
+  String get captionStatusDownloading =>
+      'Descargando el reconocimiento de voz sin conexión…';
+
+  @override
+  String get captionStatusLoading =>
+      'Preparando el reconocimiento de voz sin conexión…';
+
+  @override
+  String get captionStatusListening => 'Escuchando el micrófono…';
+
+  @override
+  String get captionStatusTranscribing => 'Creando subtítulos localmente…';
+
+  @override
+  String get captionStatusError =>
+      'No se pudieron iniciar los subtítulos sin conexión.';
 
   @override
   String get obsCaptions => 'Subtítulos OBS';
@@ -592,4 +628,245 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get obsCaptionsDescription =>
       'Fuente de navegador independiente para subtítulos y traducción en vivo.';
+
+  @override
+  String get ttsAndVoice => 'TTS y Voz';
+
+  @override
+  String get obsAndOverlay => 'OBS y Overlay';
+
+  @override
+  String get systemTab => 'Sistema y Ventana';
+
+  @override
+  String get desktopWindow => 'Ventana de escritorio';
+
+  @override
+  String get frameless => 'Sin marco';
+
+  @override
+  String get framelessDescription =>
+      'Sin barra de título, bordes transparentes';
+
+  @override
+  String get clickThrough => 'Click-Through';
+
+  @override
+  String get clickThroughDescription =>
+      'Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)';
+
+  @override
+  String get alwaysOnTop => 'Siempre visible';
+
+  @override
+  String get alwaysOnTopDescription =>
+      'Mantener sobre todas las demás ventanas';
+
+  @override
+  String get antiCapture => 'Anti-Captura / Privacidad';
+
+  @override
+  String get antiCaptureDescription =>
+      'Ocultar la ventana de capturas de pantalla y OBS';
+
+  @override
+  String get keyboardShortcuts => 'Atajos de teclado';
+
+  @override
+  String get toggleTopBarShortcut => 'Mostrar / Ocultar barra superior';
+
+  @override
+  String get toggleAlwaysOnTopShortcut => 'Alternar Siempre visible';
+
+  @override
+  String get toggleClickThroughShortcut => 'Alternar Click-Through';
+
+  @override
+  String get alwaysOnTopActiveTooltip =>
+      'Desactivar Siempre visible (Ctrl+Shift+P)';
+
+  @override
+  String get alwaysOnTopInactiveTooltip => 'Siempre visible (Ctrl+Shift+P)';
+
+  @override
+  String get clickThroughActiveTooltip =>
+      'Click-Through activo. Desactivar (Ctrl+Shift+C)';
+
+  @override
+  String get clickThroughInactiveTooltip =>
+      'Activar Click-Through (Ctrl+Shift+C)';
+
+  @override
+  String get antiCaptureActiveTooltip =>
+      'Modo privacidad activo — ventana oculta de capturas/OBS';
+
+  @override
+  String get antiCaptureInactiveTooltip => 'Ocultar de capturas / screen share';
+
+  @override
+  String get minimize => 'Minimizar';
+
+  @override
+  String get maximize => 'Maximizar';
+
+  @override
+  String get restore => 'Restaurar';
+
+  @override
+  String get close => 'Cerrar';
+
+  @override
+  String get obsStatusConnecting => 'OBS: Conectando...';
+
+  @override
+  String get obsStatusDisconnected => 'OBS: Desconectado';
+
+  @override
+  String get obsStatusLiveAndRec => 'OBS: En vivo + Grabando';
+
+  @override
+  String get obsStatusLive => 'OBS: En vivo';
+
+  @override
+  String get obsStatusRecording => 'OBS: Grabando';
+
+  @override
+  String get obsStatusConnected => 'OBS: Conectado';
+
+  @override
+  String obsScenePrefix(String scene) {
+    return 'Escena: $scene';
+  }
+
+  @override
+  String get obsOutputLive => 'Salida: En vivo';
+
+  @override
+  String get obsOutputOffline => 'Salida: Fuera de línea';
+
+  @override
+  String get obsRecordingPaused => 'Grabación: Pausada';
+
+  @override
+  String get obsRecordingActive => 'Grabación: Activa';
+
+  @override
+  String get ttsCardTitle => 'Lector de Voz (TTS)';
+
+  @override
+  String voiceStatusBadge(String status) {
+    return 'Voz: $status';
+  }
+
+  @override
+  String get voiceStatusNotDownloaded => 'Sin descargar';
+
+  @override
+  String get ttsSelectedModel => 'TTS';
+
+  @override
+  String ttsModelStatusBadge(String model, String status) {
+    return '$model · $status';
+  }
+
+  @override
+  String ttsModelTechnicalDetails(
+      String download, String installed, String license, String version) {
+    return 'Descarga $download · Instalado $installed · $license · Versión $version';
+  }
+
+  @override
+  String ttsModelStorageDetails(String download, String installed) {
+    return 'Descarga $download · Espacio en disco $installed';
+  }
+
+  @override
+  String ttsModelVariant(String variant) {
+    return 'Variante: $variant';
+  }
+
+  @override
+  String get ttsModelSupertonicDescription =>
+      '10 voces incluidas optimizadas para calidad y velocidad.';
+
+  @override
+  String get ttsModelPiperMexicoDescription =>
+      'Síntesis rápida y eficiente con una sola voz.';
+
+  @override
+  String get ttsModelPiperSpainDescription =>
+      'Síntesis rápida y eficiente con una sola voz.';
+
+  @override
+  String get ttsModelKittenDescription =>
+      'Modelo compacto con cuatro voces femeninas y cuatro masculinas.';
+
+  @override
+  String get ttsModelKokoroDescription =>
+      'Modelo expresivo con 11 voces identificadas.';
+
+  @override
+  String get ttsModelMatchaDescription =>
+      'Síntesis suave y natural con una sola voz.';
+
+  @override
+  String get ttsModelPocketDescription =>
+      'Clonación rápida de voz a partir de un WAV de referencia.';
+
+  @override
+  String get ttsModelZipVoiceDescription =>
+      'Clonación avanzada mediante un WAV y su transcripción exacta.';
+
+  @override
+  String get spanishMexico => 'Español (México)';
+
+  @override
+  String get spanishSpain => 'Español (España)';
+
+  @override
+  String get ttsStatusIdleDescription =>
+      'Descarga este modelo exacto cuando quieras utilizarlo.';
+
+  @override
+  String get ttsStatusCheckingDescription =>
+      'Verificando los archivos locales y su integridad…';
+
+  @override
+  String get ttsStatusDownloadingDescription =>
+      'Descargando archivos de modelo verificados…';
+
+  @override
+  String get ttsStatusLoadingDescription =>
+      'Cargando el modelo seleccionado en memoria…';
+
+  @override
+  String get ttsStatusReadyDescription => 'Listo para síntesis local.';
+
+  @override
+  String get ttsStatusErrorDescription =>
+      'No se pudo preparar el modelo seleccionado.';
+
+  @override
+  String ttsInferenceSteps(int count) {
+    return '$count pasos de inferencia';
+  }
+
+  @override
+  String get ttsTestTextHint => 'Escribe algo para probar el TTS seleccionado…';
+
+  @override
+  String get ttsDefaultTestText =>
+      'Hola, esta es una prueba de la voz seleccionada.';
+
+  @override
+  String get separatorTextHint => 'dice';
+
+  @override
+  String get male => 'Masculina';
+
+  @override
+  String get female => 'Femenina';
+
+  @override
+  String get includedSample => 'Muestra incluida';
 }

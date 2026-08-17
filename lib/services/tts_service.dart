@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import 'media_kit_audio_playback_service.dart';
+import 'native_audio_playback_service.dart';
 import 'tts/sherpa_tts_engine.dart';
 import 'tts/tts_model_catalog.dart';
 import 'tts_model_cache.dart';
@@ -64,7 +64,7 @@ class TtsService {
       StreamController<bool>.broadcast();
   final TtsModelCache _modelCache;
   final SherpaTtsEngine _engine;
-  final MediaKitAudioPlaybackService _audioPlayback;
+  final NativeAudioPlaybackService _audioPlayback;
 
   TtsLoadState _loadState = const TtsLoadState();
   Future<void>? _initialization;
@@ -86,10 +86,10 @@ class TtsService {
   TtsService({
     TtsModelCache? modelCache,
     SherpaTtsEngine? engine,
-    MediaKitAudioPlaybackService? audioPlayback,
+    NativeAudioPlaybackService? audioPlayback,
   })  : _modelCache = modelCache ?? TtsModelCache(),
         _engine = engine ?? SherpaTtsEngine(),
-        _audioPlayback = audioPlayback ?? MediaKitAudioPlaybackService();
+        _audioPlayback = audioPlayback ?? NativeAudioPlaybackService();
 
   Stream<TtsLoadState> get loadStateStream => _loadStateController.stream;
   Stream<bool> get busyStream => _busyController.stream;
@@ -212,7 +212,7 @@ class TtsService {
       if (_disposed || generation != _generation) return;
       _emit(TtsLoadState(
           phase: TtsLoadPhase.loading,
-          message: 'Loading ${model.name} with Sherpa-ONNX…',
+          message: 'Loading ${model.name}…',
           loadedBytes: model.downloadBytes,
           totalBytes: model.downloadBytes,
           voiceStyle: _voice,
