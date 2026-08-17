@@ -153,6 +153,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voice => 'Voice';
 
   @override
+  String get ttsEngine => 'Voice engine';
+
+  @override
+  String get quality => 'Quality';
+
+  @override
+  String get qualityFast => 'Fast (4 steps)';
+
+  @override
+  String get qualityHigh => 'High (6 steps)';
+
+  @override
+  String get qualityBalanced => 'Balanced (8 steps)';
+
+  @override
+  String get qualityMaximum => 'Maximum (12 steps)';
+
+  @override
+  String get speed => 'Speed';
+
+  @override
+  String get removeTtsModel => 'Remove downloaded model';
+
+  @override
+  String get removeTtsModelConfirmation =>
+      'TTS will be disabled and the selected model will be deleted from this device. It can be downloaded again later.';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get ttsModelRemoved => 'The TTS model was removed.';
+
+  @override
+  String ttsModelRemovalFailed(String error) {
+    return 'The TTS model could not be removed: $error';
+  }
+
+  @override
   String get testText => 'Test text';
 
   @override

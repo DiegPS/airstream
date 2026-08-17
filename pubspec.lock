@@ -11,7 +11,7 @@ packages:
     source: git
     version: "0.0.1"
   archive:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: archive
       sha256: a96e8b390886ee8abb49b7bd3ac8df6f451c621619f52a26e815fdcf568959ff
@@ -91,7 +91,7 @@ packages:
     source: hosted
     version: "1.19.1"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -149,7 +149,7 @@ packages:
     source: hosted
     version: "1.3.3"
   ffi:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: ffi
       sha256: "6d7fd89431262d8f3125e81b50d3847a091d846eafcd4fdb88dd06f36d705a45"
@@ -206,14 +206,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_onnxruntime:
-    dependency: "direct main"
-    description:
-      name: flutter_onnxruntime
-      sha256: "72fad60739e01f2278c266f4ec386b392c5ecdfc33d44b4a155c609366f6ece5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.7.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -497,7 +489,7 @@ packages:
     source: hosted
     version: "2.2.0"
   path:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path
       sha256: "75cca69d1490965be98c73ceaea117e8a04dd21217b37b292c9ddbec0d955bc5"
@@ -720,6 +712,86 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.1"
+  sherpa_onnx:
+    dependency: "direct main"
+    description:
+      name: sherpa_onnx
+      sha256: "94f9fc851a97215e1990ba112aeb5d7c0e47444b1ad9088194f4417655cfd31b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_android_arm64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_arm64
+      sha256: c4f4fb3f0828be252ef019d9010f91682864a314574a377e598b15c509ac6a34
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_android_armeabi:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_armeabi
+      sha256: "827e3554ef6231952bf244b08043639200ea67d87aa61f24d9abc245fd72e231"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_android_x86:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86
+      sha256: "59427e39e6289826d894d53f3a3b98b32a0b8d56e616feb383bd283f2141d59a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_android_x86_64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86_64
+      sha256: ac6d18bfc76b60c7d19ac4ca0befb56656897e916f07226afa1188fd6eafa93f
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_ios:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_ios
+      sha256: d3cbb8c1a9eb2d9a8ae6616cdce673974af68b502a3ce811cc6b00a1c4914d46
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_linux:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_linux
+      sha256: e818b2c5a942659c56eddde0bd54975f64f13b11dfff0f0fac110f153088ca8f
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_macos:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_macos
+      sha256: df454bdb470126b0008f3af63ece69dfa082fcab2ae43e9cdbe3bd6e0e558fa5
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_web:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_web
+      sha256: "69d6b6d7e440e1daaea8b319c9c4780bb8269e817f355b0cc2194d8b07a1c67f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
+  sherpa_onnx_windows:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_windows
+      sha256: "5a99f36a843f3177b5072ef7361b5c3238ecf3c2bc752d4bc480443a2d65e24e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.13.5"
   sky_engine:
     dependency: transitive
     description: flutter

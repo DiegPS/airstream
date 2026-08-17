@@ -25,11 +25,15 @@ dependencies:
   cached_network_image: ^3.4.0
   extended_image: ^9.0.0
 
-  # TTS (Supertonic ONNX)
-  flutter_onnxruntime: ^1.6.0
+  # Local TTS (Sherpa-ONNX)
+  sherpa_onnx: ^1.13.5
   media_kit: ^1.2.6
   media_kit_libs_audio: ^1.0.7
   path_provider: ^2.1.1
+  path: ^1.9.1
+  archive: ^4.0.9
+  crypto: ^3.0.7
+  ffi: ^2.1.4
   logger: ^2.0.2
 
   # Persistence

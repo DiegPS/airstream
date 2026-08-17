@@ -1,8 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 
-import 'package:airstream/services/supertonic_helper.dart'
-    show availableLangs, formatByteSize;
+import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -15,6 +14,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
+
+String _formatByteSize(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '$bytes B';
+}
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -1197,9 +1204,89 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   _switchRow(l.enabled, s.ttsEnabled,
                       (v) => notifier.update(s.copyWith(ttsEnabled: v))),
                   if (s.ttsEnabled) ...[
+                    Builder(builder: (context) {
+                      final model = TtsModelCatalog.byId(s.ttsModelId);
+                      return Column(
+                        children: [
+                          _dropdownRow(
+                            l.ttsEngine,
+                            model.id,
+                            TtsModelCatalog.models.map((m) => m.id).toList(),
+                            (id) {
+                              final next = TtsModelCatalog.byId(id);
+                              notifier.update(s.copyWith(
+                                ttsModelId: next.id,
+                                ttsVoice: next.voices.first.id,
+                                ttsLanguage: next.languages.first.code,
+                              ));
+                            },
+                            optionLabel: (id) => TtsModelCatalog.byId(id).name,
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${model.description} · ${_formatByteSize(model.archiveBytes)}',
+                              style: const TextStyle(
+                                  color: Colors.white38, fontSize: 11),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                     const SizedBox(height: 12),
                     if (ttsLoadState != null) ...[
                       _ttsStatusCard(l, ttsLoadState),
+                      if (ttsLoadState.isReady) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final remove = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: Text(l.removeTtsModel),
+                                  content: Text(l.removeTtsModelConfirmation),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, false),
+                                      child: Text(l.cancel),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, true),
+                                      child: Text(l.remove),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (remove != true || !context.mounted) return;
+                              try {
+                                await notifier
+                                    .update(s.copyWith(ttsEnabled: false));
+                                await appController
+                                    .removeTtsModel(s.ttsModelId);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(l.ttsModelRemoved)),
+                                  );
+                                }
+                              } catch (error) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(l.ttsModelRemovalFailed(
+                                            error.toString()))),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.delete_outline, size: 16),
+                            label: Text(l.removeTtsModel),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                     ],
                     _switchRow(l.membersOnly, s.ttsMembersOnly,
@@ -1234,31 +1321,51 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       onSubmitted: (_) => _saveTextSettings(),
                     ),
                     const SizedBox(height: 12),
-                    _dropdownRow(
-                      l.voice,
-                      s.ttsVoice,
-                      [
-                        'M1',
-                        'M2',
-                        'M3',
-                        'M4',
-                        'M5',
-                        'F1',
-                        'F2',
-                        'F3',
-                        'F4',
-                        'F5'
-                      ],
-                      (v) => notifier.update(s.copyWith(ttsVoice: v)),
-                      optionLabel: (v) => _voiceLabel(l, v),
-                    ),
-                    _dropdownRow(
-                      l.language,
-                      s.ttsLanguage,
-                      availableLangs,
-                      (v) => notifier.update(s.copyWith(ttsLanguage: v)),
-                      optionLabel: _languageLabel,
-                    ),
+                    Builder(builder: (context) {
+                      final model = TtsModelCatalog.byId(s.ttsModelId);
+                      final voice = model.voice(s.ttsVoice).id;
+                      final language = model.supportsLanguage(s.ttsLanguage)
+                          ? s.ttsLanguage
+                          : model.languages.first.code;
+                      return Column(children: [
+                        if (model.family == TtsModelFamily.supertonic)
+                          _dropdownRow(
+                              l.voice,
+                              voice,
+                              model.voices.map((v) => v.id).toList(),
+                              (v) => notifier.update(s.copyWith(ttsVoice: v)),
+                              optionLabel: (id) => _voiceLabel(l, id)),
+                        _dropdownRow(
+                            l.language,
+                            language,
+                            model.languages.map((v) => v.code).toList(),
+                            (v) => notifier.update(s.copyWith(ttsLanguage: v)),
+                            optionLabel: _languageLabel),
+                        _dropdownRow(
+                            l.quality,
+                            const [4, 6, 8, 12].contains(s.ttsSteps)
+                                ? s.ttsSteps.toString()
+                                : '8',
+                            const ['4', '6', '8', '12'],
+                            (v) => notifier
+                                .update(s.copyWith(ttsSteps: int.parse(v))),
+                            optionLabel: (v) => v == '8'
+                                ? l.qualityBalanced
+                                : v == '12'
+                                    ? l.qualityMaximum
+                                    : v == '4'
+                                        ? l.qualityFast
+                                        : l.qualityHigh),
+                        _sliderRow(
+                          l.speed,
+                          s.ttsSpeed,
+                          0.6,
+                          1.6,
+                          (v) => notifier.update(s.copyWith(ttsSpeed: v)),
+                          divisions: 20,
+                        ),
+                      ]);
+                    }),
                     const SizedBox(height: 12),
                     _label(l.testText),
                     _field(
@@ -1876,7 +1983,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ? l.assetsProgress(state.loadedAssets, state.totalAssets)
         : null;
     final bytesText = state.totalBytes > 0
-        ? '${formatByteSize(state.loadedBytes)} / ${formatByteSize(state.totalBytes)}'
+        ? '${_formatByteSize(state.loadedBytes)} / ${_formatByteSize(state.totalBytes)}'
         : null;
     final assetText = state.currentFile
         ?.split(RegExp(r'[\\/]'))
@@ -1911,7 +2018,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Supertonic: $label',
+                'Sherpa TTS: $label',
                 style: TextStyle(
                   color: color,
                   fontSize: 12,

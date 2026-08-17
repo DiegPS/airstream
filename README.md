@@ -1,16 +1,32 @@
 # Airstream
 
-A new Flutter project.
+Airstream is a desktop-first Flutter application that combines live chat from
+YouTube, Twitch, and Kick with a configurable OBS overlay and local text to
+speech. It is designed to keep the streaming workflow in one lightweight app.
 
-## Getting Started
+## Highlights
 
-This project is a starting point for a Flutter application.
+- Unified, deduplicated multi-platform chat.
+- Browser-source OBS overlay and stream/recording telemetry.
+- Fully local TTS powered by Sherpa-ONNX; chat text never leaves the device.
+- Curated quality and lightweight voice models with verified, resumable
+  downloads.
+- Multilingual Supertonic 3 voices plus a fast Spanish Piper option.
+- Persistent visual, filtering, connection, overlay, and TTS settings.
 
-A few resources to get you started if this is your first Flutter project:
+## Development
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+The local chat packages referenced by `pubspec.yaml` must be available next to
+this repository. Then run:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d windows
+```
+
+Create a Windows release build with `flutter build windows`.
+
+The TTS architecture, model integrity guarantees, and attribution are described
+in [docs/TTS.md](docs/TTS.md).

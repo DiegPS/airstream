@@ -244,6 +244,8 @@ class AppController {
     return true;
   }
 
+  Future<void> removeTtsModel(String modelId) => _tts.removeModel(modelId);
+
   Future<void> connectObs() async {
     final settings = _lastSettings;
     if (settings == null || !settings.obsEnabled) return;
@@ -339,7 +341,14 @@ class AppController {
     _lastSettings = s;
     _pipeline.updateSettings(s);
 
-    _tts.updateConfig(s.ttsVoice, s.ttsLanguage);
+    unawaited(_tts.updateConfig(
+      enabled: s.ttsEnabled,
+      modelId: s.ttsModelId,
+      voice: s.ttsVoice,
+      language: s.ttsLanguage,
+      speed: s.ttsSpeed,
+      steps: s.ttsSteps,
+    ));
 
     // Reconnect YouTube if connection params changed.
     final connectionChanged = prev == null ||

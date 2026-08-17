@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
-import 'package:airstream/services/supertonic_helper.dart' show availableLangs;
+import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/window/window_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -224,14 +224,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onChanged: (v) =>
                   notifier.update(s.copyWith(ttsSeparatorText: v))),
 
-          _dropdownTile(
-              'Voice',
-              s.ttsVoice,
-              ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'],
-              (v) => notifier.update(s.copyWith(ttsVoice: v))),
+          _dropdownTile('TTS model', TtsModelCatalog.byId(s.ttsModelId).id,
+              TtsModelCatalog.models.map((model) => model.id).toList(), (id) {
+            final model = TtsModelCatalog.byId(id);
+            notifier.update(s.copyWith(
+                ttsModelId: id,
+                ttsVoice: model.voices.first.id,
+                ttsLanguage: model.languages.first.code));
+          }),
 
-          _dropdownTile('Language', s.ttsLanguage, availableLangs,
-              (v) => notifier.update(s.copyWith(ttsLanguage: v))),
+          Builder(builder: (context) {
+            final model = TtsModelCatalog.byId(s.ttsModelId);
+            return Column(children: [
+              _dropdownTile(
+                  'Voice',
+                  model.voice(s.ttsVoice).id,
+                  model.voices.map((voice) => voice.id).toList(),
+                  (v) => notifier.update(s.copyWith(ttsVoice: v))),
+              _dropdownTile(
+                  'Language',
+                  model.supportsLanguage(s.ttsLanguage)
+                      ? s.ttsLanguage
+                      : model.languages.first.code,
+                  model.languages.map((language) => language.code).toList(),
+                  (v) => notifier.update(s.copyWith(ttsLanguage: v))),
+            ]);
+          }),
 
           Padding(
             padding: const EdgeInsets.only(top: 16.0),

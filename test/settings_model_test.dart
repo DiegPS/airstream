@@ -54,4 +54,22 @@ void main() {
     expect(restored.ttsCommandIgnoreCase, isFalse);
     expect(SettingsModel.fromJson(const {}).ttsCommandIgnoreCase, isTrue);
   });
+
+  test('persists the complete Sherpa TTS configuration', () {
+    const settings = SettingsModel(
+      ttsModelId: 'piper-es-sharvard-medium',
+      ttsVoice: 'speaker-1',
+      ttsLanguage: 'es',
+      ttsSpeed: 1.25,
+      ttsSteps: 12,
+    );
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+
+    expect(restored.ttsModelId, 'piper-es-sharvard-medium');
+    expect(restored.ttsVoice, 'speaker-1');
+    expect(restored.ttsLanguage, 'es');
+    expect(restored.ttsSpeed, 1.25);
+    expect(restored.ttsSteps, 12);
+  });
 }

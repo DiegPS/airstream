@@ -374,6 +374,84 @@ abstract class AppLocalizations {
   /// **'Voice'**
   String get voice;
 
+  /// No description provided for @ttsEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice engine'**
+  String get ttsEngine;
+
+  /// No description provided for @quality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get quality;
+
+  /// No description provided for @qualityFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast (4 steps)'**
+  String get qualityFast;
+
+  /// No description provided for @qualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High (6 steps)'**
+  String get qualityHigh;
+
+  /// No description provided for @qualityBalanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Balanced (8 steps)'**
+  String get qualityBalanced;
+
+  /// No description provided for @qualityMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum (12 steps)'**
+  String get qualityMaximum;
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @removeTtsModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove downloaded model'**
+  String get removeTtsModel;
+
+  /// No description provided for @removeTtsModelConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'TTS will be disabled and the selected model will be deleted from this device. It can be downloaded again later.'**
+  String get removeTtsModelConfirmation;
+
+  /// No description provided for @remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @ttsModelRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The TTS model was removed.'**
+  String get ttsModelRemoved;
+
+  /// No description provided for @ttsModelRemovalFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The TTS model could not be removed: {error}'**
+  String ttsModelRemovalFailed(String error);
+
   /// No description provided for @testText.
   ///
   /// In en, this message translates to:
