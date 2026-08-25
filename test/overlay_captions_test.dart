@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
 
 void main() {
-  test('serves a dedicated transparent captions browser source', () async {
+  test('serves self-contained native browser sources', () async {
     final reservation =
         await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final port = reservation.port;
@@ -38,8 +38,40 @@ void main() {
         Uri.parse('http://127.0.0.1:$port'),
         headers: const {HttpHeaders.connectionHeader: 'close'},
       );
+      final alertsResponse = await client.get(
+        Uri.parse('http://127.0.0.1:$port/alerts'),
+        headers: const {HttpHeaders.connectionHeader: 'close'},
+      );
+
+      for (final browserSource in [
+        response,
+        overlayResponse,
+        alertsResponse,
+      ]) {
+        expect(browserSource.statusCode, HttpStatus.ok);
+        expect(
+          browserSource.body,
+          isNot(matches(RegExp(
+            r'<script\b[^>]*\bsrc\s*=',
+            caseSensitive: false,
+          ))),
+        );
+        expect(browserSource.body, isNot(contains('unpkg.com')));
+        expect(browserSource.body, isNot(contains('React')));
+        expect(browserSource.body, isNot(contains('Babel')));
+        expect(browserSource.body, isNot(contains('text/babel')));
+        expect(
+          browserSource.headers['content-security-policy'],
+          contains("script-src 'unsafe-inline'"),
+        );
+      }
+
+      expect(overlayResponse.body, contains('document.createElement'));
+      expect(overlayResponse.body, contains("new WebSocket(protocol"));
       expect(overlayResponse.body, contains("owner: 'OWNER'"));
       expect(overlayResponse.body, contains("owner: 'DUEÑO'"));
+      expect(alertsResponse.body, contains('document.createElement'));
+      expect(alertsResponse.body, contains("membership: 'Membresía'"));
 
       final socket = IOWebSocketChannel.connect('ws://127.0.0.1:$port/ws');
       await socket.ready;

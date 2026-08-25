@@ -66,21 +66,12 @@ class OverlayServer {
         return wsHandler(req);
       }
       if (req.url.path == 'alerts') {
-        return Response.ok(
-          _alertsHtml(),
-          headers: {'content-type': 'text/html; charset=utf-8'},
-        );
+        return _htmlResponse(_alertsHtml());
       }
       if (req.url.path == 'captions') {
-        return Response.ok(
-          _captionsHtml(),
-          headers: {'content-type': 'text/html; charset=utf-8'},
-        );
+        return _htmlResponse(_captionsHtml());
       }
-      return Response.ok(
-        _overlayHtml(),
-        headers: {'content-type': 'text/html; charset=utf-8'},
-      );
+      return _htmlResponse(_overlayHtml());
     });
 
     late final HttpServer server;
@@ -97,6 +88,18 @@ class OverlayServer {
     _server = server;
     _msgSub = messages.listen(_broadcastMessage);
   }
+
+  static Response _htmlResponse(String html) => Response.ok(
+        html,
+        headers: const {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'referrer-policy': 'no-referrer',
+          'x-content-type-options': 'nosniff',
+          'content-security-policy':
+              "default-src 'none'; img-src data: http: https:; connect-src ws: wss:; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+        },
+      );
 
   void setSettings(SettingsModel settings) {
     _settings = settings;
@@ -115,10 +118,8 @@ class OverlayServer {
     final spanish = _settings.appLanguageCode == 'es';
     final donorName = spanish ? 'Donante de prueba' : 'Test donor';
     final memberName = spanish ? 'Miembro de prueba' : 'Test member';
-    const donorAvatar =
-        'https://api.dicebear.com/9.x/initials/svg?seed=Test%20Donor';
-    const memberAvatar =
-        'https://api.dicebear.com/9.x/initials/svg?seed=Test%20Member';
+    const donorAvatar = null;
+    const memberAvatar = null;
     final data = switch (kind) {
       'superchat-empty' => {
           'platform': 'youtube',
@@ -397,6 +398,14 @@ class OverlayServer {
     border: 3px solid rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.12);
   }
+  .alert-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 800;
+    user-select: none;
+  }
   .alert-copy {
     min-width: 0;
     display: flex;
@@ -436,12 +445,7 @@ class OverlayServer {
 </head>
 <body>
 <div id="root"></div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel">
-const { useEffect, useMemo, useRef, useState } = React;
-
+<script>
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   alertFontSize: 28,
@@ -451,7 +455,7 @@ const DEFAULT_SETTINGS = {
 
 function normalizeUrl(url) {
   if (!url || typeof url !== 'string') return '';
-  if (url.startsWith('//')) return `https:\${url}`;
+  if (url.startsWith('//')) return 'https:' + url;
   return url;
 }
 
@@ -471,110 +475,155 @@ function alertAccent(alert) {
   return '#FF4E45';
 }
 
-function AlertCard({ alert, settings }) {
+const UI_STRINGS = {
+  en: {
+    someone: 'Someone',
+    sent: 'sent',
+    superChat: 'a Super Chat',
+    becameMember: 'became a member',
+    membership: 'Membership',
+  },
+  es: {
+    someone: 'Alguien',
+    sent: 'envió',
+    superChat: 'un Super Chat',
+    becameMember: 'se convirtió en miembro',
+    membership: 'Membresía',
+  },
+};
+
+function initials(name) {
+  const parts = String(name || '?').trim().split(' ').filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || '?').slice(0, 2)).toUpperCase();
+}
+
+function createImage(className, url, alt, onError) {
+  const image = document.createElement('img');
+  image.className = className;
+  image.src = url;
+  image.alt = alt || '';
+  image.referrerPolicy = 'no-referrer';
+  image.addEventListener('error', () => {
+    if (onError) onError(image);
+    else image.remove();
+  }, { once: true });
+  return image;
+}
+
+function renderAlert(alert) {
+  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
-  const message = (alert.message || '').trim();
+  const author = String(alert.author || strings.someone);
+  const message = String(alert.message || '').trim();
   const title = alert.kind === 'superchat'
-    ? `\${alert.author || 'Someone'} sent \${alert.amount || 'a Super Chat'}`
-    : `\${alert.author || 'Someone'} became a member`;
+    ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
+    : author + ' ' + strings.becameMember;
   const kicker = alert.kind === 'superchat'
-    ? `\${platformLabel(alert.platform)} Super Chat`
-    : `\${platformLabel(alert.platform)} Membership`;
+    ? platformLabel(alert.platform) + ' Super Chat'
+    : platformLabel(alert.platform) + ' ' + strings.membership;
   const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
-  return (
-    <div className="alert-card" style={{ borderBottom: `5px solid \${accent}` }}>
-      {settings.alertShowAvatars && avatarUrl ? (
-        <img className="alert-avatar" src={avatarUrl} alt="" referrerPolicy="no-referrer" />
-      ) : null}
-      <div className="alert-copy">
-        <div className="alert-kicker" style={{ color: accent }}>{kicker}</div>
-        <div className="alert-title">{title}</div>
-        {message ? <div className="alert-message">{message}</div> : null}
-      </div>
-      {stickerUrl ? (
-        <img className="alert-sticker" src={stickerUrl} alt="" referrerPolicy="no-referrer" />
-      ) : null}
-    </div>
-  );
+  const card = document.createElement('div');
+  card.className = 'alert-card';
+  card.style.borderBottom = '5px solid ' + accent;
+
+  if (settings.alertShowAvatars) {
+    if (avatarUrl) {
+      card.appendChild(createImage('alert-avatar', avatarUrl, author, (image) => {
+        const fallback = document.createElement('div');
+        fallback.className = 'alert-avatar alert-avatar-fallback';
+        fallback.textContent = initials(author);
+        image.replaceWith(fallback);
+      }));
+    } else {
+      const fallback = document.createElement('div');
+      fallback.className = 'alert-avatar alert-avatar-fallback';
+      fallback.textContent = initials(author);
+      card.appendChild(fallback);
+    }
+  }
+
+  const copy = document.createElement('div');
+  copy.className = 'alert-copy';
+  const kickerNode = document.createElement('div');
+  kickerNode.className = 'alert-kicker';
+  kickerNode.style.color = accent;
+  kickerNode.textContent = kicker;
+  const titleNode = document.createElement('div');
+  titleNode.className = 'alert-title';
+  titleNode.textContent = title;
+  copy.append(kickerNode, titleNode);
+  if (message) {
+    const messageNode = document.createElement('div');
+    messageNode.className = 'alert-message';
+    messageNode.textContent = message;
+    copy.appendChild(messageNode);
+  }
+  card.appendChild(copy);
+  if (stickerUrl) card.appendChild(createImage('alert-sticker', stickerUrl, ''));
+  stage.replaceChildren(card);
 }
 
-function AlertsApp() {
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [queue, setQueue] = useState([]);
-  const [active, setActive] = useState(null);
-  const settingsRef = useRef(DEFAULT_SETTINGS);
+const root = document.getElementById('root');
+const stage = document.createElement('div');
+stage.className = 'alert-stage';
+root.appendChild(stage);
+let settings = { ...DEFAULT_SETTINGS };
+let queue = [];
+let active = null;
+let hideTimer = 0;
+let retryTimer = 0;
+let socket = null;
+let shuttingDown = false;
 
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
-  useEffect(() => {
-    if (active || queue.length === 0) return;
-    const [next, ...rest] = queue;
-    setActive(next);
-    setQueue(rest);
-  }, [active, queue]);
-
-  useEffect(() => {
-    if (!active) return;
-    const duration = Math.max(1, settingsRef.current.alertDisplaySeconds || DEFAULT_SETTINGS.alertDisplaySeconds);
-    const timeout = window.setTimeout(() => setActive(null), duration * 1000);
-    return () => window.clearTimeout(timeout);
-  }, [active]);
-
-  useEffect(() => {
-    let ws;
-    let retry;
-
-    const connect = () => {
-      const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-      ws = new WebSocket(protocol + location.host + '/ws');
-
-      ws.onmessage = (event) => {
-        try {
-          const envelope = JSON.parse(event.data);
-          if (envelope.type === 'settings') {
-            document.documentElement.lang = envelope.data.appLanguageCode || 'en';
-            setSettings((current) => ({ ...current, ...envelope.data }));
-            return;
-          }
-          if (envelope.type === 'reload') {
-            window.location.reload();
-            return;
-          }
-          if (envelope.type === 'alert') {
-            setQueue((current) => [...current, envelope.data]);
-          }
-        } catch (_) {}
-      };
-
-      ws.onclose = () => {
-        retry = window.setTimeout(connect, 3000);
-      };
-    };
-
-    connect();
-
-    return () => {
-      if (retry) window.clearTimeout(retry);
-      if (ws) ws.close();
-    };
-  }, []);
-
-  const stageStyle = useMemo(() => ({
-    fontSize: `\${settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize}px`,
-  }), [settings.alertFontSize]);
-
-  return (
-    <div className="alert-stage" style={stageStyle}>
-      {active ? <AlertCard alert={active} settings={settings} /> : null}
-    </div>
-  );
+function applySettings(next) {
+  settings = { ...settings, ...next };
+  document.documentElement.lang = settings.appLanguageCode || 'en';
+  stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
+  if (active) renderAlert(active);
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
+function showNext() {
+  if (active || queue.length === 0) return;
+  active = queue.shift();
+  renderAlert(active);
+  const seconds = Math.max(1, Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
+  hideTimer = window.setTimeout(() => {
+    active = null;
+    stage.replaceChildren();
+    showNext();
+  }, seconds * 1000);
+}
+
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  socket = new WebSocket(protocol + location.host + '/ws');
+  socket.addEventListener('message', (event) => {
+    try {
+      const envelope = JSON.parse(event.data);
+      if (envelope.type === 'settings') applySettings(envelope.data || {});
+      else if (envelope.type === 'reload') window.location.reload();
+      else if (envelope.type === 'alert' && envelope.data) {
+        queue.push(envelope.data);
+        showNext();
+      }
+    } catch (_) {}
+  });
+  socket.addEventListener('close', () => {
+    if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
+  });
+  socket.addEventListener('error', () => socket.close());
+}
+
+applySettings(DEFAULT_SETTINGS);
+connect();
+window.addEventListener('beforeunload', () => {
+  shuttingDown = true;
+  window.clearTimeout(hideTimer);
+  window.clearTimeout(retryTimer);
+  if (socket) socket.close();
+});
 </script>
 </body>
 </html>''';
@@ -819,12 +868,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
 </head>
 <body>
 <div id="root"></div>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel">
-const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React;
-
+<script>
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   chromaMode: false,
@@ -865,43 +909,27 @@ const DEFAULT_SETTINGS = {
   scale: 1,
 };
 
-function clampMessages(messages, maxMessages, messageTtlSeconds = DEFAULT_SETTINGS.messageTtlSeconds) {
-  const limit = Math.max(10, maxMessages || DEFAULT_SETTINGS.maxMessages);
-  const ttl = Number(messageTtlSeconds);
-  const freshMessages = ttl > 0
-    ? messages.filter((message) => Date.now() - (message.receivedAt || Date.now()) < ttl * 1000)
-    : messages;
-  return freshMessages.slice(-limit);
-}
-
-function platformLabel(platform) {
-  switch (platform) {
-    case 'youtube': return 'YT';
-    case 'twitch': return 'TW';
-    default: return 'KK';
-  }
-}
-
 function platformIcon(platform) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  svg.setAttribute('width', '12');
+  svg.setAttribute('height', '12');
+  svg.style.flexShrink = '0';
   if (platform === 'twitch') {
-    return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="#9146FF" style={{ flexShrink: 0 }}>
-        <path d="M11.6 6H13v4.5h-1.4V6zm3.8 0h1.4v4.5h-1.4V6zM4 0L.5 3.5V20.5H6V24l3.5-3.5H12L23.5 9V0H4zm18 8.5L18.5 12H16l-3 3v-3H9.5v-8H22v4.5z" />
-      </svg>
-    );
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', '#9146FF');
+    path.setAttribute('d', 'M11.6 6H13v4.5h-1.4V6zm3.8 0h1.4v4.5h-1.4V6zM4 0L.5 3.5V20.5H6V24l3.5-3.5H12L23.5 9V0H4zm18 8.5L18.5 12H16l-3 3v-3H9.5v-8H22v4.5z');
+  } else if (platform === 'kick') {
+    svg.setAttribute('viewBox', '0 0 512 512');
+    svg.setAttribute('fill', '#53FC18');
+    path.setAttribute('d', 'M37 .036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z');
+  } else {
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', '#FF0000');
+    path.setAttribute('d', 'M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8A3 3 0 0 0 2.6 20c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z');
   }
-  if (platform === 'kick') {
-    return (
-      <svg width="12" height="12" viewBox="0 0 512 512" fill="#53FC18" style={{ flexShrink: 0 }}>
-        <path d="M37 .036h164.448v113.621h54.71v-56.82h54.731V.036h164.448v170.777h-54.73v56.82h-54.711v56.8h54.71v56.82h54.73V512.03H310.89v-56.82h-54.73v-56.8h-54.711v113.62H37V.036z" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF0000" style={{ flexShrink: 0 }}>
-      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8A3 3 0 0 0 2.6 20c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z" />
-    </svg>
-  );
+  svg.appendChild(path);
+  return svg;
 }
 
 function nameToHue(name) {
@@ -912,63 +940,21 @@ function nameToHue(name) {
 
 function normalizeUrl(url) {
   if (!url || typeof url !== 'string') return '';
-  if (url.startsWith('//')) return `https:\${url}`;
+  if (url.startsWith('//')) return 'https:' + url;
   return url;
 }
 
-function Avatar({ url, name, platform, showPlatformIcons, onMediaLoad }) {
-  const hue = nameToHue(name || '??');
-  const initials = (name || '?').slice(0, 2).toUpperCase();
-  const [failed, setFailed] = useState(false);
-  const resolvedUrl = failed ? '' : normalizeUrl(url);
-
-  return (
-    <div className="avatar-wrap">
-      {resolvedUrl ? (
-        <img
-          src={resolvedUrl}
-          alt={name}
-          className="avatar"
-          referrerPolicy="no-referrer"
-          onLoad={onMediaLoad}
-          onError={() => {
-            setFailed(true);
-            onMediaLoad?.();
-          }}
-        />
-      ) : (
-        <div
-          className="avatar-fallback"
-          style={{ background: `hsl(\${hue}, 60%, 40%)` }}
-        >
-          {initials}
-        </div>
-      )}
-      {showPlatformIcons ? (
-        <div className="platform-overlay">{platformIcon(platform)}</div>
-      ) : null}
-    </div>
-  );
+function authorInitials(name) {
+  const parts = String(name || '?').trim().split(' ').filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || '?').slice(0, 2)).toUpperCase();
 }
 
-function renderMessageItems(items, onMediaLoad) {
-  if (!Array.isArray(items)) return null;
-  return items.map((item, index) => {
-    if (item.kind === 'emoji' && item.url) {
-      return (
-        <img
-          key={index}
-          src={normalizeUrl(item.url)}
-          alt={item.alt || ''}
-          className="emoji"
-          referrerPolicy="no-referrer"
-          onLoad={onMediaLoad}
-          onError={onMediaLoad}
-        />
-      );
-    }
-    return <span key={index}>{item.text || ''}</span>;
-  });
+function createFallbackAvatar(name) {
+  const fallback = document.createElement('div');
+  fallback.className = 'avatar-fallback';
+  fallback.style.background = 'hsl(' + nameToHue(name || '??') + ', 60%, 40%)';
+  fallback.textContent = authorInitials(name);
+  return fallback;
 }
 
 const UI_STRINGS = {
@@ -992,355 +978,329 @@ const UI_STRINGS = {
   },
 };
 
-function uiStrings(settings) {
-  return UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+function createAvatar(message) {
+  const wrap = document.createElement('div');
+  wrap.className = 'avatar-wrap';
+  const url = normalizeUrl(message.authorAvatarUrl);
+  if (url) {
+    const image = document.createElement('img');
+    image.src = url;
+    image.alt = message.author || '';
+    image.className = 'avatar';
+    image.referrerPolicy = 'no-referrer';
+    image.addEventListener('load', scheduleScrollToBottom);
+    image.addEventListener('error', () => {
+      image.replaceWith(createFallbackAvatar(message.author));
+      scheduleScrollToBottom();
+    }, { once: true });
+    wrap.appendChild(image);
+  } else {
+    wrap.appendChild(createFallbackAvatar(message.author));
+  }
+  if (settings.showPlatformIcons) {
+    const icon = document.createElement('div');
+    icon.className = 'platform-overlay';
+    icon.appendChild(platformIcon(message.platform));
+    wrap.appendChild(icon);
+  }
+  return wrap;
 }
 
-function MessageBubble({ message, settings, index, onMediaLoad }) {
-  const strings = uiStrings(settings);
+function addBadge(row, className, label) {
+  const badge = document.createElement('span');
+  badge.className = 'badge ' + className;
+  badge.textContent = label;
+  row.appendChild(badge);
+}
+
+function appendMessageItems(container, items) {
+  if (!Array.isArray(items)) return;
+  for (const item of items) {
+    if (item && item.kind === 'emoji' && item.url) {
+      const image = document.createElement('img');
+      image.src = normalizeUrl(item.url);
+      image.alt = item.alt || '';
+      image.className = 'emoji';
+      image.referrerPolicy = 'no-referrer';
+      image.addEventListener('load', scheduleScrollToBottom);
+      image.addEventListener('error', () => {
+        image.replaceWith(document.createTextNode(item.alt || item.text || ''));
+        scheduleScrollToBottom();
+      }, { once: true });
+      container.appendChild(image);
+    } else {
+      const text = document.createElement('span');
+      text.textContent = item && item.text ? item.text : '';
+      container.appendChild(text);
+    }
+  }
+}
+
+function createMessageBubble(message, animate) {
+  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const isTwitch = message.platform === 'twitch';
   const isKick = message.platform === 'kick';
   const isSuperChat = !!message.isSuperChat;
   const isMembershipEvent = !!message.isMembershipEvent;
 
   let backgroundColor = settings.showBubble
-    ? `rgba(0, 0, 0, \${settings.messageOpacity})`
+    ? 'rgba(0, 0, 0, ' + settings.messageOpacity + ')'
     : 'transparent';
 
   if (isMembershipEvent) {
     backgroundColor = '#0F9D58';
   } else if (isTwitch && settings.twitchBubbleAccent && settings.showBubble) {
-    backgroundColor = `rgba(97, 25, 210, \${settings.messageOpacity})`;
+    backgroundColor = 'rgba(97, 25, 210, ' + settings.messageOpacity + ')';
   } else if (isKick && settings.kickBubbleAccent && settings.showBubble) {
-    backgroundColor = `rgba(30, 90, 10, \${settings.messageOpacity})`;
+    backgroundColor = 'rgba(30, 90, 10, ' + settings.messageOpacity + ')';
   }
 
-  const defaultBorder = settings.showBubble
-    ? '1px solid rgba(255, 255, 255, 0.1)'
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-item';
+  bubble.style.backgroundColor = backgroundColor;
+  bubble.style.borderRadius = settings.borderRadius + 'px';
+  bubble.style.border = settings.showBubble ? '1px solid rgba(255, 255, 255, 0.1)' : 'none';
+  if (isSuperChat && settings.showBubble && settings.superChatBarEnabled) {
+    bubble.style.borderBottom = settings.superChatBarWidth + 'px solid ' + settings.superChatBarColor;
+  }
+  bubble.style.padding = settings.showBubble ? '12px 18px' : '4px 0';
+  bubble.style.boxShadow = settings.showBubble ? '0 8px 32px rgba(0, 0, 0, 0.3)' : 'none';
+  bubble.style.animation = animate && settings.animation
+    ? settings.animation + ' ' + settings.animationDuration + 's cubic-bezier(0.16, 1, 0.3, 1) both'
     : 'none';
-  const superChatBorder = isSuperChat && settings.showBubble && settings.superChatBarEnabled
-    ? `\${settings.superChatBarWidth}px solid \${settings.superChatBarColor}`
-    : null;
+  bubble.style.color = isSuperChat || isMembershipEvent ? '#FFFFFF' : 'inherit';
+  bubble.style.gap = settings.showAvatars ? '14px' : '0';
+  if (settings.showAvatars) bubble.appendChild(createAvatar(message));
 
-  return (
-    <div
-      className="chat-item"
-      style={{
-        backgroundColor,
-        borderRadius: `\${settings.borderRadius}px`,
-        border: defaultBorder,
-        ...(superChatBorder ? { borderBottom: superChatBorder } : {}),
-        padding: settings.showBubble ? '12px 18px' : '4px 0',
-        boxShadow: settings.showBubble ? '0 8px 32px rgba(0, 0, 0, 0.3)' : 'none',
-        animation: settings.animation
-          ? `\${settings.animation} \${settings.animationDuration}s cubic-bezier(0.16, 1, 0.3, 1) both`
-          : 'none',
-        color: (isSuperChat || isMembershipEvent) ? '#FFFFFF' : 'inherit',
-        gap: settings.showAvatars ? '14px' : '0',
-      }}
-    >
-      {settings.showAvatars ? (
-        <Avatar
-          url={message.authorAvatarUrl}
-          name={message.author}
-          platform={message.platform}
-          showPlatformIcons={settings.showPlatformIcons}
-          onMediaLoad={onMediaLoad}
-        />
-      ) : null}
-      <div className="chat-content">
-        <div className="author-row">
-          {settings.showPlatformIcons && !settings.showAvatars ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: '4px' }}>
-              {platformIcon(message.platform)}
-            </span>
-          ) : null}
-          <span
-            className={`author-name \${message.isOwner ? 'owner' : ''} \${message.isModerator ? 'mod' : ''}`}
-            style={{ color: message.color || undefined }}
-          >
-            {message.author}
-          </span>
-          {settings.showBadges ? (
-            <>
-              {message.isOwner ? <span className="badge owner-badge">{strings.owner}</span> : null}
-              {message.isModerator ? <span className="badge mod-badge">{strings.moderator}</span> : null}
-              {message.isMembership && !isMembershipEvent ? (
-                <span className={`badge \${isTwitch ? 'twitch-sub-badge' : isKick ? 'kick-sub-badge' : 'member-badge'}`}>
-                  {isTwitch || isKick ? strings.subscriber : strings.member}
-                </span>
-              ) : null}
-              {isSuperChat && message.superChatAmount ? (
-                <span className="badge superchat-badge">{message.superChatAmount}</span>
-              ) : null}
-              {message.badgeImageUrl ? (
-                <span className="badge custom-badge" title={message.badgeLabel || ''}>
-                  <img
-                    src={normalizeUrl(message.badgeImageUrl)}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    onLoad={onMediaLoad}
-                    onError={onMediaLoad}
-                  />
-                </span>
-              ) : null}
-            </>
-          ) : null}
-          {settings.showTimestamp ? (
-            <span className="timestamp">
-              {message.timestamp ? new Date(message.timestamp).toLocaleTimeString(
-                settings.appLanguageCode === 'es' ? 'es-MX' : 'en-US'
-              ) : ''}
-            </span>
-          ) : null}
-        </div>
-
-        <div
-          className="message-text"
-          style={{
-            WebkitTextStroke: `\${settings.textStroke}px \${settings.textStrokeColor}`,
-            textShadow: settings.textShadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none',
-            fontWeight: settings.fontWeight,
-            lineHeight: settings.lineHeight,
-            textAlign: settings.textAlign,
-          }}
-        >
-          {renderMessageItems(message.items, onMediaLoad)}
-
-          {isMembershipEvent ? (
-            <div className="membership-flair">
-              <em>{message.badgeLabel || (isTwitch
-                ? strings.newSubscriber
-                : isKick
-                  ? strings.subscriptionUpdate
-                  : strings.membershipUpdate)}</em>
-            </div>
-          ) : null}
-
-          {isSuperChat && message.superChatStickerUrl ? (
-            <div className="superchat-sticker">
-              <img
-                src={normalizeUrl(message.superChatStickerUrl)}
-                alt=""
-                referrerPolicy="no-referrer"
-                onLoad={onMediaLoad}
-                onError={onMediaLoad}
-              />
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OverlayApp() {
-  const [messages, setMessages] = useState([]);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const overlayRef = useRef(null);
-  const scrollTaskRef = useRef(0);
-  const settingsRef = useRef(DEFAULT_SETTINGS);
-
-  const forceScrollToBottom = () => {
-    const scroller = overlayRef.current;
-    if (!scroller) return;
-    scroller.scrollTop = scroller.scrollHeight;
-  };
-
-  const scheduleScrollToBottom = () => {
-    if (scrollTaskRef.current) {
-      window.cancelAnimationFrame(scrollTaskRef.current);
-    }
-    scrollTaskRef.current = window.requestAnimationFrame(() => {
-      forceScrollToBottom();
-      window.requestAnimationFrame(() => {
-        forceScrollToBottom();
-        window.setTimeout(forceScrollToBottom, 0);
-      });
-    });
-  };
-
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
-  useEffect(() => {
-    setMessages((current) =>
-      clampMessages(current, settings.maxMessages, settings.messageTtlSeconds)
-    );
-  }, [settings.maxMessages, settings.messageTtlSeconds]);
-
-  useEffect(() => {
-    const prune = () => {
-      const currentSettings = settingsRef.current;
-      setMessages((current) =>
-        clampMessages(
-          current,
-          currentSettings.maxMessages,
-          currentSettings.messageTtlSeconds
-        )
-      );
-    };
-    const interval = window.setInterval(prune, 1000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useLayoutEffect(() => {
-    scheduleScrollToBottom();
-    return () => {
-      if (scrollTaskRef.current) {
-        window.cancelAnimationFrame(scrollTaskRef.current);
-      }
-    };
-  }, [messages, settings.messageGap, settings.fontSize, settings.showBubble]);
-
-  useEffect(() => {
-    const scroller = overlayRef.current;
-    if (!scroller || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => {
-      scheduleScrollToBottom();
-    });
-    observer.observe(scroller);
-    for (const child of scroller.children) {
-      observer.observe(child);
-    }
-    return () => observer.disconnect();
-  }, [messages.length, settings.threeDEnabled, settings.showAvatars]);
-
-  useEffect(() => {
-    let ws;
-    let retry;
-
-    const connect = () => {
-      const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-      ws = new WebSocket(protocol + location.host + '/ws');
-
-      ws.onmessage = (event) => {
-        try {
-          const envelope = JSON.parse(event.data);
-          if (envelope.type === 'settings') {
-            document.documentElement.lang = envelope.data.appLanguageCode || 'en';
-            setSettings((current) => ({ ...current, ...envelope.data }));
-            return;
-          }
-          if (envelope.type === 'reload') {
-            window.location.reload();
-            return;
-          }
-          if (envelope.type === 'message') {
-            setMessages((current) =>
-              clampMessages(
-                [...current, { ...envelope.data, receivedAt: Date.now() }],
-                settingsRef.current.maxMessages,
-                settingsRef.current.messageTtlSeconds
-              )
-            );
-          }
-        } catch (_) {}
-      };
-
-      ws.onclose = () => {
-        retry = window.setTimeout(connect, 3000);
-      };
-    };
-
-    connect();
-
-    return () => {
-      if (retry) window.clearTimeout(retry);
-      if (ws) ws.close();
-    };
-  }, []);
-
-  const shellStyle = useMemo(() => ({
-    backgroundColor: settings.chromaMode
-      ? settings.chromaColor
-      : `rgba(0, 0, 0, \${settings.bgOpacity})`,
-    backgroundImage: (!settings.chromaMode && settings.showGrid)
-      ? `
-        linear-gradient(45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%)
-      `
-      : 'none',
-    backgroundSize: (!settings.chromaMode && settings.showGrid)
-      ? '40px 40px'
-      : undefined,
-    backgroundPosition: (!settings.chromaMode && settings.showGrid)
-      ? '0 0, 0 20px, 20px 20px, 20px 0'
-      : undefined,
-    perspective: settings.threeDEnabled
-      ? `\${settings.perspective}px`
-      : 'none',
-  }), [
-    settings.bgOpacity,
-    settings.chromaMode,
-    settings.chromaColor,
-    settings.showGrid,
-    settings.threeDEnabled,
-    settings.perspective,
-  ]);
-
-  const shellClassName = useMemo(
-    () => `overlay-shell \${settings.hideScrollbar ? 'hide-scrollbar' : ''}`,
-    [settings.hideScrollbar],
-  );
-
-  const overlayStyle = useMemo(() => ({
-    fontSize: `\${settings.fontSize}px`,
-    gap: `\${settings.messageGap}px`,
-    padding: settings.threeDEnabled ? '4rem 4rem 6rem' : '3rem',
-    alignItems: settings.textAlign === 'center'
-      ? 'center'
-      : settings.textAlign === 'right'
-        ? 'flex-end'
-        : 'flex-start',
-    transform: settings.threeDEnabled
-      ? `
-        rotateX(\${settings.rotateX}deg)
-        rotateY(\${settings.rotateY}deg)
-        rotateZ(\${settings.rotateZ}deg)
-        skewX(\${settings.skewX}deg)
-        scale(\${settings.scale})
-      `
-      : 'none',
-    transformStyle: 'preserve-3d',
-  }), [
-    settings.fontSize,
-    settings.messageGap,
-    settings.threeDEnabled,
-    settings.textAlign,
-    settings.threeDEnabled,
-    settings.rotateX,
-    settings.rotateY,
-    settings.rotateZ,
-    settings.skewX,
-    settings.scale,
-  ]);
-
-  if (!messages.length) {
-    return <div className={shellClassName} style={shellStyle} />;
+  const content = document.createElement('div');
+  content.className = 'chat-content';
+  const authorRow = document.createElement('div');
+  authorRow.className = 'author-row';
+  if (settings.showPlatformIcons && !settings.showAvatars) {
+    const icon = document.createElement('span');
+    icon.style.display = 'inline-flex';
+    icon.style.alignItems = 'center';
+    icon.style.marginRight = '4px';
+    icon.appendChild(platformIcon(message.platform));
+    authorRow.appendChild(icon);
   }
 
-  return (
-    <div className={shellClassName} style={shellStyle}>
-      <div className="chat-overlay" style={overlayStyle} ref={overlayRef}>
-        {messages.map((message, index) => (
-          <MessageBubble
-            key={message.id ? message.id + '-' + index : index}
-            message={message}
-            settings={settings}
-            index={index}
-            onMediaLoad={scheduleScrollToBottom}
-          />
-        ))}
-      </div>
-    </div>
-  );
+  const author = document.createElement('span');
+  author.className = 'author-name' + (message.isOwner ? ' owner' : '') + (message.isModerator ? ' mod' : '');
+  if (message.color) author.style.color = message.color;
+  author.textContent = message.author || '';
+  authorRow.appendChild(author);
+
+  if (settings.showBadges) {
+    if (message.isOwner) addBadge(authorRow, 'owner-badge', strings.owner);
+    if (message.isModerator) addBadge(authorRow, 'mod-badge', strings.moderator);
+    if (message.isMembership && !isMembershipEvent) {
+      const badgeClass = isTwitch ? 'twitch-sub-badge' : isKick ? 'kick-sub-badge' : 'member-badge';
+      addBadge(authorRow, badgeClass, isTwitch || isKick ? strings.subscriber : strings.member);
+    }
+    if (isSuperChat && message.superChatAmount) addBadge(authorRow, 'superchat-badge', message.superChatAmount);
+    const badgeUrl = normalizeUrl(message.badgeImageUrl);
+    if (badgeUrl) {
+      const customBadge = document.createElement('span');
+      customBadge.className = 'badge custom-badge';
+      customBadge.title = message.badgeLabel || '';
+      const badgeImage = document.createElement('img');
+      badgeImage.src = badgeUrl;
+      badgeImage.alt = '';
+      badgeImage.referrerPolicy = 'no-referrer';
+      badgeImage.addEventListener('load', scheduleScrollToBottom);
+      badgeImage.addEventListener('error', () => customBadge.remove(), { once: true });
+      customBadge.appendChild(badgeImage);
+      authorRow.appendChild(customBadge);
+    }
+  }
+
+  if (settings.showTimestamp && message.timestamp) {
+    const timestamp = document.createElement('span');
+    timestamp.className = 'timestamp';
+    const date = new Date(message.timestamp);
+    timestamp.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(settings.appLanguageCode === 'es' ? 'es-MX' : 'en-US');
+    authorRow.appendChild(timestamp);
+  }
+  content.appendChild(authorRow);
+
+  const messageText = document.createElement('div');
+  messageText.className = 'message-text';
+  messageText.style.webkitTextStroke = settings.textStroke + 'px ' + settings.textStrokeColor;
+  messageText.style.textShadow = settings.textShadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none';
+  messageText.style.fontWeight = String(settings.fontWeight);
+  messageText.style.lineHeight = String(settings.lineHeight);
+  messageText.style.textAlign = settings.textAlign;
+  appendMessageItems(messageText, message.items);
+
+  if (isMembershipEvent) {
+    const flair = document.createElement('div');
+    flair.className = 'membership-flair';
+    const emphasis = document.createElement('em');
+    emphasis.textContent = message.badgeLabel || (isTwitch ? strings.newSubscriber : isKick ? strings.subscriptionUpdate : strings.membershipUpdate);
+    flair.appendChild(emphasis);
+    messageText.appendChild(flair);
+  }
+
+  const stickerUrl = isSuperChat ? normalizeUrl(message.superChatStickerUrl) : '';
+  if (stickerUrl) {
+    const sticker = document.createElement('div');
+    sticker.className = 'superchat-sticker';
+    const image = document.createElement('img');
+    image.src = stickerUrl;
+    image.alt = '';
+    image.referrerPolicy = 'no-referrer';
+    image.addEventListener('load', scheduleScrollToBottom);
+    image.addEventListener('error', () => sticker.remove(), { once: true });
+    sticker.appendChild(image);
+    messageText.appendChild(sticker);
+  }
+
+  content.appendChild(messageText);
+  bubble.appendChild(content);
+  return bubble;
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<OverlayApp />);
+const root = document.getElementById('root');
+const shell = document.createElement('div');
+shell.className = 'overlay-shell';
+const chatOverlay = document.createElement('div');
+chatOverlay.className = 'chat-overlay';
+shell.appendChild(chatOverlay);
+root.appendChild(shell);
+
+let settings = { ...DEFAULT_SETTINGS };
+let records = [];
+let socket = null;
+let retryTimer = 0;
+let scrollTask = 0;
+let pruneTimer = 0;
+let shuttingDown = false;
+const resizeObserver = typeof ResizeObserver === 'undefined'
+  ? null
+  : new ResizeObserver(scheduleScrollToBottom);
+
+function forceScrollToBottom() {
+  chatOverlay.scrollTop = chatOverlay.scrollHeight;
+}
+
+function scheduleScrollToBottom() {
+  if (scrollTask) window.cancelAnimationFrame(scrollTask);
+  scrollTask = window.requestAnimationFrame(() => {
+    forceScrollToBottom();
+    window.requestAnimationFrame(() => {
+      forceScrollToBottom();
+      window.setTimeout(forceScrollToBottom, 0);
+    });
+  });
+}
+
+function removeRecord(record) {
+  if (resizeObserver && record.element) resizeObserver.unobserve(record.element);
+  if (record.element) record.element.remove();
+}
+
+function pruneMessages() {
+  let removed = false;
+  const ttl = Number(settings.messageTtlSeconds);
+  const cutoff = Date.now() - ttl * 1000;
+  if (ttl > 0) {
+    while (records.length && records[0].receivedAt < cutoff) {
+      removeRecord(records.shift());
+      removed = true;
+    }
+  }
+  const limit = Math.max(10, Number(settings.maxMessages) || DEFAULT_SETTINGS.maxMessages);
+  while (records.length > limit) {
+    removeRecord(records.shift());
+    removed = true;
+  }
+  if (removed) scheduleScrollToBottom();
+}
+
+function applyShellSettings() {
+  document.documentElement.lang = settings.appLanguageCode || 'en';
+  shell.className = 'overlay-shell' + (settings.hideScrollbar ? ' hide-scrollbar' : '');
+  shell.style.backgroundColor = settings.chromaMode
+    ? settings.chromaColor
+    : 'rgba(0, 0, 0, ' + settings.bgOpacity + ')';
+  const grid = !settings.chromaMode && settings.showGrid;
+  shell.style.backgroundImage = grid
+    ? 'linear-gradient(45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%), linear-gradient(-45deg, rgba(0, 0, 0, 0.1) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%), linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.1) 75%)'
+    : 'none';
+  shell.style.backgroundSize = grid ? '40px 40px' : '';
+  shell.style.backgroundPosition = grid ? '0 0, 0 20px, 20px 20px, 20px 0' : '';
+  shell.style.perspective = settings.threeDEnabled ? settings.perspective + 'px' : 'none';
+  chatOverlay.style.fontSize = settings.fontSize + 'px';
+  chatOverlay.style.gap = settings.messageGap + 'px';
+  chatOverlay.style.padding = settings.threeDEnabled ? '4rem 4rem 6rem' : '3rem';
+  chatOverlay.style.alignItems = settings.textAlign === 'center' ? 'center' : settings.textAlign === 'right' ? 'flex-end' : 'flex-start';
+  chatOverlay.style.transform = settings.threeDEnabled
+    ? 'rotateX(' + settings.rotateX + 'deg) rotateY(' + settings.rotateY + 'deg) rotateZ(' + settings.rotateZ + 'deg) skewX(' + settings.skewX + 'deg) scale(' + settings.scale + ')'
+    : 'none';
+  chatOverlay.style.transformStyle = 'preserve-3d';
+}
+
+function renderExistingMessages() {
+  if (resizeObserver) resizeObserver.disconnect();
+  const fragment = document.createDocumentFragment();
+  for (const record of records) {
+    record.element = createMessageBubble(record.message, false);
+    fragment.appendChild(record.element);
+    if (resizeObserver) resizeObserver.observe(record.element);
+  }
+  chatOverlay.replaceChildren(fragment);
+}
+
+function applySettings(next) {
+  settings = { ...settings, ...next };
+  applyShellSettings();
+  pruneMessages();
+  renderExistingMessages();
+  scheduleScrollToBottom();
+}
+
+function addMessage(message) {
+  const record = {
+    message: message,
+    receivedAt: Date.now(),
+    element: createMessageBubble(message, true),
+  };
+  records.push(record);
+  chatOverlay.appendChild(record.element);
+  if (resizeObserver) resizeObserver.observe(record.element);
+  pruneMessages();
+  scheduleScrollToBottom();
+}
+
+function connect() {
+  const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  socket = new WebSocket(protocol + location.host + '/ws');
+  socket.addEventListener('message', (event) => {
+    try {
+      const envelope = JSON.parse(event.data);
+      if (envelope.type === 'settings') applySettings(envelope.data || {});
+      else if (envelope.type === 'reload') window.location.reload();
+      else if (envelope.type === 'message' && envelope.data) addMessage(envelope.data);
+    } catch (_) {}
+  });
+  socket.addEventListener('close', () => {
+    if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
+  });
+  socket.addEventListener('error', () => socket.close());
+}
+
+applyShellSettings();
+pruneTimer = window.setInterval(pruneMessages, 1000);
+connect();
+window.addEventListener('beforeunload', () => {
+  shuttingDown = true;
+  window.clearTimeout(retryTimer);
+  window.clearInterval(pruneTimer);
+  if (scrollTask) window.cancelAnimationFrame(scrollTask);
+  if (resizeObserver) resizeObserver.disconnect();
+  if (socket) socket.close();
+});
 </script>
 </body>
 </html>''';
