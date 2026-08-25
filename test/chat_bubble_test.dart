@@ -1,4 +1,5 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
@@ -31,6 +32,8 @@ void main() {
           settingsProvider.overrideWith((ref) => notifier),
         ],
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
               width: 500,
@@ -55,6 +58,40 @@ void main() {
       isTrue,
     );
     expect(find.text(':wave:'), findsOneWidget);
+  });
+
+  testWidgets('localizes built-in badges and membership events to Spanish',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(showBadges: true),
+    );
+    final message = ChatMessage(
+      platform: Platform.youtube,
+      id: 'membership',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [],
+      isOwner: true,
+      isMembership: true,
+      isMembershipEvent: true,
+      timestamp: DateTime.utc(2026, 6, 10),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('DUEÑO'), findsOneWidget);
+    expect(find.text('Actualización de membresía'), findsOneWidget);
+    expect(find.text('OWNER'), findsNothing);
+    expect(find.text('Membership update'), findsNothing);
   });
 }
 

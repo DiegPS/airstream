@@ -15,31 +15,19 @@ class WindowControlBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(windowStateProvider);
     final notifier = ref.read(windowStateProvider.notifier);
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
 
-    final alwaysOnTopTooltip = l != null
-        ? (state.alwaysOnTop
-            ? l.alwaysOnTopActiveTooltip
-            : l.alwaysOnTopInactiveTooltip)
-        : (state.alwaysOnTop
-            ? 'Desactivar Siempre visible (Ctrl+Shift+P)'
-            : 'Siempre visible (Ctrl+Shift+P)');
+    final alwaysOnTopTooltip = state.alwaysOnTop
+        ? l.alwaysOnTopActiveTooltip
+        : l.alwaysOnTopInactiveTooltip;
 
-    final clickThroughTooltip = l != null
-        ? (state.clickThrough
-            ? l.clickThroughActiveTooltip
-            : l.clickThroughInactiveTooltip)
-        : (state.clickThrough
-            ? 'Click-Through activo. Desactivar (Ctrl+Shift+C)'
-            : 'Activar Click-Through (Ctrl+Shift+C)');
+    final clickThroughTooltip = state.clickThrough
+        ? l.clickThroughActiveTooltip
+        : l.clickThroughInactiveTooltip;
 
-    final antiCaptureTooltip = l != null
-        ? (state.excludeFromCapture
-            ? l.antiCaptureActiveTooltip
-            : l.antiCaptureInactiveTooltip)
-        : (state.excludeFromCapture
-            ? 'Modo privacidad activo — ventana oculta de capturas/OBS'
-            : 'Ocultar de capturas / screen share');
+    final antiCaptureTooltip = state.excludeFromCapture
+        ? l.antiCaptureActiveTooltip
+        : l.antiCaptureInactiveTooltip;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -139,11 +127,11 @@ class _WindowManagerButtonsState extends State<_WindowManagerButtons>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final minimizeLabel = l?.minimize ?? 'Minimizar';
-    final maximizeLabel = l?.maximize ?? 'Maximizar';
-    final restoreLabel = l?.restore ?? 'Restaurar';
-    final closeLabel = l?.close ?? 'Cerrar';
+    final l = AppLocalizations.of(context)!;
+    final minimizeLabel = l.minimize;
+    final maximizeLabel = l.maximize;
+    final restoreLabel = l.restore;
+    final closeLabel = l.close;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

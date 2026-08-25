@@ -112,6 +112,9 @@ class OverlayServer {
   bool broadcastTestAlert(String kind) {
     if (_clients.isEmpty) return false;
     final now = DateTime.now().toIso8601String();
+    final spanish = _settings.appLanguageCode == 'es';
+    final donorName = spanish ? 'Donante de prueba' : 'Test donor';
+    final memberName = spanish ? 'Miembro de prueba' : 'Test member';
     const donorAvatar =
         'https://api.dicebear.com/9.x/initials/svg?seed=Test%20Donor';
     const memberAvatar =
@@ -121,7 +124,7 @@ class OverlayServer {
           'platform': 'youtube',
           'kind': 'superchat',
           'id': 'test-superchat-empty-$now',
-          'author': 'Test Donor',
+          'author': donorName,
           'authorAvatarUrl': donorAvatar,
           'authorChannelId': 'test-donor',
           'badgeImageUrl': null,
@@ -136,12 +139,14 @@ class OverlayServer {
           'platform': 'youtube',
           'kind': 'membership',
           'id': 'test-membership-$now',
-          'author': 'Test Member',
+          'author': memberName,
           'authorAvatarUrl': memberAvatar,
           'authorChannelId': 'test-member',
           'badgeImageUrl': null,
-          'badgeLabel': 'New member',
-          'message': 'Welcome to the channel membership!',
+          'badgeLabel': spanish ? 'Nuevo miembro' : 'New member',
+          'message': spanish
+              ? '¡Te damos la bienvenida a la membresía del canal!'
+              : 'Welcome to the channel membership!',
           'amount': null,
           'color': '#0F9D58',
           'stickerUrl': null,
@@ -151,12 +156,14 @@ class OverlayServer {
           'platform': 'youtube',
           'kind': 'superchat',
           'id': 'test-superchat-$now',
-          'author': 'Test Donor',
+          'author': donorName,
           'authorAvatarUrl': donorAvatar,
           'authorChannelId': 'test-donor',
           'badgeImageUrl': null,
           'badgeLabel': null,
-          'message': 'This is a test Super Chat message.',
+          'message': spanish
+              ? 'Este es un mensaje de prueba de Super Chat.'
+              : 'This is a test Super Chat message.',
           'amount': r'MX$50.00',
           'color': '#FFD600',
           'stickerUrl': null,
@@ -302,6 +309,7 @@ class OverlayServer {
   }
 
   Map<String, dynamic> _overlaySettingsPayload() => {
+        'appLanguageCode': _settings.appLanguageCode,
         'chromaMode': _settings.overlayChromaMode,
         'chromaColor': _settings.overlayChromaColor,
         'showGrid': _settings.overlayShowGrid,
@@ -435,6 +443,7 @@ class OverlayServer {
 const { useEffect, useMemo, useRef, useState } = React;
 
 const DEFAULT_SETTINGS = {
+  appLanguageCode: 'en',
   alertFontSize: 28,
   alertDisplaySeconds: 7,
   alertShowAvatars: true,
@@ -527,6 +536,7 @@ function AlertsApp() {
         try {
           const envelope = JSON.parse(event.data);
           if (envelope.type === 'settings') {
+            document.documentElement.lang = envelope.data.appLanguageCode || 'en';
             setSettings((current) => ({ ...current, ...envelope.data }));
             return;
           }
@@ -816,6 +826,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<AlertsApp />);
 const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React;
 
 const DEFAULT_SETTINGS = {
+  appLanguageCode: 'en',
   chromaMode: false,
   chromaColor: '#00FF00',
   showGrid: false,
@@ -960,7 +971,33 @@ function renderMessageItems(items, onMediaLoad) {
   });
 }
 
+const UI_STRINGS = {
+  en: {
+    owner: 'OWNER',
+    moderator: 'MOD',
+    member: 'MEMBER',
+    subscriber: 'SUB',
+    newSubscriber: 'New subscriber!',
+    subscriptionUpdate: 'Subscription update',
+    membershipUpdate: 'Membership update',
+  },
+  es: {
+    owner: 'DUEÑO',
+    moderator: 'MOD',
+    member: 'MIEMBRO',
+    subscriber: 'SUB',
+    newSubscriber: '¡Nuevo suscriptor!',
+    subscriptionUpdate: 'Actualización de suscripción',
+    membershipUpdate: 'Actualización de membresía',
+  },
+};
+
+function uiStrings(settings) {
+  return UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+}
+
 function MessageBubble({ message, settings, index, onMediaLoad }) {
+  const strings = uiStrings(settings);
   const isTwitch = message.platform === 'twitch';
   const isKick = message.platform === 'kick';
   const isSuperChat = !!message.isSuperChat;
@@ -1026,11 +1063,11 @@ function MessageBubble({ message, settings, index, onMediaLoad }) {
           </span>
           {settings.showBadges ? (
             <>
-              {message.isOwner ? <span className="badge owner-badge">OWNER</span> : null}
-              {message.isModerator ? <span className="badge mod-badge">MOD</span> : null}
+              {message.isOwner ? <span className="badge owner-badge">{strings.owner}</span> : null}
+              {message.isModerator ? <span className="badge mod-badge">{strings.moderator}</span> : null}
               {message.isMembership && !isMembershipEvent ? (
                 <span className={`badge \${isTwitch ? 'twitch-sub-badge' : isKick ? 'kick-sub-badge' : 'member-badge'}`}>
-                  {isTwitch || isKick ? 'SUB' : 'MEMBER'}
+                  {isTwitch || isKick ? strings.subscriber : strings.member}
                 </span>
               ) : null}
               {isSuperChat && message.superChatAmount ? (
@@ -1051,7 +1088,9 @@ function MessageBubble({ message, settings, index, onMediaLoad }) {
           ) : null}
           {settings.showTimestamp ? (
             <span className="timestamp">
-              {message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : ''}
+              {message.timestamp ? new Date(message.timestamp).toLocaleTimeString(
+                settings.appLanguageCode === 'es' ? 'es-MX' : 'en-US'
+              ) : ''}
             </span>
           ) : null}
         </div>
@@ -1070,7 +1109,11 @@ function MessageBubble({ message, settings, index, onMediaLoad }) {
 
           {isMembershipEvent ? (
             <div className="membership-flair">
-              <em>{message.badgeLabel || (isTwitch ? 'New Subscriber!' : isKick ? 'Subscription Update' : 'Membership Update')}</em>
+              <em>{message.badgeLabel || (isTwitch
+                ? strings.newSubscriber
+                : isKick
+                  ? strings.subscriptionUpdate
+                  : strings.membershipUpdate)}</em>
             </div>
           ) : null}
 
@@ -1176,6 +1219,7 @@ function OverlayApp() {
         try {
           const envelope = JSON.parse(event.data);
           if (envelope.type === 'settings') {
+            document.documentElement.lang = envelope.data.appLanguageCode || 'en';
             setSettings((current) => ({ ...current, ...envelope.data }));
             return;
           }

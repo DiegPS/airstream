@@ -43,6 +43,7 @@
   "membersOnly": "Members only",
   "commandMode": "Command mode (custom prefix)",
   "commandPrefix": "Command prefix",
+  "commandPrefixHint": "!v",
   "ignoreCommandCase": "Ignore uppercase/lowercase in prefix",
   "separatorText": "Separator text",
   "voice": "Voice",
@@ -67,14 +68,7 @@
   "remove": "Remove",
   "cancel": "Cancel",
   "ttsModelRemoved": "The TTS model was removed.",
-  "ttsModelRemovalFailed": "The TTS model could not be removed: {error}",
-  "@ttsModelRemovalFailed": {
-    "placeholders": {
-      "error": {
-        "type": "String"
-      }
-    }
-  },
+  "ttsModelRemovalFailed": "The TTS model could not be removed.",
   "testText": "Test text",
   "playingTts": "Playing TTS...",
   "loadingTts": "Loading TTS...",
@@ -373,5 +367,73 @@
   "separatorTextHint": "says",
   "male": "Male",
   "female": "Female",
-  "includedSample": "Included sample"
+  "includedSample": "Included sample",
+  "youtubeInputHint": "@handle · channel ID · video ID",
+  "channelNameHint": "channel_name",
+  "channelIdentifierHint": "channel_identifier",
+  "blockedUsersHint": "@nightbot\n@another_user",
+  "blockedWordsHint": "word\ncomplete phrase",
+  "chatError": "Chat messages could not be loaded.",
+  "platformConnectionFailed": "{platform} could not connect. Check the channel and your Internet connection.",
+  "@platformConnectionFailed": {
+    "placeholders": { "platform": { "type": "String" } }
+  },
+  "obsConnectionProblem": "OBS could not complete the requested action. Check the connection settings.",
+  "defaultVoice": "Default",
+  "newsVoice": "News voice",
+  "newsVoiceNumber": "News voice {number}",
+  "@newsVoiceNumber": {
+    "placeholders": { "number": { "type": "int" } }
+  },
+  "alignmentLeft": "Left",
+  "alignmentCenter": "Center",
+  "alignmentRight": "Right",
+  "animationSlideUp": "Slide up",
+  "animationSlideLeft": "Slide from right",
+  "animationFadeIn": "Fade in",
+  "animationZoomIn": "Zoom in",
+  "droppedFramesBadge": "DROP {percentage}% ({count})",
+  "@droppedFramesBadge": {
+    "placeholders": {
+      "percentage": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "badgeOwner": "OWNER",
+  "badgeModerator": "MOD",
+  "badgeMember": "MEMBER",
+  "badgeSubscriber": "SUB",
+  "newSubscriberEvent": "New subscriber!",
+  "subscriptionUpdateEvent": "Subscription update",
+  "membershipUpdateEvent": "Membership update",
+  "languageArabic": "Arabic",
+  "languageBulgarian": "Bulgarian",
+  "languageChinese": "Chinese",
+  "languageCroatian": "Croatian",
+  "languageCzech": "Czech",
+  "languageDanish": "Danish",
+  "languageDutch": "Dutch",
+  "languageEstonian": "Estonian",
+  "languageFinnish": "Finnish",
+  "languageFrench": "French",
+  "languageGerman": "German",
+  "languageGreek": "Greek",
+  "languageHindi": "Hindi",
+  "languageHungarian": "Hungarian",
+  "languageIndonesian": "Indonesian",
+  "languageItalian": "Italian",
+  "languageJapanese": "Japanese",
+  "languageKorean": "Korean",
+  "languageLatvian": "Latvian",
+  "languageLithuanian": "Lithuanian",
+  "languagePolish": "Polish",
+  "languagePortuguese": "Portuguese",
+  "languageRomanian": "Romanian",
+  "languageRussian": "Russian",
+  "languageSlovak": "Slovak",
+  "languageSlovenian": "Slovenian",
+  "languageSwedish": "Swedish",
+  "languageTurkish": "Turkish",
+  "languageUkrainian": "Ukrainian",
+  "languageVietnamese": "Vietnamese"
 }

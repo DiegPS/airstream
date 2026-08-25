@@ -52,6 +52,54 @@ void main() {
     );
   });
 
+  test('migrates old Spanish TTS defaults in an English configuration',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'AIRSTREAM_SETTINGS': jsonEncode({
+        'appLanguageCode': 'en',
+        'ttsCommandPrefix': '!voz',
+        'ttsSeparatorText': 'dice',
+      }),
+    });
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+    );
+
+    await notifier.ready;
+
+    expect(notifier.state.ttsCommandPrefix, '!v');
+    expect(notifier.state.ttsSeparatorText, 'says');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('AIRSTREAM_SETTINGS'), contains('!v'));
+    expect(prefs.getString('AIRSTREAM_SETTINGS'), contains('says'));
+  });
+
+  test('keeps !v and translates the separator when the app language changes',
+      () async {
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+    );
+    await notifier.ready;
+
+    await notifier.update(notifier.state.copyWith(
+      appLanguageCode: 'en',
+      ttsCommandPrefix: '!v',
+      ttsSeparatorText: 'says',
+    ));
+    await notifier.update(notifier.state.copyWith(appLanguageCode: 'es'));
+
+    expect(notifier.state.ttsCommandPrefix, '!v');
+    expect(notifier.state.ttsSeparatorText, 'dice');
+
+    await notifier.update(notifier.state.copyWith(
+      appLanguageCode: 'en',
+      ttsCommandPrefix: '!custom',
+      ttsSeparatorText: 'announces',
+    ));
+    expect(notifier.state.ttsCommandPrefix, '!custom');
+    expect(notifier.state.ttsSeparatorText, 'announces');
+  });
+
   test('updates and deletes the OBS password through secure storage', () async {
     final secureStore = _MemorySecureSettingsStore();
     final notifier = SettingsNotifier(secureStore: secureStore);

@@ -356,6 +356,12 @@ abstract class AppLocalizations {
   /// **'Command prefix'**
   String get commandPrefix;
 
+  /// No description provided for @commandPrefixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'!v'**
+  String get commandPrefixHint;
+
   /// No description provided for @ignoreCommandCase.
   ///
   /// In en, this message translates to:
@@ -467,8 +473,8 @@ abstract class AppLocalizations {
   /// No description provided for @ttsModelRemovalFailed.
   ///
   /// In en, this message translates to:
-  /// **'The TTS model could not be removed: {error}'**
-  String ttsModelRemovalFailed(String error);
+  /// **'The TTS model could not be removed.'**
+  String get ttsModelRemovalFailed;
 
   /// No description provided for @testText.
   ///
@@ -1652,6 +1658,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Included sample'**
   String get includedSample;
+
+  /// No description provided for @youtubeInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'@handle · channel ID · video ID'**
+  String get youtubeInputHint;
+
+  /// No description provided for @channelNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'channel_name'**
+  String get channelNameHint;
+
+  /// No description provided for @channelIdentifierHint.
+  ///
+  /// In en, this message translates to:
+  /// **'channel_identifier'**
+  String get channelIdentifierHint;
+
+  /// No description provided for @blockedUsersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'@nightbot\n@another_user'**
+  String get blockedUsersHint;
+
+  /// No description provided for @blockedWordsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'word\ncomplete phrase'**
+  String get blockedWordsHint;
+
+  /// No description provided for @chatError.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat messages could not be loaded.'**
+  String get chatError;
+
+  /// No description provided for @platformConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{platform} could not connect. Check the channel and your Internet connection.'**
+  String platformConnectionFailed(String platform);
+
+  /// No description provided for @obsConnectionProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS could not complete the requested action. Check the connection settings.'**
+  String get obsConnectionProblem;
+
+  /// No description provided for @defaultVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get defaultVoice;
+
+  /// No description provided for @newsVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'News voice'**
+  String get newsVoice;
+
+  /// No description provided for @newsVoiceNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'News voice {number}'**
+  String newsVoiceNumber(int number);
+
+  /// No description provided for @alignmentLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get alignmentLeft;
+
+  /// No description provided for @alignmentCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Center'**
+  String get alignmentCenter;
+
+  /// No description provided for @alignmentRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get alignmentRight;
+
+  /// No description provided for @animationSlideUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide up'**
+  String get animationSlideUp;
+
+  /// No description provided for @animationSlideLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide from right'**
+  String get animationSlideLeft;
+
+  /// No description provided for @animationFadeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade in'**
+  String get animationFadeIn;
+
+  /// No description provided for @animationZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get animationZoomIn;
+
+  /// No description provided for @droppedFramesBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'DROP {percentage}% ({count})'**
+  String droppedFramesBadge(String percentage, int count);
+
+  /// No description provided for @badgeOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'OWNER'**
+  String get badgeOwner;
+
+  /// No description provided for @badgeModerator.
+  ///
+  /// In en, this message translates to:
+  /// **'MOD'**
+  String get badgeModerator;
+
+  /// No description provided for @badgeMember.
+  ///
+  /// In en, this message translates to:
+  /// **'MEMBER'**
+  String get badgeMember;
+
+  /// No description provided for @badgeSubscriber.
+  ///
+  /// In en, this message translates to:
+  /// **'SUB'**
+  String get badgeSubscriber;
+
+  /// No description provided for @newSubscriberEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'New subscriber!'**
+  String get newSubscriberEvent;
+
+  /// No description provided for @subscriptionUpdateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription update'**
+  String get subscriptionUpdateEvent;
+
+  /// No description provided for @membershipUpdateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Membership update'**
+  String get membershipUpdateEvent;
+
+  /// No description provided for @languageArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get languageArabic;
+
+  /// No description provided for @languageBulgarian.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulgarian'**
+  String get languageBulgarian;
+
+  /// No description provided for @languageChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get languageChinese;
+
+  /// No description provided for @languageCroatian.
+  ///
+  /// In en, this message translates to:
+  /// **'Croatian'**
+  String get languageCroatian;
+
+  /// No description provided for @languageCzech.
+  ///
+  /// In en, this message translates to:
+  /// **'Czech'**
+  String get languageCzech;
+
+  /// No description provided for @languageDanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Danish'**
+  String get languageDanish;
+
+  /// No description provided for @languageDutch.
+  ///
+  /// In en, this message translates to:
+  /// **'Dutch'**
+  String get languageDutch;
+
+  /// No description provided for @languageEstonian.
+  ///
+  /// In en, this message translates to:
+  /// **'Estonian'**
+  String get languageEstonian;
+
+  /// No description provided for @languageFinnish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finnish'**
+  String get languageFinnish;
+
+  /// No description provided for @languageFrench.
+  ///
+  /// In en, this message translates to:
+  /// **'French'**
+  String get languageFrench;
+
+  /// No description provided for @languageGerman.
+  ///
+  /// In en, this message translates to:
+  /// **'German'**
+  String get languageGerman;
+
+  /// No description provided for @languageGreek.
+  ///
+  /// In en, this message translates to:
+  /// **'Greek'**
+  String get languageGreek;
+
+  /// No description provided for @languageHindi.
+  ///
+  /// In en, this message translates to:
+  /// **'Hindi'**
+  String get languageHindi;
+
+  /// No description provided for @languageHungarian.
+  ///
+  /// In en, this message translates to:
+  /// **'Hungarian'**
+  String get languageHungarian;
+
+  /// No description provided for @languageIndonesian.
+  ///
+  /// In en, this message translates to:
+  /// **'Indonesian'**
+  String get languageIndonesian;
+
+  /// No description provided for @languageItalian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get languageItalian;
+
+  /// No description provided for @languageJapanese.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get languageJapanese;
+
+  /// No description provided for @languageKorean.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get languageKorean;
+
+  /// No description provided for @languageLatvian.
+  ///
+  /// In en, this message translates to:
+  /// **'Latvian'**
+  String get languageLatvian;
+
+  /// No description provided for @languageLithuanian.
+  ///
+  /// In en, this message translates to:
+  /// **'Lithuanian'**
+  String get languageLithuanian;
+
+  /// No description provided for @languagePolish.
+  ///
+  /// In en, this message translates to:
+  /// **'Polish'**
+  String get languagePolish;
+
+  /// No description provided for @languagePortuguese.
+  ///
+  /// In en, this message translates to:
+  /// **'Portuguese'**
+  String get languagePortuguese;
+
+  /// No description provided for @languageRomanian.
+  ///
+  /// In en, this message translates to:
+  /// **'Romanian'**
+  String get languageRomanian;
+
+  /// No description provided for @languageRussian.
+  ///
+  /// In en, this message translates to:
+  /// **'Russian'**
+  String get languageRussian;
+
+  /// No description provided for @languageSlovak.
+  ///
+  /// In en, this message translates to:
+  /// **'Slovak'**
+  String get languageSlovak;
+
+  /// No description provided for @languageSlovenian.
+  ///
+  /// In en, this message translates to:
+  /// **'Slovenian'**
+  String get languageSlovenian;
+
+  /// No description provided for @languageSwedish.
+  ///
+  /// In en, this message translates to:
+  /// **'Swedish'**
+  String get languageSwedish;
+
+  /// No description provided for @languageTurkish.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish'**
+  String get languageTurkish;
+
+  /// No description provided for @languageUkrainian.
+  ///
+  /// In en, this message translates to:
+  /// **'Ukrainian'**
+  String get languageUkrainian;
+
+  /// No description provided for @languageVietnamese.
+  ///
+  /// In en, this message translates to:
+  /// **'Vietnamese'**
+  String get languageVietnamese;
 }
 
 class _AppLocalizationsDelegate

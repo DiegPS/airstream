@@ -282,10 +282,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           child: CircularProgressIndicator(color: Color(0xFF53FC18)),
         ),
       ),
-      error: (e, _) => buildPane(
+      error: (_, __) => buildPane(
         Center(
           child: Text(
-            'Error: $e',
+            l.chatError,
             style: const TextStyle(color: Colors.redAccent),
           ),
         ),
@@ -1206,7 +1206,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _label(l.youtubeInputLabel),
             _field(
               _ytHandle,
-              '@handle · channel ID · video ID',
+              l.youtubeInputHint,
               focusNode: _ytFocus,
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _saveTextSettings(),
@@ -1218,13 +1218,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             if (youtubeError != null && youtubeError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'YouTube', youtubeError),
+              _inlineErrorMessage(l, 'YouTube'),
             ],
             const SizedBox(height: 12),
             _label(l.twitchChannel),
             _field(
               _twitch,
-              'channel_name',
+              l.channelNameHint,
               focusNode: _twitchFocus,
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _saveTextSettings(),
@@ -1236,13 +1236,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             if (twitchError != null && twitchError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'Twitch', twitchError),
+              _inlineErrorMessage(l, 'Twitch'),
             ],
             const SizedBox(height: 12),
             _label(l.kickSlug),
             _field(
               _kick,
-              'channel_slug',
+              l.channelIdentifierHint,
               focusNode: _kickFocus,
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _saveTextSettings(),
@@ -1254,7 +1254,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             if (kickError != null && kickError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'Kick', kickError),
+              _inlineErrorMessage(l, 'Kick'),
             ],
             const SizedBox(height: 14),
             SizedBox(
@@ -1301,7 +1301,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _label(l.blockedUsers),
             _field(
               _blockedUsersCtrl,
-              '@nightbot\notrobot',
+              l.blockedUsersHint,
               focusNode: _blockedUsersFocus,
               onChanged: (_) => _queueTextSettingsSave(),
               onSubmitted: (_) => _saveTextSettings(),
@@ -1322,7 +1322,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _label(l.blockedWordsOrPhrases),
             _field(
               _blockedWordsCtrl,
-              'palabra1\nfrase completa',
+              l.blockedWordsHint,
               focusNode: _blockedWordsFocus,
               onChanged: (_) => _queueTextSettingsSave(),
               onSubmitted: (_) => _saveTextSettings(),
@@ -1385,9 +1385,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           );
         }
       } catch (error) {
+        debugPrint('Could not remove TTS model: $error');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.ttsModelRemovalFailed(error.toString()))),
+            SnackBar(content: Text(l.ttsModelRemovalFailed)),
           );
         }
       }
@@ -1548,7 +1549,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                           ttsSteps: next.defaultSteps,
                         ));
                       },
-                      optionLabel: (id) => _ttsLanguageLabel(l, model, id),
+                      optionLabel: (id) => _ttsLanguageLabel(l, id),
                     ),
                     if (model.referenceMode != TtsReferenceMode.none) ...[
                       const SizedBox(height: 8),
@@ -1681,7 +1682,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 _label(l.commandPrefix),
                 _field(
                   _ttsPrefixCtrl,
-                  '!voz, !v, !say...',
+                  l.commandPrefixHint,
                   focusNode: _ttsPrefixFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
@@ -1741,9 +1742,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                         liveCaptionsSourceLanguage: value,
                         liveCaptionsTargetLanguage: value,
                       )),
-                      optionLabel: (value) => model.languages
-                          .firstWhere((item) => item.code == value)
-                          .label,
+                      optionLabel: (value) => _languageLabel(l, value),
                     ),
                     _dropdownRow(
                       l.captionOutput,
@@ -1755,9 +1754,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       (value) => notifier.update(s.copyWith(
                         liveCaptionsTargetLanguage: value,
                       )),
-                      optionLabel: (value) => targets
-                          .firstWhere((item) => item.code == value)
-                          .label,
+                      optionLabel: (value) => _languageLabel(l, value),
                     ),
                   ],
                 );
@@ -1921,6 +1918,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               s.chatTextAlign,
               const ['left', 'center', 'right'],
               (v) => notifier.update(s.copyWith(chatTextAlign: v)),
+              optionLabel: (v) => _alignmentLabel(l, v),
             ),
             StyledSliderRow(
               label: l.maxMessageWidth,
@@ -2460,6 +2458,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 s.overlayTextAlign,
                 const ['left', 'center', 'right'],
                 (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
+                optionLabel: (v) => _alignmentLabel(l, v),
               ),
               StyledSliderRow(
                 label: l.bubbleOpacity,
@@ -2541,6 +2540,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 s.overlayAnimation,
                 const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
                 (v) => notifier.update(s.copyWith(overlayAnimation: v)),
+                optionLabel: (v) => _animationLabel(l, v),
               ),
               StyledSliderRow(
                 label: l.duration,
@@ -2793,18 +2793,64 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   static String _ttsLanguageLabel(
     AppLocalizations l,
-    TtsModelDefinition model,
     String languageCode,
   ) {
     if (languageCode == 'es-MX') return l.spanishMexico;
     if (languageCode == 'es-ES') return l.spanishSpain;
-    return model.languages
-        .firstWhere(
-          (item) => item.code == languageCode,
-          orElse: () => TtsLanguageOption(languageCode, languageCode),
-        )
-        .label;
+    return _languageLabel(l, languageCode);
   }
+
+  static String _languageLabel(AppLocalizations l, String languageCode) =>
+      switch (languageCode) {
+        'ar' => l.languageArabic,
+        'bg' => l.languageBulgarian,
+        'zh' => l.languageChinese,
+        'hr' => l.languageCroatian,
+        'cs' => l.languageCzech,
+        'da' => l.languageDanish,
+        'nl' => l.languageDutch,
+        'en' => l.english,
+        'et' => l.languageEstonian,
+        'fi' => l.languageFinnish,
+        'fr' => l.languageFrench,
+        'de' => l.languageGerman,
+        'el' => l.languageGreek,
+        'hi' => l.languageHindi,
+        'hu' => l.languageHungarian,
+        'id' => l.languageIndonesian,
+        'it' => l.languageItalian,
+        'ja' => l.languageJapanese,
+        'ko' => l.languageKorean,
+        'lv' => l.languageLatvian,
+        'lt' => l.languageLithuanian,
+        'pl' => l.languagePolish,
+        'pt' => l.languagePortuguese,
+        'ro' => l.languageRomanian,
+        'ru' => l.languageRussian,
+        'sk' => l.languageSlovak,
+        'sl' => l.languageSlovenian,
+        'es' => l.spanish,
+        'sv' => l.languageSwedish,
+        'tr' => l.languageTurkish,
+        'uk' => l.languageUkrainian,
+        'vi' => l.languageVietnamese,
+        _ => languageCode.toUpperCase(),
+      };
+
+  static String _alignmentLabel(AppLocalizations l, String value) =>
+      switch (value) {
+        'center' => l.alignmentCenter,
+        'right' => l.alignmentRight,
+        _ => l.alignmentLeft,
+      };
+
+  static String _animationLabel(AppLocalizations l, String value) =>
+      switch (value) {
+        'slide-left' => l.animationSlideLeft,
+        'fade-in' => l.animationFadeIn,
+        'zoom-in' => l.animationZoomIn,
+        _ => l.animationSlideUp,
+      };
 
   static String _ttsModelDescription(AppLocalizations l, String modelId) =>
       switch (modelId) {
@@ -2816,7 +2862,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         'matcha-ljspeech-en' => l.ttsModelMatchaDescription,
         'pocket-tts-int8' => l.ttsModelPocketDescription,
         'zipvoice-distill-int8-zh-en' => l.ttsModelZipVoiceDescription,
-        _ => TtsModelCatalog.byId(modelId).description,
+        _ => TtsModelCatalog.byId(modelId).name,
       };
 
   static String _ttsVoiceLabel(
@@ -2842,11 +2888,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return switch (voiceId) {
       'claude' => 'Claude · ${l.male}',
       'davefx' => 'DaveFX · ${l.male}',
-      'af' => 'Default US · ${l.female}',
+      'af' => '${l.defaultVoice} US · ${l.female}',
       'ljspeech' => 'LJSpeech · ${l.female}',
       'bria' => 'Bria · ${l.includedSample}',
-      'news-female' => 'News Female · ${l.includedSample}',
-      'news-female-2' => 'News Female 2 · ${l.includedSample}',
+      'news-female' => '${l.newsVoice} · ${l.includedSample}',
+      'news-female-2' => '${l.newsVoiceNumber(2)} · ${l.includedSample}',
       'leijun' => 'Lei Jun · ${l.includedSample}',
       _ => model.voice(voiceId).label,
     };
@@ -3293,9 +3339,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   static Widget _inlineErrorMessage(
     AppLocalizations l,
     String platform,
-    String error,
   ) {
-    final normalized = error.replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -3320,7 +3364,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              l.platformError(platform, normalized),
+              l.platformConnectionFailed(platform),
               style: const TextStyle(
                 color: Color(0xFFFFB4AB),
                 fontSize: 11,
@@ -3501,10 +3545,8 @@ class _ObsStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    final l = AppLocalizations.of(context)!;
     final (title, color) = _obsStatusVisuals(state, l);
-    final showSecondaryStatus =
-        !_obsStatusMessageDuplicatesTitle(title, state.statusMessage);
 
     if (compact) {
       return _ObsCompactPill(
@@ -3548,17 +3590,6 @@ class _ObsStatusCard extends StatelessWidget {
               ),
             ],
           ),
-          if (showSecondaryStatus) ...[
-            const SizedBox(height: 8),
-            Text(
-              state.statusMessage,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
           if (showHost && state.host.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
@@ -3573,9 +3604,7 @@ class _ObsStatusCard extends StatelessWidget {
           if (_showObsScene(displaySettings, state)) ...[
             const SizedBox(height: 6),
             Text(
-              l != null
-                  ? l.obsScenePrefix(state.currentScene)
-                  : 'Scene: ${state.currentScene}',
+              l.obsScenePrefix(state.currentScene),
               style: const TextStyle(color: Colors.white54, fontSize: 11),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -3584,9 +3613,7 @@ class _ObsStatusCard extends StatelessWidget {
           if (_showObsStreamState(displaySettings)) ...[
             const SizedBox(height: 6),
             Text(
-              state.outputActive
-                  ? (l?.obsOutputLive ?? 'Output: Live')
-                  : (l?.obsOutputOffline ?? 'Output: Offline'),
+              state.outputActive ? l.obsOutputLive : l.obsOutputOffline,
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
@@ -3595,8 +3622,8 @@ class _ObsStatusCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               state.recordingPaused
-                  ? (l?.obsRecordingPaused ?? 'Recording: Paused')
-                  : (l?.obsRecordingActive ?? 'Recording: Active'),
+                  ? l.obsRecordingPaused
+                  : l.obsRecordingActive,
               style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
           ],
@@ -3622,8 +3649,10 @@ class _ObsStatusCard extends StatelessWidget {
                   ),
                 if (_showObsDroppedFrames(displaySettings))
                   _ObsPillBadge(
-                    label:
-                        'DROP ${state.dropPercentage.toStringAsFixed(1)}% (${state.droppedFrames})',
+                    label: l.droppedFramesBadge(
+                      state.dropPercentage.toStringAsFixed(1),
+                      state.droppedFrames,
+                    ),
                     foreground: _obsDropBadgeForeground(state.dropTrend),
                     background: _obsDropBadgeBackground(state.dropTrend),
                     fontSize: 10,
@@ -3650,7 +3679,7 @@ class _ObsStatusCard extends StatelessWidget {
           if (state.error != null && state.error!.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              state.error!,
+              l.obsConnectionProblem,
               style: const TextStyle(
                 color: Color(0xFFFFB4AB),
                 fontSize: 11,
@@ -3785,33 +3814,23 @@ class _ObsPillBadge extends StatelessWidget {
   }
 }
 
-(String, Color) _obsStatusVisuals(ObsState state, [AppLocalizations? l]) {
+(String, Color) _obsStatusVisuals(ObsState state, AppLocalizations l) {
   if (state.connecting) {
-    return (l?.obsStatusConnecting ?? 'OBS: Connecting...', Colors.amber);
+    return (l.obsStatusConnecting, Colors.amber);
   }
   if (!state.connected) {
-    return (l?.obsStatusDisconnected ?? 'OBS: Disconnected', Colors.white38);
+    return (l.obsStatusDisconnected, Colors.white38);
   }
   if (state.outputActive && state.recordingActive) {
-    return (
-      l?.obsStatusLiveAndRec ?? 'OBS: Live + Rec',
-      const Color(0xFF53FC18)
-    );
+    return (l.obsStatusLiveAndRec, const Color(0xFF53FC18));
   }
   if (state.outputActive) {
-    return (l?.obsStatusLive ?? 'OBS: Live', const Color(0xFF53FC18));
+    return (l.obsStatusLive, const Color(0xFF53FC18));
   }
   if (state.recordingActive) {
-    return (l?.obsStatusRecording ?? 'OBS: Recording', const Color(0xFFFF8A80));
+    return (l.obsStatusRecording, const Color(0xFFFF8A80));
   }
-  return (l?.obsStatusConnected ?? 'OBS: Connected', const Color(0xFF5B9CFF));
-}
-
-bool _obsStatusMessageDuplicatesTitle(String title, String message) {
-  final cleanTitle = title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-  final cleanMessage =
-      message.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-  return cleanTitle.contains(cleanMessage) || cleanMessage.contains(cleanTitle);
+  return (l.obsStatusConnected, const Color(0xFF5B9CFF));
 }
 
 bool _showObsScene(SettingsModel? settings, ObsState state) {

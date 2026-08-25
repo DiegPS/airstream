@@ -1,4 +1,5 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/author_avatar.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
@@ -15,6 +16,7 @@ class ChatBubble extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final s = ref.watch(settingsProvider);
     final bubbleOpacity = s.messageOpacity.clamp(0.0, 1.0);
     final isSuperChat = message.superChat != null;
@@ -149,8 +151,11 @@ class ChatBubble extends ConsumerWidget {
                                           top:
                                               message.items.isNotEmpty ? 6 : 0),
                                       child: _OutlinedText(
-                                        _membershipFlair(message.platform,
-                                            message.author.badge?.label),
+                                        _membershipFlair(
+                                          l,
+                                          message.platform,
+                                          message.author.badge?.label,
+                                        ),
                                         textAlign: textAlign,
                                         style: _chatTextStyle(
                                           color: Colors.white
@@ -271,15 +276,19 @@ class ChatBubble extends ConsumerWidget {
     }
   }
 
-  static String _membershipFlair(Platform platform, String? customLabel) {
+  static String _membershipFlair(
+    AppLocalizations l,
+    Platform platform,
+    String? customLabel,
+  ) {
     if (customLabel != null && customLabel.trim().isNotEmpty) {
       return customLabel.trim();
     }
 
     return switch (platform) {
-      Platform.twitch => 'New Subscriber!',
-      Platform.kick => 'Subscription Update',
-      Platform.youtube => 'Membership Update',
+      Platform.twitch => l.newSubscriberEvent,
+      Platform.kick => l.subscriptionUpdateEvent,
+      Platform.youtube => l.membershipUpdateEvent,
     };
   }
 
@@ -382,6 +391,7 @@ class _AuthorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final isMembershipEvent = message.isMembershipEvent;
     final authorColor = message.author.color != null
         ? ChatBubble._parseColor(message.author.color!)
@@ -421,19 +431,19 @@ class _AuthorRow extends StatelessWidget {
           ),
         ),
         if (showBadges && message.isOwner)
-          const _LabelBadge(
-            text: 'OWNER',
-            backgroundColor: Color(0xFFFFD700),
-            foregroundColor: Color(0xFF111111),
+          _LabelBadge(
+            text: l.badgeOwner,
+            backgroundColor: const Color(0xFFFFD700),
+            foregroundColor: const Color(0xFF111111),
           ),
         if (showBadges && message.isModerator)
-          const _LabelBadge(
-            text: 'MOD',
-            backgroundColor: Color(0xFF5E84F1),
+          _LabelBadge(
+            text: l.badgeModerator,
+            backgroundColor: const Color(0xFF5E84F1),
           ),
         if (showBadges && message.isMembership && !isMembershipEvent)
           _LabelBadge(
-            text: _membershipBadgeLabel(message.platform),
+            text: _membershipBadgeLabel(l, message.platform),
             backgroundColor: _membershipBadgeColor(message.platform),
             foregroundColor: message.platform == Platform.kick
                 ? const Color(0xFF101010)
@@ -479,11 +489,14 @@ class _AuthorRow extends StatelessWidget {
     return '$hour:$minute';
   }
 
-  static String _membershipBadgeLabel(Platform platform) {
+  static String _membershipBadgeLabel(
+    AppLocalizations l,
+    Platform platform,
+  ) {
     return switch (platform) {
-      Platform.youtube => 'MEMBER',
-      Platform.twitch => 'SUB',
-      Platform.kick => 'SUB',
+      Platform.youtube => l.badgeMember,
+      Platform.twitch => l.badgeSubscriber,
+      Platform.kick => l.badgeSubscriber,
     };
   }
 

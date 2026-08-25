@@ -51,13 +51,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get youtubeInputLabel =>
-      'Handle, ID de canal, ID de video o URL de YouTube';
+      'Usuario, ID de canal, ID de video o URL de YouTube';
 
   @override
   String get twitchChannel => 'Canal de Twitch';
 
   @override
-  String get kickSlug => 'Slug de Kick';
+  String get kickSlug => 'Identificador de Kick';
 
   @override
   String get startChat => 'Iniciar chat';
@@ -87,7 +87,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get maxMessageWidth => 'Ancho máximo de mensaje';
 
   @override
-  String get horizontalPadding => 'Padding horizontal';
+  String get horizontalPadding => 'Margen horizontal';
 
   @override
   String get avatars => 'Avatares';
@@ -112,7 +112,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filtersDescription =>
-      'Los usuarios y palabras bloqueados se filtran en el flujo de mensajes, por lo que se eliminan del chat local, TTS y el overlay Shelf.';
+      'Los usuarios y palabras bloqueados se eliminan del chat local, del TTS y de la superposición web.';
 
   @override
   String get blockedUsers => 'Usuarios bloqueados';
@@ -142,6 +142,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get commandPrefix => 'Prefijo del comando';
+
+  @override
+  String get commandPrefixHint => '!v';
 
   @override
   String get ignoreCommandCase => 'Ignorar mayúsculas/minúsculas en el prefijo';
@@ -203,9 +206,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsModelRemoved => 'El modelo TTS se eliminó.';
 
   @override
-  String ttsModelRemovalFailed(String error) {
-    return 'No se pudo eliminar el modelo TTS: $error';
-  }
+  String get ttsModelRemovalFailed => 'No se pudo eliminar el modelo TTS.';
 
   @override
   String get testText => 'Texto de prueba';
@@ -228,10 +229,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get obsDescription =>
-      'Conecta con OBS por WebSocket para mostrar el estado del stream, grabación y escena dentro de Airstream.';
+      'Conecta con OBS mediante WebSocket para mostrar el estado de la transmisión, la grabación y la escena dentro de AirStream.';
 
   @override
-  String get webSocketHost => 'Host WebSocket';
+  String get webSocketHost => 'Servidor WebSocket';
 
   @override
   String get password => 'Contraseña';
@@ -252,31 +253,31 @@ class AppLocalizationsEs extends AppLocalizations {
   String get connectObs => 'Conectar OBS';
 
   @override
-  String get hudElements => 'Elementos del HUD';
+  String get hudElements => 'Elementos del panel';
 
   @override
-  String get globalHud => 'Global';
+  String get globalHud => 'General';
 
   @override
-  String get streamHud => 'Stream';
+  String get streamHud => 'Transmisión';
 
   @override
   String get recordingHud => 'Grabación';
 
   @override
-  String get streamState => 'Estado del stream';
+  String get streamState => 'Estado de la transmisión';
 
   @override
   String get currentScene => 'Escena actual';
 
   @override
-  String get bitrate => 'Bitrate';
+  String get bitrate => 'Tasa de bits';
 
   @override
   String get fps => 'FPS';
 
   @override
-  String get droppedFrames => 'Frames perdidos';
+  String get droppedFrames => 'Fotogramas perdidos';
 
   @override
   String get recordingState => 'Estado de grabación';
@@ -289,14 +290,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get obsDisabledHelp =>
-      'Actívalo para ingresar el host, la contraseña y conectar cuando quieras.';
+      'Actívalo para ingresar el servidor, la contraseña y conectar cuando quieras.';
 
   @override
-  String get overlayServer => 'Servidor de overlay';
+  String get overlayServer => 'Servidor de superposición';
 
   @override
   String get overlayServerDescription =>
-      'Activa una fuente local de navegador para OBS. Cuando está activo, Airstream sirve una URL de overlay que puedes pegar en OBS.';
+      'Activa una fuente local de navegador para OBS. Cuando está habilitada, AirStream genera una URL de superposición que puedes pegar en OBS.';
 
   @override
   String get port => 'Puerto';
@@ -306,45 +307,47 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatObsUrlDescription =>
-      'Usa este enlace como Browser Source para el chat en OBS.';
+      'Usa este enlace como fuente de navegador para el chat en OBS.';
 
   @override
-  String get chatOverlayUrlCopied => 'URL del overlay de chat copiada';
+  String get chatOverlayUrlCopied => 'URL de la superposición del chat copiada';
 
   @override
   String get alertsObsUrl => 'URL de alertas para OBS';
 
   @override
   String get alertsObsUrlDescription =>
-      'Úsalo como una Browser Source separada para Super Chats y membresías.';
+      'Úsalo como una fuente de navegador separada para Super Chats y membresías.';
 
   @override
-  String get alertsOverlayUrlCopied => 'URL del overlay de alertas copiada';
+  String get alertsOverlayUrlCopied =>
+      'URL de la superposición de alertas copiada';
 
   @override
-  String get oneOverlayClientConnected => '1 cliente de overlay conectado';
+  String get oneOverlayClientConnected =>
+      '1 cliente de superposición conectado';
 
   @override
   String overlayClientsConnected(int count) {
-    return '$count clientes de overlay conectados';
+    return '$count clientes de superposición conectados';
   }
 
   @override
-  String get overlayReloadSent => 'Recarga del overlay enviada';
+  String get overlayReloadSent => 'Recarga de la superposición enviada';
 
   @override
   String get noOverlayClientConnected =>
-      'No hay clientes de overlay conectados';
+      'No hay clientes de superposición conectados';
 
   @override
-  String get reloadOverlay => 'Recargar overlay';
+  String get reloadOverlay => 'Recargar superposición';
 
   @override
   String get alerts => 'Alertas';
 
   @override
   String get alertsDescription =>
-      'Los Super Chats de YouTube y eventos de membresía se muestran en /alerts. El payload de alerta mantiene datos de plataforma para agregar Twitch y Kick más adelante.';
+      'Los Super Chats de YouTube y los eventos de membresía se muestran en /alerts. Los datos de cada alerta conservan la plataforma para poder agregar Twitch y Kick más adelante.';
 
   @override
   String get alertFontSize => 'Tamaño de fuente de alerta';
@@ -360,31 +363,31 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get openAlertsOverlayFirst =>
-      'Abre primero el overlay de alertas en OBS/navegador';
+      'Abre primero la superposición de alertas en OBS o en el navegador';
 
   @override
-  String get overlayMode => 'Modo overlay';
+  String get overlayMode => 'Modo de superposición';
 
   @override
-  String get chromaKey => 'Chroma key';
+  String get chromaKey => 'Clave de croma';
 
   @override
-  String get showGrid => 'Mostrar grilla';
+  String get showGrid => 'Mostrar cuadrícula';
 
   @override
   String get hideScrollbar => 'Ocultar barra de desplazamiento';
 
   @override
-  String get chromaColor => 'Color chroma';
+  String get chromaColor => 'Color de croma';
 
   @override
-  String get platformDisplay => 'Visualización de plataforma';
+  String get platformDisplay => 'Visualización de plataformas';
 
   @override
-  String get twitchAccent => 'Acento Twitch';
+  String get twitchAccent => 'Color distintivo de Twitch';
 
   @override
-  String get kickAccent => 'Acento Kick';
+  String get kickAccent => 'Color distintivo de Kick';
 
   @override
   String get styleSettings => 'Ajustes de estilo';
@@ -396,7 +399,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get fontWeight => 'Grosor de fuente';
 
   @override
-  String get overlayBg => 'Fondo del overlay';
+  String get overlayBg => 'Fondo de la superposición';
 
   @override
   String get textShadow => 'Sombra de texto';
@@ -494,7 +497,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String assetsProgress(int loaded, int total) {
-    return '$loaded/$total assets';
+    return '$loaded/$total archivos';
   }
 
   @override
@@ -575,7 +578,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get captionOutput => 'Salida / traducción';
 
   @override
-  String get sendCaptionsToObs => 'Enviar al overlay de OBS';
+  String get sendCaptionsToObs => 'Enviar a la superposición de OBS';
 
   @override
   String get noiseReduction => 'Reducir el ruido de fondo del micrófono';
@@ -630,13 +633,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Fuente de navegador independiente para subtítulos y traducción en vivo.';
 
   @override
-  String get ttsAndVoice => 'TTS y Voz';
+  String get ttsAndVoice => 'TTS y voz';
 
   @override
-  String get obsAndOverlay => 'OBS y Overlay';
+  String get obsAndOverlay => 'OBS y superposición';
 
   @override
-  String get systemTab => 'Sistema y Ventana';
+  String get systemTab => 'Sistema y ventana';
 
   @override
   String get desktopWindow => 'Ventana de escritorio';
@@ -649,7 +652,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sin barra de título, bordes transparentes';
 
   @override
-  String get clickThrough => 'Click-Through';
+  String get clickThrough => 'Ignorar clics';
 
   @override
   String get clickThroughDescription =>
@@ -663,7 +666,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mantener sobre todas las demás ventanas';
 
   @override
-  String get antiCapture => 'Anti-Captura / Privacidad';
+  String get antiCapture => 'Protección de captura / Privacidad';
 
   @override
   String get antiCaptureDescription =>
@@ -679,7 +682,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get toggleAlwaysOnTopShortcut => 'Alternar Siempre visible';
 
   @override
-  String get toggleClickThroughShortcut => 'Alternar Click-Through';
+  String get toggleClickThroughShortcut => 'Alternar ignorar clics';
 
   @override
   String get alwaysOnTopActiveTooltip =>
@@ -690,18 +693,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clickThroughActiveTooltip =>
-      'Click-Through activo. Desactivar (Ctrl+Shift+C)';
+      'Ignorar clics está activo. Desactivar (Ctrl+Shift+C)';
 
   @override
   String get clickThroughInactiveTooltip =>
-      'Activar Click-Through (Ctrl+Shift+C)';
+      'Activar ignorar clics (Ctrl+Shift+C)';
 
   @override
   String get antiCaptureActiveTooltip =>
       'Modo privacidad activo — ventana oculta de capturas/OBS';
 
   @override
-  String get antiCaptureInactiveTooltip => 'Ocultar de capturas / screen share';
+  String get antiCaptureInactiveTooltip =>
+      'Ocultar de capturas y pantalla compartida';
 
   @override
   String get minimize => 'Minimizar';
@@ -751,7 +755,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get obsRecordingActive => 'Grabación: Activa';
 
   @override
-  String get ttsCardTitle => 'Lector de Voz (TTS)';
+  String get ttsCardTitle => 'Lector de voz (TTS)';
 
   @override
   String voiceStatusBadge(String status) {
@@ -869,4 +873,179 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get includedSample => 'Muestra incluida';
+
+  @override
+  String get youtubeInputHint => '@usuario · ID de canal · ID de video';
+
+  @override
+  String get channelNameHint => 'nombre_del_canal';
+
+  @override
+  String get channelIdentifierHint => 'identificador_del_canal';
+
+  @override
+  String get blockedUsersHint => '@nightbot\n@otro_usuario';
+
+  @override
+  String get blockedWordsHint => 'palabra\nfrase completa';
+
+  @override
+  String get chatError => 'No se pudieron cargar los mensajes del chat.';
+
+  @override
+  String platformConnectionFailed(String platform) {
+    return 'No se pudo conectar con $platform. Revisa el canal y tu conexión a Internet.';
+  }
+
+  @override
+  String get obsConnectionProblem =>
+      'OBS no pudo completar la acción solicitada. Revisa la configuración de conexión.';
+
+  @override
+  String get defaultVoice => 'Predeterminada';
+
+  @override
+  String get newsVoice => 'Voz de noticias';
+
+  @override
+  String newsVoiceNumber(int number) {
+    return 'Voz de noticias $number';
+  }
+
+  @override
+  String get alignmentLeft => 'Izquierda';
+
+  @override
+  String get alignmentCenter => 'Centro';
+
+  @override
+  String get alignmentRight => 'Derecha';
+
+  @override
+  String get animationSlideUp => 'Deslizar hacia arriba';
+
+  @override
+  String get animationSlideLeft => 'Deslizar desde la derecha';
+
+  @override
+  String get animationFadeIn => 'Aparecer gradualmente';
+
+  @override
+  String get animationZoomIn => 'Acercar';
+
+  @override
+  String droppedFramesBadge(String percentage, int count) {
+    return 'PERDIDOS $percentage% ($count)';
+  }
+
+  @override
+  String get badgeOwner => 'DUEÑO';
+
+  @override
+  String get badgeModerator => 'MOD';
+
+  @override
+  String get badgeMember => 'MIEMBRO';
+
+  @override
+  String get badgeSubscriber => 'SUB';
+
+  @override
+  String get newSubscriberEvent => '¡Nuevo suscriptor!';
+
+  @override
+  String get subscriptionUpdateEvent => 'Actualización de suscripción';
+
+  @override
+  String get membershipUpdateEvent => 'Actualización de membresía';
+
+  @override
+  String get languageArabic => 'Árabe';
+
+  @override
+  String get languageBulgarian => 'Búlgaro';
+
+  @override
+  String get languageChinese => 'Chino';
+
+  @override
+  String get languageCroatian => 'Croata';
+
+  @override
+  String get languageCzech => 'Checo';
+
+  @override
+  String get languageDanish => 'Danés';
+
+  @override
+  String get languageDutch => 'Neerlandés';
+
+  @override
+  String get languageEstonian => 'Estonio';
+
+  @override
+  String get languageFinnish => 'Finés';
+
+  @override
+  String get languageFrench => 'Francés';
+
+  @override
+  String get languageGerman => 'Alemán';
+
+  @override
+  String get languageGreek => 'Griego';
+
+  @override
+  String get languageHindi => 'Hindi';
+
+  @override
+  String get languageHungarian => 'Húngaro';
+
+  @override
+  String get languageIndonesian => 'Indonesio';
+
+  @override
+  String get languageItalian => 'Italiano';
+
+  @override
+  String get languageJapanese => 'Japonés';
+
+  @override
+  String get languageKorean => 'Coreano';
+
+  @override
+  String get languageLatvian => 'Letón';
+
+  @override
+  String get languageLithuanian => 'Lituano';
+
+  @override
+  String get languagePolish => 'Polaco';
+
+  @override
+  String get languagePortuguese => 'Portugués';
+
+  @override
+  String get languageRomanian => 'Rumano';
+
+  @override
+  String get languageRussian => 'Ruso';
+
+  @override
+  String get languageSlovak => 'Eslovaco';
+
+  @override
+  String get languageSlovenian => 'Esloveno';
+
+  @override
+  String get languageSwedish => 'Sueco';
+
+  @override
+  String get languageTurkish => 'Turco';
+
+  @override
+  String get languageUkrainian => 'Ucraniano';
+
+  @override
+  String get languageVietnamese => 'Vietnamita';
 }

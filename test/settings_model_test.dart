@@ -70,6 +70,17 @@ void main() {
     expect(SettingsModel.fromJson(const {}).ttsCommandIgnoreCase, isTrue);
   });
 
+  test('uses a neutral TTS command prefix and localized separator fallback',
+      () {
+    const settings = SettingsModel();
+    final restored = SettingsModel.fromJson(const {});
+
+    expect(settings.ttsCommandPrefix, '!v');
+    expect(settings.ttsSeparatorText, isEmpty);
+    expect(restored.ttsCommandPrefix, '!v');
+    expect(restored.ttsSeparatorText, isEmpty);
+  });
+
   test('persists the complete Sherpa TTS configuration', () {
     const settings = SettingsModel(
       ttsModelId: 'piper-es-sharvard-medium',

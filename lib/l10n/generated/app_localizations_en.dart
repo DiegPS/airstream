@@ -144,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandPrefix => 'Command prefix';
 
   @override
+  String get commandPrefixHint => '!v';
+
+  @override
   String get ignoreCommandCase => 'Ignore uppercase/lowercase in prefix';
 
   @override
@@ -203,9 +206,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ttsModelRemoved => 'The TTS model was removed.';
 
   @override
-  String ttsModelRemovalFailed(String error) {
-    return 'The TTS model could not be removed: $error';
-  }
+  String get ttsModelRemovalFailed => 'The TTS model could not be removed.';
 
   @override
   String get testText => 'Test text';
@@ -861,4 +862,179 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get includedSample => 'Included sample';
+
+  @override
+  String get youtubeInputHint => '@handle · channel ID · video ID';
+
+  @override
+  String get channelNameHint => 'channel_name';
+
+  @override
+  String get channelIdentifierHint => 'channel_identifier';
+
+  @override
+  String get blockedUsersHint => '@nightbot\n@another_user';
+
+  @override
+  String get blockedWordsHint => 'word\ncomplete phrase';
+
+  @override
+  String get chatError => 'Chat messages could not be loaded.';
+
+  @override
+  String platformConnectionFailed(String platform) {
+    return '$platform could not connect. Check the channel and your Internet connection.';
+  }
+
+  @override
+  String get obsConnectionProblem =>
+      'OBS could not complete the requested action. Check the connection settings.';
+
+  @override
+  String get defaultVoice => 'Default';
+
+  @override
+  String get newsVoice => 'News voice';
+
+  @override
+  String newsVoiceNumber(int number) {
+    return 'News voice $number';
+  }
+
+  @override
+  String get alignmentLeft => 'Left';
+
+  @override
+  String get alignmentCenter => 'Center';
+
+  @override
+  String get alignmentRight => 'Right';
+
+  @override
+  String get animationSlideUp => 'Slide up';
+
+  @override
+  String get animationSlideLeft => 'Slide from right';
+
+  @override
+  String get animationFadeIn => 'Fade in';
+
+  @override
+  String get animationZoomIn => 'Zoom in';
+
+  @override
+  String droppedFramesBadge(String percentage, int count) {
+    return 'DROP $percentage% ($count)';
+  }
+
+  @override
+  String get badgeOwner => 'OWNER';
+
+  @override
+  String get badgeModerator => 'MOD';
+
+  @override
+  String get badgeMember => 'MEMBER';
+
+  @override
+  String get badgeSubscriber => 'SUB';
+
+  @override
+  String get newSubscriberEvent => 'New subscriber!';
+
+  @override
+  String get subscriptionUpdateEvent => 'Subscription update';
+
+  @override
+  String get membershipUpdateEvent => 'Membership update';
+
+  @override
+  String get languageArabic => 'Arabic';
+
+  @override
+  String get languageBulgarian => 'Bulgarian';
+
+  @override
+  String get languageChinese => 'Chinese';
+
+  @override
+  String get languageCroatian => 'Croatian';
+
+  @override
+  String get languageCzech => 'Czech';
+
+  @override
+  String get languageDanish => 'Danish';
+
+  @override
+  String get languageDutch => 'Dutch';
+
+  @override
+  String get languageEstonian => 'Estonian';
+
+  @override
+  String get languageFinnish => 'Finnish';
+
+  @override
+  String get languageFrench => 'French';
+
+  @override
+  String get languageGerman => 'German';
+
+  @override
+  String get languageGreek => 'Greek';
+
+  @override
+  String get languageHindi => 'Hindi';
+
+  @override
+  String get languageHungarian => 'Hungarian';
+
+  @override
+  String get languageIndonesian => 'Indonesian';
+
+  @override
+  String get languageItalian => 'Italian';
+
+  @override
+  String get languageJapanese => 'Japanese';
+
+  @override
+  String get languageKorean => 'Korean';
+
+  @override
+  String get languageLatvian => 'Latvian';
+
+  @override
+  String get languageLithuanian => 'Lithuanian';
+
+  @override
+  String get languagePolish => 'Polish';
+
+  @override
+  String get languagePortuguese => 'Portuguese';
+
+  @override
+  String get languageRomanian => 'Romanian';
+
+  @override
+  String get languageRussian => 'Russian';
+
+  @override
+  String get languageSlovak => 'Slovak';
+
+  @override
+  String get languageSlovenian => 'Slovenian';
+
+  @override
+  String get languageSwedish => 'Swedish';
+
+  @override
+  String get languageTurkish => 'Turkish';
+
+  @override
+  String get languageUkrainian => 'Ukrainian';
+
+  @override
+  String get languageVietnamese => 'Vietnamese';
 }

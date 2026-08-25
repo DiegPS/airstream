@@ -114,7 +114,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       try {
         final decoded = jsonDecode(json) as Map<String, dynamic>;
         final containsLegacyPassword = decoded.containsKey('obsPassword');
-        final loaded = SettingsModel.fromJson(decoded);
+        final decodedSettings = SettingsModel.fromJson(decoded);
+        final loaded = _localizeBuiltInTtsDefaults(decodedSettings);
+        final localizedDefaultsChanged =
+            loaded.ttsCommandPrefix != decodedSettings.ttsCommandPrefix ||
+                loaded.ttsSeparatorText != decodedSettings.ttsSeparatorText;
         state = loaded;
 
         try {
@@ -126,7 +130,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
           _persistedObsPassword = password ?? '';
           state = loaded.copyWith(obsPassword: password ?? '');
 
-          if (containsLegacyPassword) {
+          if (containsLegacyPassword || localizedDefaultsChanged) {
             await prefs.setString(_prefsKey, state.toJsonString());
           }
         } catch (_) {
@@ -139,8 +143,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   }
 
   Future<void> update(SettingsModel settings) {
-    state = settings;
-    final operation = _updateQueue.then((_) => _persist(settings));
+    final next = settings.appLanguageCode == state.appLanguageCode
+        ? settings
+        : _localizeBuiltInTtsDefaults(settings);
+    state = next;
+    final operation = _updateQueue.then((_) => _persist(next));
     _updateQueue = operation.catchError((_) {});
     return operation;
   }
@@ -157,6 +164,24 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, settings.toJsonString());
+  }
+
+  static SettingsModel _localizeBuiltInTtsDefaults(SettingsModel settings) {
+    final spanish = settings.appLanguageCode == 'es';
+    final prefix = settings.ttsCommandPrefix.trim();
+    final separator = settings.ttsSeparatorText.trim();
+    final localizedPrefix =
+        prefix.isEmpty || prefix == '!voz' || prefix == '!voice'
+            ? '!v'
+            : settings.ttsCommandPrefix;
+    final localizedSeparator =
+        separator.isEmpty || separator == 'dice' || separator == 'says'
+            ? (spanish ? 'dice' : 'says')
+            : settings.ttsSeparatorText;
+    return settings.copyWith(
+      ttsCommandPrefix: localizedPrefix,
+      ttsSeparatorText: localizedSeparator,
+    );
   }
 }
 
@@ -374,7 +399,9 @@ class AppController {
     if (text.isEmpty) return;
 
     if (settings.ttsCommandMode) {
-      final prefix = settings.ttsCommandPrefix.trim();
+      final prefix = settings.ttsCommandPrefix.trim().isEmpty
+          ? '!v'
+          : settings.ttsCommandPrefix.trim();
       if (prefix.isNotEmpty) {
         final messageText =
             settings.ttsCommandIgnoreCase ? text.toLowerCase() : text;
@@ -387,7 +414,9 @@ class AppController {
     }
 
     _rememberSpokenMessage(speakKey);
-    final separator = settings.ttsSeparatorText;
+    final separator = settings.ttsSeparatorText.trim().isEmpty
+        ? (settings.appLanguageCode == 'es' ? 'dice' : 'says')
+        : settings.ttsSeparatorText;
     final spokenAuthor = authorName.isEmpty ? 'Chat' : authorName;
     _tts.speak('$spokenAuthor $separator: $text');
   }
