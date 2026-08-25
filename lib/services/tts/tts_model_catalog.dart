@@ -234,8 +234,9 @@ class TtsModelCatalog {
     },
     languages: _supertonicLanguages,
     voices: _supertonicVoices,
-    licenseName: 'Apache-2.0',
-    licenseUri: Uri.parse('https://github.com/supertone-inc/supertonic'),
+    licenseName: 'OpenRAIL-M',
+    licenseUri: Uri.parse(
+        'https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE'),
   );
 
   static final TtsModelDefinition piperMexico = TtsModelDefinition(
@@ -467,8 +468,8 @@ class TtsModelCatalog {
     ],
     referenceMode: TtsReferenceMode.audio,
     defaultSteps: 4,
-    licenseName: 'Apache-2.0',
-    licenseUri: Uri.parse('https://github.com/kyutai-labs/pocket-tts'),
+    licenseName: 'CC BY 4.0 model weights',
+    licenseUri: Uri.parse('https://huggingface.co/kyutai/pocket-tts'),
   );
 
   static final TtsModelDefinition zipVoice = TtsModelDefinition(

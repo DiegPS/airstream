@@ -46,8 +46,12 @@ digest.
 
 - Sherpa-ONNX is Apache-2.0 licensed.
 - Each catalog entry exposes its model-specific license and upstream page.
-- PocketTTS displays an additional warning because its upstream materials have
-  carried differing usage notices; users should inspect the bundled license.
+- Supertonic 3 model weights use OpenRAIL-M, not the MIT license used by its
+  sample code. Distribution must preserve its license, notices, and use-based
+  restrictions.
+- Pocket TTS code is MIT, while its downloadable model weights are CC BY 4.0
+  and carry upstream prohibited-use terms. Model and code licenses must not be
+  conflated.
 - Custom voice cloning should only use audio the user owns or is authorized to
   process.
 
