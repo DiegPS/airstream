@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/voice_command.dart';
 import 'package:airstream/settings/tts_message_policy.dart';
+import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 const _prefsKey = 'AIRSTREAM_SETTINGS';
@@ -94,22 +96,65 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
 // ── SettingsNotifier ─────────────────────────────────────────────────────────
 
 class SettingsNotifier extends StateNotifier<SettingsModel> {
-  SettingsNotifier() : super(const SettingsModel()) {
-    _load();
+  SettingsNotifier({SecureSettingsStore? secureStore})
+      : _secureStore = secureStore ?? const FlutterSecureSettingsStore(),
+        super(const SettingsModel()) {
+    ready = _load();
   }
+
+  final SecureSettingsStore _secureStore;
+  late final Future<void> ready;
+  Future<void> _updateQueue = Future<void>.value();
+  String? _persistedObsPassword;
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString(_prefsKey);
     if (json != null) {
       try {
-        state = SettingsModel.fromJsonString(json);
+        final decoded = jsonDecode(json) as Map<String, dynamic>;
+        final containsLegacyPassword = decoded.containsKey('obsPassword');
+        final loaded = SettingsModel.fromJson(decoded);
+        state = loaded;
+
+        try {
+          var password = await _secureStore.readObsPassword();
+          if (password == null && loaded.obsPassword.isNotEmpty) {
+            await _secureStore.writeObsPassword(loaded.obsPassword);
+            password = loaded.obsPassword;
+          }
+          _persistedObsPassword = password ?? '';
+          state = loaded.copyWith(obsPassword: password ?? '');
+
+          if (containsLegacyPassword) {
+            await prefs.setString(_prefsKey, state.toJsonString());
+          }
+        } catch (_) {
+          // Keep the legacy value and its persisted copy if secure storage is
+          // temporarily unavailable. A future launch can retry the migration.
+          state = loaded;
+        }
       } catch (_) {}
     }
   }
 
-  Future<void> update(SettingsModel settings) async {
+  Future<void> update(SettingsModel settings) {
     state = settings;
+    final operation = _updateQueue.then((_) => _persist(settings));
+    _updateQueue = operation.catchError((_) {});
+    return operation;
+  }
+
+  Future<void> _persist(SettingsModel settings) async {
+    await ready;
+    if (settings.obsPassword != _persistedObsPassword) {
+      if (settings.obsPassword.isEmpty) {
+        await _secureStore.deleteObsPassword();
+      } else {
+        await _secureStore.writeObsPassword(settings.obsPassword);
+      }
+      _persistedObsPassword = settings.obsPassword;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, settings.toJsonString());
   }

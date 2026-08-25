@@ -38,6 +38,21 @@ void main() {
     expect(restored.obsShowRecordingSize, isTrue);
   });
 
+  test('never serializes the OBS password into ordinary preferences', () {
+    const settings = SettingsModel(obsPassword: 'do-not-store-in-json');
+
+    expect(settings.toJson(), isNot(contains('obsPassword')));
+    expect(settings.toJsonString(), isNot(contains('do-not-store-in-json')));
+  });
+
+  test('still reads an OBS password from legacy preferences for migration', () {
+    final restored = SettingsModel.fromJson(const {
+      'obsPassword': 'legacy-password',
+    });
+
+    expect(restored.obsPassword, 'legacy-password');
+  });
+
   test('uses practical OBS recording HUD defaults for older settings', () {
     final restored = SettingsModel.fromJson(const {});
 

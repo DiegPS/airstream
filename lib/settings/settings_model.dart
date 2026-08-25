@@ -533,7 +533,6 @@ class SettingsModel {
         'alertShowAvatars': alertShowAvatars,
         'obsEnabled': obsEnabled,
         'obsHost': obsHost,
-        'obsPassword': obsPassword,
         'obsShowStreamState': obsShowStreamState,
         'obsShowCurrentScene': obsShowCurrentScene,
         'obsShowBitrate': obsShowBitrate,

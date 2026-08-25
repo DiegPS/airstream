@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   air_window_control
   file_selector_linux
   flutter_acrylic
+  flutter_secure_storage_linux
   record_linux
   screen_retriever_linux
   window_manager
