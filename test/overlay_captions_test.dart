@@ -10,6 +10,43 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
 
 void main() {
+  test('publishes the operating-system assigned overlay port', () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    try {
+      await server.start(
+        messages: messages.stream,
+        settings: const SettingsModel(),
+        port: 0,
+      );
+
+      expect(server.port, inInclusiveRange(1, 65535));
+      expect(server.overlayUrl, isNot(contains(':0')));
+      expect(server.boundAddress, InternetAddress.loopbackIPv4);
+    } finally {
+      await server.dispose();
+      await messages.close();
+    }
+  });
+
+  test('rejects overlay ports outside the TCP range', () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    try {
+      await expectLater(
+        server.start(
+          messages: messages.stream,
+          settings: const SettingsModel(),
+          port: 65536,
+        ),
+        throwsRangeError,
+      );
+    } finally {
+      await server.dispose();
+      await messages.close();
+    }
+  });
+
   test('serves self-contained native browser sources', () async {
     final reservation =
         await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
@@ -75,13 +112,38 @@ void main() {
 
       final socket = IOWebSocketChannel.connect('ws://127.0.0.1:$port/ws');
       await socket.ready;
-      final envelope = jsonDecode(await socket.stream.first as String)
-          as Map<String, dynamic>;
+      final events = StreamIterator(socket.stream);
+      expect(await events.moveNext(), isTrue);
+      final envelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
       expect(envelope['type'], 'settings');
       expect(
         (envelope['data'] as Map<String, dynamic>)['appLanguageCode'],
         'es',
       );
+      expect(
+        (envelope['data'] as Map<String, dynamic>)['showYoutubeStreamBadges'],
+        isTrue,
+      );
+
+      messages.add(ChatMessage(
+        platform: Platform.youtube,
+        id: 'vertical-message',
+        author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+        items: const [MessageItem.text('Hola')],
+        youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+        timestamp: DateTime.utc(2026, 8, 26),
+      ));
+      expect(await events.moveNext(), isTrue);
+      final messageEnvelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(messageEnvelope['type'], 'message');
+      expect(
+        (messageEnvelope['data']
+            as Map<String, dynamic>)['youtubeStreamOrientation'],
+        'vertical',
+      );
+      await events.cancel();
       await socket.sink.close();
     } finally {
       client.close();

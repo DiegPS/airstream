@@ -131,6 +131,8 @@ class ChatBubble extends ConsumerWidget {
                                     textAlign: textAlign,
                                     showPlatformIcons: s.showPlatformIcons,
                                     showBadges: s.showBadges,
+                                    showYoutubeStreamBadges:
+                                        s.showYoutubeStreamBadges,
                                     showAvatars: s.showAvatars,
                                     showTimestamp: s.showTimestamp,
                                   ),
@@ -151,11 +153,7 @@ class ChatBubble extends ConsumerWidget {
                                           top:
                                               message.items.isNotEmpty ? 6 : 0),
                                       child: _OutlinedText(
-                                        _membershipFlair(
-                                          l,
-                                          message.platform,
-                                          message.author.badge?.label,
-                                        ),
+                                        _membershipFlair(l, message),
                                         textAlign: textAlign,
                                         style: _chatTextStyle(
                                           color: Colors.white
@@ -278,14 +276,23 @@ class ChatBubble extends ConsumerWidget {
 
   static String _membershipFlair(
     AppLocalizations l,
-    Platform platform,
-    String? customLabel,
+    ChatMessage message,
   ) {
-    if (customLabel != null && customLabel.trim().isNotEmpty) {
-      return customLabel.trim();
+    switch (message.membershipEventKind) {
+      case MembershipEventKind.subscription:
+        return l.newSubscriberEvent;
+      case MembershipEventKind.resubscription:
+        return l.resubscriptionEvent(message.membershipMonths ?? 0);
+      case MembershipEventKind.gift:
+        return l.giftSubscriptionEvent;
+      case null:
+        break;
+    }
+    if (message.author.allBadges case [final first, ...]) {
+      if (first.label.trim().isNotEmpty) return first.label.trim();
     }
 
-    return switch (platform) {
+    return switch (message.platform) {
       Platform.twitch => l.newSubscriberEvent,
       Platform.kick => l.subscriptionUpdateEvent,
       Platform.youtube => l.membershipUpdateEvent,
@@ -373,6 +380,7 @@ class _AuthorRow extends StatelessWidget {
     required this.textAlign,
     required this.showPlatformIcons,
     required this.showBadges,
+    required this.showYoutubeStreamBadges,
     required this.showAvatars,
     required this.showTimestamp,
   });
@@ -386,6 +394,7 @@ class _AuthorRow extends StatelessWidget {
   final TextAlign textAlign;
   final bool showPlatformIcons;
   final bool showBadges;
+  final bool showYoutubeStreamBadges;
   final bool showAvatars;
   final bool showTimestamp;
 
@@ -441,6 +450,22 @@ class _AuthorRow extends StatelessWidget {
             text: l.badgeModerator,
             backgroundColor: const Color(0xFF5E84F1),
           ),
+        if (showBadges && message.isVip)
+          const _LabelBadge(
+            text: 'VIP',
+            backgroundColor: Color(0xFFE919C2),
+          ),
+        if (showBadges && message.isVerified)
+          _LabelBadge(
+            text: l.badgeVerified,
+            backgroundColor: const Color(0xFF1D9BF0),
+          ),
+        if (showBadges &&
+            showYoutubeStreamBadges &&
+            message.youtubeStreamOrientation != null)
+          _StreamOrientationBadge(
+            orientation: message.youtubeStreamOrientation!,
+          ),
         if (showBadges && message.isMembership && !isMembershipEvent)
           _LabelBadge(
             text: _membershipBadgeLabel(l, message.platform),
@@ -454,8 +479,15 @@ class _AuthorRow extends StatelessWidget {
             text: message.superChat!.amount,
             backgroundColor: const Color(0xFF0F9D58),
           ),
-        if (showBadges && message.author.badge?.imageUrl != null)
-          _CustomImageBadge(imageUrl: message.author.badge!.imageUrl!),
+        if (showBadges)
+          for (final badge in message.author.allBadges)
+            if (!_isBuiltInBadge(badge.kind))
+              badge.imageUrl != null
+                  ? _CustomImageBadge(imageUrl: badge.imageUrl!)
+                  : _LabelBadge(
+                      text: badge.label,
+                      backgroundColor: const Color(0xFF454545),
+                    ),
         if (showTimestamp)
           Padding(
             padding: const EdgeInsets.only(left: 2),
@@ -488,6 +520,18 @@ class _AuthorRow extends StatelessWidget {
     final minute = timestamp.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+
+  static bool _isBuiltInBadge(String? kind) => const {
+        'broadcaster',
+        'owner',
+        'channel_owner',
+        'moderator',
+        'mod',
+        'vip',
+        'subscriber',
+        'sub',
+        'founder',
+      }.contains(kind);
 
   static String _membershipBadgeLabel(
     AppLocalizations l,
@@ -538,6 +582,21 @@ class _LabelBadge extends StatelessWidget {
           height: 1,
         ),
       ),
+    );
+  }
+}
+
+class _StreamOrientationBadge extends StatelessWidget {
+  const _StreamOrientationBadge({required this.orientation});
+
+  final YoutubeStreamOrientation orientation;
+
+  @override
+  Widget build(BuildContext context) {
+    final vertical = orientation == YoutubeStreamOrientation.vertical;
+    return _LabelBadge(
+      text: vertical ? 'VERTICAL' : 'HORIZONTAL',
+      backgroundColor: const Color(0xFFB3261E),
     );
   }
 }

@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/settings/settings_model.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_web_socket/shelf_web_socket.dart';
@@ -12,6 +11,8 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Serves the OBS overlay HTML page and broadcasts chat messages over WebSocket.
 class OverlayServer {
+  static bool isValidPort(int port) => port >= 0 && port <= 65535;
+
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
   final _clientCountController = StreamController<int>.broadcast();
@@ -19,38 +20,30 @@ class OverlayServer {
   SettingsModel _settings = const SettingsModel();
 
   int _port = 8080;
-  int _networkLookupGeneration = 0;
   int _lifecycleGeneration = 0;
   int get port => _port;
+  InternetAddress? get boundAddress => _server?.address;
 
-  String? _localIp;
-  String? get localIp => _localIp;
   int get clientCount => _clients.length;
   Stream<int> get clientCountStream async* {
     yield _clients.length;
     yield* _clientCountController.stream;
   }
 
-  String get overlayUrl =>
-      _localIp != null ? 'http://$_localIp:$_port' : 'http://localhost:$_port';
+  String get overlayUrl => 'http://localhost:$_port';
 
   Future<void> start({
     required Stream<ChatMessage> messages,
     required SettingsModel settings,
     int port = 8080,
   }) async {
+    if (!isValidPort(port)) {
+      throw RangeError.range(port, 0, 65535, 'port');
+    }
     await stop();
     final lifecycleGeneration = ++_lifecycleGeneration;
     _settings = settings;
     _port = port;
-    _localIp = null;
-    final lookupGeneration = ++_networkLookupGeneration;
-    unawaited(NetworkInfo().getWifiIP().then((address) {
-      if (lookupGeneration == _networkLookupGeneration) {
-        _localIp = address;
-      }
-    }).catchError((_) {}));
-
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
       _emitClientCount();
@@ -74,13 +67,9 @@ class OverlayServer {
       return _htmlResponse(_overlayHtml());
     });
 
-    late final HttpServer server;
-    try {
-      server = await shelf_io.serve(handler, InternetAddress.anyIPv4, _port);
-    } on SocketException {
-      server =
-          await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
-    }
+    final server =
+        await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
+    _port = server.port;
     if (lifecycleGeneration != _lifecycleGeneration) {
       await server.close(force: true);
       return;
@@ -186,7 +175,6 @@ class OverlayServer {
 
   Future<void> stop() async {
     _lifecycleGeneration++;
-    _networkLookupGeneration++;
     await _msgSub?.cancel();
     _msgSub = null;
     await _server?.close(force: true);
@@ -216,6 +204,13 @@ class OverlayServer {
         'authorChannelId': msg.author.channelId,
         'badgeImageUrl': msg.author.badge?.imageUrl,
         'badgeLabel': msg.author.badge?.label,
+        'badges': msg.author.allBadges
+            .map((badge) => {
+                  'imageUrl': badge.imageUrl,
+                  'label': badge.label,
+                  'kind': badge.kind,
+                })
+            .toList(),
         'color': msg.author.color,
         'text': msg.plainText,
         'items': msg.items
@@ -237,9 +232,13 @@ class OverlayServer {
         'superChatStickerUrl': msg.superChat?.stickerUrl,
         'isMembership': msg.isMembership,
         'isMembershipEvent': msg.isMembershipEvent,
+        'membershipEventKind': msg.membershipEventKind?.name,
+        'membershipMonths': msg.membershipMonths,
         'isOwner': msg.isOwner,
         'isModerator': msg.isModerator,
+        'isVip': msg.isVip,
         'isVerified': msg.isVerified,
+        'youtubeStreamOrientation': msg.youtubeStreamOrientation?.name,
         'timestamp': msg.timestamp.toIso8601String(),
       };
 
@@ -321,6 +320,7 @@ class OverlayServer {
         'showAvatars': _settings.overlayShowAvatars,
         'showPlatformIcons': _settings.overlayShowPlatformIcons,
         'showBadges': _settings.overlayShowBadges,
+        'showYoutubeStreamBadges': _settings.overlayShowYoutubeStreamBadges,
         'showTimestamp': _settings.overlayShowTimestamp,
         'textStroke': _settings.overlayTextStroke,
         'textStrokeColor': _settings.overlayTextStrokeColor,
@@ -757,6 +757,7 @@ window.addEventListener('beforeunload', () => {
   }
   .author-name.owner { color: #FFD700; }
   .author-name.mod { color: #7EA4FF; }
+  .author-name.vip { color: #FF69D4; }
   .badge {
     display: inline-flex;
     align-items: center;
@@ -770,10 +771,14 @@ window.addEventListener('beforeunload', () => {
   }
   .owner-badge { background: #FFD700; color: #111; }
   .mod-badge { background: #7EA4FF; color: #111; }
+  .vip-badge { background: #E919C2; color: #fff; }
+  .verified-badge { background: #1D9BF0; color: #fff; }
+  .youtube-stream-badge { background: #B3261E; color: #fff; }
   .member-badge { background: #0F9D58; color: #fff; }
   .twitch-sub-badge { background: #9146FF; color: #fff; }
   .kick-sub-badge { background: #53FC18; color: #111; }
   .superchat-badge { background: #FFD600; color: #111; }
+  .generic-badge { background: #454545; color: #fff; }
   .custom-badge {
     padding: 0;
     background: transparent;
@@ -881,6 +886,7 @@ const DEFAULT_SETTINGS = {
   showAvatars: true,
   showPlatformIcons: true,
   showBadges: true,
+  showYoutubeStreamBadges: true,
   showTimestamp: false,
   textStroke: 0,
   textStrokeColor: '#000000',
@@ -961,18 +967,24 @@ const UI_STRINGS = {
   en: {
     owner: 'OWNER',
     moderator: 'MOD',
+    verified: 'VERIFIED',
     member: 'MEMBER',
     subscriber: 'SUB',
     newSubscriber: 'New subscriber!',
+    resubscribed: (months) => 'Resubscribed for ' + months + ' months',
+    giftSubscription: 'Gift subscription',
     subscriptionUpdate: 'Subscription update',
     membershipUpdate: 'Membership update',
   },
   es: {
     owner: 'DUEÑO',
     moderator: 'MOD',
+    verified: 'VERIFICADO',
     member: 'MIEMBRO',
     subscriber: 'SUB',
     newSubscriber: '¡Nuevo suscriptor!',
+    resubscribed: (months) => 'Se resuscribió por ' + months + ' meses',
+    giftSubscription: 'Suscripción regalada',
     subscriptionUpdate: 'Actualización de suscripción',
     membershipUpdate: 'Actualización de membresía',
   },
@@ -1011,6 +1023,13 @@ function addBadge(row, className, label) {
   badge.className = 'badge ' + className;
   badge.textContent = label;
   row.appendChild(badge);
+}
+
+function membershipEventLabel(message, strings, isTwitch, isKick) {
+  if (message.membershipEventKind === 'subscription') return strings.newSubscriber;
+  if (message.membershipEventKind === 'resubscription') return strings.resubscribed(message.membershipMonths || 0);
+  if (message.membershipEventKind === 'gift') return strings.giftSubscription;
+  return isTwitch ? strings.newSubscriber : isKick ? strings.subscriptionUpdate : strings.membershipUpdate;
 }
 
 function appendMessageItems(container, items) {
@@ -1086,7 +1105,7 @@ function createMessageBubble(message, animate) {
   }
 
   const author = document.createElement('span');
-  author.className = 'author-name' + (message.isOwner ? ' owner' : '') + (message.isModerator ? ' mod' : '');
+  author.className = 'author-name' + (message.isOwner ? ' owner' : '') + (message.isModerator ? ' mod' : '') + (message.isVip ? ' vip' : '');
   if (message.color) author.style.color = message.color;
   author.textContent = message.author || '';
   authorRow.appendChild(author);
@@ -1094,16 +1113,32 @@ function createMessageBubble(message, animate) {
   if (settings.showBadges) {
     if (message.isOwner) addBadge(authorRow, 'owner-badge', strings.owner);
     if (message.isModerator) addBadge(authorRow, 'mod-badge', strings.moderator);
+    if (message.isVip) addBadge(authorRow, 'vip-badge', 'VIP');
+    if (message.isVerified) addBadge(authorRow, 'verified-badge', strings.verified);
+    if (settings.showYoutubeStreamBadges && message.youtubeStreamOrientation) {
+      const streamLabel = message.youtubeStreamOrientation === 'vertical'
+        ? (settings.appLanguageCode === 'es' ? 'VERTICAL' : 'VERTICAL')
+        : (settings.appLanguageCode === 'es' ? 'HORIZONTAL' : 'HORIZONTAL');
+      addBadge(authorRow, 'youtube-stream-badge', streamLabel);
+    }
     if (message.isMembership && !isMembershipEvent) {
       const badgeClass = isTwitch ? 'twitch-sub-badge' : isKick ? 'kick-sub-badge' : 'member-badge';
       addBadge(authorRow, badgeClass, isTwitch || isKick ? strings.subscriber : strings.member);
     }
     if (isSuperChat && message.superChatAmount) addBadge(authorRow, 'superchat-badge', message.superChatAmount);
-    const badgeUrl = normalizeUrl(message.badgeImageUrl);
-    if (badgeUrl) {
+    const builtInKinds = new Set(['broadcaster', 'owner', 'channel_owner', 'moderator', 'mod', 'vip', 'subscriber', 'sub', 'founder']);
+    const badges = Array.isArray(message.badges) ? message.badges : [];
+    for (const sourceBadge of badges) {
+      const kind = String(sourceBadge.kind || '').toLowerCase();
+      if (builtInKinds.has(kind)) continue;
+      const badgeUrl = normalizeUrl(sourceBadge.imageUrl);
+      if (!badgeUrl) {
+        addBadge(authorRow, 'generic-badge', String(sourceBadge.label || kind).toUpperCase());
+        continue;
+      }
       const customBadge = document.createElement('span');
       customBadge.className = 'badge custom-badge';
-      customBadge.title = message.badgeLabel || '';
+      customBadge.title = sourceBadge.label || '';
       const badgeImage = document.createElement('img');
       badgeImage.src = badgeUrl;
       badgeImage.alt = '';
@@ -1137,7 +1172,7 @@ function createMessageBubble(message, animate) {
     const flair = document.createElement('div');
     flair.className = 'membership-flair';
     const emphasis = document.createElement('em');
-    emphasis.textContent = message.badgeLabel || (isTwitch ? strings.newSubscriber : isKick ? strings.subscriptionUpdate : strings.membershipUpdate);
+    emphasis.textContent = membershipEventLabel(message, strings, isTwitch, isKick);
     flair.appendChild(emphasis);
     messageText.appendChild(flair);
   }

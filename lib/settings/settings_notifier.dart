@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/app_notice.dart';
+import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/kick_service.dart';
 export 'package:airstream/services/kick_service.dart' show ServiceStatus;
 export 'package:airstream/services/tts_service.dart'
@@ -30,6 +32,20 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsModel>(
   (ref) => SettingsNotifier(),
 );
 
+/// Completes only after persisted settings and secure values have loaded.
+/// Service providers use this as a side-effect barrier during app startup.
+final settingsInitializationProvider = FutureProvider<void>((ref) async {
+  try {
+    await ref.watch(settingsProvider.notifier).ready;
+  } catch (error, stack) {
+    AppLogger.error(
+      'Settings initialization failed; using safe defaults',
+      error: error,
+      stackTrace: stack,
+    );
+  }
+});
+
 final chatConnectionProvider = StateProvider<bool>((ref) => false);
 
 final chatProvider = StreamProvider<List<ChatMessage>>((ref) {
@@ -38,6 +54,7 @@ final chatProvider = StreamProvider<List<ChatMessage>>((ref) {
 });
 
 final overlayUrlProvider = Provider<String?>((ref) {
+  ref.watch(overlayServerStateProvider);
   final app = ref.watch(appControllerProvider);
   return app.overlayUrl;
 });
@@ -57,6 +74,22 @@ final connectionStatusProvider =
     StreamProvider<Map<String, (ServiceStatus, String?)>>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.connectionStatusStream;
+});
+
+final chatSessionPhaseProvider = Provider<ChatSessionPhase>((ref) {
+  return resolveChatSessionPhase(
+    requested: ref.watch(chatConnectionProvider),
+    settings: ref.watch(settingsProvider),
+    statuses: ref.watch(connectionStatusProvider).valueOrNull ?? const {},
+  );
+});
+
+final appNoticeProvider = StreamProvider<AppNotice>((ref) {
+  return ref.watch(appControllerProvider).noticeStream;
+});
+
+final overlayServerStateProvider = StreamProvider<OverlayServerState>((ref) {
+  return ref.watch(appControllerProvider).overlayStateStream;
 });
 
 final ttsLoadStateProvider = StreamProvider<TtsLoadState>((ref) {
@@ -83,7 +116,10 @@ final appControllerProvider = Provider<AppController>((ref) {
   final settings = ref.watch(settingsProvider);
   final connectChats = ref.watch(chatConnectionProvider);
   final controller = ref.read(_appControllerInstanceProvider);
-  controller.applySettings(settings, connectChats: connectChats);
+  final initialization = ref.watch(settingsInitializationProvider);
+  if (initialization is AsyncData<void>) {
+    controller.applySettings(settings, connectChats: connectChats);
+  }
   return controller;
 });
 
@@ -190,6 +226,10 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 /// Owns all services. Reconnects when settings change.
 class AppController {
   final _youtube = YouTubeService();
+  final _youtubeHorizontal =
+      YouTubeService(streamOrientation: YoutubeStreamOrientation.horizontal);
+  final _youtubeVertical =
+      YouTubeService(streamOrientation: YoutubeStreamOrientation.vertical);
   final _kick = KickService();
   final _twitch = TwitchService();
   final _overlay = OverlayServer();
@@ -199,8 +239,12 @@ class AppController {
   late final MessagePipeline _pipeline;
   StreamSubscription<ChatMessage>? _pipelineSub;
   StreamSubscription<(ServiceStatus, String?)>? _youtubeStatusSub;
+  StreamSubscription<(ServiceStatus, String?)>? _youtubeHorizontalStatusSub;
+  StreamSubscription<(ServiceStatus, String?)>? _youtubeVerticalStatusSub;
   StreamSubscription<(ServiceStatus, String?)>? _kickStatusSub;
+  StreamSubscription<(ServiceStatus, String?)>? _twitchStatusSub;
   StreamSubscription<LiveCaptionsState>? _captionsSub;
+  StreamSubscription<Object>? _ttsPlaybackErrorSub;
   final _spokenMessageKeys = <String>{};
   final _spokenMessageOrder = Queue<String>();
 
@@ -214,13 +258,22 @@ class AppController {
   final _youtubeBadgeController =
       // ignore: close_sinks
       StreamController<String?>.broadcast();
+  final _noticeController = StreamController<AppNotice>.broadcast();
+  final _overlayStateController =
+      StreamController<OverlayServerState>.broadcast();
 
   final _platformStatus = <String, (ServiceStatus, String?)>{
     'youtube': (ServiceStatus.idle, null),
+    'youtubeHorizontal': (ServiceStatus.idle, null),
+    'youtubeVertical': (ServiceStatus.idle, null),
     'twitch': (ServiceStatus.idle, null),
     'kick': (ServiceStatus.idle, null),
   };
   String? _youtubeBadgeValue;
+  OverlayServerState _overlayState = const OverlayServerState();
+  int _noticeId = 0;
+  int _overlayGeneration = 0;
+  int _chatAttemptGeneration = 0;
 
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
@@ -230,6 +283,8 @@ class AppController {
   AppController() {
     _pipeline = MessagePipeline(const SettingsModel());
     _pipeline.addSource(_youtube.messages);
+    _pipeline.addSource(_youtubeHorizontal.messages);
+    _pipeline.addSource(_youtubeVertical.messages);
     _pipeline.addSource(_kick.messages);
     _pipeline.addSource(_twitch.messages);
     _pipelineSub = _pipeline.stream.listen((msg) {
@@ -238,8 +293,18 @@ class AppController {
     });
     // Forward per-service status to the aggregated stream.
     _youtubeStatusSub =
-        _youtube.statusStream.listen((s) => _updateStatus('youtube', s));
-    _kickStatusSub = _kick.statusStream.listen((s) => _updateStatus('kick', s));
+        _youtube.statusStream.listen((s) => _handleServiceStatus('youtube', s));
+    _youtubeHorizontalStatusSub = _youtubeHorizontal.statusStream
+        .listen((s) => _handleServiceStatus('youtubeHorizontal', s));
+    _youtubeVerticalStatusSub = _youtubeVertical.statusStream
+        .listen((s) => _handleServiceStatus('youtubeVertical', s));
+    _kickStatusSub =
+        _kick.statusStream.listen((s) => _handleServiceStatus('kick', s));
+    _twitchStatusSub =
+        _twitch.statusStream.listen((s) => _handleServiceStatus('twitch', s));
+    _ttsPlaybackErrorSub = _tts.playbackErrors.listen((error) {
+      _emitNotice(AppNoticeCode.ttsPlaybackFailed, AppNoticeSeverity.error);
+    });
     _captionsSub = _captions.states.listen((state) {
       if (state.captionFinal &&
           (_lastSettings?.liveCaptionsOverlayEnabled ?? false)) {
@@ -256,32 +321,82 @@ class AppController {
     });
   }
 
-  Future<void> _connectYoutube(SettingsModel s) async {
+  Future<void> _connectYoutube(SettingsModel s, int generation) async {
     _youtubeBadgeValue = null;
     _emitYoutubeBadgeValue();
     try {
       await _youtube.connect(handle: s.youtubeHandle, liveId: s.youtubeLiveId);
+      if (generation != _chatAttemptGeneration || _lastConnectChats != true) {
+        return;
+      }
       _youtubeBadgeValue = _youtube.resolvedLiveId.isNotEmpty
           ? _youtube.resolvedLiveId
           : s.youtubeHandle.trim();
       _emitYoutubeBadgeValue();
-    } catch (e) {
-      debugPrint('YouTubeService.connect failed: $e');
+    } catch (e, stack) {
+      AppLogger.error(
+        'YouTube connection failed',
+        error: e,
+        stackTrace: stack,
+      );
       await _youtube.disconnect();
+      if (generation != _chatAttemptGeneration || _lastConnectChats != true) {
+        return;
+      }
       _youtubeBadgeValue = null;
       _emitYoutubeBadgeValue();
       _updateStatus('youtube', (ServiceStatus.error, e.toString()));
     }
   }
 
-  Future<void> _connectTwitch(SettingsModel s) async {
-    _updateStatus('twitch', (ServiceStatus.connecting, null));
+  Future<void> _connectYoutubeStream({
+    required YouTubeService service,
+    required String statusKey,
+    required String url,
+    required int generation,
+  }) async {
+    final videoId = YouTubeService.videoIdFromUrl(url);
+    if (videoId == null) {
+      _updateStatus(
+        statusKey,
+        (ServiceStatus.error, 'A valid YouTube video URL is required.'),
+      );
+      return;
+    }
+    try {
+      await service.connect(liveId: videoId);
+      if (generation != _chatAttemptGeneration || _lastConnectChats != true) {
+        return;
+      }
+    } catch (e, stack) {
+      AppLogger.error(
+        '$statusKey connection failed',
+        error: e,
+        stackTrace: stack,
+      );
+      await service.disconnect();
+      if (generation == _chatAttemptGeneration && _lastConnectChats == true) {
+        _updateStatus(statusKey, (ServiceStatus.error, e.toString()));
+      }
+    }
+  }
+
+  Future<void> _connectTwitch(SettingsModel s, int generation) async {
     try {
       await _twitch.connect(s.twitchChannel);
-      _updateStatus('twitch', (ServiceStatus.connected, null));
-    } catch (e) {
-      debugPrint('TwitchService.connect failed: $e');
+      if (generation != _chatAttemptGeneration || _lastConnectChats != true) {
+        return;
+      }
+    } catch (e, stack) {
+      AppLogger.error(
+        'Twitch connection failed',
+        error: e,
+        stackTrace: stack,
+      );
       await _twitch.disconnect();
+      if (generation != _chatAttemptGeneration || _lastConnectChats != true) {
+        return;
+      }
       _updateStatus('twitch', (ServiceStatus.error, e.toString()));
     }
   }
@@ -291,6 +406,41 @@ class AppController {
     if (!_statusController.isClosed) {
       _statusController.add(Map.from(_platformStatus));
     }
+  }
+
+  void _handleServiceStatus(
+    String platform,
+    (ServiceStatus, String?) status,
+  ) {
+    if (!shouldAcceptServiceStatus(
+      chatRequested: _lastConnectChats == true,
+      platformConfigured: _isPlatformConfigured(platform),
+      status: status.$1,
+    )) {
+      return;
+    }
+    _updateStatus(platform, status);
+  }
+
+  bool _isPlatformConfigured(String platform) {
+    final settings = _lastSettings;
+    if (settings == null) return false;
+    return switch (platform) {
+      'youtube' => settings.youtubeEnabled &&
+          !settings.youtubeDualStreamEnabled &&
+          (settings.youtubeHandle.trim().isNotEmpty ||
+              settings.youtubeLiveId.trim().isNotEmpty),
+      'youtubeHorizontal' => settings.youtubeEnabled &&
+          settings.youtubeDualStreamEnabled &&
+          YouTubeService.videoIdFromUrl(settings.youtubeHorizontalUrl) != null,
+      'youtubeVertical' => settings.youtubeEnabled &&
+          settings.youtubeDualStreamEnabled &&
+          YouTubeService.videoIdFromUrl(settings.youtubeVerticalUrl) != null,
+      'twitch' =>
+        settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty,
+      'kick' => settings.kickEnabled && settings.kickSlug.trim().isNotEmpty,
+      _ => false,
+    };
   }
 
   Stream<List<ChatMessage>> get messageListStream async* {
@@ -328,8 +478,15 @@ class AppController {
 
   Stream<int> get overlayClientCountStream => _overlay.clientCountStream;
 
-  String? get overlayUrl => _overlay.localIp != null
-      ? 'http://${_overlay.localIp}:${_overlay.port}'
+  Stream<AppNotice> get noticeStream => _noticeController.stream;
+
+  Stream<OverlayServerState> get overlayStateStream async* {
+    yield _overlayState;
+    yield* _overlayStateController.stream;
+  }
+
+  String? get overlayUrl => _overlayState.phase == OverlayServerPhase.ready
+      ? _overlay.overlayUrl
       : null;
 
   bool testTts(String text) {
@@ -364,8 +521,13 @@ class AppController {
           await _obs.switchScene(command.argument);
           return;
       }
-    } catch (error) {
-      debugPrint('Voice command failed: $error');
+    } catch (error, stack) {
+      AppLogger.error(
+        'Voice command failed',
+        error: error,
+        stackTrace: stack,
+      );
+      _emitNotice(AppNoticeCode.voiceCommandFailed, AppNoticeSeverity.error);
     }
   }
 
@@ -385,6 +547,142 @@ class AppController {
 
   bool testOverlayAlert(String kind) => _overlay.broadcastTestAlert(kind);
 
+  void retryChatConnections() {
+    final settings = _lastSettings;
+    if (settings == null || _lastConnectChats != true) return;
+    final generation = ++_chatAttemptGeneration;
+    if (settings.youtubeEnabled &&
+        !settings.youtubeDualStreamEnabled &&
+        (settings.youtubeHandle.trim().isNotEmpty ||
+            settings.youtubeLiveId.trim().isNotEmpty) &&
+        _platformStatus['youtube']?.$1 == ServiceStatus.error) {
+      unawaited(_connectYoutube(settings, generation));
+    }
+    if (settings.youtubeEnabled && settings.youtubeDualStreamEnabled) {
+      if (_platformStatus['youtubeHorizontal']?.$1 == ServiceStatus.error) {
+        unawaited(_connectYoutubeStream(
+          service: _youtubeHorizontal,
+          statusKey: 'youtubeHorizontal',
+          url: settings.youtubeHorizontalUrl,
+          generation: generation,
+        ));
+      }
+      if (_platformStatus['youtubeVertical']?.$1 == ServiceStatus.error) {
+        unawaited(_connectYoutubeStream(
+          service: _youtubeVertical,
+          statusKey: 'youtubeVertical',
+          url: settings.youtubeVerticalUrl,
+          generation: generation,
+        ));
+      }
+    }
+    if (settings.twitchEnabled &&
+        settings.twitchChannel.trim().isNotEmpty &&
+        _platformStatus['twitch']?.$1 == ServiceStatus.error) {
+      unawaited(_connectTwitch(settings, generation));
+    }
+    if (settings.kickEnabled &&
+        settings.kickSlug.trim().isNotEmpty &&
+        _platformStatus['kick']?.$1 == ServiceStatus.error) {
+      unawaited(_kick.connect(settings.kickSlug));
+    }
+  }
+
+  void retryChatPlatform(String platform) {
+    final settings = _lastSettings;
+    if (settings == null || _lastConnectChats != true) return;
+    final generation = ++_chatAttemptGeneration;
+    switch (platform) {
+      case 'youtube':
+        if (_isPlatformConfigured(platform)) {
+          unawaited(_connectYoutube(settings, generation));
+        }
+        return;
+      case 'youtubeHorizontal':
+        if (_isPlatformConfigured(platform)) {
+          unawaited(_connectYoutubeStream(
+            service: _youtubeHorizontal,
+            statusKey: platform,
+            url: settings.youtubeHorizontalUrl,
+            generation: generation,
+          ));
+        }
+        return;
+      case 'youtubeVertical':
+        if (_isPlatformConfigured(platform)) {
+          unawaited(_connectYoutubeStream(
+            service: _youtubeVertical,
+            statusKey: platform,
+            url: settings.youtubeVerticalUrl,
+            generation: generation,
+          ));
+        }
+        return;
+      case 'twitch':
+        if (_isPlatformConfigured(platform)) {
+          unawaited(_connectTwitch(settings, generation));
+        }
+        return;
+      case 'kick':
+        if (_isPlatformConfigured(platform)) {
+          unawaited(_kick.connect(settings.kickSlug));
+        }
+        return;
+    }
+  }
+
+  void _emitNotice(AppNoticeCode code, AppNoticeSeverity severity) {
+    if (_noticeController.isClosed) return;
+    _noticeController.add(
+      AppNotice(code: code, severity: severity, id: ++_noticeId),
+    );
+  }
+
+  void _emitOverlayState(OverlayServerState state) {
+    _overlayState = state;
+    if (!_overlayStateController.isClosed) {
+      _overlayStateController.add(state);
+    }
+  }
+
+  Future<void> _startOverlay(SettingsModel settings) async {
+    final generation = ++_overlayGeneration;
+    _emitOverlayState(
+      OverlayServerState(
+        phase: OverlayServerPhase.starting,
+        port: settings.overlayPort,
+      ),
+    );
+    try {
+      await _overlay.start(
+        messages: _pipeline.stream,
+        settings: settings,
+        port: settings.overlayPort,
+      );
+      if (generation != _overlayGeneration) return;
+      _emitOverlayState(
+        OverlayServerState(
+          phase: OverlayServerPhase.ready,
+          port: _overlay.port,
+        ),
+      );
+    } catch (error, stack) {
+      if (generation != _overlayGeneration) return;
+      AppLogger.error(
+        'Overlay server failed to start on port ${settings.overlayPort}',
+        error: error,
+        stackTrace: stack,
+      );
+      _emitOverlayState(
+        OverlayServerState(
+          phase: OverlayServerPhase.error,
+          port: settings.overlayPort,
+          error: error,
+        ),
+      );
+    }
+  }
+
   void _speakMessageIfEligible(ChatMessage msg) {
     final settings = _lastSettings;
     if (settings == null || !settings.ttsEnabled) return;
@@ -402,15 +700,13 @@ class AppController {
       final prefix = settings.ttsCommandPrefix.trim().isEmpty
           ? '!v'
           : settings.ttsCommandPrefix.trim();
-      if (prefix.isNotEmpty) {
-        final messageText =
-            settings.ttsCommandIgnoreCase ? text.toLowerCase() : text;
-        final commandPrefix =
-            settings.ttsCommandIgnoreCase ? prefix.toLowerCase() : prefix;
-        if (!messageText.startsWith(commandPrefix)) return;
-        text = text.substring(prefix.length).trim();
-        if (text.isEmpty) return;
-      }
+      final commandText = extractTtsCommandText(
+        text,
+        prefix: prefix,
+        ignoreCase: settings.ttsCommandIgnoreCase,
+      );
+      if (commandText == null) return;
+      text = commandText;
     }
 
     _rememberSpokenMessage(speakKey);
@@ -466,7 +762,10 @@ class AppController {
   void applySettings(SettingsModel s, {required bool connectChats}) {
     final prev = _lastSettings;
     _lastSettings = s;
-    _pipeline.updateSettings(s);
+    final visibleMessagesChanged = _pipeline.updateSettings(s);
+    if (visibleMessagesChanged && !_listController.isClosed) {
+      _listController.add(_pipeline.buffer);
+    }
 
     unawaited(_tts.updateConfig(
       enabled: s.ttsEnabled,
@@ -491,17 +790,35 @@ class AppController {
         _lastConnectChats != connectChats;
     _lastConnectChats = connectChats;
 
-    final hasYoutubeTarget =
-        s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty;
-    final hasTwitchTarget = s.twitchChannel.isNotEmpty;
-    final hasKickTarget = s.kickSlug.isNotEmpty;
+    final horizontalYoutubeId =
+        YouTubeService.videoIdFromUrl(s.youtubeHorizontalUrl);
+    final verticalYoutubeId =
+        YouTubeService.videoIdFromUrl(s.youtubeVerticalUrl);
+    final hasYoutubeTarget = s.youtubeEnabled &&
+        (s.youtubeDualStreamEnabled
+            ? horizontalYoutubeId != null &&
+                verticalYoutubeId != null &&
+                horizontalYoutubeId != verticalYoutubeId
+            : s.youtubeHandle.isNotEmpty || s.youtubeLiveId.isNotEmpty);
+    final hasTwitchTarget = s.twitchEnabled && s.twitchChannel.isNotEmpty;
+    final hasKickTarget = s.kickEnabled && s.kickSlug.isNotEmpty;
 
     final ytChanged = connectionChanged ||
+        prev.youtubeEnabled != s.youtubeEnabled ||
+        prev.youtubeDualStreamEnabled != s.youtubeDualStreamEnabled ||
+        prev.youtubeHorizontalUrl != s.youtubeHorizontalUrl ||
+        prev.youtubeVerticalUrl != s.youtubeVerticalUrl ||
         prev.youtubeHandle != s.youtubeHandle ||
         prev.youtubeLiveId != s.youtubeLiveId;
-    final twChanged =
-        connectionChanged || prev.twitchChannel != s.twitchChannel;
-    final kickChanged = connectionChanged || prev.kickSlug != s.kickSlug;
+    final twChanged = connectionChanged ||
+        prev.twitchEnabled != s.twitchEnabled ||
+        prev.twitchChannel != s.twitchChannel;
+    final kickChanged = connectionChanged ||
+        prev.kickEnabled != s.kickEnabled ||
+        prev.kickSlug != s.kickSlug;
+    final chatAttemptGeneration = ytChanged || twChanged || kickChanged
+        ? ++_chatAttemptGeneration
+        : _chatAttemptGeneration;
 
     final shouldResetTtsSession = connectChats &&
         ((ytChanged && hasYoutubeTarget) ||
@@ -516,19 +833,42 @@ class AppController {
     }
 
     if (ytChanged) {
+      unawaited(_youtube.disconnect());
+      unawaited(_youtubeHorizontal.disconnect());
+      unawaited(_youtubeVertical.disconnect());
+      _updateStatus('youtube', (ServiceStatus.idle, null));
+      _updateStatus('youtubeHorizontal', (ServiceStatus.idle, null));
+      _updateStatus('youtubeVertical', (ServiceStatus.idle, null));
       if (connectChats && hasYoutubeTarget) {
-        unawaited(_connectYoutube(s));
+        if (s.youtubeDualStreamEnabled) {
+          _youtubeBadgeValue = '2 streams';
+          _emitYoutubeBadgeValue();
+          unawaited(_connectYoutubeStream(
+            service: _youtubeHorizontal,
+            statusKey: 'youtubeHorizontal',
+            url: s.youtubeHorizontalUrl,
+            generation: chatAttemptGeneration,
+          ));
+          unawaited(_connectYoutubeStream(
+            service: _youtubeVertical,
+            statusKey: 'youtubeVertical',
+            url: s.youtubeVerticalUrl,
+            generation: chatAttemptGeneration,
+          ));
+        } else {
+          unawaited(_connectYoutube(s, chatAttemptGeneration));
+        }
       } else {
-        unawaited(_youtube.disconnect());
         _youtubeBadgeValue = null;
         _emitYoutubeBadgeValue();
+        _updateStatus('youtube', (ServiceStatus.idle, null));
       }
     }
 
     // Twitch
     if (twChanged) {
       if (connectChats && hasTwitchTarget) {
-        unawaited(_connectTwitch(s));
+        unawaited(_connectTwitch(s, chatAttemptGeneration));
       } else {
         _twitch.disconnect();
         _updateStatus('twitch', (ServiceStatus.idle, null));
@@ -541,6 +881,7 @@ class AppController {
         _kick.connect(s.kickSlug);
       } else {
         _kick.disconnect();
+        _updateStatus('kick', (ServiceStatus.idle, null));
       }
     }
 
@@ -550,15 +891,11 @@ class AppController {
         prev.overlayEnabled != s.overlayEnabled;
     if (overlayChanged) {
       if (s.overlayEnabled) {
-        _overlay
-            .start(
-              messages: _pipeline.stream,
-              settings: s,
-              port: s.overlayPort,
-            )
-            .catchError((e) => debugPrint('OverlayServer.start failed: $e'));
+        unawaited(_startOverlay(s));
       } else {
-        _overlay.stop();
+        ++_overlayGeneration;
+        unawaited(_overlay.stop());
+        _emitOverlayState(const OverlayServerState());
       }
     }
     if (s.overlayEnabled) {
@@ -582,9 +919,15 @@ class AppController {
   Future<void> dispose() async {
     await _pipelineSub?.cancel();
     await _youtubeStatusSub?.cancel();
+    await _youtubeHorizontalStatusSub?.cancel();
+    await _youtubeVerticalStatusSub?.cancel();
     await _kickStatusSub?.cancel();
+    await _twitchStatusSub?.cancel();
     await _captionsSub?.cancel();
+    await _ttsPlaybackErrorSub?.cancel();
     _youtube.dispose();
+    _youtubeHorizontal.dispose();
+    _youtubeVertical.dispose();
     _kick.dispose();
     _twitch.dispose();
     await _overlay.dispose();
@@ -595,5 +938,7 @@ class AppController {
     await _listController.close();
     await _statusController.close();
     await _youtubeBadgeController.close();
+    await _noticeController.close();
+    await _overlayStateController.close();
   }
 }

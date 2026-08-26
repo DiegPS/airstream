@@ -8,6 +8,7 @@ import 'package:record/record.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import '../sherpa_cpu_thread_policy.dart';
+import '../native_worker_guard.dart';
 import '../tts_model_cache.dart';
 import 'speech_model_catalog.dart';
 
@@ -56,6 +57,8 @@ abstract interface class SpeechAudioCapture {
   Future<void> dispose();
 }
 
+typedef CaptionsWorkerEntrypoint = void Function(Map<String, Object> startup);
+
 class RecordSpeechAudioCapture implements SpeechAudioCapture {
   AudioRecorder? _recorder;
 
@@ -87,11 +90,14 @@ class LiveCaptionsService {
   LiveCaptionsService({
     TtsModelCache? modelCache,
     SpeechAudioCapture? audioCapture,
+    CaptionsWorkerEntrypoint? workerEntrypoint,
   })  : _modelCache = modelCache ?? TtsModelCache(),
-        _audioCapture = audioCapture ?? RecordSpeechAudioCapture();
+        _audioCapture = audioCapture ?? RecordSpeechAudioCapture(),
+        _workerEntrypoint = workerEntrypoint ?? _workerMain;
 
   final TtsModelCache _modelCache;
   final SpeechAudioCapture _audioCapture;
+  final CaptionsWorkerEntrypoint _workerEntrypoint;
   final _states = StreamController<LiveCaptionsState>.broadcast();
   LiveCaptionsState _state = const LiveCaptionsState();
   StreamSubscription<Uint8List>? _audioSubscription;
@@ -99,6 +105,7 @@ class LiveCaptionsService {
   Isolate? _worker;
   SendPort? _commands;
   ReceivePort? _events;
+  NativeWorkerGuard? _workerGuard;
   bool _enabled = false;
   bool _disposed = false;
   String _sourceLanguage = 'es';
@@ -211,39 +218,69 @@ class LiveCaptionsService {
       message: 'Loading offline captions…',
     ));
     final ready = ReceivePort();
-    final errors = ReceivePort();
-    _worker = await Isolate.spawn(
-      _workerMain,
-      <String, Object>{
-        'reply': ready.sendPort,
-        'directory': installation.directory.path,
-        'files': SpeechModelCatalog.canary.modelFiles,
-        'sourceLanguage': _sourceLanguage,
-        'targetLanguage': _targetLanguage,
-        'threads': SherpaCpuThreadPolicy.recommended(),
-        'denoise': _denoise,
-        'nativeLibraryDirectory':
-            Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'] ??
-                File(Platform.resolvedExecutable).parent.path,
-      },
-      errorsAreFatal: true,
-      onError: errors.sendPort,
-      onExit: errors.sendPort,
+    late final NativeWorkerGuard guard;
+    guard = NativeWorkerGuard(
+      label: 'Offline captions worker',
+      onFailure: (error, failedAfterReady) =>
+          _handleWorkerFailure(guard, error, failedAfterReady),
     );
-    final first = await Future.any<Object?>([
-      ready.first,
-      errors.first.then((value) => throw StateError('$value')),
-    ]).timeout(const Duration(minutes: 2));
-    ready.close();
-    errors.close();
-    if (first is! SendPort) {
-      throw StateError('Caption worker failed to initialize: $first');
+    _workerGuard = guard;
+    Isolate? worker;
+    Object? first;
+    try {
+      worker = await Isolate.spawn(
+        _workerEntrypoint,
+        <String, Object>{
+          'reply': ready.sendPort,
+          'directory': installation.directory.path,
+          'files': SpeechModelCatalog.canary.modelFiles,
+          'sourceLanguage': _sourceLanguage,
+          'targetLanguage': _targetLanguage,
+          'threads': SherpaCpuThreadPolicy.recommended(),
+          'denoise': _denoise,
+          'nativeLibraryDirectory':
+              Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'] ??
+                  File(Platform.resolvedExecutable).parent.path,
+        },
+        errorsAreFatal: true,
+        onError: guard.errorPort.sendPort,
+        onExit: guard.exitPort.sendPort,
+      );
+      _worker = worker;
+      first = await Future.any<Object?>([
+        ready.first,
+        guard.failure.then<Object?>((error) => throw error),
+      ]).timeout(const Duration(minutes: 2));
+      if (first is! SendPort) {
+        throw StateError('Caption worker failed to initialize: $first');
+      }
+      if (!identical(_workerGuard, guard)) {
+        throw StateError('Caption worker stopped during initialization.');
+      }
+      _commands = first;
+      guard.markReady();
+    } catch (_) {
+      worker?.kill(priority: Isolate.immediate);
+      if (identical(_workerGuard, guard)) {
+        _workerGuard = null;
+        _worker = null;
+        _commands = null;
+      }
+      await guard.dispose(expectedExit: true);
+      rethrow;
+    } finally {
+      ready.close();
     }
     if (revision != _revision || !_enabled || _disposed) {
       first.send({'type': 'dispose'});
+      if (identical(_workerGuard, guard)) {
+        _workerGuard = null;
+        _worker = null;
+        _commands = null;
+      }
+      await guard.dispose(expectedExit: true);
       return;
     }
-    _commands = first;
     final events = ReceivePort();
     _events = events;
     _commands!.send({'type': 'listen', 'reply': events.sendPort});
@@ -295,6 +332,9 @@ class LiveCaptionsService {
     _commands = null;
     _events?.close();
     _events = null;
+    final guard = _workerGuard;
+    _workerGuard = null;
+    await guard?.dispose(expectedExit: true);
     if (commands != null) commands.send({'type': 'dispose'});
     _worker?.kill(priority: Isolate.beforeNextEvent);
     _worker = null;
@@ -306,6 +346,38 @@ class LiveCaptionsService {
     await stop();
     await _audioCapture.dispose();
     await _states.close();
+  }
+
+  void _handleWorkerFailure(
+    NativeWorkerGuard guard,
+    Object error,
+    bool failedAfterReady,
+  ) {
+    if (!identical(_workerGuard, guard)) return;
+    _workerGuard = null;
+    _commands = null;
+    _worker = null;
+    _events?.close();
+    _events = null;
+    unawaited(guard.dispose(expectedExit: false));
+    if (failedAfterReady && !_disposed) {
+      ++_revision;
+      _emit(LiveCaptionsState(
+        phase: LiveCaptionsPhase.error,
+        message: 'Offline captions stopped unexpectedly.',
+        error: error.toString(),
+      ));
+      unawaited(_stopCaptureAfterWorkerFailure());
+    }
+  }
+
+  Future<void> _stopCaptureAfterWorkerFailure() async {
+    final subscription = _audioSubscription;
+    _audioSubscription = null;
+    await subscription?.cancel();
+    try {
+      await _audioCapture.stop();
+    } catch (_) {}
   }
 
   void _emit(LiveCaptionsState state) {

@@ -14,10 +14,17 @@
   "clear": "Clear",
   "connections": "Connections",
   "youtubeInputLabel": "YouTube handle, channel ID, video ID, or URL",
+  "youtubeDualMode": "Horizontal + vertical",
+  "youtubeDualModeDescription": "Connect both YouTube broadcasts at the same time",
+  "youtubeHorizontalUrl": "Horizontal stream URL",
+  "youtubeVerticalUrl": "Vertical stream URL",
+  "youtubeStreamUrlHint": "https://youtube.com/watch?v=...",
+  "youtubeInvalidStreamUrl": "Enter a direct YouTube video or live URL",
+  "youtubeDuplicateStreamUrl": "Use a different broadcast URL",
+  "youtubeStreamBadges": "Horizontal / vertical badge",
   "twitchChannel": "Twitch channel",
   "kickSlug": "Kick slug",
   "startChat": "Start chat",
-  "stopChat": "Stop chat",
   "appearance": "Appearance",
   "fontSize": "Font size",
   "backgroundOpacity": "Background opacity",
@@ -166,6 +173,25 @@
   "downloading": "Downloading",
   "loading": "Loading",
   "error": "Error",
+  "chatConnectionsFailed": "AirStream could not connect to any configured chat. Review the red platform errors and try again.",
+  "retry": "Retry",
+  "retryPlatform": "Retry {platform}",
+  "@retryPlatform": {
+    "placeholders": {"platform": {"type": "String"}}
+  },
+  "chatPartiallyConnected": "Some chats are connected. Review the platforms marked in red.",
+  "overlayStarting": "Starting the local overlay server…",
+  "overlayStartFailed": "The overlay server could not start on port {port}. The port may already be in use or blocked.",
+  "invalidOverlayPort": "Enter a port from 1 to 65535.",
+  "@overlayStartFailed": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsPlaybackFailed": "The voice could not be generated or played. Check the selected model and audio output.",
+  "voiceCommandFailed": "The voice command could not be completed. Check the OBS connection and try again.",
   "idle": "Idle",
   "assetsProgress": "{loaded}/{total} assets",
   "@assetsProgress": {
@@ -402,7 +428,11 @@
   "badgeModerator": "MOD",
   "badgeMember": "MEMBER",
   "badgeSubscriber": "SUB",
+  "badgeVerified": "VERIFIED",
   "newSubscriberEvent": "New subscriber!",
+  "resubscriptionEvent": "Resubscribed for {months} months",
+  "@resubscriptionEvent": {"placeholders": {"months": {"type": "int"}}},
+  "giftSubscriptionEvent": "Gift subscription",
   "subscriptionUpdateEvent": "Subscription update",
   "membershipUpdateEvent": "Membership update",
   "languageArabic": "Arabic",

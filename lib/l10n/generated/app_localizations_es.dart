@@ -54,6 +54,32 @@ class AppLocalizationsEs extends AppLocalizations {
       'Usuario, ID de canal, ID de video o URL de YouTube';
 
   @override
+  String get youtubeDualMode => 'Horizontal + vertical';
+
+  @override
+  String get youtubeDualModeDescription =>
+      'Conecta ambas transmisiones de YouTube al mismo tiempo';
+
+  @override
+  String get youtubeHorizontalUrl => 'URL de transmisión horizontal';
+
+  @override
+  String get youtubeVerticalUrl => 'URL de transmisión vertical';
+
+  @override
+  String get youtubeStreamUrlHint => 'https://youtube.com/watch?v=...';
+
+  @override
+  String get youtubeInvalidStreamUrl =>
+      'Ingresa una URL directa de video o transmisión de YouTube';
+
+  @override
+  String get youtubeDuplicateStreamUrl => 'Usa la URL de otra transmisión';
+
+  @override
+  String get youtubeStreamBadges => 'Insignia horizontal / vertical';
+
+  @override
   String get twitchChannel => 'Canal de Twitch';
 
   @override
@@ -61,9 +87,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get startChat => 'Iniciar chat';
-
-  @override
-  String get stopChat => 'Detener chat';
 
   @override
   String get appearance => 'Apariencia';
@@ -491,6 +514,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get error => 'Error';
+
+  @override
+  String get chatConnectionsFailed =>
+      'AirStream no pudo conectarse a ningún chat configurado. Revisa los errores rojos de cada plataforma e inténtalo de nuevo.';
+
+  @override
+  String get retry => 'Reintentar';
+
+  @override
+  String retryPlatform(String platform) {
+    return 'Reintentar $platform';
+  }
+
+  @override
+  String get chatPartiallyConnected =>
+      'Algunos chats están conectados. Revisa las plataformas marcadas en rojo.';
+
+  @override
+  String get overlayStarting => 'Iniciando el servidor local de superposición…';
+
+  @override
+  String overlayStartFailed(int port) {
+    return 'No se pudo iniciar el servidor de superposición en el puerto $port. Es posible que el puerto esté ocupado o bloqueado.';
+  }
+
+  @override
+  String get invalidOverlayPort => 'Introduce un puerto entre 1 y 65535.';
+
+  @override
+  String get ttsPlaybackFailed =>
+      'No se pudo generar o reproducir la voz. Revisa el modelo seleccionado y la salida de audio.';
+
+  @override
+  String get voiceCommandFailed =>
+      'No se pudo completar el comando de voz. Revisa la conexión con OBS e inténtalo de nuevo.';
 
   @override
   String get idle => 'Inactivo';
@@ -948,7 +1006,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get badgeSubscriber => 'SUB';
 
   @override
+  String get badgeVerified => 'VERIFICADO';
+
+  @override
   String get newSubscriberEvent => '¡Nuevo suscriptor!';
+
+  @override
+  String resubscriptionEvent(int months) {
+    return 'Se resuscribió por $months meses';
+  }
+
+  @override
+  String get giftSubscriptionEvent => 'Suscripción regalada';
 
   @override
   String get subscriptionUpdateEvent => 'Actualización de suscripción';

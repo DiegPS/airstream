@@ -7,8 +7,14 @@ class SettingsModel {
   // Platform connections
   final String youtubeHandle;
   final String youtubeLiveId;
+  final bool youtubeDualStreamEnabled;
+  final String youtubeHorizontalUrl;
+  final String youtubeVerticalUrl;
   final String twitchChannel;
   final String kickSlug;
+  final bool youtubeEnabled;
+  final bool twitchEnabled;
+  final bool kickEnabled;
 
   // Overlay visual
   final double fontSize;
@@ -17,6 +23,7 @@ class SettingsModel {
   final bool showAvatars;
   final bool showPlatformIcons;
   final bool showBadges;
+  final bool showYoutubeStreamBadges;
   final bool showTimestamp;
 
   // Message design
@@ -75,6 +82,7 @@ class SettingsModel {
   final bool overlayShowAvatars;
   final bool overlayShowPlatformIcons;
   final bool overlayShowBadges;
+  final bool overlayShowYoutubeStreamBadges;
   final bool overlayShowTimestamp;
   final double overlayTextStroke;
   final String overlayTextStrokeColor;
@@ -122,14 +130,21 @@ class SettingsModel {
     this.appLanguageCode = 'en',
     this.youtubeHandle = '',
     this.youtubeLiveId = '',
+    this.youtubeDualStreamEnabled = false,
+    this.youtubeHorizontalUrl = '',
+    this.youtubeVerticalUrl = '',
     this.twitchChannel = '',
     this.kickSlug = '',
+    this.youtubeEnabled = true,
+    this.twitchEnabled = true,
+    this.kickEnabled = true,
     this.fontSize = 14.0,
     this.bgOpacity = 0.4,
     this.messageOpacity = 1.0,
     this.showAvatars = true,
     this.showPlatformIcons = true,
     this.showBadges = true,
+    this.showYoutubeStreamBadges = true,
     this.showTimestamp = false,
     this.showBubble = true,
     this.showBubbleShadow = true,
@@ -167,7 +182,7 @@ class SettingsModel {
     this.voiceCommandsEnabled = false,
     this.voiceCommandsWakeWord = 'airstream',
     this.overlayPort = 8080,
-    this.overlayEnabled = true,
+    this.overlayEnabled = false,
     this.overlayChromaMode = false,
     this.overlayChromaColor = '#00FF00',
     this.overlayShowGrid = false,
@@ -178,6 +193,7 @@ class SettingsModel {
     this.overlayShowAvatars = true,
     this.overlayShowPlatformIcons = true,
     this.overlayShowBadges = true,
+    this.overlayShowYoutubeStreamBadges = true,
     this.overlayShowTimestamp = false,
     this.overlayTextStroke = 0.0,
     this.overlayTextStrokeColor = '#000000',
@@ -224,14 +240,21 @@ class SettingsModel {
     String? appLanguageCode,
     String? youtubeHandle,
     String? youtubeLiveId,
+    bool? youtubeDualStreamEnabled,
+    String? youtubeHorizontalUrl,
+    String? youtubeVerticalUrl,
     String? twitchChannel,
     String? kickSlug,
+    bool? youtubeEnabled,
+    bool? twitchEnabled,
+    bool? kickEnabled,
     double? fontSize,
     double? bgOpacity,
     double? messageOpacity,
     bool? showAvatars,
     bool? showPlatformIcons,
     bool? showBadges,
+    bool? showYoutubeStreamBadges,
     bool? showTimestamp,
     bool? showBubble,
     bool? showBubbleShadow,
@@ -280,6 +303,7 @@ class SettingsModel {
     bool? overlayShowAvatars,
     bool? overlayShowPlatformIcons,
     bool? overlayShowBadges,
+    bool? overlayShowYoutubeStreamBadges,
     bool? overlayShowTimestamp,
     double? overlayTextStroke,
     String? overlayTextStrokeColor,
@@ -325,14 +349,23 @@ class SettingsModel {
         appLanguageCode: appLanguageCode ?? this.appLanguageCode,
         youtubeHandle: youtubeHandle ?? this.youtubeHandle,
         youtubeLiveId: youtubeLiveId ?? this.youtubeLiveId,
+        youtubeDualStreamEnabled:
+            youtubeDualStreamEnabled ?? this.youtubeDualStreamEnabled,
+        youtubeHorizontalUrl: youtubeHorizontalUrl ?? this.youtubeHorizontalUrl,
+        youtubeVerticalUrl: youtubeVerticalUrl ?? this.youtubeVerticalUrl,
         twitchChannel: twitchChannel ?? this.twitchChannel,
         kickSlug: kickSlug ?? this.kickSlug,
+        youtubeEnabled: youtubeEnabled ?? this.youtubeEnabled,
+        twitchEnabled: twitchEnabled ?? this.twitchEnabled,
+        kickEnabled: kickEnabled ?? this.kickEnabled,
         fontSize: fontSize ?? this.fontSize,
         bgOpacity: bgOpacity ?? this.bgOpacity,
         messageOpacity: messageOpacity ?? this.messageOpacity,
         showAvatars: showAvatars ?? this.showAvatars,
         showPlatformIcons: showPlatformIcons ?? this.showPlatformIcons,
         showBadges: showBadges ?? this.showBadges,
+        showYoutubeStreamBadges:
+            showYoutubeStreamBadges ?? this.showYoutubeStreamBadges,
         showTimestamp: showTimestamp ?? this.showTimestamp,
         showBubble: showBubble ?? this.showBubble,
         showBubbleShadow: showBubbleShadow ?? this.showBubbleShadow,
@@ -390,6 +423,8 @@ class SettingsModel {
         overlayShowPlatformIcons:
             overlayShowPlatformIcons ?? this.overlayShowPlatformIcons,
         overlayShowBadges: overlayShowBadges ?? this.overlayShowBadges,
+        overlayShowYoutubeStreamBadges: overlayShowYoutubeStreamBadges ??
+            this.overlayShowYoutubeStreamBadges,
         overlayShowTimestamp: overlayShowTimestamp ?? this.overlayShowTimestamp,
         overlayTextStroke: overlayTextStroke ?? this.overlayTextStroke,
         overlayTextStrokeColor:
@@ -446,14 +481,21 @@ class SettingsModel {
         'appLanguageCode': appLanguageCode,
         'youtubeHandle': youtubeHandle,
         'youtubeLiveId': youtubeLiveId,
+        'youtubeDualStreamEnabled': youtubeDualStreamEnabled,
+        'youtubeHorizontalUrl': youtubeHorizontalUrl,
+        'youtubeVerticalUrl': youtubeVerticalUrl,
         'twitchChannel': twitchChannel,
         'kickSlug': kickSlug,
+        'youtubeEnabled': youtubeEnabled,
+        'twitchEnabled': twitchEnabled,
+        'kickEnabled': kickEnabled,
         'fontSize': fontSize,
         'bgOpacity': bgOpacity,
         'messageOpacity': messageOpacity,
         'showAvatars': showAvatars,
         'showPlatformIcons': showPlatformIcons,
         'showBadges': showBadges,
+        'showYoutubeStreamBadges': showYoutubeStreamBadges,
         'showTimestamp': showTimestamp,
         'showBubble': showBubble,
         'showBubbleShadow': showBubbleShadow,
@@ -502,6 +544,7 @@ class SettingsModel {
         'overlayShowAvatars': overlayShowAvatars,
         'overlayShowPlatformIcons': overlayShowPlatformIcons,
         'overlayShowBadges': overlayShowBadges,
+        'overlayShowYoutubeStreamBadges': overlayShowYoutubeStreamBadges,
         'overlayShowTimestamp': overlayShowTimestamp,
         'overlayTextStroke': overlayTextStroke,
         'overlayTextStrokeColor': overlayTextStrokeColor,
@@ -543,18 +586,30 @@ class SettingsModel {
         'obsShowRecordingSize': obsShowRecordingSize,
       };
 
-  factory SettingsModel.fromJson(Map<String, dynamic> j) => SettingsModel(
+  factory SettingsModel.fromJson(Map<String, dynamic> source) =>
+      SettingsModel._fromSanitizedJson(_sanitizeJson(source));
+
+  factory SettingsModel._fromSanitizedJson(Map<String, dynamic> j) =>
+      SettingsModel(
         appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
         youtubeHandle: j['youtubeHandle'] as String? ?? '',
         youtubeLiveId: j['youtubeLiveId'] as String? ?? '',
+        youtubeDualStreamEnabled:
+            j['youtubeDualStreamEnabled'] as bool? ?? false,
+        youtubeHorizontalUrl: j['youtubeHorizontalUrl'] as String? ?? '',
+        youtubeVerticalUrl: j['youtubeVerticalUrl'] as String? ?? '',
         twitchChannel: j['twitchChannel'] as String? ?? '',
         kickSlug: j['kickSlug'] as String? ?? '',
+        youtubeEnabled: j['youtubeEnabled'] as bool? ?? true,
+        twitchEnabled: j['twitchEnabled'] as bool? ?? true,
+        kickEnabled: j['kickEnabled'] as bool? ?? true,
         fontSize: (j['fontSize'] as num?)?.toDouble() ?? 14.0,
         bgOpacity: (j['bgOpacity'] as num?)?.toDouble() ?? 0.4,
         messageOpacity: (j['messageOpacity'] as num?)?.toDouble() ?? 1.0,
         showAvatars: j['showAvatars'] as bool? ?? true,
         showPlatformIcons: j['showPlatformIcons'] as bool? ?? true,
         showBadges: j['showBadges'] as bool? ?? true,
+        showYoutubeStreamBadges: j['showYoutubeStreamBadges'] as bool? ?? true,
         showTimestamp: j['showTimestamp'] as bool? ?? false,
         showBubble: j['showBubble'] as bool? ?? true,
         showBubbleShadow: j['showBubbleShadow'] as bool? ?? true,
@@ -613,6 +668,8 @@ class SettingsModel {
         overlayShowPlatformIcons:
             j['overlayShowPlatformIcons'] as bool? ?? true,
         overlayShowBadges: j['overlayShowBadges'] as bool? ?? true,
+        overlayShowYoutubeStreamBadges:
+            j['overlayShowYoutubeStreamBadges'] as bool? ?? true,
         overlayShowTimestamp: j['overlayShowTimestamp'] as bool? ?? false,
         overlayTextStroke: (j['overlayTextStroke'] as num?)?.toDouble() ?? 0.0,
         overlayTextStrokeColor:
@@ -666,8 +723,115 @@ class SettingsModel {
         obsShowRecordingSize: j['obsShowRecordingSize'] as bool? ?? false,
       );
 
-  factory SettingsModel.fromJsonString(String s) =>
-      SettingsModel.fromJson(jsonDecode(s) as Map<String, dynamic>);
+  static Map<String, dynamic> _sanitizeJson(Map<String, dynamic> source) {
+    final schema = const SettingsModel().toJson();
+    final sanitized = <String, dynamic>{};
+
+    for (final entry in source.entries) {
+      final expected = schema[entry.key];
+      final value = entry.value;
+      if (entry.key == 'obsPassword') {
+        if (value is String) sanitized[entry.key] = value;
+        continue;
+      }
+      if (expected == null) continue;
+      if (expected is bool && value is bool) {
+        sanitized[entry.key] = value;
+      } else if (expected is int && value is num && value.isFinite) {
+        sanitized[entry.key] = value.round();
+      } else if (expected is double && value is num && value.isFinite) {
+        sanitized[entry.key] = value.toDouble();
+      } else if (expected is String && value is String) {
+        sanitized[entry.key] = value;
+      } else if (expected is List && value is List) {
+        sanitized[entry.key] = value.whereType<String>().toList();
+      }
+    }
+
+    void clampDouble(String key, double minimum, double maximum) {
+      final fallback = schema[key]! as num;
+      final value = (sanitized[key] as num?) ?? fallback;
+      sanitized[key] = value.toDouble().clamp(minimum, maximum);
+    }
+
+    void clampInt(String key, int minimum, int maximum) {
+      final fallback = schema[key]! as num;
+      final value = ((sanitized[key] as num?) ?? fallback).round();
+      sanitized[key] = value.clamp(minimum, maximum);
+    }
+
+    void allow(String key, Set<String> values, String fallback) {
+      if (!values.contains(sanitized[key])) sanitized[key] = fallback;
+    }
+
+    void color(String key, String fallback) {
+      final value = sanitized[key];
+      if (value is! String || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(value)) {
+        sanitized[key] = fallback;
+      }
+    }
+
+    allow('appLanguageCode', const {'en', 'es'}, 'en');
+    allow('chatTextAlign', const {'left', 'center', 'right'}, 'left');
+    allow('overlayTextAlign', const {'left', 'center', 'right'}, 'left');
+    allow(
+      'overlayAnimation',
+      const {'slide-up', 'slide-left', 'fade-in', 'zoom-in'},
+      'slide-up',
+    );
+    allow(
+        'liveCaptionsModelId', const {'canary-180m-int8'}, 'canary-180m-int8');
+    allow('liveCaptionsSourceLanguage', const {'es', 'en'}, 'es');
+    allow('liveCaptionsTargetLanguage', const {'es', 'en'}, 'es');
+
+    clampInt('overlayPort', 1, 65535);
+    clampInt('maxMessages', 1, 1000);
+    clampInt('overlayMaxMessages', 1, 500);
+    clampInt('overlayMessageTtlSeconds', 1, 3600);
+    clampInt('ttsSteps', 1, 64);
+    clampInt('alertDisplaySeconds', 1, 60);
+
+    clampDouble('fontSize', 10, 28);
+    clampDouble('bgOpacity', 0, 1);
+    clampDouble('messageOpacity', 0, 1);
+    clampDouble('borderRadius', 0, 40);
+    clampDouble('messageGap', 0, 40);
+    clampDouble('chatMaxMessageWidth', 0.4, 1);
+    clampDouble('chatHorizontalPadding', 0, 80);
+    clampDouble('chatLineHeight', 1, 2);
+    clampDouble('chatFontWeight', 100, 900);
+    clampDouble('chatTextStroke', 0, 8);
+    clampDouble('ttsSpeed', 0.5, 2);
+    clampDouble('overlayFontSize', 10, 72);
+    clampDouble('overlayBgOpacity', 0, 1);
+    clampDouble('overlayMessageOpacity', 0, 1);
+    clampDouble('overlayTextStroke', 0, 8);
+    clampDouble('overlayLineHeight', 1, 2);
+    clampDouble('overlayMessageGap', 0, 80);
+    clampDouble('overlayFontWeight', 100, 900);
+    clampDouble('overlayBorderRadius', 0, 80);
+    clampDouble('overlaySuperChatBarWidth', 1, 8);
+    clampDouble('overlayAnimationDuration', 0.1, 2);
+    clampDouble('overlayPerspective', 100, 2000);
+    clampDouble('overlayRotateX', -180, 180);
+    clampDouble('overlayRotateY', -180, 180);
+    clampDouble('overlayRotateZ', -180, 180);
+    clampDouble('overlaySkewX', -60, 60);
+    clampDouble('overlayScale', 0.25, 3);
+    clampDouble('alertFontSize', 12, 72);
+
+    color('overlayChromaColor', '#00FF00');
+    color('overlayTextStrokeColor', '#000000');
+    color('overlaySuperChatBarColor', '#1DE9B6');
+    return sanitized;
+  }
+
+  factory SettingsModel.fromJsonString(String s) {
+    final decoded = jsonDecode(s);
+    return decoded is Map<String, dynamic>
+        ? SettingsModel.fromJson(decoded)
+        : const SettingsModel();
+  }
 
   String toJsonString() => jsonEncode(toJson());
 }

@@ -20,3 +20,26 @@ String sanitizeTtsAuthorName(String rawName) {
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
+
+/// Returns the text following an exact TTS command, or `null` when [message]
+/// is not a command or contains no text to speak.
+String? extractTtsCommandText(
+  String message, {
+  required String prefix,
+  required bool ignoreCase,
+}) {
+  final command = prefix.trim();
+  if (command.isEmpty || message.length < command.length) return null;
+
+  final candidate = message.substring(0, command.length);
+  final matches = ignoreCase
+      ? candidate.toLowerCase() == command.toLowerCase()
+      : candidate == command;
+  if (!matches) return null;
+
+  final remainder = message.substring(command.length);
+  if (remainder.isEmpty || !RegExp(r'^\s').hasMatch(remainder)) return null;
+
+  final body = remainder.trim();
+  return body.isEmpty ? null : body;
+}

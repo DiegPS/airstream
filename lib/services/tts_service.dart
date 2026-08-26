@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'app_logger.dart';
 import 'native_audio_playback_service.dart';
 import 'tts/sherpa_tts_engine.dart';
 import 'tts/tts_model_catalog.dart';
@@ -62,9 +63,12 @@ class TtsService {
       StreamController<TtsLoadState>.broadcast();
   final StreamController<bool> _busyController =
       StreamController<bool>.broadcast();
+  final StreamController<Object> _playbackErrorController =
+      StreamController<Object>.broadcast();
   final TtsModelCache _modelCache;
   final SherpaTtsEngine _engine;
   final NativeAudioPlaybackService _audioPlayback;
+  StreamSubscription<Object>? _workerFailureSubscription;
 
   TtsLoadState _loadState = const TtsLoadState();
   Future<void>? _initialization;
@@ -89,12 +93,17 @@ class TtsService {
     NativeAudioPlaybackService? audioPlayback,
   })  : _modelCache = modelCache ?? TtsModelCache(),
         _engine = engine ?? SherpaTtsEngine(),
-        _audioPlayback = audioPlayback ?? NativeAudioPlaybackService();
+        _audioPlayback = audioPlayback ?? NativeAudioPlaybackService() {
+    _workerFailureSubscription = _engine.workerFailures.listen(
+      _handleWorkerFailure,
+    );
+  }
 
   Stream<TtsLoadState> get loadStateStream => _loadStateController.stream;
   Stream<bool> get busyStream => _busyController.stream;
   TtsLoadState get currentLoadState => _loadState;
   bool get isBusy => _busy;
+  Stream<Object> get playbackErrors => _playbackErrorController.stream;
   TtsModelDefinition get selectedModel => TtsModelCatalog.byId(_modelId);
 
   Future<void> updateConfig({
@@ -239,7 +248,11 @@ class TtsService {
         _emit(TtsLoadState(modelId: model.id));
       }
     } catch (error, stack) {
-      debugPrint('TTS initialization failed: $error\n$stack');
+      AppLogger.error(
+        'TTS initialization failed',
+        error: error,
+        stackTrace: stack,
+      );
       if (!_disposed && generation == _generation) {
         _emit(TtsLoadState(
             phase: TtsLoadPhase.error,
@@ -298,8 +311,8 @@ class TtsService {
         final text = _queue.removeFirst();
         await _generateAndPlay(text);
       }
-    } catch (error) {
-      debugPrint('TTS queue stopped: $error');
+    } catch (error, stack) {
+      AppLogger.error('TTS queue stopped', error: error, stackTrace: stack);
     } finally {
       _processing = false;
       _setBusy(_queue.isNotEmpty);
@@ -345,7 +358,14 @@ class TtsService {
               ? const Duration(seconds: 8)
               : timeout);
     } catch (error, stack) {
-      debugPrint('TTS synthesis/playback failed: $error\n$stack');
+      AppLogger.error(
+        'TTS synthesis or playback failed',
+        error: error,
+        stackTrace: stack,
+      );
+      if (!_playbackErrorController.isClosed) {
+        _playbackErrorController.add(error);
+      }
     } finally {
       if (output != null && await output.exists()) {
         try {
@@ -397,6 +417,23 @@ class TtsService {
     _setBusy(false);
   }
 
+  void _handleWorkerFailure(Object error) {
+    if (_disposed) return;
+    final wasProcessing = _processing;
+    _generation++;
+    _queue.clear();
+    _setBusy(false);
+    _emit(TtsLoadState(
+      phase: TtsLoadPhase.error,
+      message: 'The TTS worker stopped unexpectedly.',
+      error: error.toString(),
+      modelId: _modelId,
+    ));
+    if (!wasProcessing && !_playbackErrorController.isClosed) {
+      _playbackErrorController.add(error);
+    }
+  }
+
   Future<bool> isModelInstalled(String modelId) async =>
       await _modelCache.installed(TtsModelCatalog.byId(modelId)) != null;
 
@@ -425,9 +462,12 @@ class TtsService {
     await stop(unload: true);
     _disposed = true;
     _modelCache.dispose();
+    await _workerFailureSubscription?.cancel();
+    _workerFailureSubscription = null;
     await _engine.dispose();
     await _audioPlayback.dispose();
     await _loadStateController.close();
     await _busyController.close();
+    await _playbackErrorController.close();
   }
 }

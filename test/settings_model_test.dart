@@ -2,6 +2,76 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('sanitizes corrupt values without discarding valid preferences', () {
+    final restored = SettingsModel.fromJson({
+      'appLanguageCode': 'fr',
+      'youtubeHandle': '@still-valid',
+      'youtubeEnabled': 'not-a-bool',
+      'overlayPort': -20,
+      'maxMessages': -5,
+      'bgOpacity': 4.2,
+      'chatTextAlign': 'diagonal',
+      'overlayAnimation': 'explode',
+      'overlayScale': 99,
+      'blockedUsers': ['Nightbot', 42, null],
+    });
+
+    expect(restored.youtubeHandle, '@still-valid');
+    expect(restored.youtubeEnabled, isTrue);
+    expect(restored.appLanguageCode, 'en');
+    expect(restored.overlayPort, 1);
+    expect(restored.maxMessages, 1);
+    expect(restored.bgOpacity, 1);
+    expect(restored.chatTextAlign, 'left');
+    expect(restored.overlayAnimation, 'slide-up');
+    expect(restored.overlayScale, 3);
+    expect(restored.blockedUsers, ['Nightbot']);
+  });
+
+  test('uses safe defaults for a non-object settings payload', () {
+    expect(SettingsModel.fromJsonString('[]').overlayEnabled, isFalse);
+  });
+
+  test('new installations keep the overlay disabled', () {
+    expect(const SettingsModel().overlayEnabled, isFalse);
+  });
+
+  test('legacy settings without an overlay flag preserve the old default', () {
+    expect(SettingsModel.fromJson(const {}).overlayEnabled, isTrue);
+  });
+
+  test('persists per-platform chat enablement', () {
+    const settings = SettingsModel(
+      youtubeEnabled: false,
+      twitchEnabled: true,
+      kickEnabled: false,
+    );
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+
+    expect(restored.youtubeEnabled, isFalse);
+    expect(restored.twitchEnabled, isTrue);
+    expect(restored.kickEnabled, isFalse);
+  });
+
+  test('persists YouTube horizontal and vertical mode', () {
+    const settings = SettingsModel(
+      youtubeDualStreamEnabled: true,
+      youtubeHorizontalUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+      youtubeVerticalUrl: 'https://youtu.be/aqz-KE-bpKQ',
+      showYoutubeStreamBadges: false,
+      overlayShowYoutubeStreamBadges: false,
+    );
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+
+    expect(restored.youtubeDualStreamEnabled, isTrue);
+    expect(restored.youtubeHorizontalUrl, settings.youtubeHorizontalUrl);
+    expect(restored.youtubeVerticalUrl, settings.youtubeVerticalUrl);
+    expect(restored.showYoutubeStreamBadges, isFalse);
+    expect(restored.overlayShowYoutubeStreamBadges, isFalse);
+  });
+
   test('persists local chat appearance settings', () {
     const settings = SettingsModel(
       chatTextAlign: 'right',

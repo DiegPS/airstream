@@ -3,6 +3,10 @@ library;
 
 enum Platform { youtube, twitch, kick }
 
+enum YoutubeStreamOrientation { horizontal, vertical }
+
+enum MembershipEventKind { subscription, resubscription, gift }
+
 class MessageItem {
   final String text;
   final EmojiItem? emoji;
@@ -25,8 +29,9 @@ class EmojiItem {
 class AuthorBadge {
   final String? imageUrl;
   final String label;
+  final String? kind;
 
-  const AuthorBadge({this.imageUrl, required this.label});
+  const AuthorBadge({this.imageUrl, required this.label, this.kind});
 }
 
 class ChatAuthor {
@@ -35,6 +40,7 @@ class ChatAuthor {
   final String channelId;
   final String? color; // hex #RRGGBB, used by Twitch/Kick
   final AuthorBadge? badge;
+  final List<AuthorBadge> badges;
 
   const ChatAuthor({
     required this.name,
@@ -42,7 +48,13 @@ class ChatAuthor {
     required this.channelId,
     this.color,
     this.badge,
+    this.badges = const [],
   });
+
+  List<AuthorBadge> get allBadges => [
+        if (badge != null) badge!,
+        ...badges,
+      ];
 }
 
 class SuperChat {
@@ -63,7 +75,11 @@ class ChatMessage {
   final bool isMembershipEvent;
   final bool isOwner;
   final bool isModerator;
+  final bool isVip;
   final bool isVerified;
+  final YoutubeStreamOrientation? youtubeStreamOrientation;
+  final MembershipEventKind? membershipEventKind;
+  final int? membershipMonths;
   final DateTime timestamp;
 
   const ChatMessage({
@@ -76,7 +92,11 @@ class ChatMessage {
     this.isMembershipEvent = false,
     this.isOwner = false,
     this.isModerator = false,
+    this.isVip = false,
     this.isVerified = false,
+    this.youtubeStreamOrientation,
+    this.membershipEventKind,
+    this.membershipMonths,
     required this.timestamp,
   });
 
@@ -91,7 +111,8 @@ class ChatMessage {
   String get dedupeIdKey {
     final normalizedId = id.trim();
     if (normalizedId.isEmpty) return '';
-    return '${platform.name}:id:$normalizedId';
+    final stream = youtubeStreamOrientation?.name ?? 'default';
+    return '${platform.name}:$stream:id:$normalizedId';
   }
 
   String get dedupeContentKey {
@@ -99,7 +120,8 @@ class ChatMessage {
         ? author.channelId.trim().toLowerCase()
         : author.name.trim().toLowerCase();
     final secondBucket = timestamp.toUtc().millisecondsSinceEpoch ~/ 1000;
-    return '${platform.name}:content:$normalizedAuthor:$normalizedPlainText:$secondBucket';
+    final stream = youtubeStreamOrientation?.name ?? 'default';
+    return '${platform.name}:$stream:content:$normalizedAuthor:$normalizedPlainText:$secondBucket';
   }
 
   String get dedupeKey =>

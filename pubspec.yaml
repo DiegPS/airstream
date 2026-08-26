@@ -19,7 +19,6 @@ dependencies:
   # OBS overlay server
   shelf: ^1.4.0
   shelf_web_socket: ^2.0.0
-  network_info_plus: ^6.0.0
 
   # Images (GIF + WebP animated)
   cached_network_image: ^3.4.0

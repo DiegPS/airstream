@@ -182,6 +182,54 @@ abstract class AppLocalizations {
   /// **'YouTube handle, channel ID, video ID, or URL'**
   String get youtubeInputLabel;
 
+  /// No description provided for @youtubeDualMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal + vertical'**
+  String get youtubeDualMode;
+
+  /// No description provided for @youtubeDualModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect both YouTube broadcasts at the same time'**
+  String get youtubeDualModeDescription;
+
+  /// No description provided for @youtubeHorizontalUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal stream URL'**
+  String get youtubeHorizontalUrl;
+
+  /// No description provided for @youtubeVerticalUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical stream URL'**
+  String get youtubeVerticalUrl;
+
+  /// No description provided for @youtubeStreamUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://youtube.com/watch?v=...'**
+  String get youtubeStreamUrlHint;
+
+  /// No description provided for @youtubeInvalidStreamUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a direct YouTube video or live URL'**
+  String get youtubeInvalidStreamUrl;
+
+  /// No description provided for @youtubeDuplicateStreamUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different broadcast URL'**
+  String get youtubeDuplicateStreamUrl;
+
+  /// No description provided for @youtubeStreamBadges.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal / vertical badge'**
+  String get youtubeStreamBadges;
+
   /// No description provided for @twitchChannel.
   ///
   /// In en, this message translates to:
@@ -199,12 +247,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start chat'**
   String get startChat;
-
-  /// No description provided for @stopChat.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop chat'**
-  String get stopChat;
 
   /// No description provided for @appearance.
   ///
@@ -1016,6 +1058,60 @@ abstract class AppLocalizations {
   /// **'Error'**
   String get error;
 
+  /// No description provided for @chatConnectionsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'AirStream could not connect to any configured chat. Review the red platform errors and try again.'**
+  String get chatConnectionsFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @retryPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry {platform}'**
+  String retryPlatform(String platform);
+
+  /// No description provided for @chatPartiallyConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Some chats are connected. Review the platforms marked in red.'**
+  String get chatPartiallyConnected;
+
+  /// No description provided for @overlayStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the local overlay server…'**
+  String get overlayStarting;
+
+  /// No description provided for @overlayStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The overlay server could not start on port {port}. The port may already be in use or blocked.'**
+  String overlayStartFailed(int port);
+
+  /// No description provided for @invalidOverlayPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a port from 1 to 65535.'**
+  String get invalidOverlayPort;
+
+  /// No description provided for @ttsPlaybackFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The voice could not be generated or played. Check the selected model and audio output.'**
+  String get ttsPlaybackFailed;
+
+  /// No description provided for @voiceCommandFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The voice command could not be completed. Check the OBS connection and try again.'**
+  String get voiceCommandFailed;
+
   /// No description provided for @idle.
   ///
   /// In en, this message translates to:
@@ -1791,11 +1887,29 @@ abstract class AppLocalizations {
   /// **'SUB'**
   String get badgeSubscriber;
 
+  /// No description provided for @badgeVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'VERIFIED'**
+  String get badgeVerified;
+
   /// No description provided for @newSubscriberEvent.
   ///
   /// In en, this message translates to:
   /// **'New subscriber!'**
   String get newSubscriberEvent;
+
+  /// No description provided for @resubscriptionEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Resubscribed for {months} months'**
+  String resubscriptionEvent(int months);
+
+  /// No description provided for @giftSubscriptionEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Gift subscription'**
+  String get giftSubscriptionEvent;
 
   /// No description provided for @subscriptionUpdateEvent.
   ///

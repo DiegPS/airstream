@@ -71,6 +71,7 @@ void main() {
       author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
       items: const [],
       isOwner: true,
+      isVerified: true,
       isMembership: true,
       isMembershipEvent: true,
       timestamp: DateTime.utc(2026, 6, 10),
@@ -89,9 +90,80 @@ void main() {
     );
 
     expect(find.text('DUEÑO'), findsOneWidget);
+    expect(find.text('VERIFICADO'), findsOneWidget);
     expect(find.text('Actualización de membresía'), findsOneWidget);
     expect(find.text('OWNER'), findsNothing);
     expect(find.text('Membership update'), findsNothing);
+  });
+
+  testWidgets('renders Twitch VIP, real badges and localized resubscriptions',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(showBadges: true),
+    );
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'resub',
+      author: const ChatAuthor(
+        name: 'Ana',
+        channelId: 'ana',
+        badges: [AuthorBadge(label: 'Bits 1000', kind: 'bits')],
+      ),
+      items: const [MessageItem.text('¡Un año!')],
+      isMembership: true,
+      isMembershipEvent: true,
+      isVip: true,
+      membershipEventKind: MembershipEventKind.resubscription,
+      membershipMonths: 12,
+      timestamp: DateTime.utc(2026, 6, 10),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('VIP'), findsOneWidget);
+    expect(find.text('Bits 1000'), findsOneWidget);
+    expect(find.text('Se resuscribió por 12 meses'), findsOneWidget);
+  });
+
+  testWidgets('labels messages from the configured YouTube stream',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(
+        showBadges: true,
+        showYoutubeStreamBadges: true,
+      ),
+    );
+    final message = ChatMessage(
+      platform: Platform.youtube,
+      id: 'vertical',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [MessageItem.text('Hola')],
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+      timestamp: DateTime.utc(2026, 8, 26),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('VERTICAL'), findsOneWidget);
   });
 }
 

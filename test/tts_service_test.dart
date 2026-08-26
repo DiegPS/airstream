@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:airstream/services/tts_service.dart';
+import 'package:airstream/services/tts/sherpa_tts_engine.dart';
 import 'package:airstream/services/tts_model_cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -51,4 +53,34 @@ void main() {
       if (await root.exists()) await root.delete(recursive: true);
     }
   });
+
+  test('a dead TTS worker immediately replaces Ready with an error', () async {
+    final engine = _ControllableSherpaEngine();
+    final service = TtsService(engine: engine);
+    try {
+      engine.fail(StateError('worker exited'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(service.currentLoadState.phase, TtsLoadPhase.error);
+      expect(service.currentLoadState.error, contains('worker exited'));
+      expect(service.isBusy, isFalse);
+    } finally {
+      await service.dispose();
+    }
+  });
+}
+
+class _ControllableSherpaEngine extends SherpaTtsEngine {
+  final _failures = StreamController<Object>.broadcast();
+
+  @override
+  Stream<Object> get workerFailures => _failures.stream;
+
+  void fail(Object error) => _failures.add(error);
+
+  @override
+  Future<void> dispose() async {
+    await _failures.close();
+    await super.dispose();
+  }
 }

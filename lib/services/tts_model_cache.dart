@@ -39,8 +39,29 @@ class TtsInstallProgress {
 
 class TtsDownloadCancellation {
   bool _cancelled = false;
+  final _listeners = <void Function()>{};
+  final _cancelledCompleter = Completer<void>();
   bool get isCancelled => _cancelled;
-  void cancel() => _cancelled = true;
+  Future<void> get whenCancelled => _cancelledCompleter.future;
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    if (!_cancelledCompleter.isCompleted) _cancelledCompleter.complete();
+    for (final listener in List<void Function()>.from(_listeners)) {
+      listener();
+    }
+    _listeners.clear();
+  }
+
+  void Function() addListener(void Function() listener) {
+    if (_cancelled) {
+      listener();
+      return () {};
+    }
+    _listeners.add(listener);
+    return () => _listeners.remove(listener);
+  }
+
   void throwIfCancelled() {
     if (_cancelled) throw const TtsDownloadCancelledException();
   }
@@ -61,18 +82,27 @@ class TtsModelInstallation {
 }
 
 class TtsModelCache {
-  final http.Client _client;
+  static const _integrityManifestName = '.airstream-integrity.json';
+  final http.Client? _sharedClient;
   final Directory? _rootOverride;
-  final bool _ownsClient;
   final int _segmentedDownloadThreshold;
+  final Duration _connectionTimeout;
+  final Duration _inactivityTimeout;
+  final int _downloadAttempts;
+  final _verifiedInstallations = <String>{};
   TtsModelCache({
     http.Client? client,
     Directory? rootDirectory,
     int segmentedDownloadThreshold = 32 * 1024 * 1024,
-  })  : _client = client ?? http.Client(),
+    Duration connectionTimeout = const Duration(seconds: 20),
+    Duration inactivityTimeout = const Duration(seconds: 30),
+    int downloadAttempts = 3,
+  })  : _sharedClient = client,
         _rootOverride = rootDirectory,
         _segmentedDownloadThreshold = segmentedDownloadThreshold,
-        _ownsClient = client == null;
+        _connectionTimeout = connectionTimeout,
+        _inactivityTimeout = inactivityTimeout,
+        _downloadAttempts = downloadAttempts.clamp(1, 5);
 
   Future<Directory> get rootDirectory async {
     if (_rootOverride != null) return _rootOverride!;
@@ -99,6 +129,20 @@ class TtsModelCache {
             !await FileSystemEntity.isDirectory(path)) {
           return null;
         }
+      }
+      final verificationKey = '${directory.path}|${model.integrityKey}';
+      if (!_verifiedInstallations.contains(verificationKey)) {
+        final manifest = File(p.join(directory.path, _integrityManifestName));
+        if (!await manifest.exists()) return null;
+        final decoded = jsonDecode(await manifest.readAsString());
+        if (decoded is! Map || decoded['files'] is! List) return null;
+        final entries = (decoded['files'] as List)
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: false);
+        final valid = await _verifyIntegrityInWorker(directory.path, entries);
+        if (!valid) return null;
+        _verifiedInstallations.add(verificationKey);
       }
       return TtsModelInstallation(model, directory);
     } catch (_) {
@@ -228,6 +272,14 @@ class TtsModelCache {
           throw StateError('The model archive is missing $relativePath.');
         }
       }
+      final integrityEntries = await _buildIntegrityInWorker(
+        extracted.path,
+        model.requiredFiles,
+      );
+      await File(p.join(extracted.path, _integrityManifestName)).writeAsString(
+        jsonEncode({'files': integrityEntries}),
+        flush: true,
+      );
       await File(p.join(extracted.path, '.airstream-model.json')).writeAsString(
           jsonEncode({
             'id': model.id,
@@ -239,6 +291,7 @@ class TtsModelCache {
       final target = Directory(p.join(root.path, model.storageKey));
       if (await target.exists()) await target.delete(recursive: true);
       await extracted.rename(target.path);
+      _verifiedInstallations.add('${target.path}|${model.integrityKey}');
       await staging.delete(recursive: true);
       if (await extractionArchive.exists()) await extractionArchive.delete();
       for (final partial in partials.values) {
@@ -338,6 +391,35 @@ class TtsModelCache {
       File partial,
       void Function(int received) onProgress,
       TtsDownloadCancellation cancellation) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= _downloadAttempts; attempt++) {
+      cancellation.throwIfCancelled();
+      try {
+        await _downloadOnce(download, partial, onProgress, cancellation);
+        return;
+      } on TtsDownloadCancelledException {
+        rethrow;
+      } on Object catch (error) {
+        lastError = error;
+        if (attempt == _downloadAttempts || !_isRetryableDownloadError(error)) {
+          rethrow;
+        }
+        await _cancellableDelay(
+          Duration(milliseconds: 300 * attempt),
+          cancellation,
+        );
+      }
+    }
+    throw StateError('Download failed: $lastError');
+  }
+
+  Future<void> _downloadOnce(
+      TtsModelDownload download,
+      File partial,
+      void Function(int received) onProgress,
+      TtsDownloadCancellation cancellation) async {
+    await partial.parent.create(recursive: true);
+    if (!await partial.exists()) await partial.create();
     var offset = await partial.exists() ? await partial.length() : 0;
     if (offset > download.bytes) {
       await partial.delete();
@@ -359,9 +441,11 @@ class TtsModelCache {
     }
     final request = http.Request('GET', download.uri);
     if (offset > 0) request.headers[HttpHeaders.rangeHeader] = 'bytes=$offset-';
-    final response = await _client.send(request);
+    final lease = await _send(request, cancellation);
+    final response = lease.response;
     if (response.statusCode != HttpStatus.ok &&
         response.statusCode != HttpStatus.partialContent) {
+      lease.close();
       throw HttpException(
           '${download.fileName} download failed (HTTP ${response.statusCode}).',
           uri: download.uri);
@@ -375,8 +459,7 @@ class TtsModelCache {
     var received = offset;
     var lastReported = DateTime.now();
     try {
-      await for (final chunk in response.stream) {
-        cancellation.throwIfCancelled();
+      await _consumeResponse(response, cancellation, (chunk) {
         sink.add(chunk);
         received += chunk.length;
         final now = DateTime.now();
@@ -385,10 +468,11 @@ class TtsModelCache {
           lastReported = now;
           onProgress(received);
         }
-      }
+      });
     } finally {
       await sink.flush();
       await sink.close();
+      lease.close();
     }
     if (received != download.bytes) {
       throw StateError('Incomplete ${download.fileName} download: '
@@ -403,7 +487,8 @@ class TtsModelCache {
     cancellation.throwIfCancelled();
     final request = http.Request('GET', download.uri)
       ..headers[HttpHeaders.rangeHeader] = 'bytes=0-0';
-    final response = await _client.send(request);
+    final lease = await _send(request, cancellation);
+    final response = lease.response;
     try {
       return response.statusCode == HttpStatus.partialContent &&
           response.headers[HttpHeaders.contentRangeHeader]
@@ -412,6 +497,7 @@ class TtsModelCache {
     } finally {
       final subscription = response.stream.listen((_) {});
       await subscription.cancel();
+      lease.close();
     }
   }
 
@@ -449,8 +535,10 @@ class TtsModelCache {
 
       final request = http.Request('GET', download.uri)
         ..headers[HttpHeaders.rangeHeader] = 'bytes=${start + existing}-$end';
-      final response = await _client.send(request);
+      final lease = await _send(request, cancellation);
+      final response = lease.response;
       if (response.statusCode != HttpStatus.partialContent) {
+        lease.close();
         throw HttpException(
           '${download.fileName} server stopped supporting ranged downloads.',
           uri: download.uri,
@@ -460,8 +548,7 @@ class TtsModelCache {
         mode: existing == 0 ? FileMode.write : FileMode.append,
       );
       try {
-        await for (final chunk in response.stream) {
-          cancellation.throwIfCancelled();
+        await _consumeResponse(response, cancellation, (chunk) {
           sink.add(chunk);
           existing += chunk.length;
           receivedBySegment[index] = existing;
@@ -472,10 +559,11 @@ class TtsModelCache {
             lastReported = now;
             onProgress(total);
           }
-        }
+        });
       } finally {
         await sink.flush();
         await sink.close();
+        lease.close();
       }
       if (existing != expected) {
         throw StateError('Incomplete ${download.fileName} segment: '
@@ -508,9 +596,263 @@ class TtsModelCache {
     final root = await rootDirectory;
     final target = Directory(p.join(root.path, model.storageKey));
     if (await target.exists()) await target.delete(recursive: true);
+    _verifiedInstallations.removeWhere(
+      (key) => key.startsWith('${target.path}|'),
+    );
   }
 
-  void dispose() {
-    if (_ownsClient) _client.close();
+  Future<_HttpResponseLease> _send(
+    http.BaseRequest request,
+    TtsDownloadCancellation cancellation,
+  ) async {
+    cancellation.throwIfCancelled();
+    final client = _sharedClient ?? http.Client();
+    final ownsClient = _sharedClient == null;
+    var completed = false;
+    final removeListener = cancellation.addListener(() {
+      if (!completed && ownsClient) client.close();
+    });
+    try {
+      final response = await Future.any<http.StreamedResponse>([
+        client.send(request),
+        cancellation.whenCancelled.then<http.StreamedResponse>(
+          (_) => throw const TtsDownloadCancelledException(),
+        ),
+      ]).timeout(
+        _connectionTimeout,
+        onTimeout: () {
+          if (ownsClient) client.close();
+          throw TimeoutException(
+            'Connection timed out for ${request.url}.',
+            _connectionTimeout,
+          );
+        },
+      );
+      completed = true;
+      return _HttpResponseLease(response, ownsClient ? client : null);
+    } finally {
+      removeListener();
+      if (!completed && ownsClient) client.close();
+    }
   }
+
+  Future<void> _consumeResponse(
+    http.StreamedResponse response,
+    TtsDownloadCancellation cancellation,
+    void Function(List<int> chunk) onChunk,
+  ) async {
+    cancellation.throwIfCancelled();
+    final completion = Completer<void>();
+    Timer? inactivityTimer;
+    StreamSubscription<List<int>>? subscription;
+
+    void armTimeout() {
+      inactivityTimer?.cancel();
+      inactivityTimer = Timer(_inactivityTimeout, () {
+        if (!completion.isCompleted) {
+          completion.completeError(TimeoutException(
+            'Download stalled while waiting for data.',
+            _inactivityTimeout,
+          ));
+          unawaited(subscription?.cancel());
+        }
+      });
+    }
+
+    final removeCancellationListener = cancellation.addListener(() {
+      if (!completion.isCompleted) {
+        completion.completeError(const TtsDownloadCancelledException());
+        unawaited(subscription?.cancel());
+      }
+    });
+    subscription = response.stream.listen(
+      (chunk) {
+        if (completion.isCompleted) return;
+        armTimeout();
+        onChunk(chunk);
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!completion.isCompleted) completion.completeError(error, stack);
+      },
+      onDone: () {
+        if (!completion.isCompleted) completion.complete();
+      },
+      cancelOnError: true,
+    );
+    armTimeout();
+    try {
+      await completion.future;
+    } finally {
+      inactivityTimer?.cancel();
+      removeCancellationListener();
+      await subscription.cancel();
+    }
+  }
+
+  static bool _isRetryableDownloadError(Object error) =>
+      error is TimeoutException ||
+      error is SocketException ||
+      error is http.ClientException;
+
+  static Future<void> _cancellableDelay(
+    Duration duration,
+    TtsDownloadCancellation cancellation,
+  ) async {
+    await Future.any<void>([
+      Future<void>.delayed(duration),
+      cancellation.whenCancelled.then<void>(
+        (_) => throw const TtsDownloadCancelledException(),
+      ),
+    ]);
+  }
+
+  static Future<List<Map<String, Object>>> _buildIntegrityInWorker(
+    String directoryPath,
+    List<String> requiredPaths,
+  ) async {
+    final result = await _runIntegrityWorker({
+      'type': 'build',
+      'directory': directoryPath,
+      'requiredPaths': List<String>.from(requiredPaths),
+    });
+    return (result as List)
+        .map((entry) => Map<String, Object>.from(entry as Map))
+        .toList(growable: false);
+  }
+
+  static Future<bool> _verifyIntegrityInWorker(
+    String directoryPath,
+    List<Map<String, dynamic>> entries,
+  ) async {
+    final result = await _runIntegrityWorker({
+      'type': 'verify',
+      'directory': directoryPath,
+      'entries': entries,
+    });
+    return result == true;
+  }
+
+  static Future<Object?> _runIntegrityWorker(Map<String, Object> job) async {
+    final messages = ReceivePort();
+    final errors = ReceivePort();
+    final isolate = await Isolate.spawn(
+      _integrityWorker,
+      {...job, 'reply': messages.sendPort},
+      errorsAreFatal: true,
+      onError: errors.sendPort,
+    );
+    try {
+      final result = await Future.any<Object?>([
+        messages.first,
+        errors.first.then<Object?>(
+          (error) => throw StateError('Integrity worker failed: $error'),
+        ),
+      ]);
+      if (result is Map && result['error'] != null) {
+        throw StateError(result['error'] as String);
+      }
+      return result;
+    } finally {
+      isolate.kill(priority: Isolate.immediate);
+      messages.close();
+      errors.close();
+    }
+  }
+
+  static Future<void> _integrityWorker(Map<String, Object> job) async {
+    final reply = job['reply']! as SendPort;
+    try {
+      final directory = job['directory']! as String;
+      if (job['type'] == 'build') {
+        reply.send(await _buildIntegrityManifest(
+          directory,
+          List<String>.from(job['requiredPaths']! as List),
+        ));
+      } else {
+        reply.send(await _verifyIntegrityManifest(
+          directory,
+          (job['entries']! as List)
+              .map((entry) => Map<String, dynamic>.from(entry as Map))
+              .toList(growable: false),
+        ));
+      }
+    } catch (error, stack) {
+      reply.send({'error': '$error\n$stack'});
+    }
+  }
+
+  static Future<List<Map<String, Object>>> _buildIntegrityManifest(
+    String directoryPath,
+    List<String> requiredPaths,
+  ) async {
+    final directory = Directory(directoryPath);
+    final files = <String, File>{};
+    for (final requiredPath in requiredPaths) {
+      final entityPath = p.joinAll([
+        directory.path,
+        ...requiredPath.split('/'),
+      ]);
+      final type = FileSystemEntity.typeSync(entityPath);
+      if (type == FileSystemEntityType.file) {
+        final file = File(entityPath);
+        files[p.relative(file.path, from: directory.path)] = file;
+      } else if (type == FileSystemEntityType.directory) {
+        for (final entity in Directory(entityPath).listSync(recursive: true)) {
+          if (entity is File) {
+            files[p.relative(entity.path, from: directory.path)] = entity;
+          }
+        }
+      }
+    }
+    final entries = <Map<String, Object>>[];
+    final paths = files.keys.toList()..sort();
+    for (final relativePath in paths) {
+      final file = files[relativePath]!;
+      final digest = await sha256.bind(file.openRead()).first;
+      entries.add({
+        'path': relativePath.replaceAll('\\', '/'),
+        'bytes': await file.length(),
+        'sha256': digest.toString(),
+      });
+    }
+    return entries;
+  }
+
+  static Future<bool> _verifyIntegrityManifest(
+    String directoryPath,
+    List<Map<String, dynamic>> entries,
+  ) async {
+    if (entries.isEmpty) return false;
+    final root = p.canonicalize(directoryPath);
+    for (final entry in entries) {
+      final relativePath = entry['path'];
+      final expectedBytes = entry['bytes'];
+      final expectedDigest = entry['sha256'];
+      if (relativePath is! String ||
+          expectedBytes is! int ||
+          expectedDigest is! String) {
+        return false;
+      }
+      final filePath = p.canonicalize(
+        p.joinAll([directoryPath, ...relativePath.split('/')]),
+      );
+      if (!p.isWithin(root, filePath)) return false;
+      final file = File(filePath);
+      if (!await file.exists() || await file.length() != expectedBytes) {
+        return false;
+      }
+      final digest = await sha256.bind(file.openRead()).first;
+      if (digest.toString() != expectedDigest) return false;
+    }
+    return true;
+  }
+
+  void dispose() {}
+}
+
+class _HttpResponseLease {
+  const _HttpResponseLease(this.response, this._ownedClient);
+  final http.StreamedResponse response;
+  final http.Client? _ownedClient;
+  void close() => _ownedClient?.close();
 }

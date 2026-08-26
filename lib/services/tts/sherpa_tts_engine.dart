@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import '../tts_model_cache.dart';
 import '../sherpa_cpu_thread_policy.dart';
+import '../native_worker_guard.dart';
 import 'tts_model_catalog.dart';
 
 class TtsAudio {
@@ -21,52 +22,88 @@ class TtsAudio {
       : Duration(milliseconds: (samples.length * 1000 / sampleRate).ceil());
 }
 
+typedef SherpaTtsWorkerEntrypoint = void Function(Map<String, Object> startup);
+
 class SherpaTtsEngine {
+  SherpaTtsEngine({
+    SherpaTtsWorkerEntrypoint? workerEntrypoint,
+    Duration synthesisTimeout = const Duration(seconds: 90),
+  })  : _workerEntrypoint = workerEntrypoint ?? _workerMain,
+        _synthesisTimeout = synthesisTimeout;
+
+  final SherpaTtsWorkerEntrypoint _workerEntrypoint;
+  final Duration _synthesisTimeout;
   Isolate? _isolate;
   SendPort? _commands;
   TtsModelInstallation? _installation;
   Pointer<Uint8>? _cancelFlag;
   Completer<void>? _activeRequest;
+  NativeWorkerGuard? _workerGuard;
+  final _workerFailures = StreamController<Object>.broadcast();
   bool _disposed = false;
 
-  bool get isReady => _commands != null;
+  bool get isReady =>
+      _commands != null && _workerGuard != null && _activeRequest == null;
+  Stream<Object> get workerFailures => _workerFailures.stream;
 
   Future<void> initialize(TtsModelInstallation installation) async {
     if (_disposed) throw StateError('TTS engine has been disposed.');
     if (_commands != null &&
+        _activeRequest == null &&
         _installation?.model.storageKey == installation.model.storageKey) {
       return;
     }
     await unload();
     final ready = ReceivePort();
-    final errors = ReceivePort();
-    final isolate = await Isolate.spawn(
-      _workerMain,
-      <String, Object>{
-        'reply': ready.sendPort,
-        'model': _modelMessage(installation),
-        'nativeLibraryDirectory':
-            Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'] ??
-                File(Platform.resolvedExecutable).parent.path,
-      },
-      errorsAreFatal: true,
-      onError: errors.sendPort,
+    late final NativeWorkerGuard guard;
+    guard = NativeWorkerGuard(
+      label: 'Sherpa TTS worker',
+      onFailure: (error, failedAfterReady) =>
+          _handleWorkerFailure(guard, error, failedAfterReady),
     );
-    _isolate = isolate;
-    final first = await Future.any<Object?>([
-      ready.first,
-      errors.first
-          .then((value) => throw StateError('Sherpa worker failed: $value')),
-    ]).timeout(const Duration(minutes: 2));
-    ready.close();
-    errors.close();
-    if (first is! SendPort) {
-      isolate.kill(priority: Isolate.immediate);
-      _isolate = null;
-      throw StateError('Sherpa initialization failed: $first');
+    _workerGuard = guard;
+    Isolate? isolate;
+    try {
+      isolate = await Isolate.spawn(
+        _workerEntrypoint,
+        <String, Object>{
+          'reply': ready.sendPort,
+          'model': _modelMessage(installation),
+          'nativeLibraryDirectory':
+              Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'] ??
+                  File(Platform.resolvedExecutable).parent.path,
+        },
+        errorsAreFatal: true,
+        onError: guard.errorPort.sendPort,
+        onExit: guard.exitPort.sendPort,
+      );
+      _isolate = isolate;
+      final first = await Future.any<Object?>([
+        ready.first,
+        guard.failure.then<Object?>((error) => throw error),
+      ]).timeout(const Duration(minutes: 2));
+      if (first is! SendPort) {
+        throw StateError('Sherpa initialization failed: $first');
+      }
+      if (!identical(_workerGuard, guard)) {
+        throw StateError('Sherpa worker stopped during initialization.');
+      }
+      _commands = first;
+      _installation = installation;
+      guard.markReady();
+    } catch (_) {
+      isolate?.kill(priority: Isolate.immediate);
+      if (identical(_workerGuard, guard)) {
+        _workerGuard = null;
+        _isolate = null;
+        _commands = null;
+        _installation = null;
+      }
+      await guard.dispose(expectedExit: true);
+      rethrow;
+    } finally {
+      ready.close();
     }
-    _commands = first;
-    _installation = installation;
   }
 
   Future<TtsAudio> synthesize({
@@ -79,7 +116,13 @@ class SherpaTtsEngine {
     String referenceText = '',
   }) async {
     final commands = _commands;
-    if (commands == null) throw StateError('TTS engine is not ready.');
+    final guard = _workerGuard;
+    if (commands == null || guard == null) {
+      throw StateError('TTS engine is not ready.');
+    }
+    if (_activeRequest != null) {
+      throw StateError('The previous TTS generation is still stopping.');
+    }
     final response = ReceivePort();
     final cancelFlag = calloc<Uint8>()..value = 0;
     final activeRequest = Completer<void>();
@@ -100,25 +143,82 @@ class SherpaTtsEngine {
       'referenceText': referenceText,
       'cancelAddress': cancelFlag.address,
     });
+    final terminal = Future.any<Object?>([
+      response.first,
+      guard.failure.then<Object?>((error) => throw error),
+    ]);
+    unawaited(_finalizeNativeRequest(
+      terminal: terminal,
+      response: response,
+      cancelFlag: cancelFlag,
+      activeRequest: activeRequest,
+      guard: guard,
+    ));
+    final result = await terminal.timeout(
+      _synthesisTimeout,
+      onTimeout: () {
+        final error = TimeoutException(
+          'Sherpa did not answer the synthesis request.',
+          _synthesisTimeout,
+        );
+        // Do not kill the isolate or free this flag while Sherpa is inside
+        // its synchronous FFI callback. The worker owns the callback until
+        // it posts a terminal response; finalization below deliberately
+        // keeps both the port and flag alive until that happens.
+        cancelFlag.value = 1;
+        throw error;
+      },
+    );
+    if (result is Map && result['error'] != null) {
+      throw StateError(result['error'] as String);
+    }
+    if (result is! Map || result['samples'] is! TransferableTypedData) {
+      throw StateError('Sherpa returned an invalid audio response.');
+    }
+    final bytes = (result['samples'] as TransferableTypedData).materialize();
+    return TtsAudio(
+      Float32List.view(bytes),
+      result['sampleRate'] as int,
+    );
+  }
+
+  Future<void> _finalizeNativeRequest({
+    required Future<Object?> terminal,
+    required ReceivePort response,
+    required Pointer<Uint8> cancelFlag,
+    required Completer<void> activeRequest,
+    required NativeWorkerGuard guard,
+  }) async {
+    var safeToReleaseNativeMemory = false;
     try {
-      final result = await response.first.timeout(const Duration(seconds: 90));
-      if (result is Map && result['error'] != null) {
-        throw StateError(result['error'] as String);
-      }
-      if (result is! Map || result['samples'] is! TransferableTypedData) {
-        throw StateError('Sherpa returned an invalid audio response.');
-      }
-      final bytes = (result['samples'] as TransferableTypedData).materialize();
-      return TtsAudio(
-        Float32List.view(bytes),
-        result['sampleRate'] as int,
-      );
+      await terminal;
+      // A terminal worker response is sent only after generateWithConfig has
+      // returned and sherpa_onnx has closed its NativeCallable.
+      safeToReleaseNativeMemory = true;
+    } catch (_) {
+      // An isolate error can be delivered just before its exit notification.
+      // Only release memory observed by the callback after the isolate has
+      // definitely exited. If that notification never comes, leaking one byte
+      // is intentionally safer than a native use-after-free.
+      try {
+        await guard.exited.timeout(const Duration(seconds: 5));
+        safeToReleaseNativeMemory = true;
+      } catch (_) {}
     } finally {
       response.close();
       if (identical(_cancelFlag, cancelFlag)) _cancelFlag = null;
       if (identical(_activeRequest, activeRequest)) _activeRequest = null;
-      calloc.free(cancelFlag);
+      if (safeToReleaseNativeMemory) {
+        calloc.free(cancelFlag);
+      }
       if (!activeRequest.isCompleted) activeRequest.complete();
+      if (_disposed && identical(_workerGuard, guard)) {
+        unawaited(Future<void>.microtask(() async {
+          try {
+            await unload();
+          } catch (_) {}
+        }));
+      }
     }
   }
 
@@ -130,10 +230,9 @@ class SherpaTtsEngine {
       try {
         await activeRequest.future.timeout(const Duration(seconds: 5));
       } catch (_) {
-        _commands = null;
-        _installation = null;
-        _isolate?.kill(priority: Isolate.immediate);
-        _isolate = null;
+        // The synchronous native callback is still alive. Leave the worker
+        // quarantined until it acknowledges cancellation; killing it here can
+        // delete Dart's NativeCallable while C++ is still invoking it.
         return;
       }
     }
@@ -141,11 +240,23 @@ class SherpaTtsEngine {
   }
 
   Future<void> unload() async {
+    final activeRequest = _activeRequest;
+    if (activeRequest != null) {
+      _cancelFlag?.value = 1;
+      try {
+        await activeRequest.future.timeout(const Duration(seconds: 5));
+      } catch (_) {
+        throw StateError('Sherpa is still finishing a cancelled generation.');
+      }
+    }
     final commands = _commands;
     _commands = null;
     _installation = null;
     final isolate = _isolate;
     _isolate = null;
+    final guard = _workerGuard;
+    _workerGuard = null;
+    await guard?.dispose(expectedExit: true);
     if (commands == null) {
       isolate?.kill(priority: Isolate.immediate);
       return;
@@ -163,7 +274,30 @@ class SherpaTtsEngine {
 
   Future<void> dispose() async {
     _disposed = true;
-    await unload();
+    try {
+      await unload();
+    } on StateError {
+      // A native call that ignored cancellation must remain alive until its
+      // callback returns. _finalizeNativeRequest will dispose it afterward.
+    }
+    await _workerFailures.close();
+  }
+
+  void _handleWorkerFailure(
+    NativeWorkerGuard guard,
+    Object error,
+    bool failedAfterReady,
+  ) {
+    if (!identical(_workerGuard, guard)) return;
+    _commands = null;
+    _installation = null;
+    _isolate = null;
+    _workerGuard = null;
+    _cancelFlag?.value = 1;
+    unawaited(guard.dispose(expectedExit: false));
+    if (failedAfterReady && !_disposed && !_workerFailures.isClosed) {
+      _workerFailures.add(error);
+    }
   }
 
   static Map<String, Object> _modelMessage(TtsModelInstallation installation) {

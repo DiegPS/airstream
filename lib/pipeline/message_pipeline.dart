@@ -35,10 +35,21 @@ class MessagePipeline {
     _seenOrder.clear();
   }
 
-  void updateSettings(SettingsModel settings) {
+  /// Applies settings to both future messages and the current buffer.
+  ///
+  /// Returns whether existing buffered messages were removed, allowing the
+  /// owner to publish an immediate list update without waiting for new chat.
+  bool updateSettings(SettingsModel settings) {
+    final previousLength = _buffer.length;
     _settings = settings;
     _rebuildFilterCache();
+    _buffer.removeWhere(_shouldBlock);
+    final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
+    while (_buffer.length > limit) {
+      _buffer.removeAt(0);
+    }
     _trimSeenKeys();
+    return _buffer.length != previousLength;
   }
 
   /// Adds a platform stream to the pipeline. Can be called multiple times.
@@ -61,7 +72,8 @@ class MessagePipeline {
     _rememberMessage(msg);
 
     _buffer.add(msg);
-    while (_buffer.length > _settings.maxMessages) {
+    final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
+    while (_buffer.length > limit) {
       _buffer.removeAt(0);
     }
 
@@ -70,20 +82,24 @@ class MessagePipeline {
 
   bool _isDuplicate(ChatMessage msg) {
     final idKey = msg.dedupeIdKey;
-    if (idKey.isNotEmpty && _seenIdKeys.contains(idKey)) {
-      return true;
-    }
+    // Platform IDs are authoritative. Two messages with different IDs are
+    // distinct even when the same author repeats the same text in one second.
+    if (idKey.isNotEmpty) return _seenIdKeys.contains(idKey);
+
+    // Content/time is only a fallback for sources that genuinely provide no
+    // stable ID. Never let an ID-backed message poison this fallback set.
     return _seenContentKeys.contains(msg.dedupeContentKey);
   }
 
   void _rememberMessage(ChatMessage msg) {
     final idKey = msg.dedupeIdKey;
-    final contentKey = msg.dedupeContentKey;
+    final contentKey = idKey.isEmpty ? msg.dedupeContentKey : '';
 
     if (idKey.isNotEmpty) {
       _seenIdKeys.add(idKey);
+    } else {
+      _seenContentKeys.add(contentKey);
     }
-    _seenContentKeys.add(contentKey);
     _seenOrder.add((idKey: idKey, contentKey: contentKey));
     _trimSeenKeys();
   }
@@ -94,7 +110,9 @@ class MessagePipeline {
       if (oldest.idKey.isNotEmpty) {
         _seenIdKeys.remove(oldest.idKey);
       }
-      _seenContentKeys.remove(oldest.contentKey);
+      if (oldest.contentKey.isNotEmpty) {
+        _seenContentKeys.remove(oldest.contentKey);
+      }
     }
   }
 

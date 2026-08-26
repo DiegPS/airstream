@@ -8,6 +8,10 @@ import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 class YouTubeService {
   static final RegExp _youtubeVideoIdPattern = RegExp(r'^[A-Za-z0-9_-]{11}$');
 
+  YouTubeService({this.streamOrientation});
+
+  final YoutubeStreamOrientation? streamOrientation;
+
   yt.LiveChat? _chat;
   StreamSubscription? _sub;
   StreamSubscription? _errorSub;
@@ -16,17 +20,52 @@ class YouTubeService {
   final _statusController =
       StreamController<(ServiceStatus, String?)>.broadcast();
   ServiceStatus _lastStatus = ServiceStatus.idle;
+  int _generation = 0;
 
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
   String get resolvedLiveId => _chat?.liveId ?? '';
+
+  /// Returns the video ID only for an explicit YouTube video/live URL.
+  /// Channel URLs and handles deliberately return null because they are
+  /// ambiguous when two simultaneous broadcasts exist.
+  static String? videoIdFromUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http')) {
+      return null;
+    }
+    final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\.'), '');
+    if (host != 'youtube.com' &&
+        host != 'm.youtube.com' &&
+        host != 'youtu.be') {
+      return null;
+    }
+    String? candidate;
+    if (host == 'youtu.be') {
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      candidate = segments.isEmpty ? null : segments.first;
+    } else {
+      candidate = uri.queryParameters['v']?.trim();
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if ((candidate == null || candidate.isEmpty) &&
+          segments.length >= 2 &&
+          (segments.first == 'live' || segments.first == 'shorts')) {
+        candidate = segments[1];
+      }
+    }
+    return candidate != null && _youtubeVideoIdPattern.hasMatch(candidate)
+        ? candidate
+        : null;
+  }
 
   Future<void> connect({
     String handle = '',
     String liveId = '',
     String channelId = '',
   }) async {
-    await disconnect();
+    final generation = ++_generation;
+    await _closeCurrent();
+    if (generation != _generation) return;
     _emit(ServiceStatus.connecting, null);
 
     final normalized = _normalizeYoutubeId(
@@ -41,31 +80,48 @@ class YouTubeService {
       channelId: normalized.channelId,
     );
 
-    _chat = yt.LiveChat(id: ytId);
-    _sub = _chat!.messages.listen(
+    final chat = yt.LiveChat(id: ytId);
+    _chat = chat;
+    _sub = chat.messages.listen(
       (item) {
+        if (generation != _generation || _chat != chat) return;
         if (_lastStatus != ServiceStatus.connected) {
           _emit(ServiceStatus.connected, null);
         }
         final msg = _convertItem(item);
         if (msg != null && !_controller.isClosed) _controller.add(msg);
       },
-      onError: (e) => _emit(ServiceStatus.error, e.toString()),
+      onError: (e) {
+        if (generation == _generation && _chat == chat) {
+          _emit(ServiceStatus.error, e.toString());
+        }
+      },
     );
-    _errorSub = _chat!.errors.listen(
-      (e) => _emit(ServiceStatus.error, e.toString()),
+    _errorSub = chat.errors.listen(
+      (e) {
+        if (generation == _generation && _chat == chat) {
+          _emit(ServiceStatus.error, e.toString());
+        }
+      },
     );
-    _pollSub = _chat!.polls.listen((_) {
+    _pollSub = chat.polls.listen((_) {
+      if (generation != _generation || _chat != chat) return;
       if (_lastStatus != ServiceStatus.connected) {
         _emit(ServiceStatus.connected, null);
       }
     });
     try {
-      await _chat!.start();
+      await chat.start();
+      if (generation != _generation || _chat != chat) {
+        chat.stop();
+        return;
+      }
       _emit(ServiceStatus.connected, null);
     } catch (e) {
-      _emit(ServiceStatus.error, e.toString());
-      rethrow;
+      if (generation == _generation && _chat == chat) {
+        _emit(ServiceStatus.error, e.toString());
+        rethrow;
+      }
     }
   }
 
@@ -144,6 +200,12 @@ class YouTubeService {
       RegExp(r'^UC[a-zA-Z0-9_-]{20,}$').hasMatch(value);
 
   Future<void> disconnect() async {
+    ++_generation;
+    await _closeCurrent();
+    _emit(ServiceStatus.idle, null);
+  }
+
+  Future<void> _closeCurrent() async {
     await _sub?.cancel();
     _sub = null;
     await _errorSub?.cancel();
@@ -152,7 +214,6 @@ class YouTubeService {
     _pollSub = null;
     _chat?.stop();
     _chat = null;
-    _emit(ServiceStatus.idle, null);
   }
 
   void dispose() {
@@ -213,6 +274,7 @@ class YouTubeService {
       isOwner: item.isOwner,
       isModerator: item.isModerator,
       isVerified: item.isVerified,
+      youtubeStreamOrientation: streamOrientation,
       timestamp: item.timestamp,
     );
   }

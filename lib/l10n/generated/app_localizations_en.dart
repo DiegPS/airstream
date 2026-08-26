@@ -54,6 +54,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'YouTube handle, channel ID, video ID, or URL';
 
   @override
+  String get youtubeDualMode => 'Horizontal + vertical';
+
+  @override
+  String get youtubeDualModeDescription =>
+      'Connect both YouTube broadcasts at the same time';
+
+  @override
+  String get youtubeHorizontalUrl => 'Horizontal stream URL';
+
+  @override
+  String get youtubeVerticalUrl => 'Vertical stream URL';
+
+  @override
+  String get youtubeStreamUrlHint => 'https://youtube.com/watch?v=...';
+
+  @override
+  String get youtubeInvalidStreamUrl =>
+      'Enter a direct YouTube video or live URL';
+
+  @override
+  String get youtubeDuplicateStreamUrl => 'Use a different broadcast URL';
+
+  @override
+  String get youtubeStreamBadges => 'Horizontal / vertical badge';
+
+  @override
   String get twitchChannel => 'Twitch channel';
 
   @override
@@ -61,9 +87,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startChat => 'Start chat';
-
-  @override
-  String get stopChat => 'Stop chat';
 
   @override
   String get appearance => 'Appearance';
@@ -488,6 +511,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get error => 'Error';
+
+  @override
+  String get chatConnectionsFailed =>
+      'AirStream could not connect to any configured chat. Review the red platform errors and try again.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String retryPlatform(String platform) {
+    return 'Retry $platform';
+  }
+
+  @override
+  String get chatPartiallyConnected =>
+      'Some chats are connected. Review the platforms marked in red.';
+
+  @override
+  String get overlayStarting => 'Starting the local overlay server…';
+
+  @override
+  String overlayStartFailed(int port) {
+    return 'The overlay server could not start on port $port. The port may already be in use or blocked.';
+  }
+
+  @override
+  String get invalidOverlayPort => 'Enter a port from 1 to 65535.';
+
+  @override
+  String get ttsPlaybackFailed =>
+      'The voice could not be generated or played. Check the selected model and audio output.';
+
+  @override
+  String get voiceCommandFailed =>
+      'The voice command could not be completed. Check the OBS connection and try again.';
 
   @override
   String get idle => 'Idle';
@@ -938,7 +996,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgeSubscriber => 'SUB';
 
   @override
+  String get badgeVerified => 'VERIFIED';
+
+  @override
   String get newSubscriberEvent => 'New subscriber!';
+
+  @override
+  String resubscriptionEvent(int months) {
+    return 'Resubscribed for $months months';
+  }
+
+  @override
+  String get giftSubscriptionEvent => 'Gift subscription';
 
   @override
   String get subscriptionUpdateEvent => 'Subscription update';

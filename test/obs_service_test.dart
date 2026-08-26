@@ -16,6 +16,18 @@ void main() {
     expect(state.recordingBytes, 1073741824);
   });
 
+  test('a successful OBS operation clears a stale error', () {
+    final failed = const ObsState().copyWith(
+      connected: true,
+      error: 'Could not switch scene',
+    );
+
+    final recovered = failed.copyWith(clearError: true);
+
+    expect(recovered.connected, isTrue);
+    expect(recovered.error, isNull);
+  });
+
   test('poll failures remain tolerant before marking OBS unstable', () {
     expect(
       ObsService.pollFailureActionFor(1),

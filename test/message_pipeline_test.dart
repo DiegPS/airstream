@@ -27,10 +27,68 @@ void main() {
 
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(emitted.map((msg) => msg.id).toList(), ['abc', 'ghi']);
-    expect(pipeline.buffer.map((msg) => msg.id).toList(), ['abc', 'ghi']);
+    expect(emitted.map((msg) => msg.id).toList(), ['abc', 'def', 'ghi']);
+    expect(
+      pipeline.buffer.map((msg) => msg.id).toList(),
+      ['abc', 'def', 'ghi'],
+    );
 
     await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
+
+  test('uses content fallback only when a platform provides no message ID',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    final emitted = <ChatMessage>[];
+    final sub = pipeline.stream.listen(emitted.add);
+    pipeline.addSource(source.stream);
+
+    final time = DateTime.utc(2026, 5, 9, 12);
+    source.add(_message(id: 'known', text: 'GG', timestamp: time));
+    source.add(_message(id: '', text: 'GG', timestamp: time));
+    source.add(_message(id: '', text: 'GG', timestamp: time));
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(emitted.map((message) => message.id), ['known', '']);
+
+    await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
+
+  test('keeps messages from separate YouTube broadcasts distinct', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final time = DateTime.utc(2026, 5, 9, 12);
+
+    source.add(_message(
+      id: 'same-provider-id',
+      text: 'Hola',
+      timestamp: time,
+      youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+    ));
+    source.add(_message(
+      id: 'same-provider-id',
+      text: 'Hola',
+      timestamp: time,
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(pipeline.buffer, hasLength(2));
+    expect(
+      pipeline.buffer.map((message) => message.youtubeStreamOrientation),
+      [
+        YoutubeStreamOrientation.horizontal,
+        YoutubeStreamOrientation.vertical,
+      ],
+    );
+
     await source.close();
     pipeline.dispose();
   });
@@ -115,6 +173,75 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('reducing max messages trims the current buffer immediately', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 5));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final baseTime = DateTime.utc(2026, 5, 9, 12);
+
+    for (var index = 0; index < 5; index++) {
+      source.add(_message(
+        id: 'message-$index',
+        text: 'Message $index',
+        timestamp: baseTime.add(Duration(seconds: index)),
+      ));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final changed = pipeline.updateSettings(
+      const SettingsModel(maxMessages: 2),
+    );
+
+    expect(changed, isTrue);
+    expect(
+      pipeline.buffer.map((message) => message.id),
+      ['message-3', 'message-4'],
+    );
+
+    await source.close();
+    pipeline.dispose();
+  });
+
+  test('new filters remove matching messages from the current buffer',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final baseTime = DateTime.utc(2026, 5, 9, 12);
+
+    source.add(_message(
+      id: 'blocked-user',
+      text: 'First',
+      authorName: 'Nightbot',
+      timestamp: baseTime,
+    ));
+    source.add(_message(
+      id: 'blocked-word',
+      text: 'Spoiler final',
+      timestamp: baseTime.add(const Duration(seconds: 1)),
+    ));
+    source.add(_message(
+      id: 'visible',
+      text: 'Hello',
+      timestamp: baseTime.add(const Duration(seconds: 2)),
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final changed = pipeline.updateSettings(
+      const SettingsModel(
+        maxMessages: 10,
+        blockedUsers: ['nightbot'],
+        blockedWords: ['spoiler'],
+      ),
+    );
+
+    expect(changed, isTrue);
+    expect(pipeline.buffer.map((message) => message.id), ['visible']);
+
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({
@@ -123,6 +250,7 @@ ChatMessage _message({
   required DateTime timestamp,
   String authorName = 'Tester',
   String authorChannelId = 'tester-channel',
+  YoutubeStreamOrientation? youtubeStreamOrientation,
 }) {
   return ChatMessage(
     platform: Platform.youtube,
@@ -132,6 +260,7 @@ ChatMessage _message({
       channelId: authorChannelId,
     ),
     items: [MessageItem.text(text)],
+    youtubeStreamOrientation: youtubeStreamOrientation,
     timestamp: timestamp,
   );
 }

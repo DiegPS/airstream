@@ -150,6 +150,7 @@ class ObsService {
     }
     try {
       await action(obs);
+      _emit(_state.copyWith(clearError: true));
     } catch (error) {
       _emit(_state.copyWith(error: 'Could not $label: $error'));
       rethrow;

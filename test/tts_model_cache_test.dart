@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:airstream/services/tts/tts_model_catalog.dart';
@@ -215,4 +216,75 @@ void main() {
     );
     expect(await partial.exists(), isTrue);
   });
+
+  test('fails a download whose response stops sending bytes', () async {
+    final stalled = StreamController<List<int>>();
+    final client = _StreamingClient((_) async => http.StreamedResponse(
+          stalled.stream,
+          HttpStatus.ok,
+          contentLength: archiveBytes.length,
+        ));
+    final cache = TtsModelCache(
+      client: client,
+      rootDirectory: root,
+      inactivityTimeout: const Duration(milliseconds: 80),
+      downloadAttempts: 1,
+    );
+
+    await expectLater(
+      cache.ensureAvailable(model),
+      throwsA(isA<TimeoutException>()),
+    );
+
+    await stalled.close();
+  });
+
+  test('cancelling interrupts a connection that never responds', () async {
+    final cancellation = TtsDownloadCancellation();
+    final client =
+        _StreamingClient((_) => Completer<http.StreamedResponse>().future);
+    final cache = TtsModelCache(
+      client: client,
+      rootDirectory: root,
+      connectionTimeout: const Duration(seconds: 5),
+      downloadAttempts: 1,
+    );
+    final stopwatch = Stopwatch()..start();
+    final operation = cache.ensureAvailable(model, cancellation: cancellation);
+    Timer(const Duration(milliseconds: 50), cancellation.cancel);
+
+    await expectLater(
+      operation,
+      throwsA(isA<TtsDownloadCancelledException>()),
+    );
+
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+  });
+
+  test('rejects an installed model whose required file was modified', () async {
+    final client = MockClient(
+      (_) async => http.Response.bytes(archiveBytes, HttpStatus.ok),
+    );
+    final cache = TtsModelCache(client: client, rootDirectory: root);
+    final installation = await cache.ensureAvailable(model);
+    await File(installation.file('model.onnx')).writeAsBytes([1, 2]);
+
+    final freshProcessCache = TtsModelCache(
+      client: client,
+      rootDirectory: root,
+    );
+
+    expect(await freshProcessCache.installed(model), isNull);
+  });
+}
+
+class _StreamingClient extends http.BaseClient {
+  _StreamingClient(this.handler);
+
+  final Future<http.StreamedResponse> Function(http.BaseRequest request)
+      handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      handler(request);
 }

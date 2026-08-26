@@ -9,10 +9,16 @@ import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/models/app_notice.dart';
+import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/chat_message.dart'
+    show YoutubeStreamOrientation;
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/speech_model_catalog.dart';
 import 'package:airstream/services/tts/tts_model_catalog.dart';
+import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
@@ -146,6 +152,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    ref.listen<AppNotice?>(
+      appNoticeProvider.select((notice) => notice.valueOrNull),
+      (previous, next) {
+        if (next == null || previous?.id == next.id) return;
+        final message = switch (next.code) {
+          AppNoticeCode.ttsPlaybackFailed => l.ttsPlaybackFailed,
+          AppNoticeCode.voiceCommandFailed => l.voiceCommandFailed,
+        };
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: next.severity == AppNoticeSeverity.error
+                  ? const Color(0xFF8C1D18)
+                  : null,
+            ),
+          );
+      },
+    );
     final s = ref.watch(settingsProvider);
     final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
     final availableWidth = MediaQuery.sizeOf(context).width;
@@ -280,15 +307,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       data: (messages) {
         if (messages.isEmpty) {
-          final isRunning = ref.watch(chatConnectionProvider);
-          final hasChannels = settings.youtubeHandle.isNotEmpty ||
-              settings.youtubeLiveId.isNotEmpty ||
-              settings.twitchChannel.isNotEmpty ||
-              settings.kickSlug.isNotEmpty;
+          final sessionPhase = ref.watch(chatSessionPhaseProvider);
+          final hasChannels = (settings.youtubeEnabled &&
+                  (settings.youtubeHandle.isNotEmpty ||
+                      settings.youtubeLiveId.isNotEmpty)) ||
+              (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
+              (settings.kickEnabled && settings.kickSlug.isNotEmpty);
           final text = hasChannels
-              ? (isRunning
-                  ? l.listeningForMessages
-                  : l.channelsSavedStartPrompt)
+              ? switch (sessionPhase) {
+                  ChatSessionPhase.connecting ||
+                  ChatSessionPhase.connected =>
+                    l.listeningForMessages,
+                  ChatSessionPhase.partiallyConnected =>
+                    l.chatPartiallyConnected,
+                  ChatSessionPhase.failed => l.chatConnectionsFailed,
+                  ChatSessionPhase.idle => l.channelsSavedStartPrompt,
+                }
               : l.noChannelsConfigured;
           return buildPane(
             Center(
@@ -361,11 +395,16 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final overlayUrl = ref.watch(overlayUrlProvider);
     final l = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
-    final isRunning = ref.watch(chatConnectionProvider);
-    final hasChannels = settings.youtubeHandle.isNotEmpty ||
-        settings.youtubeLiveId.isNotEmpty ||
-        settings.twitchChannel.isNotEmpty ||
-        settings.kickSlug.isNotEmpty;
+    final chatRequested = ref.watch(chatConnectionProvider);
+    final sessionPhase = ref.watch(chatSessionPhaseProvider);
+    final isRunning = sessionPhase == ChatSessionPhase.connecting ||
+        sessionPhase == ChatSessionPhase.connected ||
+        sessionPhase == ChatSessionPhase.partiallyConnected;
+    final hasChannels = (settings.youtubeEnabled &&
+            (settings.youtubeHandle.isNotEmpty ||
+                settings.youtubeLiveId.isNotEmpty)) ||
+        (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
+        (settings.kickEnabled && settings.kickSlug.isNotEmpty);
 
     return Material(
       color: Colors.transparent,
@@ -402,7 +441,11 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                   child: Row(
                     children: [
                       _TopBarActionButton(
-                        label: isRunning ? l.stop : l.start,
+                        label: isRunning
+                            ? l.stop
+                            : sessionPhase == ChatSessionPhase.failed
+                                ? l.retry
+                                : l.start,
                         icon: isRunning
                             ? Icons.stop_circle_rounded
                             : Icons.play_arrow_rounded,
@@ -411,12 +454,33 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                             isRunning ? const Color(0xFFFF5252) : _accent,
                         onTap: hasChannels
                             ? () {
-                                ref
-                                    .read(chatConnectionProvider.notifier)
-                                    .state = !isRunning;
+                                if (isRunning) {
+                                  ref
+                                      .read(chatConnectionProvider.notifier)
+                                      .state = false;
+                                } else if (chatRequested) {
+                                  ref
+                                      .read(appControllerProvider)
+                                      .retryChatConnections();
+                                } else {
+                                  ref
+                                      .read(chatConnectionProvider.notifier)
+                                      .state = true;
+                                }
                               }
                             : null,
                       ),
+                      if (sessionPhase == ChatSessionPhase.failed) ...[
+                        const SizedBox(width: 6),
+                        _TopBarIconButton(
+                          tooltip: l.stop,
+                          icon: Icons.stop_circle_outlined,
+                          active: false,
+                          onTap: () => ref
+                              .read(chatConnectionProvider.notifier)
+                              .state = false,
+                        ),
+                      ],
                       const SizedBox(width: 6),
                       _TopBarIconButton(
                         tooltip: sidebarVisible
@@ -665,6 +729,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   int _selectedTab = 0;
 
   late TextEditingController _ytHandle;
+  late TextEditingController _ytHorizontalUrl;
+  late TextEditingController _ytVerticalUrl;
   late TextEditingController _twitch;
   late TextEditingController _kick;
   late TextEditingController _port;
@@ -682,6 +748,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   late TextEditingController _blockedWordsCtrl;
 
   late FocusNode _ytFocus;
+  late FocusNode _ytHorizontalFocus;
+  late FocusNode _ytVerticalFocus;
   late FocusNode _twitchFocus;
   late FocusNode _kickFocus;
   late FocusNode _portFocus;
@@ -703,6 +771,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     super.initState();
     final s = ref.read(settingsProvider);
     _ytHandle = TextEditingController(text: _youtubeInputValue(s));
+    _ytHorizontalUrl = TextEditingController(text: s.youtubeHorizontalUrl);
+    _ytVerticalUrl = TextEditingController(text: s.youtubeVerticalUrl);
     _twitch = TextEditingController(text: s.twitchChannel);
     _kick = TextEditingController(text: s.kickSlug);
     _port = TextEditingController(text: s.overlayPort.toString());
@@ -724,6 +794,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         TextEditingController(text: _formatFilterList(s.blockedWords));
 
     _ytFocus = FocusNode();
+    _ytHorizontalFocus = FocusNode();
+    _ytVerticalFocus = FocusNode();
     _twitchFocus = FocusNode();
     _kickFocus = FocusNode();
     _portFocus = FocusNode();
@@ -741,6 +813,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
     for (final node in [
       _ytFocus,
+      _ytHorizontalFocus,
+      _ytVerticalFocus,
       _twitchFocus,
       _kickFocus,
       _portFocus,
@@ -766,6 +840,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
     for (final node in [
       _ytFocus,
+      _ytHorizontalFocus,
+      _ytVerticalFocus,
       _twitchFocus,
       _kickFocus,
       _portFocus,
@@ -786,6 +862,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     }
 
     _ytHandle.dispose();
+    _ytHorizontalUrl.dispose();
+    _ytVerticalUrl.dispose();
     _twitch.dispose();
     _kick.dispose();
     _port.dispose();
@@ -807,6 +885,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   void _handleFocusChange() {
     final anyHasFocus = [
       _ytFocus,
+      _ytHorizontalFocus,
+      _ytVerticalFocus,
       _twitchFocus,
       _kickFocus,
       _portFocus,
@@ -845,14 +925,20 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final normalizedKick = _normalizePlatformChannel(_kick.text);
     final blockedUsers = _parseFilterList(_blockedUsersCtrl.text);
     final blockedWords = _parseFilterList(_blockedWordsCtrl.text);
+    final parsedOverlayPort = int.tryParse(_port.text.trim());
+    final validOverlayPort = parsedOverlayPort != null &&
+        parsedOverlayPort >= 1 &&
+        parsedOverlayPort <= 65535;
     final next = current.copyWith(
       youtubeHandle: _ytHandle.text.trim(),
       youtubeLiveId: '',
+      youtubeHorizontalUrl: _ytHorizontalUrl.text.trim(),
+      youtubeVerticalUrl: _ytVerticalUrl.text.trim(),
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
       blockedUsers: blockedUsers,
       blockedWords: blockedWords,
-      overlayPort: int.tryParse(_port.text.trim()) ?? current.overlayPort,
+      overlayPort: validOverlayPort ? parsedOverlayPort : current.overlayPort,
       overlayChromaColor: _normalizeHexColor(
         _overlayChromaColorCtrl.text,
         fallback: current.overlayChromaColor,
@@ -874,6 +960,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
+        current.youtubeHorizontalUrl == next.youtubeHorizontalUrl &&
+        current.youtubeVerticalUrl == next.youtubeVerticalUrl &&
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
         _listEquals(current.blockedUsers, next.blockedUsers) &&
@@ -896,7 +984,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   Future<void> _startChat() async {
     await _saveTextSettings();
-    ref.read(chatConnectionProvider.notifier).state = true;
+    if (ref.read(chatConnectionProvider)) {
+      ref.read(appControllerProvider).retryChatConnections();
+    } else {
+      ref.read(chatConnectionProvider.notifier).state = true;
+    }
   }
 
   Future<void> _stopChat() async {
@@ -975,12 +1067,193 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return true;
   }
 
+  bool get _dualYoutubeUrlsAreValid {
+    final horizontal = YouTubeService.videoIdFromUrl(_ytHorizontalUrl.text);
+    final vertical = YouTubeService.videoIdFromUrl(_ytVerticalUrl.text);
+    return horizontal != null && vertical != null && horizontal != vertical;
+  }
+
+  static (ServiceStatus, String?) _combinedYoutubeStatus(
+    (ServiceStatus, String?)? horizontal,
+    (ServiceStatus, String?)? vertical,
+  ) {
+    final statuses = [
+      horizontal?.$1 ?? ServiceStatus.connecting,
+      vertical?.$1 ?? ServiceStatus.connecting,
+    ];
+    if (statuses.every((status) => status == ServiceStatus.connected)) {
+      return (ServiceStatus.connected, null);
+    }
+    if (statuses.every((status) => status == ServiceStatus.error)) {
+      return (
+        ServiceStatus.error,
+        horizontal?.$2 ?? vertical?.$2,
+      );
+    }
+    return (ServiceStatus.connecting, null);
+  }
+
+  String? _youtubeStreamUrlError(
+    AppLocalizations l,
+    String value, {
+    String? otherUrl,
+  }) {
+    if (value.trim().isEmpty) return null;
+    final videoId = YouTubeService.videoIdFromUrl(value);
+    if (videoId == null) return l.youtubeInvalidStreamUrl;
+    final otherId = YouTubeService.videoIdFromUrl(otherUrl ?? '');
+    if (otherId != null && otherId == videoId) {
+      return l.youtubeDuplicateStreamUrl;
+    }
+    return null;
+  }
+
+  Widget _youtubeDualModeRow({
+    required AppLocalizations l,
+    required bool enabled,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFF303030)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 42,
+            height: 28,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned(
+                  left: 1,
+                  child: _streamOrientationShape(
+                    YoutubeStreamOrientation.horizontal,
+                    active: enabled,
+                  ),
+                ),
+                Positioned(
+                  right: 2,
+                  child: _streamOrientationShape(
+                    YoutubeStreamOrientation.vertical,
+                    active: enabled,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.youtubeDualMode,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l.youtubeDualModeDescription,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: enabled,
+            onChanged: onChanged,
+            activeThumbColor: const Color(0xFF53FC18),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _youtubeStreamField({
+    required String label,
+    required YoutubeStreamOrientation orientation,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    String? errorText,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C1C),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF303030)),
+          ),
+          child: _streamOrientationShape(orientation, active: true),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label(label),
+              _field(
+                controller,
+                AppLocalizations.of(context)!.youtubeStreamUrlHint,
+                focusNode: focusNode,
+                errorText: errorText,
+                onChanged: (_) {
+                  setState(() {});
+                },
+                onSubmitted: (_) => _saveTextSettings(),
+                onClear: () {
+                  controller.clear();
+                  setState(() {});
+                  _saveTextSettings();
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Widget _streamOrientationShape(
+    YoutubeStreamOrientation orientation, {
+    required bool active,
+  }) {
+    final vertical = orientation == YoutubeStreamOrientation.vertical;
+    return Container(
+      width: vertical ? 11 : 23,
+      height: vertical ? 21 : 12,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(2.5),
+        border: Border.all(
+          color: active ? const Color(0xFFFF5A52) : Colors.white30,
+          width: 1.5,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
     final l = AppLocalizations.of(context)!;
     final notifier = ref.read(settingsProvider.notifier);
-    final isRunning = ref.watch(chatConnectionProvider);
+    final chatRequested = ref.watch(chatConnectionProvider);
+    final sessionPhase = ref.watch(chatSessionPhaseProvider);
+    final isRunning = sessionPhase == ChatSessionPhase.connecting ||
+        sessionPhase == ChatSessionPhase.connected ||
+        sessionPhase == ChatSessionPhase.partiallyConnected;
     final connectionStatus =
         ref.watch(connectionStatusProvider).valueOrNull ?? {};
     final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider).valueOrNull;
@@ -992,6 +1265,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final overlayUrl = ref.watch(overlayUrlProvider);
+    final overlayState = ref.watch(overlayServerStateProvider).valueOrNull ??
+        const OverlayServerState();
     final overlayClientCount =
         ref.watch(overlayClientCountProvider).valueOrNull ?? 0;
     final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
@@ -999,6 +1274,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final captionsCopyUrl = '$overlayCopyUrl/captions';
 
     _syncController(_ytHandle, _ytFocus, _youtubeInputValue(s));
+    _syncController(
+      _ytHorizontalUrl,
+      _ytHorizontalFocus,
+      s.youtubeHorizontalUrl,
+    );
+    _syncController(
+      _ytVerticalUrl,
+      _ytVerticalFocus,
+      s.youtubeVerticalUrl,
+    );
     _syncController(_twitch, _twitchFocus, s.twitchChannel);
     _syncController(_kick, _kickFocus, s.kickSlug);
     _syncController(_port, _portFocus, s.overlayPort.toString());
@@ -1046,24 +1331,59 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _formatFilterList(s.blockedWords),
     );
 
-    final hasChannels = _ytHandle.text.trim().isNotEmpty ||
-        _twitch.text.trim().isNotEmpty ||
-        _kick.text.trim().isNotEmpty;
+    final dualYoutubeValid = _dualYoutubeUrlsAreValid;
+    final hasChannels = (s.youtubeEnabled &&
+            (s.youtubeDualStreamEnabled
+                ? dualYoutubeValid
+                : _ytHandle.text.trim().isNotEmpty)) ||
+        (s.twitchEnabled && _twitch.text.trim().isNotEmpty) ||
+        (s.kickEnabled && _kick.text.trim().isNotEmpty);
     final youtubeState = connectionStatus['youtube'];
     final twitchState = connectionStatus['twitch'];
     final kickState = connectionStatus['kick'];
-    final youtubeError =
-        youtubeState?.$1 == ServiceStatus.error ? youtubeState?.$2 : null;
+    final youtubeError = s.youtubeEnabled &&
+            !s.youtubeDualStreamEnabled &&
+            youtubeState?.$1 == ServiceStatus.error
+        ? youtubeState?.$2
+        : null;
+    final youtubeHorizontalError = s.youtubeEnabled &&
+            s.youtubeDualStreamEnabled &&
+            connectionStatus['youtubeHorizontal']?.$1 == ServiceStatus.error
+        ? connectionStatus['youtubeHorizontal']?.$2
+        : null;
+    final youtubeVerticalError = s.youtubeEnabled &&
+            s.youtubeDualStreamEnabled &&
+            connectionStatus['youtubeVertical']?.$1 == ServiceStatus.error
+        ? connectionStatus['youtubeVertical']?.$2
+        : null;
+    final displayConnectionStatus = Map<String, (ServiceStatus, String?)>.from(
+      connectionStatus,
+    );
+    if (s.youtubeDualStreamEnabled) {
+      displayConnectionStatus['youtube'] = _combinedYoutubeStatus(
+        connectionStatus['youtubeHorizontal'],
+        connectionStatus['youtubeVertical'],
+      );
+    }
     final twitchError =
-        twitchState?.$1 == ServiceStatus.error ? twitchState?.$2 : null;
-    final kickError =
-        kickState?.$1 == ServiceStatus.error ? kickState?.$2 : null;
+        s.twitchEnabled && twitchState?.$1 == ServiceStatus.error
+            ? twitchState?.$2
+            : null;
+    final kickError = s.kickEnabled && kickState?.$1 == ServiceStatus.error
+        ? kickState?.$2
+        : null;
 
     final tabs = [
       SidebarTabItem(
         icon: Icons.sensors_rounded,
         label: l.connections,
-        badgeColor: isRunning ? const Color(0xFF53FC18) : null,
+        badgeColor: switch (sessionPhase) {
+          ChatSessionPhase.connected => const Color(0xFF53FC18),
+          ChatSessionPhase.partiallyConnected => Colors.amber,
+          ChatSessionPhase.connecting => Colors.amber,
+          ChatSessionPhase.failed => const Color(0xFFFF6B6B),
+          ChatSessionPhase.idle => null,
+        },
       ),
       SidebarTabItem(
         icon: Icons.record_voice_over_rounded,
@@ -1099,10 +1419,15 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 children: [
                   _sidebarHeader(
                     l: l,
-                    youtubeValue: isRunning ? youtubeBadgeValue : null,
-                    twitchValue: isRunning ? s.twitchChannel : '',
-                    kickValue: isRunning ? s.kickSlug : '',
-                    statusMap: connectionStatus,
+                    youtubeValue: chatRequested && s.youtubeEnabled
+                        ? (s.youtubeDualStreamEnabled
+                            ? l.youtubeDualMode
+                            : (youtubeBadgeValue ?? _youtubeInputValue(s)))
+                        : null,
+                    twitchValue:
+                        chatRequested && s.twitchEnabled ? s.twitchChannel : '',
+                    kickValue: chatRequested && s.kickEnabled ? s.kickSlug : '',
+                    statusMap: displayConnectionStatus,
                   ),
                   const SizedBox(height: 12),
                   SidebarTabBar(
@@ -1125,8 +1450,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       s,
                       notifier,
                       isRunning,
+                      sessionPhase,
                       hasChannels,
                       youtubeError,
+                      youtubeHorizontalError,
+                      youtubeVerticalError,
                       twitchError,
                       kickError,
                     ),
@@ -1140,6 +1468,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       ttsBusy,
                       captionsState,
                       captionsCopyUrl,
+                      overlayState.phase == OverlayServerPhase.ready,
                     ),
                   2 => _buildStyleTab(
                       context,
@@ -1154,6 +1483,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       notifier,
                       appController,
                       obsState,
+                      overlayState,
                       overlayClientCount,
                       overlayCopyUrl,
                       alertsCopyUrl,
@@ -1179,8 +1509,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     SettingsModel s,
     SettingsNotifier notifier,
     bool isRunning,
+    ChatSessionPhase sessionPhase,
     bool hasChannels,
     String? youtubeError,
+    String? youtubeHorizontalError,
+    String? youtubeVerticalError,
     String? twitchError,
     String? kickError,
   ) {
@@ -1191,91 +1524,272 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           title: l.connections,
           icon: Icons.sensors_rounded,
           children: [
-            _label(l.youtubeInputLabel),
-            _field(
-              _ytHandle,
-              l.youtubeInputHint,
-              focusNode: _ytFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _saveTextSettings(),
-              onClear: () {
-                _ytHandle.clear();
-                setState(() {});
-                _saveTextSettings();
-              },
+            _youtubeDualModeRow(
+              l: l,
+              enabled: s.youtubeDualStreamEnabled,
+              onChanged: (enabled) => notifier.update(
+                s.copyWith(youtubeDualStreamEnabled: enabled),
+              ),
             ),
-            if (youtubeError != null && youtubeError.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            if (s.youtubeDualStreamEnabled) ...[
+              _youtubeStreamField(
+                label: l.youtubeHorizontalUrl,
+                orientation: YoutubeStreamOrientation.horizontal,
+                controller: _ytHorizontalUrl,
+                focusNode: _ytHorizontalFocus,
+                errorText: _youtubeStreamUrlError(
+                  l,
+                  _ytHorizontalUrl.text,
+                ),
+              ),
+              if (youtubeHorizontalError != null &&
+                  youtubeHorizontalError.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _inlineErrorMessage(
+                  l,
+                  l.youtubeHorizontalUrl,
+                  onRetry: () => ref
+                      .read(appControllerProvider)
+                      .retryChatPlatform('youtubeHorizontal'),
+                ),
+              ],
+              const SizedBox(height: 10),
+              _youtubeStreamField(
+                label: l.youtubeVerticalUrl,
+                orientation: YoutubeStreamOrientation.vertical,
+                controller: _ytVerticalUrl,
+                focusNode: _ytVerticalFocus,
+                errorText: _youtubeStreamUrlError(
+                  l,
+                  _ytVerticalUrl.text,
+                  otherUrl: _ytHorizontalUrl.text,
+                ),
+              ),
+              if (youtubeVerticalError != null &&
+                  youtubeVerticalError.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _inlineErrorMessage(
+                  l,
+                  l.youtubeVerticalUrl,
+                  onRetry: () => ref
+                      .read(appControllerProvider)
+                      .retryChatPlatform('youtubeVertical'),
+                ),
+              ],
+            ] else ...[
+              _label(l.youtubeInputLabel),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      _ytHandle,
+                      l.youtubeInputHint,
+                      focusNode: _ytFocus,
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => _saveTextSettings(),
+                      onClear: () {
+                        _ytHandle.clear();
+                        setState(() {});
+                        _saveTextSettings();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: _ytHandle.text.trim().isNotEmpty && s.youtubeEnabled,
+                    onChanged: _ytHandle.text.trim().isEmpty
+                        ? null
+                        : (value) =>
+                            notifier.update(s.copyWith(youtubeEnabled: value)),
+                    activeThumbColor: const Color(0xFF53FC18),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+              if (youtubeError != null && youtubeError.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _inlineErrorMessage(
+                  l,
+                  'YouTube',
+                  onRetry: () => ref
+                      .read(appControllerProvider)
+                      .retryChatPlatform('youtube'),
+                ),
+              ],
+            ],
+            if (s.youtubeDualStreamEnabled) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'YouTube'),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'YouTube',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ),
+                  Switch(
+                    value: _dualYoutubeUrlsAreValid && s.youtubeEnabled,
+                    onChanged: _dualYoutubeUrlsAreValid
+                        ? (value) => notifier.update(
+                              s.copyWith(youtubeEnabled: value),
+                            )
+                        : null,
+                    activeThumbColor: const Color(0xFF53FC18),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
             ],
             const SizedBox(height: 12),
             _label(l.twitchChannel),
-            _field(
-              _twitch,
-              l.channelNameHint,
-              focusNode: _twitchFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _saveTextSettings(),
-              onClear: () {
-                _twitch.clear();
-                setState(() {});
-                _saveTextSettings();
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: _field(
+                    _twitch,
+                    l.channelNameHint,
+                    focusNode: _twitchFocus,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _twitch.clear();
+                      setState(() {});
+                      _saveTextSettings();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _twitch.text.trim().isNotEmpty && s.twitchEnabled,
+                  onChanged: _twitch.text.trim().isEmpty
+                      ? null
+                      : (value) =>
+                          notifier.update(s.copyWith(twitchEnabled: value)),
+                  activeThumbColor: const Color(0xFF53FC18),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
             ),
             if (twitchError != null && twitchError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'Twitch'),
+              _inlineErrorMessage(
+                l,
+                'Twitch',
+                onRetry: () =>
+                    ref.read(appControllerProvider).retryChatPlatform('twitch'),
+              ),
             ],
             const SizedBox(height: 12),
             _label(l.kickSlug),
-            _field(
-              _kick,
-              l.channelIdentifierHint,
-              focusNode: _kickFocus,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _saveTextSettings(),
-              onClear: () {
-                _kick.clear();
-                setState(() {});
-                _saveTextSettings();
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: _field(
+                    _kick,
+                    l.channelIdentifierHint,
+                    focusNode: _kickFocus,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _saveTextSettings(),
+                    onClear: () {
+                      _kick.clear();
+                      setState(() {});
+                      _saveTextSettings();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _kick.text.trim().isNotEmpty && s.kickEnabled,
+                  onChanged: _kick.text.trim().isEmpty
+                      ? null
+                      : (value) =>
+                          notifier.update(s.copyWith(kickEnabled: value)),
+                  activeThumbColor: const Color(0xFF53FC18),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
             ),
             if (kickError != null && kickError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _inlineErrorMessage(l, 'Kick'),
+              _inlineErrorMessage(
+                l,
+                'Kick',
+                onRetry: () =>
+                    ref.read(appControllerProvider).retryChatPlatform('kick'),
+              ),
             ],
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: ElevatedButton.icon(
-                onPressed:
-                    isRunning ? _stopChat : (hasChannels ? _startChat : null),
-                icon: Icon(
-                  isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  size: 20,
-                ),
-                label: Text(
-                  isRunning ? l.stopChat : l.startChat,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+            if (sessionPhase == ChatSessionPhase.failed)
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: ElevatedButton.icon(
+                        onPressed: hasChannels ? _startChat : null,
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        label: Text(l.retry),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF53FC18),
+                          foregroundColor: Colors.black,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isRunning
-                      ? const Color(0xFFFF5252)
-                      : const Color(0xFF53FC18),
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: OutlinedButton.icon(
+                        onPressed: _stopChat,
+                        icon: const Icon(Icons.stop_rounded, size: 20),
+                        label: Text(l.stop),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF8A80),
+                          side: const BorderSide(color: Color(0xFF7A3636)),
+                        ),
+                      ),
+                    ),
                   ),
-                  disabledBackgroundColor: const Color(0xFF262626),
-                  disabledForegroundColor: Colors.white38,
+                ],
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      isRunning ? _stopChat : (hasChannels ? _startChat : null),
+                  icon: Icon(
+                    isRunning ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                    size: 20,
+                  ),
+                  label: Text(
+                    isRunning
+                        ? l.stop
+                        : sessionPhase == ChatSessionPhase.failed
+                            ? l.retry
+                            : l.startChat,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isRunning
+                        ? const Color(0xFFFF5252)
+                        : const Color(0xFF53FC18),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    disabledBackgroundColor: const Color(0xFF262626),
+                    disabledForegroundColor: Colors.white38,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
         UiCard(
@@ -1343,6 +1857,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     bool ttsBusy,
     LiveCaptionsState captionsState,
     String captionsCopyUrl,
+    bool overlayReady,
   ) {
     Future<void> removeSelectedTtsModel() async {
       final model = TtsModelCatalog.byId(s.ttsModelId);
@@ -1372,8 +1887,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             SnackBar(content: Text(l.ttsModelRemoved)),
           );
         }
-      } catch (error) {
-        debugPrint('Could not remove TTS model: $error');
+      } catch (error, stack) {
+        AppLogger.error(
+          'Could not remove TTS model',
+          error: error,
+          stackTrace: stack,
+        );
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(l.ttsModelRemovalFailed)),
@@ -1831,10 +2350,20 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed:
-                        captionsState.phase == LiveCaptionsPhase.downloading
-                            ? null
-                            : appController.downloadLiveCaptionsModel,
+                    onPressed: captionsState.phase ==
+                            LiveCaptionsPhase.downloading
+                        ? null
+                        : () async {
+                            try {
+                              await appController.downloadLiveCaptionsModel();
+                            } catch (error, stack) {
+                              AppLogger.error(
+                                'Caption model download failed',
+                                error: error,
+                                stackTrace: stack,
+                              );
+                            }
+                          },
                     icon: const Icon(Icons.download_rounded, size: 16),
                     label: Text(
                       '${l.downloadCaptionModel} (${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})',
@@ -1846,7 +2375,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   ),
                 ),
               ],
-              if (s.liveCaptionsOverlayEnabled) ...[
+              if (s.liveCaptionsOverlayEnabled && overlayReady) ...[
                 const SizedBox(height: 8),
                 _overlayUrlCard(
                   l: l,
@@ -2008,6 +2537,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               s.showBadges,
               (v) => notifier.update(s.copyWith(showBadges: v)),
             ),
+            if (s.youtubeDualStreamEnabled)
+              _switchRow(
+                l.youtubeStreamBadges,
+                s.showYoutubeStreamBadges,
+                (v) => notifier.update(
+                  s.copyWith(showYoutubeStreamBadges: v),
+                ),
+              ),
             _switchRow(
               l.timestamp,
               s.showTimestamp,
@@ -2026,6 +2563,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     SettingsNotifier notifier,
     AppController appController,
     ObsState obsState,
+    OverlayServerState overlayState,
     int overlayClientCount,
     String overlayCopyUrl,
     String alertsCopyUrl,
@@ -2192,50 +2730,71 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 _port,
                 '8080',
                 focusNode: _portFocus,
-                onChanged: (_) => _queueTextSettingsSave(),
+                errorText: _overlayPortError(l),
+                onChanged: (_) {
+                  setState(() {});
+                  _queueTextSettingsSave();
+                },
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               const SizedBox(height: 10),
-              _overlayUrlCard(
-                l: l,
-                title: l.chatObsUrl,
-                overlayUrl: overlayCopyUrl,
-                description: l.chatObsUrlDescription,
-                onCopy: () async {
-                  await Clipboard.setData(ClipboardData(text: overlayCopyUrl));
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l.chatOverlayUrlCopied),
-                      duration: const Duration(milliseconds: 1400),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              _overlayUrlCard(
-                l: l,
-                title: l.alertsObsUrl,
-                overlayUrl: alertsCopyUrl,
-                description: l.alertsObsUrlDescription,
-                onCopy: () async {
-                  await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l.alertsOverlayUrlCopied),
-                      duration: const Duration(milliseconds: 1400),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 6),
-              Text(
-                overlayClientCount == 1
-                    ? l.oneOverlayClientConnected
-                    : l.overlayClientsConnected(overlayClientCount),
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
-              ),
+              if (overlayState.phase == OverlayServerPhase.starting)
+                _statusMessage(
+                  l.overlayStarting,
+                  color: Colors.amber,
+                  icon: Icons.hourglass_top_rounded,
+                ),
+              if (overlayState.phase == OverlayServerPhase.error)
+                _statusMessage(
+                  l.overlayStartFailed(
+                    overlayState.port ?? s.overlayPort,
+                  ),
+                  color: const Color(0xFFFF6B6B),
+                  icon: Icons.error_outline_rounded,
+                ),
+              if (overlayState.phase == OverlayServerPhase.ready) ...[
+                _overlayUrlCard(
+                  l: l,
+                  title: l.chatObsUrl,
+                  overlayUrl: overlayCopyUrl,
+                  description: l.chatObsUrlDescription,
+                  onCopy: () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: overlayCopyUrl));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.chatOverlayUrlCopied),
+                        duration: const Duration(milliseconds: 1400),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                _overlayUrlCard(
+                  l: l,
+                  title: l.alertsObsUrl,
+                  overlayUrl: alertsCopyUrl,
+                  description: l.alertsObsUrlDescription,
+                  onCopy: () async {
+                    await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.alertsOverlayUrlCopied),
+                        duration: const Duration(milliseconds: 1400),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  overlayClientCount == 1
+                      ? l.oneOverlayClientConnected
+                      : l.overlayClientsConnected(overlayClientCount),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ],
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
@@ -2404,6 +2963,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 s.overlayShowBadges,
                 (v) => notifier.update(s.copyWith(overlayShowBadges: v)),
               ),
+              if (s.youtubeDualStreamEnabled)
+                _switchRow(
+                  l.youtubeStreamBadges,
+                  s.overlayShowYoutubeStreamBadges,
+                  (v) => notifier.update(
+                    s.copyWith(overlayShowYoutubeStreamBadges: v),
+                  ),
+                ),
               _switchRow(
                 l.timestamp,
                 s.overlayShowTimestamp,
@@ -3068,6 +3635,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     VoidCallback? onClear,
     int minLines = 1,
     int maxLines = 1,
+    String? errorText,
   }) =>
       TextField(
         controller: ctrl,
@@ -3082,6 +3650,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
           hintText: hint,
+          errorText: errorText,
           hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
           filled: true,
           fillColor: const Color(0xFF222222),
@@ -3114,6 +3683,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           ),
         ),
       );
+
+  String? _overlayPortError(AppLocalizations l) {
+    final value = int.tryParse(_port.text.trim());
+    if (value != null && value >= 1 && value <= 65535) return null;
+    return l.invalidOverlayPort;
+  }
 
   static Widget _sidebarHeader({
     required AppLocalizations l,
@@ -3333,8 +3908,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   static Widget _inlineErrorMessage(
     AppLocalizations l,
-    String platform,
-  ) {
+    String platform, {
+    required VoidCallback onRetry,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -3365,6 +3941,49 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 fontSize: 11,
                 height: 1.3,
               ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFFFB4AB),
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              minimumSize: const Size(0, 28),
+            ),
+            child: Text(
+              l.retryPlatform(platform),
+              style: const TextStyle(fontSize: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _statusMessage(
+    String message, {
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: color, fontSize: 11, height: 1.3),
             ),
           ),
         ],
@@ -3938,11 +4557,17 @@ class _ConnectionDots extends ConsumerWidget {
     final platforms = <(String, bool, String)>[
       (
         'YT',
-        settings.youtubeHandle.isNotEmpty || settings.youtubeLiveId.isNotEmpty,
+        settings.youtubeEnabled &&
+            (settings.youtubeHandle.isNotEmpty ||
+                settings.youtubeLiveId.isNotEmpty),
         'youtube'
       ),
-      ('TW', settings.twitchChannel.isNotEmpty, 'twitch'),
-      ('KK', settings.kickSlug.isNotEmpty, 'kick'),
+      (
+        'TW',
+        settings.twitchEnabled && settings.twitchChannel.isNotEmpty,
+        'twitch'
+      ),
+      ('KK', settings.kickEnabled && settings.kickSlug.isNotEmpty, 'kick'),
     ];
 
     final statusMap = status.valueOrNull ?? {};
