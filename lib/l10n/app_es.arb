@@ -196,8 +196,6 @@
   "obsAndOverlay": "OBS y superposición",
   "systemTab": "Sistema y ventana",
   "desktopWindow": "Ventana de escritorio",
-  "frameless": "Sin marco",
-  "framelessDescription": "Sin barra de título, bordes transparentes",
   "clickThrough": "Ignorar clics",
   "clickThroughDescription": "Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)",
   "alwaysOnTop": "Siempre visible",

@@ -2643,12 +2643,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           icon: Icons.window_rounded,
           children: [
             _switchTileWithSubtitle(
-              l.frameless,
-              l.framelessDescription,
-              win.frameless,
-              (v) => winNotifier.setFrameless(v),
-            ),
-            _switchTileWithSubtitle(
               l.clickThrough,
               l.clickThroughDescription,
               win.clickThrough,

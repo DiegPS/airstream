@@ -645,13 +645,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get desktopWindow => 'Ventana de escritorio';
 
   @override
-  String get frameless => 'Sin marco';
-
-  @override
-  String get framelessDescription =>
-      'Sin barra de título, bordes transparentes';
-
-  @override
   String get clickThrough => 'Ignorar clics';
 
   @override

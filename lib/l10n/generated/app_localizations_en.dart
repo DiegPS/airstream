@@ -638,12 +638,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopWindow => 'Desktop Window';
 
   @override
-  String get frameless => 'Frameless';
-
-  @override
-  String get framelessDescription => 'No title bar, transparent borders';
-
-  @override
   String get clickThrough => 'Click-Through';
 
   @override

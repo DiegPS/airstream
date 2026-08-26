@@ -19,6 +19,7 @@ void main() async {
       dark: true,
     );
     await windowManager.setResizable(true);
+    // AirStream always uses its own Flutter title bar on desktop.
     await windowManager.setAsFrameless();
     await windowManager.setHasShadow(false);
   }

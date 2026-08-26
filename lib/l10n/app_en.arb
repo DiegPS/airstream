@@ -264,8 +264,6 @@
   "obsAndOverlay": "OBS & Overlay",
   "systemTab": "System & Window",
   "desktopWindow": "Desktop Window",
-  "frameless": "Frameless",
-  "framelessDescription": "No title bar, transparent borders",
   "clickThrough": "Click-Through",
   "clickThroughDescription": "Clicks pass through the window (WS_EX_TRANSPARENT)",
   "alwaysOnTop": "Always on Top",

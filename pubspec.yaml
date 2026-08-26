@@ -43,7 +43,7 @@ dependencies:
   # State management
   flutter_riverpod: ^2.6.0
 
-  # Window management (drag, minimize, maximize, frameless — for A/B testing vs our Win32 impl)
+  # Cross-platform window management (drag, resize, minimize, maximize, and frameless shell)
   window_manager: ^0.4.0
 
   # Window visual effects: transparent, acrylic, mica, blur (Windows/macOS/Linux)

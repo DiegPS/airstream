@@ -1274,18 +1274,6 @@ abstract class AppLocalizations {
   /// **'Desktop Window'**
   String get desktopWindow;
 
-  /// No description provided for @frameless.
-  ///
-  /// In en, this message translates to:
-  /// **'Frameless'**
-  String get frameless;
-
-  /// No description provided for @framelessDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'No title bar, transparent borders'**
-  String get framelessDescription;
-
   /// No description provided for @clickThrough.
   ///
   /// In en, this message translates to:
