@@ -678,6 +678,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get toggleClickThroughShortcut => 'Alternar ignorar clics';
 
   @override
+  String get globalClickThroughShortcutUnavailable =>
+      'El atajo global para ignorar clics no está disponible en este sistema o ya lo utiliza otra aplicación.';
+
+  @override
   String get alwaysOnTopActiveTooltip =>
       'Desactivar Siempre visible (Ctrl+Shift+P)';
 

@@ -141,18 +141,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return KeyEventResult.handled;
     }
 
-    final isToggleClickThroughShortcut =
-        event.logicalKey == LogicalKeyboardKey.keyC &&
-            keyboard.isControlPressed &&
-            keyboard.isShiftPressed &&
-            !keyboard.isAltPressed &&
-            !keyboard.isMetaPressed;
-
-    if (isToggleClickThroughShortcut) {
-      unawaited(windowNotifier.toggleClickThrough());
-      return KeyEventResult.handled;
-    }
-
     return KeyEventResult.ignored;
   }
 
@@ -2646,7 +2634,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               l.clickThrough,
               l.clickThroughDescription,
               win.clickThrough,
-              (v) => winNotifier.setClickThrough(v),
+              win.globalClickThroughHotKeyRegistered == false
+                  ? null
+                  : (v) => winNotifier.setClickThrough(v),
               activeThumbColor: const Color(0xFFFFB15C),
             ),
             _switchTileWithSubtitle(
@@ -2685,6 +2675,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             _shortcutRow('Ctrl + Shift + T', l.toggleTopBarShortcut),
             _shortcutRow('Ctrl + Shift + P', l.toggleAlwaysOnTopShortcut),
             _shortcutRow('Ctrl + Shift + C', l.toggleClickThroughShortcut),
+            if (win.globalClickThroughHotKeyRegistered == false)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  l.globalClickThroughShortcutUnavailable,
+                  style: const TextStyle(
+                    color: Color(0xFFFFB15C),
+                    fontSize: 11,
+                  ),
+                ),
+              ),
           ],
         ),
       ],
@@ -2730,7 +2731,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     String title,
     String subtitle,
     bool value,
-    ValueChanged<bool> onChanged, {
+    ValueChanged<bool>? onChanged, {
     Color? activeThumbColor,
   }) {
     return Padding(

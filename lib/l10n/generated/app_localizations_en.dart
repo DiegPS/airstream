@@ -670,6 +670,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toggleClickThroughShortcut => 'Toggle Click-Through';
 
   @override
+  String get globalClickThroughShortcutUnavailable =>
+      'The global Click-Through shortcut is unavailable on this system or is already in use by another app.';
+
+  @override
   String get alwaysOnTopActiveTooltip => 'Disable Always on Top (Ctrl+Shift+P)';
 
   @override

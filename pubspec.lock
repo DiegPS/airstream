@@ -6,7 +6,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "6446048ed7d8589af131e2828079725d8d650894"
+      resolved-ref: f2458ec9af618fb6422502c6526af521ff5fc4c5
       url: "git@github.com:DiegPS/air_window_control.git"
     source: git
     version: "0.0.1"

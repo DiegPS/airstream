@@ -274,6 +274,7 @@
   "toggleTopBarShortcut": "Toggle top bar",
   "toggleAlwaysOnTopShortcut": "Toggle Always on Top",
   "toggleClickThroughShortcut": "Toggle Click-Through",
+  "globalClickThroughShortcutUnavailable": "The global Click-Through shortcut is unavailable on this system or is already in use by another app.",
   "alwaysOnTopActiveTooltip": "Disable Always on Top (Ctrl+Shift+P)",
   "alwaysOnTopInactiveTooltip": "Always on Top (Ctrl+Shift+P)",
   "clickThroughActiveTooltip": "Click-Through active. Disable (Ctrl+Shift+C)",

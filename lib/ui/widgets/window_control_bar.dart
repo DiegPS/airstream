@@ -21,9 +21,12 @@ class WindowControlBar extends ConsumerWidget {
         ? l.alwaysOnTopActiveTooltip
         : l.alwaysOnTopInactiveTooltip;
 
-    final clickThroughTooltip = state.clickThrough
-        ? l.clickThroughActiveTooltip
-        : l.clickThroughInactiveTooltip;
+    final clickThroughTooltip =
+        state.globalClickThroughHotKeyRegistered == false
+            ? l.globalClickThroughShortcutUnavailable
+            : state.clickThrough
+                ? l.clickThroughActiveTooltip
+                : l.clickThroughInactiveTooltip;
 
     final antiCaptureTooltip = state.excludeFromCapture
         ? l.antiCaptureActiveTooltip
@@ -45,7 +48,9 @@ class WindowControlBar extends ConsumerWidget {
               : Icons.mouse_outlined,
           active: state.clickThrough,
           activeColor: const Color(0xFFFFB15C),
-          onTap: notifier.toggleClickThrough,
+          onTap: state.globalClickThroughHotKeyRegistered == false
+              ? null
+              : notifier.toggleClickThrough,
         ),
         _WindowToggleButton(
           tooltip: antiCaptureTooltip,
@@ -173,7 +178,7 @@ class _WindowToggleButton extends StatelessWidget {
   final IconData icon;
   final bool active;
   final Color activeColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

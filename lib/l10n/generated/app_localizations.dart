@@ -1334,6 +1334,12 @@ abstract class AppLocalizations {
   /// **'Toggle Click-Through'**
   String get toggleClickThroughShortcut;
 
+  /// No description provided for @globalClickThroughShortcutUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The global Click-Through shortcut is unavailable on this system or is already in use by another app.'**
+  String get globalClickThroughShortcutUnavailable;
+
   /// No description provided for @alwaysOnTopActiveTooltip.
   ///
   /// In en, this message translates to:

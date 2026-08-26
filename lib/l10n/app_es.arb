@@ -206,6 +206,7 @@
   "toggleTopBarShortcut": "Mostrar / Ocultar barra superior",
   "toggleAlwaysOnTopShortcut": "Alternar Siempre visible",
   "toggleClickThroughShortcut": "Alternar ignorar clics",
+  "globalClickThroughShortcutUnavailable": "El atajo global para ignorar clics no está disponible en este sistema o ya lo utiliza otra aplicación.",
   "alwaysOnTopActiveTooltip": "Desactivar Siempre visible (Ctrl+Shift+P)",
   "alwaysOnTopInactiveTooltip": "Siempre visible (Ctrl+Shift+P)",
   "clickThroughActiveTooltip": "Ignorar clics está activo. Desactivar (Ctrl+Shift+C)",
