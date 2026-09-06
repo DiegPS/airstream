@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
+import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
@@ -259,8 +260,9 @@ class YouTubeService {
     final items = item.message.map((m) {
       if (m.isEmoji) {
         return MessageItem.emoji(EmojiItem(
-          url: m.emoji!.url,
+          url: normalizeChatImageUrl(m.emoji!.url),
           alt: m.emoji!.emojiText,
+          isCustom: m.emoji!.isCustomEmoji,
         ));
       }
       return MessageItem.text(m.text);
@@ -272,14 +274,15 @@ class YouTubeService {
       superChat = SuperChat(
         amount: sc.amount,
         color: sc.color,
-        stickerUrl: sc.sticker?.url,
+        stickerUrl:
+            sc.sticker == null ? null : normalizeChatImageUrl(sc.sticker!.url),
       );
     }
 
     AuthorBadge? badge;
     if (item.author.badge != null) {
       badge = AuthorBadge(
-        imageUrl: item.author.badge!.thumbnail.url,
+        imageUrl: normalizeChatImageUrl(item.author.badge!.thumbnail.url),
         label: item.author.badge!.label,
       );
     }
@@ -289,7 +292,9 @@ class YouTubeService {
       id: item.id,
       author: ChatAuthor(
         name: item.author.name,
-        avatarUrl: item.author.thumbnail?.url,
+        avatarUrl: item.author.thumbnail == null
+            ? null
+            : normalizeChatImageUrl(item.author.thumbnail!.url),
         channelId: item.author.channelId,
         badge: badge,
       ),

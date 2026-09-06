@@ -1,10 +1,11 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/author_avatar.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
+import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -111,6 +112,7 @@ class ChatBubble extends ConsumerWidget {
                                 name: message.author.name,
                                 platform: message.platform,
                                 url: message.author.avatarUrl,
+                                channelId: message.author.channelId,
                                 color: message.author.color,
                                 showPlatformBadge: showPlatformBadge,
                               ),
@@ -180,10 +182,16 @@ class ChatBubble extends ConsumerWidget {
                                       padding: const EdgeInsets.only(top: 8),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: CachedNetworkImage(
+                                        child: ChatNetworkImage(
                                           imageUrl:
                                               message.superChat!.stickerUrl!,
+                                          cacheKey: ChatImageCache.key(
+                                            kind: 'sticker',
+                                            identity: message.id,
+                                            url: message.superChat!.stickerUrl!,
+                                          ),
                                           width: 100,
+                                          height: 100,
                                           fit: BoxFit.cover,
                                         ),
                                       ),
@@ -608,8 +616,13 @@ class _CustomImageBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    return ChatNetworkImage(
       imageUrl: imageUrl,
+      cacheKey: ChatImageCache.key(
+        kind: 'badge',
+        identity: imageUrl,
+        url: imageUrl,
+      ),
       width: 16,
       height: 16,
       fit: BoxFit.contain,
@@ -728,19 +741,24 @@ class _EmojiWidget extends StatelessWidget {
 
     if (emoji.isAnimated && emoji.url.endsWith('.webp')) {
       return ExtendedImage.network(
-        emoji.url,
+        normalizeChatImageUrl(emoji.url),
         width: size,
         height: size,
         fit: BoxFit.contain,
       );
     }
 
-    return CachedNetworkImage(
+    return ChatNetworkImage(
       imageUrl: emoji.url,
+      cacheKey: ChatImageCache.key(
+        kind: 'emoji',
+        identity: emoji.alt,
+        url: emoji.url,
+      ),
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorWidget: (_, __, ___) => Text(
+      errorWidget: Text(
         emoji.alt,
         style: TextStyle(
           color: Colors.white,

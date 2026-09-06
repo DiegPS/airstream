@@ -6,6 +6,8 @@ import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
+import 'package:airstream/models/chat_message.dart' as app;
+import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:http/http.dart' as http;
@@ -77,6 +79,65 @@ void main() {
     expect(statuses.last.$2, contains('Invalid YouTube'));
     await service.disconnect();
     expect(ready.stopped, isTrue);
+  });
+
+  test('YouTube normalizes every media URL and preserves custom emoji',
+      () async {
+    final transport = _FakeYouTubeTransport();
+    final service = YouTubeService(transportFactory: (_) => transport);
+    addTearDown(service.dispose);
+    await service.connect(liveId: 'abcdefghijk');
+    final converted = service.messages.first;
+    transport.messageController.add(
+      yt.ChatItem(
+        id: 'message-1',
+        author: const yt.Author(
+          name: 'Author',
+          channelId: 'channel-1',
+          thumbnail: yt.ImageItem(
+            url: '//lh3.googleusercontent.com/avatar',
+            alt: 'Author',
+          ),
+          badge: yt.Badge(
+            thumbnail: yt.ImageItem(
+              url: '//lh3.googleusercontent.com/badge',
+              alt: 'Member',
+            ),
+            label: 'Member',
+          ),
+        ),
+        message: const [
+          yt.MessageItem.emoji(yt.EmojiItem(
+            url: '//lh3.googleusercontent.com/emoji',
+            alt: ':custom:',
+            emojiText: ':custom:',
+            isCustomEmoji: true,
+          )),
+        ],
+        superChat: const yt.SuperChat(
+          amount: r'$1.00',
+          color: '#00FF00',
+          sticker: yt.ImageItem(
+            url: '//lh3.googleusercontent.com/sticker',
+            alt: 'Sticker',
+          ),
+        ),
+        isMembership: true,
+        isOwner: false,
+        isVerified: false,
+        isModerator: false,
+        timestamp: DateTime.utc(2026),
+      ),
+    );
+
+    final message = await converted;
+    expect(message.author.avatarUrl, startsWith('https://'));
+    expect(message.author.badge!.imageUrl, startsWith('https://'));
+    expect(message.superChat!.stickerUrl, startsWith('https://'));
+    final emoji = message.items.single.emoji!;
+    expect(emoji.url, startsWith('https://'));
+    expect(emoji.isCustom, isTrue);
+    expect(message.platform, app.Platform.youtube);
   });
 
   test('Kick injects connection, reports corrupt messages, and closes once',

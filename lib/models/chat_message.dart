@@ -21,9 +21,14 @@ class EmojiItem {
   final String url;
   final String alt;
   final bool isAnimated; // GIF or animated WebP
+  final bool isCustom;
 
-  const EmojiItem(
-      {required this.url, required this.alt, this.isAnimated = false});
+  const EmojiItem({
+    required this.url,
+    required this.alt,
+    this.isAnimated = false,
+    this.isCustom = false,
+  });
 }
 
 class AuthorBadge {

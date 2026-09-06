@@ -1,6 +1,6 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:flutter/material.dart';
 
 class AuthorAvatar extends StatelessWidget {
@@ -9,6 +9,7 @@ class AuthorAvatar extends StatelessWidget {
     required this.name,
     required this.platform,
     this.url,
+    this.channelId = '',
     this.color,
     this.showPlatformBadge = false,
   });
@@ -16,6 +17,7 @@ class AuthorAvatar extends StatelessWidget {
   final String name;
   final Platform platform;
   final String? url;
+  final String channelId;
   final String? color;
   final bool showPlatformBadge;
 
@@ -35,10 +37,18 @@ class AuthorAvatar extends StatelessWidget {
           ),
           child: ClipOval(
             child: url != null && url!.isNotEmpty
-                ? CachedNetworkImage(
+                ? ChatNetworkImage(
                     imageUrl: url!,
+                    cacheKey: ChatImageCache.key(
+                      kind: 'avatar',
+                      identity: '${platform.name}:$channelId',
+                      url: url!,
+                    ),
+                    width: 44,
+                    height: 44,
                     fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _initials(backgroundColor),
+                    placeholder: _initials(backgroundColor),
+                    errorWidget: _initials(backgroundColor),
                   )
                 : _initials(backgroundColor),
           ),
@@ -57,15 +67,14 @@ class AuthorAvatar extends StatelessWidget {
   }
 
   Widget _initials(Color backgroundColor) {
-    final initials = name.trim().isEmpty
+    final nameParts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .map((part) => part.replaceFirst(RegExp(r'^@+'), ''))
+        .where((part) => part.isNotEmpty);
+    final initials = nameParts.isEmpty
         ? '?'
-        : name
-            .trim()
-            .split(RegExp(r'\s+'))
-            .where((part) => part.isNotEmpty)
-            .take(2)
-            .map((part) => part[0].toUpperCase())
-            .join();
+        : nameParts.take(2).map((part) => part[0].toUpperCase()).join();
 
     return ColoredBox(
       color: backgroundColor,

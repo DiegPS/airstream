@@ -8,10 +8,12 @@ import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/chat_screen.dart';
 import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/services/legacy_image_cache_cleaner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppLogger.initialize();
+  await LegacyImageCacheCleaner.cleanupOnce();
   final defaultFlutterErrorHandler = FlutterError.onError;
   FlutterError.onError = (details) {
     AppLogger.error(

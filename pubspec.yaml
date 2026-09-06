@@ -22,6 +22,7 @@ dependencies:
 
   # Images (GIF + WebP animated)
   cached_network_image: ^3.4.0
+  flutter_cache_manager: ^3.4.2
   extended_image: ^9.0.0
 
   # Local TTS (Sherpa-ONNX)

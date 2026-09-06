@@ -26,6 +26,7 @@ abstract final class OverlayPayloadEncoder {
                     'url': item.emoji!.url,
                     'alt': item.emoji!.alt,
                     'isAnimated': item.emoji!.isAnimated,
+                    'isCustom': item.emoji!.isCustom,
                   }
                 : {
                     'kind': 'text',
