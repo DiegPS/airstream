@@ -56,7 +56,10 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                   top: 0,
                   bottom: 0,
                   child: IgnorePointer(
-                    child: _TitleBarCaption(overlayUrl: overlayUrl),
+                    child: _TitleBarCaption(
+                      overlayUrl: overlayUrl,
+                      showAppName: sidebarVisible,
+                    ),
                   ),
                 ),
                 Positioned(
@@ -132,9 +135,13 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
 }
 
 class _TitleBarCaption extends StatelessWidget {
-  const _TitleBarCaption({required this.overlayUrl});
+  const _TitleBarCaption({
+    required this.overlayUrl,
+    required this.showAppName,
+  });
 
   final String? overlayUrl;
+  final bool showAppName;
 
   @override
   Widget build(BuildContext context) {
@@ -159,17 +166,20 @@ class _TitleBarCaption extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        const Text(
-          'AIRSTREAM',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.3,
+        if (showAppName) ...[
+          const SizedBox(width: 8),
+          const Text(
+            'AIRSTREAM',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.3,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
+          const SizedBox(width: 12),
+        ] else
+          const SizedBox(width: 8),
         _TitleBarCenterStatus(overlayUrl: overlayUrl),
       ],
     );
