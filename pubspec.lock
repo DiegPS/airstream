@@ -120,10 +120,10 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "57abfb58e138419c22dfb87ef68cfa1bc1d852aa"
+      resolved-ref: db289e2cf92a7fae0506df960c65a9d29570909d
       url: "git@github.com:DiegPS/dart_youtube_chat.git"
     source: git
-    version: "0.1.0"
+    version: "0.3.0"
   extended_image:
     dependency: "direct main"
     description:

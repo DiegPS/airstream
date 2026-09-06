@@ -1,5 +1,6 @@
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -97,5 +98,63 @@ void main() {
     expect(vertical.disposed, isTrue);
     expect(kick.disposed, isTrue);
     expect(twitch.disposed, isTrue);
+  });
+
+  test('aggregates horizontal and vertical YouTube audiences', () async {
+    final summaryFuture = coordinator.youtubeMetadataStream.firstWhere(
+      (summary) => summary.totalViewerCount == 1750,
+    );
+
+    horizontal.metadataController.add(const YoutubeLiveMetadata(
+      liveId: 'horizontal-id',
+      streamOrientation: YoutubeStreamOrientation.horizontal,
+      viewerCount: 1200,
+      title: 'Horizontal',
+    ));
+    vertical.metadataController.add(const YoutubeLiveMetadata(
+      liveId: 'vertical-id',
+      streamOrientation: YoutubeStreamOrientation.vertical,
+      viewerCount: 550,
+      title: 'Vertical',
+    ));
+
+    final summary = await summaryFuture;
+    expect(summary.horizontal?.viewerCount, 1200);
+    expect(summary.vertical?.viewerCount, 550);
+    expect(summary.totalViewerCount, 1750);
+  });
+
+  test('removes moderated YouTube messages from the matching broadcast',
+      () async {
+    final timestamp = DateTime.utc(2026, 9, 6);
+    horizontal.messageController.add(ChatMessage(
+      platform: Platform.youtube,
+      id: 'same-id',
+      author: const ChatAuthor(name: 'Author', channelId: 'author'),
+      items: const [MessageItem.text('Horizontal')],
+      youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+      timestamp: timestamp,
+    ));
+    vertical.messageController.add(ChatMessage(
+      platform: Platform.youtube,
+      id: 'same-id',
+      author: const ChatAuthor(name: 'Author', channelId: 'author'),
+      items: const [MessageItem.text('Vertical')],
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+      timestamp: timestamp,
+    ));
+    await settleCoordinatorTasks();
+
+    final updated = coordinator.messageListStream.firstWhere(
+      (messages) => messages.length == 1,
+    );
+    horizontal.moderationController.add(const ChatModerationEvent.message(
+      platform: Platform.youtube,
+      messageId: 'same-id',
+      youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+    ));
+
+    final messages = await updated;
+    expect(messages.single.plainText, 'Vertical');
   });
 }

@@ -7,6 +7,7 @@ import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
@@ -94,6 +95,8 @@ class AppController {
   Stream<Map<String, (ServiceStatus, String?)>> get connectionStatusStream =>
       _chat.connectionStatusStream;
   Stream<String?> get youtubeBadgeValueStream => _chat.youtubeBadgeValueStream;
+  Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream =>
+      _chat.youtubeMetadataStream;
   Stream<TtsLoadState> get ttsLoadStateStream => _audio.ttsLoadStateStream;
   Stream<bool> get ttsBusyStream => _audio.ttsBusyStream;
   Stream<LiveCaptionsState> get liveCaptionsStateStream =>

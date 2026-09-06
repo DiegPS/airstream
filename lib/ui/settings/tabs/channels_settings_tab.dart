@@ -12,6 +12,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
     String? youtubeError,
     String? youtubeHorizontalError,
     String? youtubeVerticalError,
+    YoutubeLiveMetadataSummary youtubeMetadata,
     String? twitchError,
     String? kickError,
   ) {
@@ -290,6 +291,10 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ],
               ),
+            ],
+            if (youtubeMetadata.totalViewerCount != null) ...[
+              const SizedBox(height: 12),
+              YoutubeLiveStats(summary: youtubeMetadata),
             ],
           ],
         ),

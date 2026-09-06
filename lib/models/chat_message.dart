@@ -7,6 +7,30 @@ enum YoutubeStreamOrientation { horizontal, vertical }
 
 enum MembershipEventKind { subscription, resubscription, gift }
 
+enum ChatModerationScope { message, author }
+
+class ChatModerationEvent {
+  const ChatModerationEvent.message({
+    required this.platform,
+    required this.messageId,
+    this.youtubeStreamOrientation,
+  })  : scope = ChatModerationScope.message,
+        authorChannelId = '';
+
+  const ChatModerationEvent.author({
+    required this.platform,
+    required this.authorChannelId,
+    this.youtubeStreamOrientation,
+  })  : scope = ChatModerationScope.author,
+        messageId = '';
+
+  final Platform platform;
+  final ChatModerationScope scope;
+  final String messageId;
+  final String authorChannelId;
+  final YoutubeStreamOrientation? youtubeStreamOrientation;
+}
+
 class MessageItem {
   final String text;
   final EmojiItem? emoji;

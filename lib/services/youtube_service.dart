@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
@@ -14,27 +15,48 @@ class YouTubeService {
   YouTubeService({
     this.streamOrientation,
     YouTubeChatTransportFactory? transportFactory,
+    YouTubeMetadataTransportFactory? metadataTransportFactory,
     Duration connectionTimeout = const Duration(seconds: 15),
   })  : _transportFactory = transportFactory ?? DartYouTubeChatTransport.new,
+        _metadataTransportFactory =
+            metadataTransportFactory ?? DartYouTubeMetadataTransport.new,
         _connectionTimeout = connectionTimeout;
 
   final YoutubeStreamOrientation? streamOrientation;
   final YouTubeChatTransportFactory _transportFactory;
+  final YouTubeMetadataTransportFactory _metadataTransportFactory;
   final Duration _connectionTimeout;
 
   YouTubeChatTransport? _chat;
+  YouTubeMetadataTransport? _metadata;
   StreamSubscription? _sub;
+  StreamSubscription? _eventSub;
   StreamSubscription? _errorSub;
   StreamSubscription? _pollSub;
+  StreamSubscription<yt.UpdatedMetadataBatch>? _metadataSub;
+  StreamSubscription<Exception>? _metadataErrorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
+  final _moderationController =
+      StreamController<ChatModerationEvent>.broadcast();
+  final _metadataController =
+      StreamController<YoutubeLiveMetadata?>.broadcast();
   final _statusController =
       StreamController<(ServiceStatus, String?)>.broadcast();
   ServiceStatus _lastStatus = ServiceStatus.idle;
+  YoutubeLiveMetadata? _currentMetadata;
   int _generation = 0;
 
   Stream<ChatMessage> get messages => _controller.stream;
+  Stream<ChatModerationEvent> get moderationEvents =>
+      _moderationController.stream;
+  Stream<YoutubeLiveMetadata?> get metadataStream async* {
+    yield _currentMetadata;
+    yield* _metadataController.stream;
+  }
+
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
   String get resolvedLiveId => _chat?.liveId ?? '';
+  YoutubeLiveMetadata? get currentMetadata => _currentMetadata;
 
   /// Returns the video ID only for an explicit YouTube video/live URL.
   /// Channel URLs and handles deliberately return null because they are
@@ -125,6 +147,21 @@ class YouTubeService {
         }
       },
     );
+    _eventSub = chat.events.listen((event) {
+      if (generation != _generation || _chat != chat) return;
+      try {
+        final moderation = _convertModerationEvent(event as yt.LiveChatEvent);
+        if (moderation != null && !_moderationController.isClosed) {
+          _moderationController.add(moderation);
+        }
+      } catch (error, stack) {
+        AppLogger.warning(
+          'YouTube returned a malformed chat event',
+          error: error,
+          stackTrace: stack,
+        );
+      }
+    });
     _pollSub = chat.polls.listen((_) {
       if (generation != _generation || _chat != chat) return;
       if (_lastStatus != ServiceStatus.connected) {
@@ -138,6 +175,7 @@ class YouTubeService {
         return;
       }
       _emit(ServiceStatus.connected, null);
+      unawaited(_startMetadata(chat, generation));
     } catch (e, stack) {
       if (generation == _generation && _chat == chat) {
         await _closeCurrent();
@@ -237,15 +275,77 @@ class YouTubeService {
     _sub = null;
     await _errorSub?.cancel();
     _errorSub = null;
+    await _eventSub?.cancel();
+    _eventSub = null;
     await _pollSub?.cancel();
     _pollSub = null;
+    await _metadataSub?.cancel();
+    _metadataSub = null;
+    await _metadataErrorSub?.cancel();
+    _metadataErrorSub = null;
+    await _metadata?.stop();
+    _metadata = null;
+    _currentMetadata = null;
+    _emitMetadata();
     _chat?.stop();
     _chat = null;
+  }
+
+  Future<void> _startMetadata(
+    YouTubeChatTransport chat,
+    int generation,
+  ) async {
+    final liveId = chat.liveId.trim();
+    if (liveId.isEmpty || generation != _generation || _chat != chat) return;
+
+    final transport = _metadataTransportFactory(yt.YoutubeId(liveId: liveId));
+    _metadata = transport;
+    _currentMetadata = YoutubeLiveMetadata(
+      liveId: liveId,
+      streamOrientation: streamOrientation,
+    );
+    _metadataSub = transport.batches.listen((batch) {
+      if (generation != _generation || _metadata != transport) return;
+      final viewership = batch.viewership;
+      _currentMetadata = _currentMetadata!.merge(
+        viewerCount: viewership?.originalViewCountValue,
+        viewerCountText: viewership?.unlabeledViewCountValue.text,
+        isLive: viewership?.isLive,
+        title: batch.title?.text,
+        dateText: batch.dateText?.text,
+        description: batch.description?.text,
+        updatedAt:
+            batch.frameworkUpdates.entityBatchUpdate?.timestamp?.dateTime ??
+                DateTime.now().toUtc(),
+      );
+      _emitMetadata();
+    });
+    _metadataErrorSub = transport.errors.listen((error) {
+      if (generation == _generation && _metadata == transport) {
+        AppLogger.warning('YouTube metadata polling failed', error: error);
+      }
+    });
+
+    try {
+      await transport.start().timeout(_connectionTimeout);
+    } catch (error, stack) {
+      if (generation == _generation && _metadata == transport) {
+        AppLogger.warning(
+          'YouTube metadata initialization failed',
+          error: error,
+          stackTrace: stack,
+        );
+        await transport.stop();
+        if (_metadata == transport) _metadata = null;
+      }
+    }
   }
 
   Future<void> dispose() async {
     await disconnect();
     await _controller.close();
+    await _moderationController.close();
+    await _metadataController.close();
     await _statusController.close();
   }
 
@@ -256,17 +356,31 @@ class YouTubeService {
     }
   }
 
+  void _emitMetadata() {
+    if (!_metadataController.isClosed) {
+      _metadataController.add(_currentMetadata);
+    }
+  }
+
   ChatMessage _convertItem(yt.ChatItem item) {
     final items = item.message.map((m) {
       if (m.isEmoji) {
+        final emoji = m.emoji!;
         return MessageItem.emoji(EmojiItem(
-          url: normalizeChatImageUrl(m.emoji!.url),
-          alt: m.emoji!.emojiText,
-          isCustom: m.emoji!.isCustomEmoji,
+          url: _bestImageUrl(
+            emoji.url,
+            emoji.variants,
+            logicalSize: 24,
+          ),
+          alt: emoji.emojiText,
+          isCustom: emoji.isCustomEmoji,
         ));
       }
       return MessageItem.text(m.text);
-    }).toList();
+    }).toList(growable: true);
+    if (items.isEmpty && item.membershipText.trim().isNotEmpty) {
+      items.add(MessageItem.text(item.membershipText.trim()));
+    }
 
     SuperChat? superChat;
     if (item.superChat != null) {
@@ -274,18 +388,30 @@ class YouTubeService {
       superChat = SuperChat(
         amount: sc.amount,
         color: sc.color,
-        stickerUrl:
-            sc.sticker == null ? null : normalizeChatImageUrl(sc.sticker!.url),
+        stickerUrl: sc.sticker == null
+            ? null
+            : _bestImageUrl(
+                sc.sticker!.url,
+                sc.sticker!.variants,
+                logicalSize: 128,
+              ),
       );
     }
 
-    AuthorBadge? badge;
-    if (item.author.badge != null) {
-      badge = AuthorBadge(
-        imageUrl: normalizeChatImageUrl(item.author.badge!.thumbnail.url),
-        label: item.author.badge!.label,
-      );
-    }
+    final sourceBadges = item.author.badges.isNotEmpty
+        ? item.author.badges
+        : [if (item.author.badge != null) item.author.badge!];
+    final badges = sourceBadges
+        .map((badge) => AuthorBadge(
+              imageUrl: _bestImageUrl(
+                badge.thumbnail.url,
+                badge.thumbnail.variants,
+                logicalSize: 16,
+              ),
+              label: badge.label,
+            ))
+        .toList(growable: false);
+    final badge = badges.isEmpty ? null : badges.first;
 
     return ChatMessage(
       platform: Platform.youtube,
@@ -294,9 +420,14 @@ class YouTubeService {
         name: item.author.name,
         avatarUrl: item.author.thumbnail == null
             ? null
-            : normalizeChatImageUrl(item.author.thumbnail!.url),
+            : _bestImageUrl(
+                item.author.thumbnail!.url,
+                item.author.thumbnail!.variants,
+                logicalSize: 44,
+              ),
         channelId: item.author.channelId,
         badge: badge,
+        badges: badges.length < 2 ? const [] : badges.skip(1).toList(),
       ),
       items: items,
       superChat: superChat,
@@ -308,5 +439,48 @@ class YouTubeService {
       youtubeStreamOrientation: streamOrientation,
       timestamp: item.timestamp,
     );
+  }
+
+  ChatModerationEvent? _convertModerationEvent(yt.LiveChatEvent event) {
+    final payload = event.raw[event.actionType];
+    if (payload is! Map<String, dynamic>) return null;
+    switch (event.actionType) {
+      case 'removeChatItemAction':
+      case 'markChatItemAsDeletedAction':
+        final messageId = payload['targetItemId'];
+        if (messageId is String && messageId.trim().isNotEmpty) {
+          return ChatModerationEvent.message(
+            platform: Platform.youtube,
+            messageId: messageId,
+            youtubeStreamOrientation: streamOrientation,
+          );
+        }
+        break;
+      case 'markChatItemsByAuthorAsDeletedAction':
+        final channelId = payload['externalChannelId'];
+        if (channelId is String && channelId.trim().isNotEmpty) {
+          return ChatModerationEvent.author(
+            platform: Platform.youtube,
+            authorChannelId: channelId,
+            youtubeStreamOrientation: streamOrientation,
+          );
+        }
+        break;
+    }
+    return null;
+  }
+
+  String _bestImageUrl(
+    String fallback,
+    List<yt.ImageVariant> variants, {
+    required double logicalSize,
+  }) {
+    if (variants.isEmpty) return normalizeChatImageUrl(fallback);
+    final image = yt.ImageItem(
+      url: fallback,
+      alt: '',
+      variants: variants,
+    ).bestFor(logicalSize, pixelRatio: 2);
+    return normalizeChatImageUrl(image.url);
   }
 }

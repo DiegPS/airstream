@@ -80,6 +80,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get youtubeStreamBadges => 'Horizontal / vertical badge';
 
   @override
+  String get youtubeLiveAudience => 'YouTube live audience';
+
+  @override
+  String get youtubeHorizontal => 'Horizontal';
+
+  @override
+  String get youtubeVertical => 'Vertical';
+
+  @override
+  String youtubeViewers(String count) {
+    return '$count viewers';
+  }
+
+  @override
+  String youtubeTotalViewers(String count) {
+    return '$count total';
+  }
+
+  @override
+  String get youtubeAudienceUnavailable => 'Audience unavailable';
+
+  @override
   String get twitchChannel => 'Twitch channel';
 
   @override

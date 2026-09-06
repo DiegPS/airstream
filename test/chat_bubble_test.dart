@@ -4,6 +4,7 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:airstream/ui/widgets/author_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,78 @@ void main() {
           ),
       isTrue,
     );
+    final avatar = tester.element(find.byType(AuthorAvatar));
+    final messageRow = avatar.findAncestorWidgetOfExactType<Row>()!;
+    expect(messageRow.children.last, isA<AuthorAvatar>());
+    expect(find.text(':wave:'), findsOneWidget);
+  });
+
+  testWidgets('keeps the avatar before content when alignment is left',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(chatTextAlign: 'left'),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: _message())),
+        ),
+      ),
+    );
+
+    final avatar = tester.element(find.byType(AuthorAvatar));
+    final messageRow = avatar.findAncestorWidgetOfExactType<Row>()!;
+    expect(messageRow.children.first, isA<AuthorAvatar>());
+  });
+
+  testWidgets('keeps the avatar before content when alignment is centered',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(chatTextAlign: 'center'),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: _message())),
+        ),
+      ),
+    );
+
+    final avatar = tester.element(find.byType(AuthorAvatar));
+    final messageRow = avatar.findAncestorWidgetOfExactType<Row>()!;
+    expect(messageRow.children.first, isA<AuthorAvatar>());
+  });
+
+  testWidgets('right alignment renders no avatar spacing when avatars are off',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(
+        chatTextAlign: 'right',
+        showAvatars: false,
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: _message())),
+        ),
+      ),
+    );
+
+    expect(find.byType(AuthorAvatar), findsNothing);
+    expect(find.text('Tester'), findsOneWidget);
     expect(find.text(':wave:'), findsOneWidget);
   });
 

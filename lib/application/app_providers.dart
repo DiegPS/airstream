@@ -4,6 +4,7 @@ import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
@@ -32,6 +33,12 @@ final overlayClientCountProvider = StreamProvider<int>((ref) {
 final youtubeBadgeValueProvider = StreamProvider<String?>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.youtubeBadgeValueStream;
+});
+
+final youtubeMetadataProvider =
+    StreamProvider<YoutubeLiveMetadataSummary>((ref) {
+  final app = ref.watch(appControllerProvider);
+  return app.youtubeMetadataStream;
 });
 
 /// Per-platform connection status: map of platform name → (status, error message).

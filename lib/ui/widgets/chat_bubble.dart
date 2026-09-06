@@ -107,7 +107,8 @@ class ChatBubble extends ConsumerWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (s.showAvatars) ...[
+                            if (s.showAvatars &&
+                                s.chatTextAlign != 'right') ...[
                               AuthorAvatar(
                                 name: message.author.name,
                                 platform: message.platform,
@@ -199,6 +200,18 @@ class ChatBubble extends ConsumerWidget {
                                 ],
                               ),
                             ),
+                            if (s.showAvatars &&
+                                s.chatTextAlign == 'right') ...[
+                              const SizedBox(width: 14),
+                              AuthorAvatar(
+                                name: message.author.name,
+                                platform: message.platform,
+                                url: message.author.avatarUrl,
+                                channelId: message.author.channelId,
+                                color: message.author.color,
+                                showPlatformBadge: showPlatformBadge,
+                              ),
+                            ],
                           ],
                         ),
                       ),

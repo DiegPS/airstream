@@ -22,6 +22,18 @@
   "youtubeInvalidStreamUrl": "Enter a direct YouTube video or live URL",
   "youtubeDuplicateStreamUrl": "Use a different broadcast URL",
   "youtubeStreamBadges": "Horizontal / vertical badge",
+  "youtubeLiveAudience": "YouTube live audience",
+  "youtubeHorizontal": "Horizontal",
+  "youtubeVertical": "Vertical",
+  "youtubeViewers": "{count} viewers",
+  "@youtubeViewers": {
+    "placeholders": { "count": { "type": "String" } }
+  },
+  "youtubeTotalViewers": "{count} total",
+  "@youtubeTotalViewers": {
+    "placeholders": { "count": { "type": "String" } }
+  },
+  "youtubeAudienceUnavailable": "Audience unavailable",
   "twitchChannel": "Twitch channel",
   "kickSlug": "Kick slug",
   "startChat": "Start chat",

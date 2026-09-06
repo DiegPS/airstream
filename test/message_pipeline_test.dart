@@ -242,6 +242,58 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('applies message and author moderation within the matching stream',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final timestamp = DateTime.utc(2026, 9, 6);
+
+    source.add(_message(
+      id: 'horizontal-1',
+      text: 'First',
+      authorChannelId: 'author-1',
+      timestamp: timestamp,
+      youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+    ));
+    source.add(_message(
+      id: 'horizontal-2',
+      text: 'Second',
+      authorChannelId: 'author-1',
+      timestamp: timestamp,
+      youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+    ));
+    source.add(_message(
+      id: 'vertical-1',
+      text: 'Vertical',
+      authorChannelId: 'author-1',
+      timestamp: timestamp,
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(
+      pipeline.applyModeration(const ChatModerationEvent.message(
+        platform: Platform.youtube,
+        messageId: 'horizontal-1',
+        youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+      )),
+      isTrue,
+    );
+    expect(
+      pipeline.applyModeration(const ChatModerationEvent.author(
+        platform: Platform.youtube,
+        authorChannelId: 'author-1',
+        youtubeStreamOrientation: YoutubeStreamOrientation.horizontal,
+      )),
+      isTrue,
+    );
+
+    expect(pipeline.buffer.map((message) => message.id), ['vertical-1']);
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({

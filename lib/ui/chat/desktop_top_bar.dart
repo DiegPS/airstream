@@ -26,8 +26,11 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
         sessionPhase == ChatSessionPhase.connected ||
         sessionPhase == ChatSessionPhase.partiallyConnected;
     final hasChannels = (settings.youtubeEnabled &&
-            (settings.youtubeHandle.isNotEmpty ||
-                settings.youtubeLiveId.isNotEmpty)) ||
+            (settings.youtubeDualStreamEnabled
+                ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
+                    settings.youtubeVerticalUrl.trim().isNotEmpty
+                : settings.youtubeHandle.trim().isNotEmpty ||
+                    settings.youtubeLiveId.trim().isNotEmpty)) ||
         (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
         (settings.kickEnabled && settings.kickSlug.isNotEmpty);
 

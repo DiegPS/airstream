@@ -5,6 +5,7 @@ import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
@@ -15,18 +16,30 @@ class FakeYouTubeChatClient implements YouTubeChatClient {
   final messageController = StreamController<ChatMessage>.broadcast(sync: true);
   final statusController =
       StreamController<(ServiceStatus, String?)>.broadcast(sync: true);
+  final metadataController =
+      StreamController<YoutubeLiveMetadata?>.broadcast(sync: true);
+  final moderationController =
+      StreamController<ChatModerationEvent>.broadcast(sync: true);
   int connectCount = 0;
   int disconnectCount = 0;
   bool disposed = false;
   Object? connectError;
   String resolvedId = 'resolved-id';
+  YoutubeLiveMetadata? metadata;
 
   @override
   Stream<ChatMessage> get messages => messageController.stream;
   @override
+  Stream<ChatModerationEvent> get moderationEvents =>
+      moderationController.stream;
+  @override
+  Stream<YoutubeLiveMetadata?> get metadataStream => metadataController.stream;
+  @override
   Stream<(ServiceStatus, String?)> get statusStream => statusController.stream;
   @override
   String get resolvedLiveId => resolvedId;
+  @override
+  YoutubeLiveMetadata? get currentMetadata => metadata;
   @override
   Future<void> connect({String handle = '', String liveId = ''}) async {
     connectCount++;
@@ -40,6 +53,8 @@ class FakeYouTubeChatClient implements YouTubeChatClient {
   Future<void> dispose() async {
     disposed = true;
     await messageController.close();
+    await moderationController.close();
+    await metadataController.close();
     await statusController.close();
   }
 }

@@ -5,15 +5,16 @@ class _ConnectionDots extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final status = ref.watch(connectionStatusProvider);
     final settings = ref.watch(settingsProvider);
+    final metadata = ref.watch(youtubeMetadataProvider).valueOrNull;
+    final youtubeConfigured = settings.youtubeEnabled &&
+        (settings.youtubeDualStreamEnabled
+            ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
+                settings.youtubeVerticalUrl.trim().isNotEmpty
+            : settings.youtubeHandle.trim().isNotEmpty ||
+                settings.youtubeLiveId.trim().isNotEmpty);
 
     final platforms = <(String, bool, String)>[
-      (
-        'YT',
-        settings.youtubeEnabled &&
-            (settings.youtubeHandle.isNotEmpty ||
-                settings.youtubeLiveId.isNotEmpty),
-        'youtube'
-      ),
+      ('YT', youtubeConfigured, 'youtube'),
       (
         'TW',
         settings.twitchEnabled && settings.twitchChannel.isNotEmpty,
@@ -28,7 +29,12 @@ class _ConnectionDots extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: platforms.where((p) => p.$2).map((p) {
-          final s = statusMap[p.$3];
+          final s = p.$3 == 'youtube' && settings.youtubeDualStreamEnabled
+              ? _combinedStatus(
+                  statusMap['youtubeHorizontal'],
+                  statusMap['youtubeVertical'],
+                )
+              : statusMap[p.$3];
           final serviceStatus = s?.$1 ?? ServiceStatus.idle;
           final error = s?.$2;
           final color = switch (serviceStatus) {
@@ -61,6 +67,11 @@ class _ConnectionDots extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (p.$3 == 'youtube' &&
+                      metadata?.totalViewerCount != null) ...[
+                    const SizedBox(width: 4),
+                    YoutubeLiveStats(summary: metadata!, compact: true),
+                  ],
                 ],
               ),
             ),
@@ -68,5 +79,26 @@ class _ConnectionDots extends ConsumerWidget {
         }).toList(),
       ),
     );
+  }
+
+  static (ServiceStatus, String?) _combinedStatus(
+    (ServiceStatus, String?)? first,
+    (ServiceStatus, String?)? second,
+  ) {
+    final statuses = [first, second];
+    if (statuses.every((status) => status?.$1 == ServiceStatus.error)) {
+      return (
+        ServiceStatus.error,
+        statuses
+            .map((status) => status?.$2)
+            .whereType<String>()
+            .where((error) => error.isNotEmpty)
+            .join('\n'),
+      );
+    }
+    if (statuses.every((status) => status?.$1 == ServiceStatus.connected)) {
+      return (ServiceStatus.connected, null);
+    }
+    return (ServiceStatus.connecting, null);
   }
 }

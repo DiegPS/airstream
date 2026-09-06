@@ -230,6 +230,42 @@ abstract class AppLocalizations {
   /// **'Horizontal / vertical badge'**
   String get youtubeStreamBadges;
 
+  /// No description provided for @youtubeLiveAudience.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube live audience'**
+  String get youtubeLiveAudience;
+
+  /// No description provided for @youtubeHorizontal.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal'**
+  String get youtubeHorizontal;
+
+  /// No description provided for @youtubeVertical.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical'**
+  String get youtubeVertical;
+
+  /// No description provided for @youtubeViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} viewers'**
+  String youtubeViewers(String count);
+
+  /// No description provided for @youtubeTotalViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} total'**
+  String youtubeTotalViewers(String count);
+
+  /// No description provided for @youtubeAudienceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Audience unavailable'**
+  String get youtubeAudienceUnavailable;
+
   /// No description provided for @twitchChannel.
   ///
   /// In en, this message translates to:

@@ -13,6 +13,7 @@ import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
     show YoutubeStreamOrientation;
 import 'package:airstream/services/app_logger.dart';
@@ -32,6 +33,7 @@ import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'package:airstream/ui/widgets/styled_slider_row.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:airstream/ui/widgets/window_control_bar.dart';
+import 'package:airstream/ui/widgets/youtube_live_stats.dart';
 import 'package:airstream/window/window_state.dart';
 
 part 'chat/connection_status.dart';
@@ -327,8 +329,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (messages.isEmpty) {
           final sessionPhase = ref.watch(chatSessionPhaseProvider);
           final hasChannels = (settings.youtubeEnabled &&
-                  (settings.youtubeHandle.isNotEmpty ||
-                      settings.youtubeLiveId.isNotEmpty)) ||
+                  (settings.youtubeDualStreamEnabled
+                      ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
+                          settings.youtubeVerticalUrl.trim().isNotEmpty
+                      : settings.youtubeHandle.trim().isNotEmpty ||
+                          settings.youtubeLiveId.trim().isNotEmpty)) ||
               (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
               (settings.kickEnabled && settings.kickSlug.isNotEmpty);
           final text = hasChannels

@@ -415,6 +415,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final connectionStatus =
         ref.watch(connectionStatusProvider).valueOrNull ?? {};
     final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider).valueOrNull;
+    final youtubeMetadata = ref.watch(youtubeMetadataProvider).valueOrNull ??
+        const YoutubeLiveMetadataSummary();
     final appController = ref.read(appControllerProvider);
     final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
     final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
@@ -613,6 +615,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                       youtubeError,
                       youtubeHorizontalError,
                       youtubeVerticalError,
+                      youtubeMetadata,
                       twitchError,
                       kickError,
                     ),

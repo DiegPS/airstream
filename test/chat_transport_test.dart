@@ -67,7 +67,11 @@ void main() {
         throwsA(isA<TimeoutException>()));
 
     final ready = _FakeYouTubeTransport();
-    final service = YouTubeService(transportFactory: (_) => ready);
+    final metadata = _FakeYouTubeMetadataTransport();
+    final service = YouTubeService(
+      transportFactory: (_) => ready,
+      metadataTransportFactory: (_) => metadata,
+    );
     addTearDown(service.dispose);
     final statuses = <(ServiceStatus, String?)>[];
     final subscription = service.statusStream.listen(statuses.add);
@@ -84,7 +88,11 @@ void main() {
   test('YouTube normalizes every media URL and preserves custom emoji',
       () async {
     final transport = _FakeYouTubeTransport();
-    final service = YouTubeService(transportFactory: (_) => transport);
+    final metadata = _FakeYouTubeMetadataTransport();
+    final service = YouTubeService(
+      transportFactory: (_) => transport,
+      metadataTransportFactory: (_) => metadata,
+    );
     addTearDown(service.dispose);
     await service.connect(liveId: 'abcdefghijk');
     final converted = service.messages.first;
@@ -95,8 +103,25 @@ void main() {
           name: 'Author',
           channelId: 'channel-1',
           thumbnail: yt.ImageItem(
-            url: '//lh3.googleusercontent.com/avatar',
+            url: '//lh3.googleusercontent.com/avatar-large',
             alt: 'Author',
+            variants: [
+              yt.ImageVariant(
+                url: '//lh3.googleusercontent.com/avatar-32',
+                width: 32,
+                height: 32,
+              ),
+              yt.ImageVariant(
+                url: '//lh3.googleusercontent.com/avatar-88',
+                width: 88,
+                height: 88,
+              ),
+              yt.ImageVariant(
+                url: '//lh3.googleusercontent.com/avatar-176',
+                width: 176,
+                height: 176,
+              ),
+            ],
           ),
           badge: yt.Badge(
             thumbnail: yt.ImageItem(
@@ -105,6 +130,22 @@ void main() {
             ),
             label: 'Member',
           ),
+          badges: [
+            yt.Badge(
+              thumbnail: yt.ImageItem(
+                url: '//lh3.googleusercontent.com/badge',
+                alt: 'Member',
+              ),
+              label: 'Member',
+            ),
+            yt.Badge(
+              thumbnail: yt.ImageItem(
+                url: '//lh3.googleusercontent.com/moderator',
+                alt: 'Moderator',
+              ),
+              label: 'Moderator',
+            ),
+          ],
         ),
         message: const [
           yt.MessageItem.emoji(yt.EmojiItem(
@@ -132,12 +173,78 @@ void main() {
 
     final message = await converted;
     expect(message.author.avatarUrl, startsWith('https://'));
+    expect(message.author.avatarUrl, endsWith('avatar-88'));
     expect(message.author.badge!.imageUrl, startsWith('https://'));
+    expect(message.author.allBadges.map((badge) => badge.label),
+        ['Member', 'Moderator']);
     expect(message.superChat!.stickerUrl, startsWith('https://'));
     final emoji = message.items.single.emoji!;
     expect(emoji.url, startsWith('https://'));
     expect(emoji.isCustom, isTrue);
     expect(message.platform, app.Platform.youtube);
+  });
+
+  test('YouTube merges incremental live metadata and stops it on disconnect',
+      () async {
+    final chat = _FakeYouTubeTransport();
+    final transport = _FakeYouTubeMetadataTransport();
+    final service = YouTubeService(
+      streamOrientation: app.YoutubeStreamOrientation.horizontal,
+      transportFactory: (_) => chat,
+      metadataTransportFactory: (_) => transport,
+    );
+    addTearDown(service.dispose);
+
+    final updates = <Object?>[];
+    final subscription = service.metadataStream.listen(updates.add);
+    addTearDown(subscription.cancel);
+    await service.connect(liveId: 'abcdefghijk');
+    await _eventually(() => transport.started);
+
+    transport.batchController.add(_metadataBatch(
+      viewers: 1200,
+      title: 'Horizontal broadcast',
+    ));
+    await _eventually(() => service.currentMetadata?.viewerCount == 1200);
+    transport.batchController.add(_metadataBatch(viewers: 1350));
+    await _eventually(() => service.currentMetadata?.viewerCount == 1350);
+
+    expect(service.currentMetadata?.title, 'Horizontal broadcast');
+    expect(service.currentMetadata?.streamOrientation,
+        app.YoutubeStreamOrientation.horizontal);
+    expect(updates.whereType<Object>(), isNotEmpty);
+
+    await service.disconnect();
+    expect(transport.stopped, isTrue);
+    expect(service.currentMetadata, isNull);
+  });
+
+  test('YouTube converts provider deletion events into moderation events',
+      () async {
+    final chat = _FakeYouTubeTransport();
+    final metadata = _FakeYouTubeMetadataTransport();
+    final service = YouTubeService(
+      streamOrientation: app.YoutubeStreamOrientation.vertical,
+      transportFactory: (_) => chat,
+      metadataTransportFactory: (_) => metadata,
+    );
+    addTearDown(service.dispose);
+    await service.connect(liveId: 'abcdefghijk');
+
+    final deletedMessage = service.moderationEvents.first;
+    chat.eventController.add(const yt.LiveChatEvent(
+      actionType: 'markChatItemAsDeletedAction',
+      rendererType: '',
+      raw: {
+        'markChatItemAsDeletedAction': {'targetItemId': 'message-1'},
+      },
+    ));
+
+    final event = await deletedMessage;
+    expect(event.scope, app.ChatModerationScope.message);
+    expect(event.messageId, 'message-1');
+    expect(
+        event.youtubeStreamOrientation, app.YoutubeStreamOrientation.vertical);
   });
 
   test('Kick injects connection, reports corrupt messages, and closes once',
@@ -216,11 +323,14 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
       : _startFuture = startFuture ?? Future<void>.value();
   final Future<void> _startFuture;
   final messageController = StreamController<dynamic>.broadcast();
+  final eventController = StreamController<dynamic>.broadcast();
   final errorController = StreamController<dynamic>.broadcast();
   final pollController = StreamController<dynamic>.broadcast();
   bool stopped = false;
   @override
   Stream<dynamic> get messages => messageController.stream;
+  @override
+  Stream<dynamic> get events => eventController.stream;
   @override
   Stream<dynamic> get errors => errorController.stream;
   @override
@@ -231,6 +341,53 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   Future<void> start() => _startFuture;
   @override
   void stop() => stopped = true;
+}
+
+class _FakeYouTubeMetadataTransport implements YouTubeMetadataTransport {
+  final batchController = StreamController<yt.UpdatedMetadataBatch>.broadcast();
+  final errorController = StreamController<Exception>.broadcast();
+  bool started = false;
+  bool stopped = false;
+
+  @override
+  Stream<yt.UpdatedMetadataBatch> get batches => batchController.stream;
+  @override
+  Stream<Exception> get errors => errorController.stream;
+  @override
+  Future<void> start() async => started = true;
+  @override
+  Future<void> stop() async {
+    stopped = true;
+    await batchController.close();
+    await errorController.close();
+  }
+}
+
+yt.UpdatedMetadataBatch _metadataBatch({
+  required int viewers,
+  String? title,
+}) {
+  return yt.UpdatedMetadataBatch.fromJson({
+    'actions': [
+      {
+        'updateViewershipAction': {
+          'viewCount': {
+            'videoViewCountRenderer': {
+              'isLive': true,
+              'originalViewCount': '$viewers',
+              'unlabeledViewCountValue': {'simpleText': '$viewers'},
+            },
+          },
+        },
+      },
+      if (title != null)
+        {
+          'updateTitleAction': {
+            'title': {'simpleText': title},
+          },
+        },
+    ],
+  });
 }
 
 class _FakeKickTransport implements KickChatTransport {

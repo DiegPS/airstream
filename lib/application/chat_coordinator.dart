@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/kick_service.dart';
@@ -11,8 +12,11 @@ import 'package:airstream/settings/settings_model.dart';
 
 abstract interface class YouTubeChatClient {
   Stream<ChatMessage> get messages;
+  Stream<ChatModerationEvent> get moderationEvents;
+  Stream<YoutubeLiveMetadata?> get metadataStream;
   Stream<(ServiceStatus, String?)> get statusStream;
   String get resolvedLiveId;
+  YoutubeLiveMetadata? get currentMetadata;
   Future<void> connect({String handle, String liveId});
   Future<void> disconnect();
   Future<void> dispose();
@@ -34,9 +38,15 @@ class YouTubeChatServiceAdapter implements YouTubeChatClient {
   @override
   Stream<ChatMessage> get messages => service.messages;
   @override
+  Stream<ChatModerationEvent> get moderationEvents => service.moderationEvents;
+  @override
+  Stream<YoutubeLiveMetadata?> get metadataStream => service.metadataStream;
+  @override
   Stream<(ServiceStatus, String?)> get statusStream => service.statusStream;
   @override
   String get resolvedLiveId => service.resolvedLiveId;
+  @override
+  YoutubeLiveMetadata? get currentMetadata => service.currentMetadata;
   @override
   Future<void> connect({String handle = '', String liveId = ''}) =>
       service.connect(handle: handle, liveId: liveId);
@@ -124,6 +134,22 @@ class ChatCoordinator {
         (status) => _handleServiceStatus('twitch', status),
       ),
     ]);
+    _metadataSubscriptions.addAll([
+      _youtube.metadataStream.listen(
+        (metadata) => _handleYoutubeMetadata('youtube', metadata),
+      ),
+      _youtubeHorizontal.metadataStream.listen(
+        (metadata) => _handleYoutubeMetadata('youtubeHorizontal', metadata),
+      ),
+      _youtubeVertical.metadataStream.listen(
+        (metadata) => _handleYoutubeMetadata('youtubeVertical', metadata),
+      ),
+    ]);
+    _moderationSubscriptions.addAll([
+      _youtube.moderationEvents.listen(_handleModeration),
+      _youtubeHorizontal.moderationEvents.listen(_handleModeration),
+      _youtubeVertical.moderationEvents.listen(_handleModeration),
+    ]);
   }
 
   final YouTubeChatClient _youtube;
@@ -137,7 +163,11 @@ class ChatCoordinator {
   final _statusController =
       StreamController<Map<String, (ServiceStatus, String?)>>.broadcast();
   final _youtubeBadgeController = StreamController<String?>.broadcast();
+  final _youtubeMetadataController =
+      StreamController<YoutubeLiveMetadataSummary>.broadcast();
   final _statusSubscriptions = <StreamSubscription<(ServiceStatus, String?)>>[];
+  final _metadataSubscriptions = <StreamSubscription<YoutubeLiveMetadata?>>[];
+  final _moderationSubscriptions = <StreamSubscription<ChatModerationEvent>>[];
   StreamSubscription<ChatMessage>? _pipelineSub;
   final _platformStatus = <String, (ServiceStatus, String?)>{
     'youtube': (ServiceStatus.idle, null),
@@ -147,6 +177,11 @@ class ChatCoordinator {
     'kick': (ServiceStatus.idle, null),
   };
   String? _youtubeBadgeValue;
+  final _youtubeMetadata = <String, YoutubeLiveMetadata?>{
+    'youtube': null,
+    'youtubeHorizontal': null,
+    'youtubeVertical': null,
+  };
   int _attemptGeneration = 0;
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
@@ -168,6 +203,11 @@ class ChatCoordinator {
   Stream<String?> get youtubeBadgeValueStream async* {
     yield _youtubeBadgeValue;
     yield* _youtubeBadgeController.stream;
+  }
+
+  Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream async* {
+    yield _metadataSummary;
+    yield* _youtubeMetadataController.stream;
   }
 
   void applySettings(SettingsModel settings, {required bool connectChats}) {
@@ -222,6 +262,7 @@ class ChatCoordinator {
     if (shouldClear || !connectChats) _clearMessages();
 
     if (youtubeChanged) {
+      _clearYoutubeMetadata();
       unawaited(_youtube.disconnect());
       unawaited(_youtubeHorizontal.disconnect());
       unawaited(_youtubeVertical.disconnect());
@@ -496,12 +537,51 @@ class ChatCoordinator {
     }
   }
 
+  YoutubeLiveMetadataSummary get _metadataSummary => YoutubeLiveMetadataSummary(
+        primary: _youtubeMetadata['youtube'],
+        horizontal: _youtubeMetadata['youtubeHorizontal'],
+        vertical: _youtubeMetadata['youtubeVertical'],
+      );
+
+  void _handleYoutubeMetadata(
+    String source,
+    YoutubeLiveMetadata? metadata,
+  ) {
+    if (_disposed) return;
+    _youtubeMetadata[source] = metadata;
+    if (!_youtubeMetadataController.isClosed) {
+      _youtubeMetadataController.add(_metadataSummary);
+    }
+  }
+
+  void _clearYoutubeMetadata() {
+    for (final key in _youtubeMetadata.keys) {
+      _youtubeMetadata[key] = null;
+    }
+    if (!_youtubeMetadataController.isClosed) {
+      _youtubeMetadataController.add(_metadataSummary);
+    }
+  }
+
+  void _handleModeration(ChatModerationEvent event) {
+    if (_disposed || !_pipeline.applyModeration(event)) return;
+    if (!_listController.isClosed) {
+      _listController.add(_pipeline.buffer);
+    }
+  }
+
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     ++_attemptGeneration;
     await _pipelineSub?.cancel();
     for (final subscription in _statusSubscriptions) {
+      await subscription.cancel();
+    }
+    for (final subscription in _metadataSubscriptions) {
+      await subscription.cancel();
+    }
+    for (final subscription in _moderationSubscriptions) {
       await subscription.cancel();
     }
     await _youtube.dispose();
@@ -513,5 +593,6 @@ class ChatCoordinator {
     await _listController.close();
     await _statusController.close();
     await _youtubeBadgeController.close();
+    await _youtubeMetadataController.close();
   }
 }
