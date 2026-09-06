@@ -276,6 +276,28 @@ void main() {
 
     expect(await freshProcessCache.installed(model), isNull);
   });
+
+  test('recovers the previous installation after an interrupted replacement',
+      () async {
+    final client = MockClient(
+      (_) async => http.Response.bytes(archiveBytes, HttpStatus.ok),
+    );
+    final cache = TtsModelCache(client: client, rootDirectory: root);
+    final installation = await cache.ensureAvailable(model);
+    final previous = Directory(
+      '${root.path}${Platform.pathSeparator}.${model.storageKey}.previous',
+    );
+    await installation.directory.rename(previous.path);
+
+    final recovered = await TtsModelCache(
+      client: client,
+      rootDirectory: root,
+    ).installed(model);
+
+    expect(recovered, isNotNull);
+    expect(await File(recovered!.file('model.onnx')).exists(), isTrue);
+    expect(await previous.exists(), isFalse);
+  });
 }
 
 class _StreamingClient extends http.BaseClient {

@@ -4,14 +4,12 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/services/chat/twitch_transport.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 
 const _ircUrl = 'wss://irc-ws.chat.twitch.tv/';
-const _reconnectDelay = Duration(seconds: 5);
-const _optionalApiTimeout = Duration(seconds: 5);
 
 /// Third-party emote APIs
 const _bttvGlobalUrl = 'https://api.betterttv.net/3/cached/emotes/global';
@@ -184,7 +182,26 @@ class TwitchUserRoles {
 /// Anonymous Twitch IRC client — no OAuth, no avatars.
 /// Connects as justinfan{random}, supports BTTV/FFZ/7TV global emotes.
 class TwitchService {
-  WebSocketChannel? _channel;
+  TwitchService({
+    TwitchSocketFactory? socketFactory,
+    http.Client? httpClient,
+    Duration reconnectDelay = const Duration(seconds: 5),
+    Duration connectionTimeout = const Duration(seconds: 10),
+    Duration optionalApiTimeout = const Duration(seconds: 5),
+  })  : _socketFactory = socketFactory ?? WebSocketChannelTwitchSocket.new,
+        _httpClient = httpClient ?? http.Client(),
+        _ownsHttpClient = httpClient == null,
+        _reconnectDelay = reconnectDelay,
+        _connectionTimeout = connectionTimeout,
+        _optionalApiTimeout = optionalApiTimeout;
+
+  final TwitchSocketFactory _socketFactory;
+  final http.Client _httpClient;
+  final bool _ownsHttpClient;
+  final Duration _reconnectDelay;
+  final Duration _connectionTimeout;
+  final Duration _optionalApiTimeout;
+  TwitchSocket? _channel;
   StreamSubscription? _sub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _statusController =
@@ -228,13 +245,14 @@ class TwitchService {
     _closed = true;
     await _sub?.cancel();
     _sub = null;
-    await _channel?.sink.close();
+    await _channel?.close();
     _channel = null;
     _emit(ServiceStatus.idle, null);
   }
 
   Future<void> dispose() async {
     await disconnect();
+    if (_ownsHttpClient) _httpClient.close();
     await _controller.close();
     await _statusController.close();
   }
@@ -243,26 +261,26 @@ class TwitchService {
 
   Future<void> _dial(int generation) async {
     final nick = 'justinfan${Random().nextInt(80000) + 1000}';
-    final channel = WebSocketChannel.connect(Uri.parse(_ircUrl));
+    final channel = _socketFactory(Uri.parse(_ircUrl));
     try {
-      await channel.ready;
+      await channel.ready.timeout(_connectionTimeout);
     } catch (_) {
       // The failed channel is not installed; close it before propagating.
-      await channel.sink.close();
+      await channel.close();
       rethrow;
     }
     if (!_isCurrent(generation)) {
-      await channel.sink.close();
+      await channel.close();
       return;
     }
     _channel = channel;
-    channel.sink.add('CAP REQ :twitch.tv/tags twitch.tv/commands\r\n');
-    channel.sink.add('PASS oauth:anonymous\r\n');
-    channel.sink.add('NICK $nick\r\n');
-    channel.sink.add('JOIN #$_channel_\r\n');
+    channel.add('CAP REQ :twitch.tv/tags twitch.tv/commands\r\n');
+    channel.add('PASS oauth:anonymous\r\n');
+    channel.add('NICK $nick\r\n');
+    channel.add('JOIN #$_channel_\r\n');
   }
 
-  void _send(String line) => _channel?.sink.add('$line\r\n');
+  void _send(String line) => _channel?.add('$line\r\n');
 
   Future<void> _readLoop(int generation) async {
     while (_isCurrent(generation)) {
@@ -289,7 +307,7 @@ class TwitchService {
       if (identical(_channel, channel)) {
         _channel = null;
         try {
-          await channel.sink.close();
+          await channel.close();
         } catch (_) {
           // The server already closed this socket; local cleanup is complete.
         }
@@ -531,7 +549,7 @@ class TwitchService {
 
   Future<void> _loadBttv(int generation) async {
     try {
-      final res = await http
+      final res = await _httpClient
           .get(Uri.parse(_bttvGlobalUrl))
           .timeout(_optionalApiTimeout);
       if (res.statusCode != 200 || !_isCurrent(generation)) return;
@@ -551,8 +569,9 @@ class TwitchService {
 
   Future<void> _loadFfz(int generation) async {
     try {
-      final res =
-          await http.get(Uri.parse(_ffzGlobalUrl)).timeout(_optionalApiTimeout);
+      final res = await _httpClient
+          .get(Uri.parse(_ffzGlobalUrl))
+          .timeout(_optionalApiTimeout);
       if (res.statusCode != 200 || !_isCurrent(generation)) return;
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       final sets = json['sets'] as Map<String, dynamic>? ?? {};
@@ -575,7 +594,7 @@ class TwitchService {
 
   Future<void> _loadSevenTv(int generation) async {
     try {
-      final res = await http
+      final res = await _httpClient
           .get(Uri.parse(_sevenTvGlobalUrl))
           .timeout(_optionalApiTimeout);
       if (res.statusCode != 200 || !_isCurrent(generation)) return;

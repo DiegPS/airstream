@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/settings_document.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,7 +33,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final persisted = prefs.getString('AIRSTREAM_SETTINGS')!;
     expect(persisted, isNot(contains('legacy-secret')));
-    expect(jsonDecode(persisted), isNot(contains('obsPassword')));
+    final document = jsonDecode(persisted) as Map<String, dynamic>;
+    expect(document['schemaVersion'], currentSettingsSchemaVersion);
+    expect(document['settings'], isNot(contains('obsPassword')));
   });
 
   test('secure storage wins over a stale legacy password', () async {
@@ -172,8 +176,51 @@ void main() {
 
     await notifier.update(notifier.state.copyWith(appLanguageCode: 'en'));
 
-    expect(jsonDecode(repository.json!), containsPair('appLanguageCode', 'en'));
+    final document = jsonDecode(repository.json!) as Map<String, dynamic>;
+    expect(document['settings'], containsPair('appLanguageCode', 'en'));
   });
+
+  test('recovers valid settings from backup when primary is corrupt', () async {
+    final repository = _RecoverableMemorySettingsRepository(
+      primary: '{broken',
+      backup: SettingsDocumentCodec.encode(
+        const SettingsModel(appLanguageCode: 'es'),
+      ),
+    );
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: repository,
+    );
+
+    await notifier.ready;
+
+    expect(notifier.state.appLanguageCode, 'es');
+    expect(
+      SettingsDocumentCodec.decode(repository.primary!)
+          .settings
+          .appLanguageCode,
+      'es',
+    );
+  });
+}
+
+class _RecoverableMemorySettingsRepository
+    implements RecoverableSettingsRepository {
+  _RecoverableMemorySettingsRepository({this.primary, this.backup});
+  String? primary;
+  String? backup;
+
+  @override
+  Future<String?> read() async => primary;
+
+  @override
+  Future<String?> readBackup() async => backup;
+
+  @override
+  Future<void> write(String json) async {
+    backup = primary;
+    primary = json;
+  }
 }
 
 class _MemorySettingsRepository implements SettingsRepository {

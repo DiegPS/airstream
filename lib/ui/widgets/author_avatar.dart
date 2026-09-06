@@ -87,7 +87,9 @@ class AuthorAvatar extends StatelessWidget {
     if (hex != null && hex.startsWith('#') && hex.length == 7) {
       try {
         return Color(int.parse('FF${hex.substring(1)}', radix: 16));
-      } catch (_) {}
+      } catch (_) {
+        // Invalid optional profile colors safely fall back to the platform color.
+      }
     }
 
     var hash = 0;

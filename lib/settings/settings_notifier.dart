@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
+import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,12 +45,29 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   String? _persistedObsPassword;
 
   Future<void> _load() async {
-    final json = await _settingsRepository.read();
-    if (json != null) {
+    var source = await _settingsRepository.read();
+    if (source != null) {
       try {
-        final decoded = jsonDecode(json) as Map<String, dynamic>;
-        final containsLegacyPassword = decoded.containsKey('obsPassword');
-        final decodedSettings = SettingsModel.fromJson(decoded);
+        DecodedSettingsDocument document;
+        var recoveredFromBackup = false;
+        try {
+          document = SettingsDocumentCodec.decode(source);
+        } catch (primaryError, primaryStack) {
+          final repository = _settingsRepository;
+          final backup = repository is RecoverableSettingsRepository
+              ? await repository.readBackup()
+              : null;
+          if (backup == null || backup == source) rethrow;
+          AppLogger.warning(
+            'Primary settings are invalid; recovering the backup',
+            error: primaryError,
+            stackTrace: primaryStack,
+          );
+          source = backup;
+          document = SettingsDocumentCodec.decode(backup);
+          recoveredFromBackup = true;
+        }
+        final decodedSettings = document.settings;
         final loaded = _localizeBuiltInTtsDefaults(decodedSettings);
         final localizedDefaultsChanged =
             loaded.ttsCommandPrefix != decodedSettings.ttsCommandPrefix ||
@@ -67,8 +83,12 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
           _persistedObsPassword = password ?? '';
           state = loaded.copyWith(obsPassword: password ?? '');
 
-          if (containsLegacyPassword || localizedDefaultsChanged) {
-            await _settingsRepository.write(state.toJsonString());
+          if (document.containsLegacyPassword ||
+              document.requiresRewrite ||
+              recoveredFromBackup ||
+              localizedDefaultsChanged) {
+            await _settingsRepository
+                .write(SettingsDocumentCodec.encode(state));
           }
         } catch (error, stack) {
           // Keep the legacy value and its persisted copy if secure storage is
@@ -117,7 +137,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       }
       _persistedObsPassword = settings.obsPassword;
     }
-    await _settingsRepository.write(settings.toJsonString());
+    await _settingsRepository.write(SettingsDocumentCodec.encode(settings));
   }
 
   static SettingsModel _localizeBuiltInTtsDefaults(SettingsModel settings) {

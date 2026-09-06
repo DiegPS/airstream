@@ -2,17 +2,26 @@ import 'dart:async';
 
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 
 /// Wraps dart_youtube_chat.LiveChat and converts items to [ChatMessage].
 class YouTubeService {
   static final RegExp _youtubeVideoIdPattern = RegExp(r'^[A-Za-z0-9_-]{11}$');
 
-  YouTubeService({this.streamOrientation});
+  YouTubeService({
+    this.streamOrientation,
+    YouTubeChatTransportFactory? transportFactory,
+    Duration connectionTimeout = const Duration(seconds: 15),
+  })  : _transportFactory = transportFactory ?? DartYouTubeChatTransport.new,
+        _connectionTimeout = connectionTimeout;
 
   final YoutubeStreamOrientation? streamOrientation;
+  final YouTubeChatTransportFactory _transportFactory;
+  final Duration _connectionTimeout;
 
-  yt.LiveChat? _chat;
+  YouTubeChatTransport? _chat;
   StreamSubscription? _sub;
   StreamSubscription? _errorSub;
   StreamSubscription? _pollSub;
@@ -80,7 +89,7 @@ class YouTubeService {
       channelId: normalized.channelId,
     );
 
-    final chat = yt.LiveChat(id: ytId);
+    final chat = _transportFactory(ytId);
     _chat = chat;
     _sub = chat.messages.listen(
       (item) {
@@ -88,11 +97,21 @@ class YouTubeService {
         if (_lastStatus != ServiceStatus.connected) {
           _emit(ServiceStatus.connected, null);
         }
-        final msg = _convertItem(item);
-        if (msg != null && !_controller.isClosed) _controller.add(msg);
+        try {
+          final msg = _convertItem(item as yt.ChatItem);
+          if (!_controller.isClosed) _controller.add(msg);
+        } catch (error, stack) {
+          AppLogger.warning(
+            'YouTube returned a malformed chat item',
+            error: error,
+            stackTrace: stack,
+          );
+          _emit(ServiceStatus.error, 'Invalid YouTube chat response.');
+        }
       },
       onError: (e) {
         if (generation == _generation && _chat == chat) {
+          AppLogger.warning('YouTube message stream failed', error: e);
           _emit(ServiceStatus.error, e.toString());
         }
       },
@@ -100,6 +119,7 @@ class YouTubeService {
     _errorSub = chat.errors.listen(
       (e) {
         if (generation == _generation && _chat == chat) {
+          AppLogger.warning('YouTube client reported an error', error: e);
           _emit(ServiceStatus.error, e.toString());
         }
       },
@@ -111,14 +131,20 @@ class YouTubeService {
       }
     });
     try {
-      await chat.start();
+      await chat.start().timeout(_connectionTimeout);
       if (generation != _generation || _chat != chat) {
         chat.stop();
         return;
       }
       _emit(ServiceStatus.connected, null);
-    } catch (e) {
+    } catch (e, stack) {
       if (generation == _generation && _chat == chat) {
+        await _closeCurrent();
+        AppLogger.error(
+          'YouTube connection failed',
+          error: e,
+          stackTrace: stack,
+        );
         _emit(ServiceStatus.error, e.toString());
         rethrow;
       }
@@ -229,7 +255,7 @@ class YouTubeService {
     }
   }
 
-  ChatMessage? _convertItem(yt.ChatItem item) {
+  ChatMessage _convertItem(yt.ChatItem item) {
     final items = item.message.map((m) {
       if (m.isEmoji) {
         return MessageItem.emoji(EmojiItem(

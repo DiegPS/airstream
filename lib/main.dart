@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -6,22 +7,54 @@ import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/chat_screen.dart';
+import 'package:airstream/services/app_logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    await windowManager.ensureInitialized();
-    await Window
-        .initialize(); // flutter_acrylic — debe ir después de windowManager
-    await Window.setEffect(
-      effect: WindowEffect.transparent,
-      color: const Color(0x00000000),
-      dark: true,
+  await AppLogger.initialize();
+  final defaultFlutterErrorHandler = FlutterError.onError;
+  FlutterError.onError = (details) {
+    AppLogger.error(
+      'Unhandled Flutter framework error: ${details.exceptionAsString()}',
+      error: details.exception,
+      stackTrace: details.stack,
     );
-    await windowManager.setResizable(true);
-    // AirStream always uses its own Flutter title bar on desktop.
-    await windowManager.setAsFrameless();
-    await windowManager.setHasShadow(false);
+    if (defaultFlutterErrorHandler != null) {
+      defaultFlutterErrorHandler(details);
+    } else {
+      FlutterError.presentError(details);
+    }
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLogger.error(
+      'Unhandled asynchronous application error',
+      error: error,
+      stackTrace: stack,
+    );
+    return false;
+  };
+  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    try {
+      await windowManager.ensureInitialized();
+      await Window
+          .initialize(); // flutter_acrylic — debe ir después de windowManager
+      await Window.setEffect(
+        effect: WindowEffect.transparent,
+        color: const Color(0x00000000),
+        dark: true,
+      );
+      await windowManager.setResizable(true);
+      // AirStream always uses its own Flutter title bar on desktop.
+      await windowManager.setAsFrameless();
+      await windowManager.setHasShadow(false);
+    } catch (error, stack) {
+      AppLogger.error(
+        'Desktop window initialization failed',
+        error: error,
+        stackTrace: stack,
+      );
+      rethrow;
+    }
   }
 
   runApp(

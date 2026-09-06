@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/services/chat/kick_transport.dart';
 
 enum ServiceStatus { idle, connecting, connected, error }
 
@@ -37,7 +38,15 @@ class KickUserRoles {
 }
 
 class KickService {
-  kick.KickClient? _client;
+  KickService({
+    KickChatTransportFactory? transportFactory,
+    Duration connectionTimeout = const Duration(seconds: 15),
+  })  : _transportFactory = transportFactory ?? DartKickChatTransport.connect,
+        _connectionTimeout = connectionTimeout;
+
+  final KickChatTransportFactory _transportFactory;
+  final Duration _connectionTimeout;
+  KickChatTransport? _client;
   StreamSubscription? _sub;
   StreamSubscription? _errorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
@@ -58,14 +67,14 @@ class KickService {
     final generation = ++_generation;
     _emit(ServiceStatus.connecting, null);
     try {
-      final client = await kick.KickClient.connect();
+      final client = await _transportFactory().timeout(_connectionTimeout);
       if (generation != _generation) {
         await client.close();
         return;
       }
       _client = client;
       _attachListeners(generation);
-      await client.joinBySlug(slug);
+      await client.joinBySlug(slug).timeout(_connectionTimeout);
       if (generation != _generation) return;
       _emit(ServiceStatus.connected, null);
     } catch (e, stack) {
@@ -85,7 +94,18 @@ class KickService {
     _sub = _client!.messages.listen(
       (msg) {
         if (generation != _generation) return;
-        if (!_controller.isClosed) _controller.add(_convertMessage(msg));
+        try {
+          if (!_controller.isClosed) {
+            _controller.add(_convertMessage(msg as kick.ChatMessage));
+          }
+        } catch (error, stack) {
+          AppLogger.warning(
+            'Kick returned a malformed chat message',
+            error: error,
+            stackTrace: stack,
+          );
+          _emit(ServiceStatus.error, 'Invalid Kick chat response.');
+        }
       },
       onError: (Object e, StackTrace stack) {
         if (generation != _generation) return;
