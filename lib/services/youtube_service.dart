@@ -216,10 +216,10 @@ class YouTubeService {
     _chat = null;
   }
 
-  void dispose() {
-    unawaited(disconnect());
-    _controller.close();
-    _statusController.close();
+  Future<void> dispose() async {
+    await disconnect();
+    await _controller.close();
+    await _statusController.close();
   }
 
   void _emit(ServiceStatus status, String? error) {

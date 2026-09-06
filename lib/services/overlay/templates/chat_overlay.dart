@@ -629,7 +629,9 @@ function connect() {
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'message' && envelope.data) addMessage(envelope.data);
-    } catch (_) {}
+    } catch (error) {
+      console.warn('Ignored malformed overlay message', error);
+    }
   });
   socket.addEventListener('close', () => {
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);

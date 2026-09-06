@@ -42,7 +42,9 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
         caption.classList.toggle('visible', Boolean(caption.textContent));
         window.clearTimeout(hide);
         hide = window.setTimeout(() => caption.classList.remove('visible'), 7000);
-      } catch (_) {}
+      } catch (error) {
+        console.warn('Ignored malformed caption message', error);
+      }
     };
     ws.onclose = () => { retry = window.setTimeout(connect, 3000); };
   };

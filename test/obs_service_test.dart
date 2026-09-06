@@ -2,6 +2,17 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('missing OBS host is exposed as an actionable state error', () async {
+    final service = ObsService();
+    addTearDown(service.dispose);
+
+    await service.connect(host: '  ', password: 'not-logged');
+
+    expect(service.currentState.connected, isFalse);
+    expect(service.currentState.statusMessage, 'OBS host required');
+    expect(service.currentState.error, contains('OBS WebSocket host'));
+  });
+
   test('OBS state carries recording status and metrics', () {
     final state = const ObsState().copyWith(
       recordingActive: true,

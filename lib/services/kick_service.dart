@@ -117,10 +117,10 @@ class KickService {
     _emit(ServiceStatus.idle, null);
   }
 
-  void dispose() {
-    disconnect();
-    _controller.close();
-    _statusController.close();
+  Future<void> dispose() async {
+    await disconnect();
+    await _controller.close();
+    await _statusController.close();
   }
 
   void _emit(ServiceStatus status, String? error) {

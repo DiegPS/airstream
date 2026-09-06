@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
+import '../app_logger.dart';
 import '../sherpa_cpu_thread_policy.dart';
 import '../native_worker_guard.dart';
 import '../tts_model_cache.dart';
@@ -160,8 +161,13 @@ class LiveCaptionsService {
     }
     try {
       await _start(installation, revision: revision);
-    } catch (error) {
+    } catch (error, stack) {
       if (revision != _revision || !_enabled || _disposed) return;
+      AppLogger.error(
+        'Offline captions failed to start',
+        error: error,
+        stackTrace: stack,
+      );
       await stop(emitIdle: false);
       _emit(LiveCaptionsState(
         phase: LiveCaptionsPhase.error,
@@ -194,7 +200,12 @@ class LiveCaptionsService {
       if (_enabled) await _start(installation, revision: _revision);
     } on TtsDownloadCancelledException {
       if (!_disposed) _emit(const LiveCaptionsState());
-    } catch (error) {
+    } catch (error, stack) {
+      AppLogger.error(
+        'Caption model preparation failed',
+        error: error,
+        stackTrace: stack,
+      );
       _emit(LiveCaptionsState(
         phase: LiveCaptionsPhase.error,
         message: 'The caption model could not be prepared.',
@@ -260,6 +271,7 @@ class LiveCaptionsService {
       _commands = first;
       guard.markReady();
     } catch (_) {
+      // Worker initialization cleanup is completed below before rethrowing.
       worker?.kill(priority: Isolate.immediate);
       if (identical(_workerGuard, guard)) {
         _workerGuard = null;
@@ -327,7 +339,9 @@ class LiveCaptionsService {
     _audioSubscription = null;
     try {
       await _audioCapture.stop();
-    } catch (_) {}
+    } catch (_) {
+      // Capture may already be stopped after a device or worker failure.
+    }
     final commands = _commands;
     _commands = null;
     _events?.close();
@@ -377,7 +391,9 @@ class LiveCaptionsService {
     await subscription?.cancel();
     try {
       await _audioCapture.stop();
-    } catch (_) {}
+    } catch (_) {
+      // Capture may already be stopped after the worker failure.
+    }
   }
 
   void _emit(LiveCaptionsState state) {

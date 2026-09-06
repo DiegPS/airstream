@@ -23,18 +23,18 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
           icon: Icons.sensors_rounded,
           children: [
             if (!s.youtubeDualStreamEnabled) ...[
-              _SettingsSidebarState._label(l.youtubeInputLabel),
+              _label(l.youtubeInputLabel),
               Row(
                 children: [
                   Expanded(
                     child: _field(
-                      _ytHandle,
+                      _form.ytHandle,
                       l.youtubeInputHint,
-                      focusNode: _ytFocus,
+                      focusNode: _form.ytFocus,
                       onChanged: (_) => _mutate(() {}),
                       onSubmitted: (_) => _saveTextSettings(),
                       onClear: () {
-                        _ytHandle.clear();
+                        _form.ytHandle.clear();
                         _mutate(() {});
                         _saveTextSettings();
                       },
@@ -42,8 +42,9 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                   const SizedBox(width: 8),
                   Switch(
-                    value: _ytHandle.text.trim().isNotEmpty && s.youtubeEnabled,
-                    onChanged: _ytHandle.text.trim().isEmpty
+                    value: _form.ytHandle.text.trim().isNotEmpty &&
+                        s.youtubeEnabled,
+                    onChanged: _form.ytHandle.text.trim().isEmpty
                         ? null
                         : (value) =>
                             notifier.update(s.copyWith(youtubeEnabled: value)),
@@ -54,7 +55,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               ),
               if (youtubeError != null && youtubeError.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SettingsSidebarState._inlineErrorMessage(
+                _inlineErrorMessage(
                   l,
                   'YouTube',
                   onRetry: () => ref
@@ -64,18 +65,18 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               ],
               const SizedBox(height: 12),
             ],
-            _SettingsSidebarState._label(l.twitchChannel),
+            _label(l.twitchChannel),
             Row(
               children: [
                 Expanded(
                   child: _field(
-                    _twitch,
+                    _form.twitch,
                     l.channelNameHint,
-                    focusNode: _twitchFocus,
+                    focusNode: _form.twitchFocus,
                     onChanged: (_) => _mutate(() {}),
                     onSubmitted: (_) => _saveTextSettings(),
                     onClear: () {
-                      _twitch.clear();
+                      _form.twitch.clear();
                       _mutate(() {});
                       _saveTextSettings();
                     },
@@ -83,8 +84,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                 ),
                 const SizedBox(width: 8),
                 Switch(
-                  value: _twitch.text.trim().isNotEmpty && s.twitchEnabled,
-                  onChanged: _twitch.text.trim().isEmpty
+                  value: _form.twitch.text.trim().isNotEmpty && s.twitchEnabled,
+                  onChanged: _form.twitch.text.trim().isEmpty
                       ? null
                       : (value) =>
                           notifier.update(s.copyWith(twitchEnabled: value)),
@@ -95,7 +96,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
             ),
             if (twitchError != null && twitchError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _SettingsSidebarState._inlineErrorMessage(
+              _inlineErrorMessage(
                 l,
                 'Twitch',
                 onRetry: () =>
@@ -103,18 +104,18 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               ),
             ],
             const SizedBox(height: 12),
-            _SettingsSidebarState._label(l.kickSlug),
+            _label(l.kickSlug),
             Row(
               children: [
                 Expanded(
                   child: _field(
-                    _kick,
+                    _form.kick,
                     l.channelIdentifierHint,
-                    focusNode: _kickFocus,
+                    focusNode: _form.kickFocus,
                     onChanged: (_) => _mutate(() {}),
                     onSubmitted: (_) => _saveTextSettings(),
                     onClear: () {
-                      _kick.clear();
+                      _form.kick.clear();
                       _mutate(() {});
                       _saveTextSettings();
                     },
@@ -122,8 +123,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                 ),
                 const SizedBox(width: 8),
                 Switch(
-                  value: _kick.text.trim().isNotEmpty && s.kickEnabled,
-                  onChanged: _kick.text.trim().isEmpty
+                  value: _form.kick.text.trim().isNotEmpty && s.kickEnabled,
+                  onChanged: _form.kick.text.trim().isEmpty
                       ? null
                       : (value) =>
                           notifier.update(s.copyWith(kickEnabled: value)),
@@ -134,7 +135,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
             ),
             if (kickError != null && kickError.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _SettingsSidebarState._inlineErrorMessage(
+              _inlineErrorMessage(
                 l,
                 'Kick',
                 onRetry: () =>
@@ -227,17 +228,17 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               _youtubeStreamField(
                 label: l.youtubeHorizontalUrl,
                 orientation: YoutubeStreamOrientation.horizontal,
-                controller: _ytHorizontalUrl,
-                focusNode: _ytHorizontalFocus,
+                controller: _form.ytHorizontalUrl,
+                focusNode: _form.ytHorizontalFocus,
                 errorText: _youtubeStreamUrlError(
                   l,
-                  _ytHorizontalUrl.text,
+                  _form.ytHorizontalUrl.text,
                 ),
               ),
               if (youtubeHorizontalError != null &&
                   youtubeHorizontalError.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SettingsSidebarState._inlineErrorMessage(
+                _inlineErrorMessage(
                   l,
                   l.youtubeHorizontalUrl,
                   onRetry: () => ref
@@ -249,18 +250,18 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               _youtubeStreamField(
                 label: l.youtubeVerticalUrl,
                 orientation: YoutubeStreamOrientation.vertical,
-                controller: _ytVerticalUrl,
-                focusNode: _ytVerticalFocus,
+                controller: _form.ytVerticalUrl,
+                focusNode: _form.ytVerticalFocus,
                 errorText: _youtubeStreamUrlError(
                   l,
-                  _ytVerticalUrl.text,
-                  otherUrl: _ytHorizontalUrl.text,
+                  _form.ytVerticalUrl.text,
+                  otherUrl: _form.ytHorizontalUrl.text,
                 ),
               ),
               if (youtubeVerticalError != null &&
                   youtubeVerticalError.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SettingsSidebarState._inlineErrorMessage(
+                _inlineErrorMessage(
                   l,
                   l.youtubeVerticalUrl,
                   onRetry: () => ref
@@ -300,15 +301,15 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
           initiallyExpanded:
               s.blockedUsers.isNotEmpty || s.blockedWords.isNotEmpty,
           children: [
-            _SettingsSidebarState._label(l.blockedUsers),
+            _label(l.blockedUsers),
             _field(
-              _blockedUsersCtrl,
+              _form.blockedUsers,
               l.blockedUsersHint,
-              focusNode: _blockedUsersFocus,
+              focusNode: _form.blockedUsersFocus,
               onChanged: (_) => _queueTextSettingsSave(),
               onSubmitted: (_) => _saveTextSettings(),
               onClear: () {
-                _blockedUsersCtrl.clear();
+                _form.blockedUsers.clear();
                 _mutate(() {});
                 _queueTextSettingsSave();
               },
@@ -321,15 +322,15 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
             const SizedBox(height: 12),
-            _SettingsSidebarState._label(l.blockedWordsOrPhrases),
+            _label(l.blockedWordsOrPhrases),
             _field(
-              _blockedWordsCtrl,
+              _form.blockedWords,
               l.blockedWordsHint,
-              focusNode: _blockedWordsFocus,
+              focusNode: _form.blockedWordsFocus,
               onChanged: (_) => _queueTextSettingsSave(),
               onSubmitted: (_) => _saveTextSettings(),
               onClear: () {
-                _blockedWordsCtrl.clear();
+                _form.blockedWords.clear();
                 _mutate(() {});
                 _queueTextSettingsSave();
               },

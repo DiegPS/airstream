@@ -254,7 +254,9 @@ function connect() {
         queue.push(envelope.data);
         showNext();
       }
-    } catch (_) {}
+    } catch (error) {
+      console.warn('Ignored malformed alert message', error);
+    }
   });
   socket.addEventListener('close', () => {
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);

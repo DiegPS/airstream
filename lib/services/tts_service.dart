@@ -153,7 +153,10 @@ class TtsService {
         await Future<void>.delayed(Duration.zero);
         await ensureReady(allowDownload: false);
       }
-    } catch (_) {}
+    } catch (_) {
+      // _initialize already logs the failure and publishes TtsLoadPhase.error.
+      // This background preparation must not surface as an unhandled Future.
+    }
   }
 
   Future<void> ensureReady({required bool allowDownload}) async {
@@ -370,7 +373,9 @@ class TtsService {
       if (output != null && await output.exists()) {
         try {
           await output.delete();
-        } catch (_) {}
+        } catch (_) {
+          // Temporary audio cleanup is best-effort after playback has ended.
+        }
       }
     }
   }

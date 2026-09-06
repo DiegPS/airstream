@@ -311,6 +311,7 @@ class TtsModelCache {
           path: target.path));
       return TtsModelInstallation(model, target);
     } catch (_) {
+      // Remove incomplete artifacts before propagating the installation error.
       if (await staging.exists()) await staging.delete(recursive: true);
       if (await extractionArchive.exists()) await extractionArchive.delete();
       rethrow;

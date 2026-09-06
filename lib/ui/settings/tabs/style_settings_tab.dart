@@ -37,12 +37,12 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
               divisions: 8,
               onChanged: (v) => notifier.update(s.copyWith(chatFontWeight: v)),
             ),
-            _SettingsSidebarState._dropdownRow(
+            _dropdownRow(
               l.textAlignment,
               s.chatTextAlign,
               const ['left', 'center', 'right'],
               (v) => notifier.update(s.copyWith(chatTextAlign: v)),
-              optionLabel: (v) => _SettingsSidebarState._alignmentLabel(l, v),
+              optionLabel: (v) => _alignmentLabel(l, v),
             ),
             StyledSliderRow(
               label: l.maxMessageWidth,
@@ -100,17 +100,17 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
               unit: 'px',
               onChanged: (v) => notifier.update(s.copyWith(messageGap: v)),
             ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.bubble,
               s.showBubble,
               (v) => notifier.update(s.copyWith(showBubble: v)),
             ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.bubbleShadow,
               s.showBubbleShadow,
               (v) => notifier.update(s.copyWith(showBubbleShadow: v)),
             ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.textShadow,
               s.chatTextShadow,
               (v) => notifier.update(s.copyWith(chatTextShadow: v)),
@@ -129,30 +129,30 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
           title: l.platformDisplay,
           icon: Icons.account_circle_outlined,
           children: [
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.avatars,
               s.showAvatars,
               (v) => notifier.update(s.copyWith(showAvatars: v)),
             ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.platformIcon,
               s.showPlatformIcons,
               (v) => notifier.update(s.copyWith(showPlatformIcons: v)),
             ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.badges,
               s.showBadges,
               (v) => notifier.update(s.copyWith(showBadges: v)),
             ),
             if (s.youtubeDualStreamEnabled)
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.youtubeStreamBadges,
                 s.showYoutubeStreamBadges,
                 (v) => notifier.update(
                   s.copyWith(showYoutubeStreamBadges: v),
                 ),
               ),
-            _SettingsSidebarState._switchRow(
+            _switchRow(
               l.timestamp,
               s.showTimestamp,
               (v) => notifier.update(s.copyWith(showTimestamp: v)),

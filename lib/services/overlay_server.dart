@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -49,10 +50,11 @@ class OverlayServer {
       _clients.add(ws);
       _emitClientCount();
       _sendSettingsToClient(ws);
-      ws.stream.listen(null, onDone: () {
-        _clients.remove(ws);
-        _emitClientCount();
-      });
+      ws.stream.listen(
+        null,
+        onError: (Object _) => _removeClient(ws),
+        onDone: () => _removeClient(ws),
+      );
     });
 
     final handler = buildOverlayRoutes(wsHandler);
@@ -65,7 +67,16 @@ class OverlayServer {
       return;
     }
     _server = server;
-    _msgSub = messages.listen(_broadcastMessage);
+    _msgSub = messages.listen(
+      _broadcastMessage,
+      onError: (Object error, StackTrace stack) {
+        AppLogger.warning(
+          'Overlay message stream reported an error',
+          error: error,
+          stackTrace: stack,
+        );
+      },
+    );
   }
 
   void setSettings(SettingsModel settings) {
@@ -155,9 +166,17 @@ class OverlayServer {
     _lifecycleGeneration++;
     await _msgSub?.cancel();
     _msgSub = null;
+    final clients = List<WebSocketChannel>.from(_clients);
+    _clients.clear();
+    for (final client in clients) {
+      try {
+        await client.sink.close().timeout(const Duration(seconds: 1));
+      } catch (_) {
+        // A browser may already have closed or may not acknowledge shutdown.
+      }
+    }
     await _server?.close(force: true);
     _server = null;
-    _clients.clear();
     _emitClientCount();
   }
 
@@ -217,7 +236,8 @@ class OverlayServer {
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
     } catch (_) {
-      _clients.remove(client);
+      // A failed send means the browser disconnected before its close event.
+      _removeClient(client);
     }
   }
 
@@ -228,8 +248,8 @@ class OverlayServer {
       try {
         client.sink.add(json);
       } catch (_) {
-        _clients.remove(client);
-        _emitClientCount();
+        // A failed send means the browser disconnected before its close event.
+        _removeClient(client);
       }
     }
   }
@@ -238,5 +258,9 @@ class OverlayServer {
     if (!_clientCountController.isClosed) {
       _clientCountController.add(_clients.length);
     }
+  }
+
+  void _removeClient(WebSocketChannel client) {
+    if (_clients.remove(client)) _emitClientCount();
   }
 }

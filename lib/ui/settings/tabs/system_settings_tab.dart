@@ -17,7 +17,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           title: l.desktopWindow,
           icon: Icons.window_rounded,
           children: [
-            _SettingsSidebarState._switchTileWithSubtitle(
+            _switchTileWithSubtitle(
               l.clickThrough,
               l.clickThroughDescription,
               win.clickThrough,
@@ -26,13 +26,13 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
                   : (v) => winNotifier.setClickThrough(v),
               activeThumbColor: const Color(0xFFFFB15C),
             ),
-            _SettingsSidebarState._switchTileWithSubtitle(
+            _switchTileWithSubtitle(
               l.alwaysOnTop,
               l.alwaysOnTopDescription,
               win.alwaysOnTop,
               (v) => winNotifier.setAlwaysOnTop(v),
             ),
-            _SettingsSidebarState._switchTileWithSubtitle(
+            _switchTileWithSubtitle(
               l.antiCapture,
               l.antiCaptureDescription,
               win.excludeFromCapture,
@@ -45,7 +45,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           title: l.language,
           icon: Icons.language_rounded,
           children: [
-            _SettingsSidebarState._dropdownRow(
+            _dropdownRow(
               l.language,
               s.appLanguageCode,
               const ['en', 'es'],
@@ -58,19 +58,19 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           title: l.keyboardShortcuts,
           icon: Icons.keyboard_rounded,
           children: [
-            _SettingsSidebarState._shortcutRow(
+            _shortcutRow(
               'Ctrl + B',
               l.hideSidebarTooltip,
             ),
-            _SettingsSidebarState._shortcutRow(
+            _shortcutRow(
               'Ctrl + Shift + T',
               l.toggleTopBarShortcut,
             ),
-            _SettingsSidebarState._shortcutRow(
+            _shortcutRow(
               'Ctrl + Shift + P',
               l.toggleAlwaysOnTopShortcut,
             ),
-            _SettingsSidebarState._shortcutRow(
+            _shortcutRow(
               'Ctrl + Shift + C',
               l.toggleClickThroughShortcut,
             ),

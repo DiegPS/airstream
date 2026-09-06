@@ -29,11 +29,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
           ),
           children: [
             if (s.obsEnabled) ...[
-              _SettingsSidebarState._label(l.webSocketHost),
+              _label(l.webSocketHost),
               _field(
-                _obsHost,
+                _form.obsHost,
                 'localhost:4455',
-                focusNode: _obsHostFocus,
+                focusNode: _form.obsHostFocus,
                 onChanged: (_) {
                   _mutate(() {});
                   _queueTextSettingsSave();
@@ -41,11 +41,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               const SizedBox(height: 8),
-              _SettingsSidebarState._label(l.password),
+              _label(l.password),
               _field(
-                _obsPassword,
+                _form.obsPassword,
                 l.optionalPassword,
-                focusNode: _obsPasswordFocus,
+                focusNode: _form.obsPasswordFocus,
                 obscureText: true,
                 onChanged: (_) => _queueTextSettingsSave(),
                 onSubmitted: (_) => _saveTextSettings(),
@@ -106,46 +106,46 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               const SizedBox(height: 6),
               _obsHudGroupLabel(l.globalHud),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.currentScene,
                 s.obsShowCurrentScene,
                 (v) => notifier.update(s.copyWith(obsShowCurrentScene: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.fps,
                 s.obsShowFps,
                 (v) => notifier.update(s.copyWith(obsShowFps: v)),
               ),
               const SizedBox(height: 6),
               _obsHudGroupLabel(l.streamHud),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.streamState,
                 s.obsShowStreamState,
                 (v) => notifier.update(s.copyWith(obsShowStreamState: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.bitrate,
                 s.obsShowBitrate,
                 (v) => notifier.update(s.copyWith(obsShowBitrate: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.droppedFrames,
                 s.obsShowDroppedFrames,
                 (v) => notifier.update(s.copyWith(obsShowDroppedFrames: v)),
               ),
               const SizedBox(height: 6),
               _obsHudGroupLabel(l.recordingHud),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.recordingState,
                 s.obsShowRecordingState,
                 (v) => notifier.update(s.copyWith(obsShowRecordingState: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.recordingDuration,
                 s.obsShowRecordingDuration,
                 (v) => notifier.update(s.copyWith(obsShowRecordingDuration: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.recordingSize,
                 s.obsShowRecordingSize,
                 (v) => notifier.update(s.copyWith(obsShowRecordingSize: v)),
@@ -170,11 +170,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
           ),
           children: [
             if (s.overlayEnabled) ...[
-              _SettingsSidebarState._label(l.port),
+              _label(l.port),
               _field(
-                _port,
+                _form.port,
                 '8080',
-                focusNode: _portFocus,
+                focusNode: _form.portFocus,
                 errorText: _overlayPortError(l),
                 onChanged: (_) {
                   _mutate(() {});
@@ -184,13 +184,13 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               const SizedBox(height: 10),
               if (overlayState.phase == OverlayServerPhase.starting)
-                _SettingsSidebarState._statusMessage(
+                _statusMessage(
                   l.overlayStarting,
                   color: Colors.amber,
                   icon: Icons.hourglass_top_rounded,
                 ),
               if (overlayState.phase == OverlayServerPhase.error)
-                _SettingsSidebarState._statusMessage(
+                _statusMessage(
                   l.overlayStartFailed(
                     overlayState.port ?? s.overlayPort,
                   ),
@@ -198,7 +198,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   icon: Icons.error_outline_rounded,
                 ),
               if (overlayState.phase == OverlayServerPhase.ready) ...[
-                _SettingsSidebarState._overlayUrlCard(
+                _overlayUrlCard(
                   l: l,
                   title: l.chatObsUrl,
                   overlayUrl: overlayCopyUrl,
@@ -216,7 +216,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   },
                 ),
                 const SizedBox(height: 8),
-                _SettingsSidebarState._overlayUrlCard(
+                _overlayUrlCard(
                   l: l,
                   title: l.alertsObsUrl,
                   overlayUrl: alertsCopyUrl,
@@ -267,7 +267,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.alerts),
+              _section(l.alerts),
               Text(
                 l.alertsDescription,
                 style: const TextStyle(color: Colors.white54, fontSize: 11),
@@ -290,13 +290,13 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   s.copyWith(alertDisplaySeconds: v.round()),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.alertAvatars,
                 s.alertShowAvatars,
                 (v) => notifier.update(s.copyWith(alertShowAvatars: v)),
               ),
               const SizedBox(height: 8),
-              _SettingsSidebarState._alertTestButtons(
+              _alertTestButtons(
                 l: l,
                 onTest: (kind) {
                   final sent = appController.testOverlayAlert(kind);
@@ -311,50 +311,50 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 },
               ),
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.overlayMode),
-              _SettingsSidebarState._switchRow(
+              _section(l.overlayMode),
+              _switchRow(
                 l.chromaKey,
                 s.overlayChromaMode,
                 (v) => notifier.update(s.copyWith(overlayChromaMode: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.showGrid,
                 s.overlayShowGrid,
                 (v) => notifier.update(s.copyWith(overlayShowGrid: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.hideScrollbar,
                 s.overlayHideScrollbar,
                 (v) => notifier.update(s.copyWith(overlayHideScrollbar: v)),
               ),
               if (s.overlayChromaMode) ...[
                 const SizedBox(height: 6),
-                _SettingsSidebarState._label(l.chromaColor),
+                _label(l.chromaColor),
                 _field(
-                  _overlayChromaColorCtrl,
+                  _form.overlayChromaColor,
                   '#00FF00',
-                  focusNode: _overlayChromaColorFocus,
+                  focusNode: _form.overlayChromaColorFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
               ],
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.platformDisplay),
-              _SettingsSidebarState._switchRow(
+              _section(l.platformDisplay),
+              _switchRow(
                 l.platformIcon,
                 s.overlayShowPlatformIcons,
                 (v) => notifier.update(
                   s.copyWith(overlayShowPlatformIcons: v),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.twitchAccent,
                 s.overlayTwitchBubbleAccent,
                 (v) => notifier.update(
                   s.copyWith(overlayTwitchBubbleAccent: v),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.kickAccent,
                 s.overlayKickBubbleAccent,
                 (v) => notifier.update(
@@ -362,7 +362,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.styleSettings),
+              _section(l.styleSettings),
               StyledSliderRow(
                 label: l.fontSize,
                 value: s.overlayFontSize,
@@ -398,30 +398,30 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onChanged: (v) =>
                     notifier.update(s.copyWith(overlayBgOpacity: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.avatars,
                 s.overlayShowAvatars,
                 (v) => notifier.update(s.copyWith(overlayShowAvatars: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.badges,
                 s.overlayShowBadges,
                 (v) => notifier.update(s.copyWith(overlayShowBadges: v)),
               ),
               if (s.youtubeDualStreamEnabled)
-                _SettingsSidebarState._switchRow(
+                _switchRow(
                   l.youtubeStreamBadges,
                   s.overlayShowYoutubeStreamBadges,
                   (v) => notifier.update(
                     s.copyWith(overlayShowYoutubeStreamBadges: v),
                   ),
                 ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.timestamp,
                 s.overlayShowTimestamp,
                 (v) => notifier.update(s.copyWith(overlayShowTimestamp: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.textShadow,
                 s.overlayTextShadow,
                 (v) => notifier.update(s.copyWith(overlayTextShadow: v)),
@@ -437,28 +437,28 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               if (s.overlayTextStroke > 0) ...[
                 const SizedBox(height: 6),
-                _SettingsSidebarState._label(l.outlineColor),
+                _label(l.outlineColor),
                 _field(
-                  _overlayTextStrokeColorCtrl,
+                  _form.overlayTextStrokeColor,
                   '#000000',
-                  focusNode: _overlayTextStrokeColorFocus,
+                  focusNode: _form.overlayTextStrokeColorFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
               ],
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.messageDesign),
-              _SettingsSidebarState._switchRow(
+              _section(l.messageDesign),
+              _switchRow(
                 l.bubbleBackground,
                 s.overlayShowBubble,
                 (v) => notifier.update(s.copyWith(overlayShowBubble: v)),
               ),
-              _SettingsSidebarState._dropdownRow(
+              _dropdownRow(
                 l.textAlignment,
                 s.overlayTextAlign,
                 const ['left', 'center', 'right'],
                 (v) => notifier.update(s.copyWith(overlayTextAlign: v)),
-                optionLabel: (v) => _SettingsSidebarState._alignmentLabel(l, v),
+                optionLabel: (v) => _alignmentLabel(l, v),
               ),
               StyledSliderRow(
                 label: l.bubbleOpacity,
@@ -505,7 +505,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   s.copyWith(overlayMessageTtlSeconds: v.round()),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.superChatColorBar,
                 s.overlaySuperChatBarEnabled,
                 (v) => notifier.update(
@@ -514,11 +514,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               if (s.overlaySuperChatBarEnabled) ...[
                 const SizedBox(height: 6),
-                _SettingsSidebarState._label(l.superChatBarColor),
+                _label(l.superChatBarColor),
                 _field(
-                  _overlaySuperChatBarColorCtrl,
+                  _form.overlaySuperChatBarColor,
                   '#1DE9B6',
-                  focusNode: _overlaySuperChatBarColorFocus,
+                  focusNode: _form.overlaySuperChatBarColorFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
@@ -534,13 +534,13 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.animation),
-              _SettingsSidebarState._dropdownRow(
+              _section(l.animation),
+              _dropdownRow(
                 l.entrance,
                 s.overlayAnimation,
                 const ['slide-up', 'slide-left', 'fade-in', 'zoom-in'],
                 (v) => notifier.update(s.copyWith(overlayAnimation: v)),
-                optionLabel: (v) => _SettingsSidebarState._animationLabel(l, v),
+                optionLabel: (v) => _animationLabel(l, v),
               ),
               StyledSliderRow(
                 label: l.duration,
@@ -553,8 +553,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _SettingsSidebarState._section(l.transform3d),
-              _SettingsSidebarState._switchRow(
+              _section(l.transform3d),
+              _switchRow(
                 l.enable3dEffect,
                 s.overlayThreeDEnabled,
                 (v) => notifier.update(s.copyWith(overlayThreeDEnabled: v)),

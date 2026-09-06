@@ -5,6 +5,8 @@ import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/tts_model_cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/sherpa_test_environment.dart';
+
 class _NativeModelCase {
   const _NativeModelCase({
     required this.environmentKey,
@@ -66,13 +68,18 @@ void main() {
   ];
 
   for (final modelCase in cases) {
-    final directory = Platform.environment[modelCase.environmentKey];
+    final directory = findSherpaModelDirectory(
+      environmentKey: modelCase.environmentKey,
+      storageKey: modelCase.model.storageKey,
+    );
     test(
       'synthesizes audio with ${modelCase.model.name}',
       () async {
         final model = modelCase.model;
         final voice = model.voices.first;
-        final engine = SherpaTtsEngine();
+        final engine = SherpaTtsEngine(
+          nativeLibraryDirectory: findSherpaNativeLibraryDirectory(),
+        );
         try {
           await engine.initialize(TtsModelInstallation(
             model,
@@ -100,11 +107,16 @@ void main() {
     );
   }
 
-  final piperDirectory = Platform.environment['AIRSTREAM_PIPER_MX_MODEL_DIR'];
+  final piperDirectory = findSherpaModelDirectory(
+    environmentKey: 'AIRSTREAM_PIPER_MX_MODEL_DIR',
+    storageKey: TtsModelCatalog.piperMexico.storageKey,
+  );
   test(
     'cancels native generation and can initialize again',
     () async {
-      final engine = SherpaTtsEngine();
+      final engine = SherpaTtsEngine(
+        nativeLibraryDirectory: findSherpaNativeLibraryDirectory(),
+      );
       final installation = TtsModelInstallation(
         TtsModelCatalog.piperMexico,
         Directory(piperDirectory!),

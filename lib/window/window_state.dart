@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:air_window_control/air_window_control.dart';
+import 'package:airstream/services/app_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -70,6 +71,10 @@ class WindowStateNotifier extends StateNotifier<WindowState>
         );
       }
     } catch (error) {
+      AppLogger.warning(
+        'Global click-through hotkey registration failed',
+        error: error,
+      );
       if (mounted) {
         state = state.copyWith(
           globalClickThroughHotKeyRegistered: false,
@@ -96,7 +101,13 @@ class WindowStateNotifier extends StateNotifier<WindowState>
     });
     _clickThroughQueue = operation.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object error, StackTrace stack) {
+        AppLogger.warning(
+          'Click-through window update failed',
+          error: error,
+          stackTrace: stack,
+        );
+      },
     );
     return operation;
   }

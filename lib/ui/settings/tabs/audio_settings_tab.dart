@@ -13,48 +13,6 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
     String captionsCopyUrl,
     bool overlayReady,
   ) {
-    Future<void> removeSelectedTtsModel() async {
-      final model = TtsModelCatalog.byId(s.ttsModelId);
-      final remove = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(l.removeTtsModelTitle(model.name)),
-          content: Text(l.removeTtsModelConfirmationNamed(model.name)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(l.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(l.remove),
-            ),
-          ],
-        ),
-      );
-      if (remove != true || !context.mounted) return;
-      try {
-        await notifier.update(s.copyWith(ttsEnabled: false));
-        await appController.removeTtsModel(s.ttsModelId);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.ttsModelRemoved)),
-          );
-        }
-      } catch (error, stack) {
-        AppLogger.error(
-          'Could not remove TTS model',
-          error: error,
-          stackTrace: stack,
-        );
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.ttsModelRemovalFailed)),
-          );
-        }
-      }
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -71,7 +29,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
           children: [
             if (s.ttsEnabled) ...[
               if (ttsLoadState != null) ...[
-                _SettingsSidebarState._ttsStatusCard(
+                _ttsStatusCard(
                   l,
                   ttsLoadState,
                   onDownload: () async {
@@ -92,7 +50,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SettingsSidebarState._dropdownRow(
+                    _dropdownRow(
                       l.ttsSelectedModel,
                       engineId,
                       const [
@@ -117,12 +75,12 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                           ttsSteps: next.defaultSteps,
                         ));
                       },
-                      optionLabel: _SettingsSidebarState._ttsEngineName,
+                      optionLabel: _ttsEngineName,
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 2, bottom: 6),
                       child: Text(
-                        _SettingsSidebarState._ttsModelDescription(l, model.id),
+                        _ttsModelDescription(l, model.id),
                         style: const TextStyle(
                           color: Colors.white60,
                           fontSize: 11,
@@ -160,7 +118,13 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: removeSelectedTtsModel,
+                    onPressed: () => _removeSelectedTtsModel(
+                      context: context,
+                      l: l,
+                      settings: s,
+                      notifier: notifier,
+                      appController: appController,
+                    ),
                     icon: const Icon(Icons.delete_outline_rounded, size: 14),
                     label: Text(l.removeTtsModel),
                     style: TextButton.styleFrom(
@@ -187,15 +151,14 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
 
                 return Column(
                   children: [
-                    _SettingsSidebarState._dropdownRow(
+                    _dropdownRow(
                       l.voice,
                       voice,
                       model.voices.map((v) => v.id).toList(),
                       (v) => notifier.update(s.copyWith(ttsVoice: v)),
-                      optionLabel: (id) =>
-                          _SettingsSidebarState._ttsVoiceLabel(l, model, id),
+                      optionLabel: (id) => _ttsVoiceLabel(l, model, id),
                     ),
-                    _SettingsSidebarState._dropdownRow(
+                    _dropdownRow(
                       l.language,
                       language,
                       languageOptions,
@@ -214,8 +177,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                           ttsSteps: next.defaultSteps,
                         ));
                       },
-                      optionLabel: (id) =>
-                          _SettingsSidebarState._ttsLanguageLabel(l, id),
+                      optionLabel: (id) => _ttsLanguageLabel(l, id),
                     ),
                     if (model.referenceMode != TtsReferenceMode.none) ...[
                       const SizedBox(height: 8),
@@ -225,8 +187,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                             child: Text(
                               s.ttsReferenceAudioPath.isEmpty
                                   ? l.usingBundledVoice(
-                                      _SettingsSidebarState._ttsVoiceLabel(
-                                          l, model, voice))
+                                      _ttsVoiceLabel(l, model, voice))
                                   : p.basename(s.ttsReferenceAudioPath),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -269,11 +230,11 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                       if (model.needsReferenceText &&
                           s.ttsReferenceAudioPath.isNotEmpty) ...[
                         const SizedBox(height: 6),
-                        _SettingsSidebarState._label(l.referenceTranscript),
+                        _label(l.referenceTranscript),
                         _field(
-                          _ttsReferenceTextCtrl,
+                          _form.ttsReferenceText,
                           l.referenceTranscriptHint,
-                          focusNode: _ttsReferenceTextFocus,
+                          focusNode: _form.ttsReferenceTextFocus,
                           onChanged: (_) => _queueTextSettingsSave(),
                           onSubmitted: (_) => _saveTextSettings(),
                         ),
@@ -282,7 +243,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                     if (model.family == TtsModelFamily.supertonic ||
                         model.family == TtsModelFamily.zipvoice ||
                         model.family == TtsModelFamily.pocket)
-                      _SettingsSidebarState._dropdownRow(
+                      _dropdownRow(
                         l.quality,
                         const [3, 4, 5, 6, 8, 12].contains(s.ttsSteps)
                             ? s.ttsSteps.toString()
@@ -306,8 +267,8 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 );
               }),
               const SizedBox(height: 8),
-              _SettingsSidebarState._label(l.testText),
-              _field(_ttsTestCtrl, l.ttsTestTextHint),
+              _label(l.testText),
+              _field(_form.ttsTest, l.ttsTestTextHint),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
@@ -315,9 +276,9 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                   onPressed: (ttsBusy || (ttsLoadState?.isLoading ?? false))
                       ? null
                       : () => appController.testTts(
-                            _ttsTestCtrl.text.trim().isEmpty
+                            _form.ttsTest.text.trim().isEmpty
                                 ? l.ttsDefaultTestText
-                                : _ttsTestCtrl.text,
+                                : _form.ttsTest.text,
                           ),
                   icon: const Icon(Icons.volume_up_rounded, size: 16),
                   label: Text(
@@ -334,38 +295,38 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.membersOnly,
                 s.ttsMembersOnly,
                 (v) => notifier.update(s.copyWith(ttsMembersOnly: v)),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.commandMode,
                 s.ttsCommandMode,
                 (v) => notifier.update(s.copyWith(ttsCommandMode: v)),
               ),
               if (s.ttsCommandMode) ...[
                 const SizedBox(height: 8),
-                _SettingsSidebarState._label(l.commandPrefix),
+                _label(l.commandPrefix),
                 _field(
-                  _ttsPrefixCtrl,
+                  _form.ttsPrefix,
                   l.commandPrefixHint,
-                  focusNode: _ttsPrefixFocus,
+                  focusNode: _form.ttsPrefixFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
-                _SettingsSidebarState._switchRow(
+                _switchRow(
                   l.ignoreCommandCase,
                   s.ttsCommandIgnoreCase,
                   (v) => notifier.update(s.copyWith(ttsCommandIgnoreCase: v)),
                 ),
               ],
               const SizedBox(height: 8),
-              _SettingsSidebarState._label(l.separatorText),
+              _label(l.separatorText),
               _field(
-                _ttsSeparatorCtrl,
+                _form.ttsSeparator,
                 l.separatorTextHint,
-                focusNode: _ttsSeparatorFocus,
+                focusNode: _form.ttsSeparatorFocus,
                 onChanged: (_) => _queueTextSettingsSave(),
                 onSubmitted: (_) => _saveTextSettings(),
               ),
@@ -401,7 +362,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
 
                 return Column(
                   children: [
-                    _SettingsSidebarState._dropdownRow(
+                    _dropdownRow(
                       l.spokenLanguage,
                       source,
                       model.languages.map((item) => item.code).toList(),
@@ -409,10 +370,9 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                         liveCaptionsSourceLanguage: value,
                         liveCaptionsTargetLanguage: value,
                       )),
-                      optionLabel: (value) =>
-                          _SettingsSidebarState._languageLabel(l, value),
+                      optionLabel: (value) => _languageLabel(l, value),
                     ),
-                    _SettingsSidebarState._dropdownRow(
+                    _dropdownRow(
                       l.captionOutput,
                       model.supportsDirection(
                               source, s.liveCaptionsTargetLanguage)
@@ -422,27 +382,26 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                       (value) => notifier.update(s.copyWith(
                         liveCaptionsTargetLanguage: value,
                       )),
-                      optionLabel: (value) =>
-                          _SettingsSidebarState._languageLabel(l, value),
+                      optionLabel: (value) => _languageLabel(l, value),
                     ),
                   ],
                 );
               }),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.sendCaptionsToObs,
                 s.liveCaptionsOverlayEnabled,
                 (value) => notifier.update(
                   s.copyWith(liveCaptionsOverlayEnabled: value),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.noiseReduction,
                 s.liveCaptionsDenoiseEnabled,
                 (value) => notifier.update(
                   s.copyWith(liveCaptionsDenoiseEnabled: value),
                 ),
               ),
-              _SettingsSidebarState._switchRow(
+              _switchRow(
                 l.voiceCommandsObs,
                 s.voiceCommandsEnabled,
                 (value) => notifier.update(
@@ -451,11 +410,11 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
               ),
               if (s.voiceCommandsEnabled) ...[
                 const SizedBox(height: 6),
-                _SettingsSidebarState._label(l.wakeWord),
+                _label(l.wakeWord),
                 _field(
-                  _voiceWakeWordCtrl,
+                  _form.voiceWakeWord,
                   'airstream',
-                  focusNode: _voiceWakeWordFocus,
+                  focusNode: _form.voiceWakeWordFocus,
                   onChanged: (_) => _queueTextSettingsSave(),
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
@@ -478,8 +437,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _SettingsSidebarState._captionStatusDescription(
-                          l, captionsState.phase),
+                      _captionStatusDescription(l, captionsState.phase),
                       style:
                           const TextStyle(color: Colors.white70, fontSize: 11),
                     ),
@@ -540,7 +498,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
               ],
               if (s.liveCaptionsOverlayEnabled && overlayReady) ...[
                 const SizedBox(height: 8),
-                _SettingsSidebarState._overlayUrlCard(
+                _overlayUrlCard(
                   l: l,
                   title: l.obsCaptions,
                   overlayUrl: captionsCopyUrl,

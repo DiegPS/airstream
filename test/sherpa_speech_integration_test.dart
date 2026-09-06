@@ -6,12 +6,25 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
+import 'package:airstream/services/speech/speech_model_catalog.dart';
+
+import 'support/sherpa_test_environment.dart';
+
 void main() {
-  final nativeDirectory = Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'];
-  final vadModel = Platform.environment['AIRSTREAM_SILERO_VAD_MODEL'];
-  final denoiserModel = Platform.environment['AIRSTREAM_GTCRN_MODEL'];
-  final canRun =
-      nativeDirectory != null && vadModel != null && denoiserModel != null;
+  final nativeDirectory = findSherpaNativeLibraryDirectory();
+  final speechDirectory = findSherpaModelDirectory(
+    environmentKey: 'AIRSTREAM_CAPTIONS_MODEL_DIR',
+    storageKey: SpeechModelCatalog.canary.package.storageKey,
+  );
+  final vadModel = Platform.environment['AIRSTREAM_SILERO_VAD_MODEL'] ??
+      (speechDirectory == null ? null : '$speechDirectory\\silero_vad.onnx');
+  final denoiserModel = Platform.environment['AIRSTREAM_GTCRN_MODEL'] ??
+      (speechDirectory == null ? null : '$speechDirectory\\gtcrn_simple.onnx');
+  final canRun = nativeDirectory != null &&
+      vadModel != null &&
+      File(vadModel).existsSync() &&
+      denoiserModel != null &&
+      File(denoiserModel).existsSync();
 
   test(
     'loads native VAD and streaming noise reduction',

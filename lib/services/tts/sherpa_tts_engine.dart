@@ -28,11 +28,14 @@ class SherpaTtsEngine {
   SherpaTtsEngine({
     SherpaTtsWorkerEntrypoint? workerEntrypoint,
     Duration synthesisTimeout = const Duration(seconds: 90),
+    String? nativeLibraryDirectory,
   })  : _workerEntrypoint = workerEntrypoint ?? _workerMain,
-        _synthesisTimeout = synthesisTimeout;
+        _synthesisTimeout = synthesisTimeout,
+        _nativeLibraryDirectory = nativeLibraryDirectory;
 
   final SherpaTtsWorkerEntrypoint _workerEntrypoint;
   final Duration _synthesisTimeout;
+  final String? _nativeLibraryDirectory;
   Isolate? _isolate;
   SendPort? _commands;
   TtsModelInstallation? _installation;
@@ -69,9 +72,9 @@ class SherpaTtsEngine {
         <String, Object>{
           'reply': ready.sendPort,
           'model': _modelMessage(installation),
-          'nativeLibraryDirectory':
+          'nativeLibraryDirectory': _nativeLibraryDirectory ??
               Platform.environment['AIRSTREAM_SHERPA_LIBRARY_DIR'] ??
-                  File(Platform.resolvedExecutable).parent.path,
+              File(Platform.resolvedExecutable).parent.path,
         },
         errorsAreFatal: true,
         onError: guard.errorPort.sendPort,
@@ -92,6 +95,7 @@ class SherpaTtsEngine {
       _installation = installation;
       guard.markReady();
     } catch (_) {
+      // Initialization cleanup is completed here before the error is rethrown.
       isolate?.kill(priority: Isolate.immediate);
       if (identical(_workerGuard, guard)) {
         _workerGuard = null;
@@ -203,7 +207,9 @@ class SherpaTtsEngine {
       try {
         await guard.exited.timeout(const Duration(seconds: 5));
         safeToReleaseNativeMemory = true;
-      } catch (_) {}
+      } catch (_) {
+        // Keep the native flag allocated when worker exit cannot be proven.
+      }
     } finally {
       response.close();
       if (identical(_cancelFlag, cancelFlag)) _cancelFlag = null;
@@ -216,7 +222,9 @@ class SherpaTtsEngine {
         unawaited(Future<void>.microtask(() async {
           try {
             await unload();
-          } catch (_) {}
+          } catch (_) {
+            // A concurrent disposal may already have unloaded the worker.
+          }
         }));
       }
     }
@@ -266,6 +274,7 @@ class SherpaTtsEngine {
     try {
       await response.first.timeout(const Duration(seconds: 3));
     } catch (_) {
+      // Timed-out shutdown is completed by terminating the isolated worker.
       isolate?.kill(priority: Isolate.immediate);
     } finally {
       response.close();

@@ -152,7 +152,12 @@ class ObsService {
     try {
       await action(obs);
       _emit(_state.copyWith(clearError: true));
-    } catch (error) {
+    } catch (error, stack) {
+      AppLogger.error(
+        'OBS control failed: $label',
+        error: error,
+        stackTrace: stack,
+      );
       _emit(_state.copyWith(error: 'Could not $label: $error'));
       rethrow;
     }
@@ -265,13 +270,18 @@ class ObsService {
         ),
       );
       _startStatsPolling(generation);
-    } catch (e) {
+    } catch (e, stack) {
       final failedObs = connectingObs;
       if (identical(_obs, failedObs)) {
         _obs = null;
       }
       await _closeSocket(failedObs);
       if (generation != _generation) return;
+      AppLogger.error(
+        'OBS connection failed for $trimmedHost',
+        error: e,
+        stackTrace: stack,
+      );
       _stopStatsPolling();
       _emit(
         _state.copyWith(
@@ -336,7 +346,9 @@ class ObsService {
     if (obs == null) return;
     try {
       await obs.close();
-    } catch (_) {}
+    } catch (_) {
+      // Best-effort cleanup: the socket is already detached from app state.
+    }
   }
 
   void _handleSocketDone(int generation, ObsWebSocket? obs) {
@@ -609,10 +621,10 @@ class ObsService {
     }
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     _stopStatsPolling();
-    unawaited(_closeCurrentSocket());
-    _stateController.close();
+    await _closeCurrentSocket();
+    await _stateController.close();
   }
 }
 

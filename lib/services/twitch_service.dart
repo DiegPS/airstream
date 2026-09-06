@@ -233,10 +233,10 @@ class TwitchService {
     _emit(ServiceStatus.idle, null);
   }
 
-  void dispose() {
-    disconnect();
-    _controller.close();
-    _statusController.close();
+  Future<void> dispose() async {
+    await disconnect();
+    await _controller.close();
+    await _statusController.close();
   }
 
   // ── internals ────────────────────────────────────────────────────────────────
@@ -247,6 +247,7 @@ class TwitchService {
     try {
       await channel.ready;
     } catch (_) {
+      // The failed channel is not installed; close it before propagating.
       await channel.sink.close();
       rethrow;
     }
@@ -289,7 +290,9 @@ class TwitchService {
         _channel = null;
         try {
           await channel.sink.close();
-        } catch (_) {}
+        } catch (_) {
+          // The server already closed this socket; local cleanup is complete.
+        }
       }
 
       if (!_isCurrent(generation)) return;
@@ -541,7 +544,9 @@ class TwitchService {
         _emotes[code] =
             _ThirdPartyEmote(code, url, isAnimated: imageType == 'gif');
       }
-    } catch (_) {}
+    } catch (error) {
+      AppLogger.debug('BetterTTV emotes unavailable: $error');
+    }
   }
 
   Future<void> _loadFfz(int generation) async {
@@ -563,7 +568,9 @@ class TwitchService {
           }
         }
       }
-    } catch (_) {}
+    } catch (error) {
+      AppLogger.debug('FrankerFaceZ emotes unavailable: $error');
+    }
   }
 
   Future<void> _loadSevenTv(int generation) async {
@@ -594,6 +601,8 @@ class TwitchService {
         final url = 'https:$baseUrl/$fileName';
         _emotes[name] = _ThirdPartyEmote(name, url, isAnimated: isAnimated);
       }
-    } catch (_) {}
+    } catch (error) {
+      AppLogger.debug('7TV emotes unavailable: $error');
+    }
   }
 }

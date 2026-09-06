@@ -39,6 +39,7 @@ class SherpaCpuThreadPolicy {
       }
       return cores > 0 ? cores : fallback;
     } catch (_) {
+      // Topology discovery is optional; the conservative fallback is safe.
       return fallback;
     } finally {
       if (buffer != null) calloc.free(buffer);

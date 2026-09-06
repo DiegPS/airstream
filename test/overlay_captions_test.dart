@@ -151,4 +151,69 @@ void main() {
       await messages.close();
     }
   });
+
+  test('tracks WebSocket clients and broadcasts live setting changes',
+      () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    IOWebSocketChannel? socket;
+    StreamIterator<dynamic>? events;
+    final clientCounts = StreamIterator(server.clientCountStream);
+    try {
+      expect(await clientCounts.moveNext(), isTrue);
+      expect(clientCounts.current, 0);
+      await server.start(
+        messages: messages.stream,
+        settings: const SettingsModel(appLanguageCode: 'en'),
+        port: 0,
+      );
+
+      final connectedCount = clientCounts.moveNext();
+      socket = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+      await socket.ready;
+      events = StreamIterator(socket.stream);
+      expect(await connectedCount, isTrue);
+      expect(clientCounts.current, 1);
+      expect(await events.moveNext(), isTrue);
+      expect(
+        (jsonDecode(events.current as String) as Map<String, dynamic>)['type'],
+        'settings',
+      );
+
+      server.setSettings(
+        const SettingsModel(appLanguageCode: 'es', overlayFontSize: 31),
+      );
+      expect(await events.moveNext(), isTrue);
+      final settingsEnvelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(settingsEnvelope['type'], 'settings');
+      expect(
+        (settingsEnvelope['data'] as Map<String, dynamic>)['fontSize'],
+        31,
+      );
+
+      server.broadcastCaption('Texto en vivo');
+      expect(await events.moveNext(), isTrue);
+      final captionEnvelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(captionEnvelope['type'], 'caption');
+      expect(
+        (captionEnvelope['data'] as Map<String, dynamic>)['text'],
+        'Texto en vivo',
+      );
+
+      await events.cancel();
+      events = null;
+      await socket.sink.close();
+      socket = null;
+      await server.stop();
+      expect(server.clientCount, 0);
+    } finally {
+      await events?.cancel();
+      await socket?.sink.close();
+      await clientCounts.cancel();
+      await server.dispose();
+      await messages.close();
+    }
+  });
 }

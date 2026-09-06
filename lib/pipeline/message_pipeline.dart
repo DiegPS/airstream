@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 /// Merges streams from YouTube, Twitch, and Kick, applies filtering rules,
@@ -54,7 +55,18 @@ class MessagePipeline {
 
   /// Adds a platform stream to the pipeline. Can be called multiple times.
   void addSource(Stream<ChatMessage> source) {
-    _subscriptions.add(source.listen(_handleMessage, onError: (_) {}));
+    _subscriptions.add(source.listen(
+      _handleMessage,
+      onError: (Object error, StackTrace stack) {
+        // Connection status is owned by the platform service, but pipeline
+        // failures must still remain diagnosable.
+        AppLogger.warning(
+          'Chat source stream reported an error',
+          error: error,
+          stackTrace: stack,
+        );
+      },
+    ));
   }
 
   void dispose() {
