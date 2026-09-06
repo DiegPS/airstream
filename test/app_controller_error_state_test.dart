@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/settings/settings_model.dart';
-import 'package:airstream/settings/settings_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

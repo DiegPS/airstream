@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:airstream/main.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/application/app_providers.dart';
 
 class _WidgetTestSettings extends SettingsNotifier {
   _WidgetTestSettings([

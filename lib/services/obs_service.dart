@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:airstream/services/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:obs_websocket/obs_websocket.dart';
 
@@ -464,7 +465,7 @@ class ObsService {
           ),
         ),
       );
-    } catch (_) {
+    } catch (error, stack) {
       if (generation != _generation) return;
 
       _consecutivePollFailures++;
@@ -480,6 +481,11 @@ class ObsService {
           );
           break;
         case ObsPollFailureAction.reconnect:
+          AppLogger.warning(
+            'OBS statistics polling failed repeatedly; reconnecting',
+            error: error,
+            stackTrace: stack,
+          );
           final host = _state.host;
           final password = _connectionPassword;
           _emit(

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/settings_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -156,6 +157,37 @@ void main() {
       contains('recoverable-secret'),
     );
   });
+
+  test('loads and persists through an injected settings repository', () async {
+    final repository = _MemorySettingsRepository(
+      jsonEncode({'appLanguageCode': 'es'}),
+    );
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: repository,
+    );
+
+    await notifier.ready;
+    expect(notifier.state.appLanguageCode, 'es');
+
+    await notifier.update(notifier.state.copyWith(appLanguageCode: 'en'));
+
+    expect(jsonDecode(repository.json!), containsPair('appLanguageCode', 'en'));
+  });
+}
+
+class _MemorySettingsRepository implements SettingsRepository {
+  _MemorySettingsRepository([this.json]);
+
+  String? json;
+
+  @override
+  Future<String?> read() async => json;
+
+  @override
+  Future<void> write(String json) async {
+    this.json = json;
+  }
 }
 
 class _MemorySecureSettingsStore implements SecureSettingsStore {

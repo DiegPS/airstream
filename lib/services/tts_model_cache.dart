@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'app_logger.dart';
 import 'tts/tts_model_catalog.dart';
 
 enum TtsInstallPhase {
@@ -145,7 +146,12 @@ class TtsModelCache {
         _verifiedInstallations.add(verificationKey);
       }
       return TtsModelInstallation(model, directory);
-    } catch (_) {
+    } catch (error, stack) {
+      AppLogger.warning(
+        'Ignoring an invalid installed TTS model at ${directory.path}',
+        error: error,
+        stackTrace: stack,
+      );
       return null;
     }
   }
