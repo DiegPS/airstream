@@ -249,6 +249,7 @@ class KickService {
             url: p.emote!.url,
             alt: p.emote!.name,
             isCustom: true,
+            isZeroWidth: p.emote!.isZeroWidth,
           ),
         );
       }

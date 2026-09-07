@@ -305,6 +305,7 @@ class YouTubeService {
           ),
           alt: emoji.emojiText,
           isCustom: emoji.isCustomEmoji,
+          isZeroWidth: emoji.isZeroWidth,
         ));
       }
       return MessageItem.text(m.text);

@@ -727,33 +727,110 @@ class _MessageContent extends StatelessWidget {
 
   Text _buildText(TextStyle style, {required bool renderEmojis}) {
     final emojiSize = (style.fontSize ?? 14) * 1.5;
+    final visualItems = _composeEmojiClusters(items);
 
     return Text.rich(
       TextSpan(
         style: style,
         children: [
-          for (final item in items)
-            if (item.isEmoji)
+          for (final item in visualItems)
+            if (item case final _InlineEmojiCluster cluster)
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: renderEmojis
-                      ? _EmojiWidget(
-                          emoji: item.emoji!,
+                      ? _EmojiClusterWidget(
+                          emojis: cluster.emojis,
                           size: emojiSize,
                         )
                       : SizedBox.square(dimension: emojiSize),
                 ),
               )
-            else
-              TextSpan(text: item.text),
+            else if (item case final _InlineText text)
+              TextSpan(text: text.value),
         ],
       ),
       textAlign: textAlign,
       softWrap: true,
     );
   }
+}
+
+List<_InlineMessageItem> _composeEmojiClusters(List<MessageItem> items) {
+  final result = <_InlineMessageItem>[];
+  for (final item in items) {
+    if (!item.isEmoji) {
+      if (item.text.isEmpty) continue;
+      if (result.isNotEmpty && result.last is _InlineText) {
+        final previous = result.removeLast() as _InlineText;
+        result.add(_InlineText(previous.value + item.text));
+      } else {
+        result.add(_InlineText(item.text));
+      }
+      continue;
+    }
+
+    final emoji = item.emoji!;
+    if (emoji.isZeroWidth) {
+      _InlineEmojiCluster? base;
+      if (result.isNotEmpty && result.last is _InlineEmojiCluster) {
+        base = result.last as _InlineEmojiCluster;
+      } else if (result.length >= 2) {
+        final whitespace = result.last;
+        if (whitespace is _InlineText &&
+            whitespace.value.trim().isEmpty &&
+            result[result.length - 2] is _InlineEmojiCluster) {
+          result.removeLast();
+          base = result.last as _InlineEmojiCluster;
+        }
+      }
+      if (base != null && !base.emojis.first.isZeroWidth) {
+        base.emojis.add(emoji);
+        continue;
+      }
+    }
+    result.add(_InlineEmojiCluster([emoji]));
+  }
+  return result;
+}
+
+sealed class _InlineMessageItem {}
+
+final class _InlineText extends _InlineMessageItem {
+  _InlineText(this.value);
+  final String value;
+}
+
+final class _InlineEmojiCluster extends _InlineMessageItem {
+  _InlineEmojiCluster(this.emojis);
+  final List<EmojiItem> emojis;
+}
+
+class _EmojiClusterWidget extends StatelessWidget {
+  const _EmojiClusterWidget({required this.emojis, required this.size});
+
+  final List<EmojiItem> emojis;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+        key: const Key('emoji-cluster'),
+        dimension: size,
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            for (var index = 0; index < emojis.length; index++)
+              KeyedSubtree(
+                key: Key(index == 0
+                    ? 'emoji-cluster-base'
+                    : 'emoji-zero-width-${emojis[index].alt}'),
+                child: _EmojiWidget(emoji: emojis[index], size: size),
+              ),
+          ],
+        ),
+      );
 }
 
 class _OutlinedText extends StatelessWidget {

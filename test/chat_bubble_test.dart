@@ -331,6 +331,69 @@ void main() {
     expect(find.text('HA VUELTO'), findsOneWidget);
     expect(find.text('RECOMPENSA'), findsOneWidget);
   });
+
+  testWidgets('layers zero-width emotes over the preceding emote',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(const SettingsModel());
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'zero-width',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [
+        MessageItem.emoji(EmojiItem(url: '', alt: 'Pepe')),
+        MessageItem.text(' '),
+        MessageItem.emoji(
+          EmojiItem(url: '', alt: 'Hat', isZeroWidth: true),
+        ),
+      ],
+      timestamp: DateTime.utc(2026, 9, 7),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('emoji-cluster')), findsOneWidget);
+    expect(find.byKey(const Key('emoji-cluster-base')), findsOneWidget);
+    expect(find.byKey(const Key('emoji-zero-width-Hat')), findsOneWidget);
+  });
+
+  testWidgets('renders an orphan zero-width emote visibly as a normal emote',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(const SettingsModel());
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'orphan-zero-width',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [
+        MessageItem.emoji(
+          EmojiItem(url: '', alt: 'Hat', isZeroWidth: true),
+        ),
+      ],
+      timestamp: DateTime.utc(2026, 9, 7),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('Hat'), findsOneWidget);
+    expect(find.byKey(const Key('emoji-zero-width-Hat')), findsNothing);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

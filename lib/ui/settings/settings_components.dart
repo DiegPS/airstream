@@ -365,7 +365,6 @@ Widget _label(String t) => Padding(
     );
 
 Widget _sidebarHeader({
-  required AppLocalizations l,
   required String? youtubeValue,
   required String twitchValue,
   required String kickValue,
@@ -392,49 +391,12 @@ Widget _sidebarHeader({
       ),
   ];
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          Text(
-            l.dashboard,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFF303030)),
-            ),
-            child: const Text(
-              'Ctrl+B',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-        ],
-      ),
-      if (badges.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: badges,
-        ),
-      ],
-    ],
+  if (badges.isEmpty) return const SizedBox.shrink();
+
+  return Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: badges,
   );
 }
 

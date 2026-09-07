@@ -85,12 +85,14 @@ class EmojiItem {
   final String alt;
   final bool isAnimated; // GIF or animated WebP
   final bool isCustom;
+  final bool isZeroWidth;
 
   const EmojiItem({
     required this.url,
     required this.alt,
     this.isAnimated = false,
     this.isCustom = false,
+    this.isZeroWidth = false,
   });
 }
 

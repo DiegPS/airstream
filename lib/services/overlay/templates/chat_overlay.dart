@@ -119,6 +119,21 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     vertical-align: middle;
     margin: 0 0.1em;
   }
+  .message-text .emoji-cluster {
+    position: relative;
+    display: inline-block;
+    width: 1.25em;
+    height: 1.25em;
+    vertical-align: middle;
+    margin: 0 0.1em;
+  }
+  .message-text .emoji-cluster .emoji {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
   .reply-context {
     color: rgba(255,255,255,0.7);
     font-size: 0.78em;
@@ -402,25 +417,60 @@ function membershipEventLabel(message, strings, isTwitch, isKick) {
 
 function appendMessageItems(container, items) {
   if (!Array.isArray(items)) return;
+  let activeCluster = null;
+  let pendingWhitespace = '';
+
+  function appendText(value) {
+    if (!value) return;
+    const text = document.createElement('span');
+    text.textContent = value;
+    container.appendChild(text);
+  }
+
+  function appendEmoji(item, cluster) {
+    const image = document.createElement('img');
+    image.src = normalizeUrl(item.url);
+    image.alt = item.alt || '';
+    image.className = item.isZeroWidth ? 'emoji zero-width' : 'emoji';
+    image.referrerPolicy = 'no-referrer';
+    image.addEventListener('load', scheduleScrollToBottom);
+    image.addEventListener('error', () => {
+      if (item.isZeroWidth) {
+        image.remove();
+      } else {
+        image.replaceWith(document.createTextNode(item.alt || item.text || ''));
+      }
+      scheduleScrollToBottom();
+    }, { once: true });
+    cluster.appendChild(image);
+  }
+
   for (const item of items) {
     if (item && item.kind === 'emoji' && item.url) {
-      const image = document.createElement('img');
-      image.src = normalizeUrl(item.url);
-      image.alt = item.alt || '';
-      image.className = 'emoji';
-      image.referrerPolicy = 'no-referrer';
-      image.addEventListener('load', scheduleScrollToBottom);
-      image.addEventListener('error', () => {
-        image.replaceWith(document.createTextNode(item.alt || item.text || ''));
-        scheduleScrollToBottom();
-      }, { once: true });
-      container.appendChild(image);
+      if (item.isZeroWidth && activeCluster) {
+        pendingWhitespace = '';
+        appendEmoji(item, activeCluster);
+        continue;
+      }
+      appendText(pendingWhitespace);
+      pendingWhitespace = '';
+      const cluster = document.createElement('span');
+      cluster.className = 'emoji-cluster';
+      container.appendChild(cluster);
+      appendEmoji(item, cluster);
+      activeCluster = item.isZeroWidth ? null : cluster;
     } else {
-      const text = document.createElement('span');
-      text.textContent = item && item.text ? item.text : '';
-      container.appendChild(text);
+      const value = item && item.text ? item.text : '';
+      if (activeCluster && value.trim() === '') {
+        pendingWhitespace += value;
+      } else {
+        appendText(pendingWhitespace + value);
+        pendingWhitespace = '';
+        activeCluster = null;
+      }
     }
   }
+  appendText(pendingWhitespace);
 }
 
 function createMessageBubble(message, animate) {

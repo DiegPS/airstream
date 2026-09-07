@@ -41,7 +41,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Dashboard'), findsNothing);
     expect(find.text('Connections'), findsWidgets);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -57,7 +57,8 @@ void main() {
       ),
     );
     expect(find.byType(AirstreamApp), findsOneWidget);
-    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Dashboard'), findsNothing);
+    expect(find.text('Ctrl+B'), findsNothing);
     expect(find.text('Connections'), findsWidgets);
     expect(find.text('Panel'), findsNothing);
     expect(find.text('Conexiones'), findsNothing);
@@ -156,7 +157,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Panel'), findsOneWidget);
+    expect(find.text('Panel'), findsNothing);
     expect(find.text('Conexiones'), findsWidgets);
     expect(find.text('Dashboard'), findsNothing);
     expect(find.text('Connections'), findsNothing);

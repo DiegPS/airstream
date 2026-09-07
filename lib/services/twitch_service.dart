@@ -175,6 +175,7 @@ class TwitchService {
         url: emote.url,
         alt: emote.code,
         isAnimated: emote.isAnimated,
+        isZeroWidth: emote.isZeroWidth,
       ),
     );
   }

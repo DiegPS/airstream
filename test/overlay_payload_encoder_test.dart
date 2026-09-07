@@ -29,7 +29,13 @@ void main() {
       author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
       items: const [
         MessageItem.text('Hola '),
-        MessageItem.emoji(EmojiItem(url: 'https://emoji', alt: ':wave:')),
+        MessageItem.emoji(
+          EmojiItem(
+            url: 'https://emoji',
+            alt: ':wave:',
+            isZeroWidth: true,
+          ),
+        ),
       ],
       membershipGiftCount: 5,
       reply: const ChatReplyContext(
@@ -58,6 +64,7 @@ void main() {
     expect(payload['id'], 'message-id');
     expect(payload['text'], 'Hola :wave:');
     expect(payload['items'], hasLength(2));
+    expect((payload['items'] as List)[1]['isZeroWidth'], isTrue);
     expect(payload['membershipGiftCount'], 5);
     expect((payload['reply'] as Map)['messageId'], 'parent');
     expect((payload['sharedSource'] as Map)['channelId'], 'shared-channel');

@@ -55,21 +55,21 @@ dependencies:
   # Window control (click-through, anti-capture)
   air_window_control:
     git:
-      url: git@github.com:DiegPS/air_window_control.git
+      url: https://github.com/DiegPS/air_window_control.git
       ref: main
 
   # Chat clients
   dart_youtube_chat:
     git:
-      url: git@github.com:DiegPS/dart_youtube_chat.git
+      url: https://github.com/DiegPS/dart_youtube_chat.git
       ref: main
   dart_kick_chat:
     git:
-      url: git@github.com:DiegPS/dart_kick_chat.git
+      url: https://github.com/DiegPS/dart_kick_chat.git
       ref: main
   dart_twitch_chat:
     git:
-      url: git@github.com:DiegPS/dart_twitch_chat.git
+      url: https://github.com/DiegPS/dart_twitch_chat.git
       ref: main
 
 dev_dependencies:

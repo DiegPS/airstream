@@ -7,7 +7,7 @@ packages:
       path: "."
       ref: main
       resolved-ref: f2458ec9af618fb6422502c6526af521ff5fc4c5
-      url: "git@github.com:DiegPS/air_window_control.git"
+      url: "https://github.com/DiegPS/air_window_control.git"
     source: git
     version: "0.0.1"
   archive:
@@ -109,23 +109,29 @@ packages:
   dart_kick_chat:
     dependency: "direct main"
     description:
-      path: "C:/Users/dpahu/Desktop/airchat-port/dart_kick_chat"
-      relative: false
-    source: path
+      path: "."
+      ref: main
+      resolved-ref: "204927ba76b4e9465a06b00dcf5c919fb08a11dd"
+      url: "https://github.com/DiegPS/dart_kick_chat.git"
+    source: git
     version: "0.5.0"
   dart_twitch_chat:
     dependency: "direct main"
     description:
-      path: "C:/Users/dpahu/Desktop/airchat-port/dart_twitch_chat"
-      relative: false
-    source: path
+      path: "."
+      ref: main
+      resolved-ref: a642cfbfcb17dc576dec261b54a6d96e043b8dc6
+      url: "https://github.com/DiegPS/dart_twitch_chat.git"
+    source: git
     version: "0.3.0"
   dart_youtube_chat:
     dependency: "direct main"
     description:
-      path: "C:/Users/dpahu/Desktop/airchat-port/dart_youtube_chat"
-      relative: false
-    source: path
+      path: "."
+      ref: main
+      resolved-ref: c753afae03e92982b4aa72bbad6ca70a8ca36962
+      url: "https://github.com/DiegPS/dart_youtube_chat.git"
+    source: git
     version: "0.6.0"
   extended_image:
     dependency: "direct main"

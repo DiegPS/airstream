@@ -529,12 +529,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _sidebarHeader(
-                    l: l,
                     youtubeValue: chatRequested && s.youtubeEnabled
                         ? (s.youtubeDualStreamEnabled
                             ? l.youtubeDualMode
