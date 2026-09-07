@@ -24,7 +24,8 @@ class YouTubeService {
   YouTubeChatTransport? _chat;
   StreamSubscription<yt.ChatItem>? _sub;
   StreamSubscription<yt.LiveChatEvent>? _eventSub;
-  StreamSubscription<Exception>? _errorSub;
+  StreamSubscription<Exception>? _chatErrorSub;
+  StreamSubscription<Exception>? _metadataErrorSub;
   StreamSubscription<DateTime>? _pollSub;
   StreamSubscription<yt.UpdatedMetadataState>? _metadataSub;
   final _controller = StreamController<ChatMessage>.broadcast();
@@ -36,6 +37,8 @@ class YouTubeService {
       StreamController<(ServiceStatus, String?)>.broadcast();
   ServiceStatus _lastStatus = ServiceStatus.idle;
   YoutubeLiveMetadata? _currentMetadata;
+  final Set<String> _seenEventIds = <String>{};
+  final List<String> _seenEventOrder = <String>[];
   int _generation = 0;
 
   Stream<ChatMessage> get messages => _controller.stream;
@@ -54,11 +57,7 @@ class YouTubeService {
   /// Channel URLs and handles deliberately return null because they are
   /// ambiguous when two simultaneous broadcasts exist.
   static String? videoIdFromUrl(String value) {
-    final uri = Uri.tryParse(value.trim());
-    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http')) {
-      return null;
-    }
-    return yt.YoutubeId.tryParse(value)?.liveId.nullIfEmpty;
+    return yt.YoutubeId.tryParseVideoUrl(value)?.liveId;
   }
 
   Future<void> connect({
@@ -115,20 +114,32 @@ class YouTubeService {
         }
       },
     );
-    _errorSub = chat.errors.listen(
+    _chatErrorSub = chat.chatErrors.listen(
       (e) {
         if (generation == _generation && _chat == chat) {
-          AppLogger.warning('YouTube client reported an error', error: e);
+          AppLogger.warning('YouTube chat reported an error', error: e);
           _emit(ServiceStatus.error, e.toString());
         }
       },
     );
+    _metadataErrorSub = chat.metadataErrors.listen((e) {
+      if (generation == _generation && _chat == chat) {
+        AppLogger.warning(
+          'YouTube metadata refresh failed; chat remains connected',
+          error: e,
+        );
+      }
+    });
     _eventSub = chat.events.listen((event) {
       if (generation != _generation || _chat != chat) return;
       try {
         final moderation = _convertModerationEvent(event);
         if (moderation != null && !_moderationController.isClosed) {
           _moderationController.add(moderation);
+        }
+        final membership = _convertMembershipEvent(event);
+        if (membership != null && !_controller.isClosed) {
+          _controller.add(membership);
         }
       } catch (error, stack) {
         AppLogger.warning(
@@ -205,8 +216,10 @@ class YouTubeService {
   Future<void> _closeCurrent() async {
     await _sub?.cancel();
     _sub = null;
-    await _errorSub?.cancel();
-    _errorSub = null;
+    await _chatErrorSub?.cancel();
+    _chatErrorSub = null;
+    await _metadataErrorSub?.cancel();
+    _metadataErrorSub = null;
     await _eventSub?.cancel();
     _eventSub = null;
     await _pollSub?.cancel();
@@ -214,6 +227,8 @@ class YouTubeService {
     await _metadataSub?.cancel();
     _metadataSub = null;
     _currentMetadata = null;
+    _seenEventIds.clear();
+    _seenEventOrder.clear();
     _emitMetadata();
     _chat?.stop();
     _chat = null;
@@ -335,6 +350,51 @@ class YouTubeService {
     return null;
   }
 
+  ChatMessage? _convertMembershipEvent(yt.LiveChatEvent event) {
+    if (event.kind != yt.LiveChatEventKind.membershipGiftPurchased &&
+        event.kind != yt.LiveChatEventKind.membershipGiftReceived) {
+      return null;
+    }
+    final stableId = event.id.trim();
+    final authorName = event.authorName.trim();
+    final text = event.text.trim();
+    final eventKey = stableId.isNotEmpty
+        ? stableId
+        : '${event.kind.name}:${event.authorChannelId}:${event.timestamp?.microsecondsSinceEpoch}:$text';
+    if (!_rememberEvent(eventKey)) return null;
+    return ChatMessage(
+      platform: Platform.youtube,
+      id: stableId.isEmpty
+          ? 'youtube-membership-${event.timestamp?.microsecondsSinceEpoch ?? DateTime.now().microsecondsSinceEpoch}'
+          : stableId,
+      author: ChatAuthor(
+        name: authorName.isEmpty ? 'YouTube' : authorName,
+        avatarUrl: event.authorThumbnail == null
+            ? null
+            : _bestImageUrl(event.authorThumbnail!, logicalSize: 44),
+        channelId: event.authorChannelId,
+      ),
+      items: text.isEmpty ? const [] : [MessageItem.text(text)],
+      isMembership: true,
+      isMembershipEvent: true,
+      membershipEventKind: MembershipEventKind.gift,
+      membershipGiftCount:
+          event.giftMembershipCount > 0 ? event.giftMembershipCount : null,
+      youtubeStreamOrientation: streamOrientation,
+      timestamp: event.timestamp ?? DateTime.now(),
+    );
+  }
+
+  bool _rememberEvent(String key) {
+    if (!_seenEventIds.add(key)) return false;
+    _seenEventOrder.add(key);
+    const maximumRememberedEvents = 2000;
+    if (_seenEventOrder.length > maximumRememberedEvents) {
+      _seenEventIds.remove(_seenEventOrder.removeAt(0));
+    }
+    return true;
+  }
+
   String _bestImageUrl(
     yt.ImageItem image, {
     required double logicalSize,
@@ -363,8 +423,4 @@ class YouTubeService {
               DateTime.now().toUtc(),
     );
   }
-}
-
-extension on String {
-  String? get nullIfEmpty => isEmpty ? null : this;
 }

@@ -7,36 +7,6 @@ import 'package:airstream/services/chat/kick_transport.dart';
 
 enum ServiceStatus { idle, connecting, connected, error }
 
-class KickUserRoles {
-  const KickUserRoles({
-    required this.isOwner,
-    required this.isModerator,
-    required this.isSubscriber,
-    required this.isVip,
-  });
-
-  factory KickUserRoles.fromBadges(Iterable<kick.Badge> badges) {
-    bool hasRole(Set<String> roles) => badges.any((badge) {
-          final type = badge.type.toLowerCase().replaceAll('-', '_');
-          final text = badge.text.toLowerCase().replaceAll('-', '_');
-          return roles
-              .any((role) => type.contains(role) || text.contains(role));
-        });
-    return KickUserRoles(
-      isOwner: hasRole(
-          const {'broadcaster', 'channel_owner', 'channel owner', 'owner'}),
-      isModerator: hasRole(const {'moderator', 'mod'}),
-      isSubscriber: hasRole(const {'subscriber', 'sub', 'founder'}),
-      isVip: hasRole(const {'vip'}),
-    );
-  }
-
-  final bool isOwner;
-  final bool isModerator;
-  final bool isSubscriber;
-  final bool isVip;
-}
-
 class KickService {
   KickService({
     KickChatTransportFactory? transportFactory,
@@ -47,15 +17,19 @@ class KickService {
   final KickChatTransportFactory _transportFactory;
   final Duration _connectionTimeout;
   KickChatTransport? _client;
-  StreamSubscription? _sub;
-  StreamSubscription? _errorSub;
+  StreamSubscription<kick.ChatMessage>? _sub;
+  StreamSubscription<kick.KickEvent>? _eventSub;
+  StreamSubscription<Exception>? _errorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _statusController =
       StreamController<(ServiceStatus, String?)>.broadcast();
+  final _eventController = StreamController<kick.KickEvent>.broadcast();
+  final _seenGiftBatches = <String>{};
   int _generation = 0;
 
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
+  Stream<kick.KickEvent> get events => _eventController.stream;
 
   /// Connect using the public Kick channel slug.
   Future<void> connect(String slug) async {
@@ -83,6 +57,8 @@ class KickService {
       _sub = null;
       await _errorSub?.cancel();
       _errorSub = null;
+      await _eventSub?.cancel();
+      _eventSub = null;
       await _client?.close();
       _client = null;
       AppLogger.error('Kick connection failed', error: e, stackTrace: stack);
@@ -96,7 +72,7 @@ class KickService {
         if (generation != _generation) return;
         try {
           if (!_controller.isClosed) {
-            _controller.add(_convertMessage(msg as kick.ChatMessage));
+            _controller.add(_convertMessage(msg));
           }
         } catch (error, stack) {
           AppLogger.warning(
@@ -124,14 +100,23 @@ class KickService {
         _emit(ServiceStatus.error, e.toString());
       },
     );
+    _eventSub = _client!.events.listen((event) {
+      if (generation != _generation) return;
+      if (!_eventController.isClosed) _eventController.add(event);
+      final message = _convertEvent(event);
+      if (message != null && !_controller.isClosed) _controller.add(message);
+    });
   }
 
   Future<void> disconnect() async {
     _generation++;
+    _seenGiftBatches.clear();
     await _sub?.cancel();
     _sub = null;
     await _errorSub?.cancel();
     _errorSub = null;
+    await _eventSub?.cancel();
+    _eventSub = null;
     await _client?.close();
     _client = null;
     _emit(ServiceStatus.idle, null);
@@ -141,6 +126,7 @@ class KickService {
     await disconnect();
     await _controller.close();
     await _statusController.close();
+    await _eventController.close();
   }
 
   void _emit(ServiceStatus status, String? error) {
@@ -156,20 +142,30 @@ class KickService {
       return MessageItem.text(p.text);
     }).toList();
 
-    final badges = msg.sender.identity.badges;
-    final authorBadges = badges
+    final identity = msg.sender.identity;
+    final authorBadges = identity.badges
         .map((badge) => AuthorBadge(
               label: badge.text.trim().isEmpty ? badge.type : badge.text,
               kind: badge.type.toLowerCase(),
             ))
+        .followedBy(identity.badgesV2.map((badge) => AuthorBadge(
+              imageUrl: badge.imageUrl.isEmpty ? null : badge.imageUrl,
+              label: badge.name,
+              kind: badge.name.toLowerCase(),
+            )))
         .toList(growable: false);
-    final roles = KickUserRoles.fromBadges(badges);
 
+    final celebration = msg.metadata.celebration;
+    final isRenewal = msg.type == 'celebration' &&
+        celebration?.type == 'subscription_renewed';
     return ChatMessage(
       platform: Platform.kick,
       id: msg.id,
       author: ChatAuthor(
         name: msg.sender.username,
+        avatarUrl: msg.sender.profilePictureUrl.isEmpty
+            ? null
+            : msg.sender.profilePictureUrl,
         channelId: msg.sender.slug,
         color: msg.sender.identity.color.isNotEmpty
             ? msg.sender.identity.color
@@ -177,11 +173,58 @@ class KickService {
         badges: authorBadges,
       ),
       items: items,
-      isMembership: roles.isSubscriber,
-      isOwner: roles.isOwner,
-      isModerator: roles.isModerator,
-      isVip: roles.isVip,
+      isMembership: identity.isSubscriber || isRenewal,
+      isMembershipEvent: isRenewal,
+      membershipEventKind:
+          isRenewal ? MembershipEventKind.resubscription : null,
+      membershipMonths: isRenewal ? celebration!.totalMonths : null,
+      isOwner: identity.isBroadcaster,
+      isModerator: identity.isModerator,
+      isVip: identity.isVip,
+      isVerified: identity.isVerified,
       timestamp: msg.createdAt,
     );
+  }
+
+  ChatMessage? _convertEvent(kick.KickEvent event) {
+    if (event is kick.KickSubscriptionEvent) {
+      if (event.months > 1) return null;
+      return ChatMessage(
+        platform: Platform.kick,
+        id: 'subscription:${event.username}:${event.months}',
+        author: ChatAuthor(name: event.username, channelId: event.username),
+        items: [MessageItem.text(event.customMessage)],
+        isMembership: true,
+        isMembershipEvent: true,
+        membershipEventKind: event.months > 1
+            ? MembershipEventKind.resubscription
+            : MembershipEventKind.subscription,
+        membershipMonths: event.months,
+        timestamp: DateTime.now(),
+      );
+    }
+    if (event is kick.KickGiftedSubscriptionsEvent) {
+      final correlationId = event.chunk?.correlationId ?? '';
+      if (correlationId.isNotEmpty && !_seenGiftBatches.add(correlationId)) {
+        return null;
+      }
+      return ChatMessage(
+        platform: Platform.kick,
+        id: correlationId.isEmpty
+            ? 'gift:${DateTime.now().microsecondsSinceEpoch}'
+            : 'gift:$correlationId',
+        author: ChatAuthor(
+          name: event.gifterUsername,
+          channelId: event.gifterUsername,
+        ),
+        items: const [],
+        isMembership: true,
+        isMembershipEvent: true,
+        membershipEventKind: MembershipEventKind.gift,
+        membershipGiftCount: event.giftedTotal,
+        timestamp: DateTime.now(),
+      );
+    }
+    return null;
   }
 }

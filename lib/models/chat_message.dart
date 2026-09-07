@@ -109,6 +109,7 @@ class ChatMessage {
   final YoutubeStreamOrientation? youtubeStreamOrientation;
   final MembershipEventKind? membershipEventKind;
   final int? membershipMonths;
+  final int? membershipGiftCount;
   final DateTime timestamp;
 
   const ChatMessage({
@@ -126,6 +127,7 @@ class ChatMessage {
     this.youtubeStreamOrientation,
     this.membershipEventKind,
     this.membershipMonths,
+    this.membershipGiftCount,
     required this.timestamp,
   });
 

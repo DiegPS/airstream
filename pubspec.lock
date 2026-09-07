@@ -111,19 +111,19 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "34b85705dfd37dc4ae6190d21545d6d7286c893f"
+      resolved-ref: "cfe45cd59a89c67984328a282a052b6231146c36"
       url: "git@github.com:DiegPS/dart_kick_chat.git"
     source: git
-    version: "0.1.0"
+    version: "0.3.0"
   dart_youtube_chat:
     dependency: "direct main"
     description:
       path: "."
       ref: main
-      resolved-ref: "6037396b12701d407cae6fe0e06260b8a4083528"
+      resolved-ref: "e3113fcf26163fe9f9e6df3d22f3e3063308b0a3"
       url: "git@github.com:DiegPS/dart_youtube_chat.git"
     source: git
-    version: "0.4.0"
+    version: "0.5.0"
   extended_image:
     dependency: "direct main"
     description:

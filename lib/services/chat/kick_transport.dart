@@ -1,8 +1,9 @@
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 
 abstract interface class KickChatTransport {
-  Stream<dynamic> get messages;
-  Stream<dynamic> get errors;
+  Stream<kick.ChatMessage> get messages;
+  Stream<kick.KickEvent> get events;
+  Stream<Exception> get errors;
   Future<void> joinBySlug(String slug);
   Future<void> close();
 }
@@ -17,9 +18,11 @@ class DartKickChatTransport implements KickChatTransport {
       DartKickChatTransport._(await kick.KickClient.connect());
 
   @override
-  Stream<dynamic> get messages => _client.messages;
+  Stream<kick.ChatMessage> get messages => _client.messages;
   @override
-  Stream<dynamic> get errors => _client.errors;
+  Stream<kick.KickEvent> get events => _client.events;
+  @override
+  Stream<Exception> get errors => _client.errors;
   @override
   Future<void> joinBySlug(String slug) => _client.joinBySlug(slug);
   @override

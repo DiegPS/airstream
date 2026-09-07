@@ -30,6 +30,7 @@ void main() {
         MessageItem.text('Hola '),
         MessageItem.emoji(EmojiItem(url: 'https://emoji', alt: ':wave:')),
       ],
+      membershipGiftCount: 5,
       timestamp: DateTime.utc(2026, 9, 6),
     );
 
@@ -38,5 +39,6 @@ void main() {
     expect(payload['id'], 'message-id');
     expect(payload['text'], 'Hola :wave:');
     expect(payload['items'], hasLength(2));
+    expect(payload['membershipGiftCount'], 5);
   });
 }

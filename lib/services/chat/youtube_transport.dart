@@ -4,7 +4,8 @@ abstract interface class YouTubeChatTransport {
   Stream<yt.ChatItem> get messages;
   Stream<yt.LiveChatEvent> get events;
   Stream<yt.UpdatedMetadataState> get metadataStates;
-  Stream<Exception> get errors;
+  Stream<Exception> get chatErrors;
+  Stream<Exception> get metadataErrors;
   Stream<DateTime> get polls;
   String get liveId;
   Future<void> start();
@@ -28,7 +29,9 @@ class DartYouTubeChatTransport implements YouTubeChatTransport {
   @override
   Stream<yt.UpdatedMetadataState> get metadataStates => _session.metadataStates;
   @override
-  Stream<Exception> get errors => _session.errors;
+  Stream<Exception> get chatErrors => _session.chatErrors;
+  @override
+  Stream<Exception> get metadataErrors => _session.metadataErrors;
   @override
   Stream<DateTime> get polls => _session.chatPolls;
   @override

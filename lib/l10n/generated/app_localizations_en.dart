@@ -389,7 +389,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertsDescription =>
-      'YouTube Super Chats and membership events show on /alerts. The alert payload keeps platform data so Twitch and Kick can be added later.';
+      'YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.';
 
   @override
   String get alertFontSize => 'Alert font size';

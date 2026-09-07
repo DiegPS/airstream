@@ -41,6 +41,7 @@ abstract final class OverlayPayloadEncoder {
         'isMembershipEvent': msg.isMembershipEvent,
         'membershipEventKind': msg.membershipEventKind?.name,
         'membershipMonths': msg.membershipMonths,
+        'membershipGiftCount': msg.membershipGiftCount,
         'isOwner': msg.isOwner,
         'isModerator': msg.isModerator,
         'isVip': msg.isVip,

@@ -137,7 +137,7 @@
   "noOverlayClientConnected": "No overlay client connected",
   "reloadOverlay": "Reload Overlay",
   "alerts": "Alerts",
-  "alertsDescription": "YouTube Super Chats and membership events show on /alerts. The alert payload keeps platform data so Twitch and Kick can be added later.",
+  "alertsDescription": "YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.",
   "alertFontSize": "Alert font size",
   "alertDuration": "Alert duration",
   "alertAvatars": "Alert avatars",

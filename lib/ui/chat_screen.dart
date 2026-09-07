@@ -24,8 +24,8 @@ import 'package:airstream/services/speech/speech_model_catalog.dart';
 import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/tts_service.dart'
     show TtsLoadPhase, TtsLoadState;
-import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_input_normalizer.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';

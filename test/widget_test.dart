@@ -69,6 +69,38 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('every settings tab renders its own content',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+
+    expect(find.text('Connections'), findsWidgets);
+    for (final tab in const <(String, String)>[
+      ('TTS & Voice', 'Voice Reader (TTS)'),
+      ('Appearance', 'Message Design'),
+      ('OBS & Overlay', 'OBS Integration'),
+      ('System & Window', 'Desktop Window'),
+      ('Connections', 'YouTube handle, channel ID, video ID, or URL'),
+    ]) {
+      await tester.tap(find.byTooltip(tab.$1));
+      await tester.pump();
+      expect(find.text(tab.$2), findsWidgets, reason: 'tab ${tab.$1}');
+      expect(tester.takeException(), isNull, reason: 'tab ${tab.$1}');
+    }
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('hides the app name while the sidebar is hidden',
       (WidgetTester tester) async {
     await tester.pumpWidget(

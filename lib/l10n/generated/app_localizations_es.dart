@@ -392,7 +392,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertsDescription =>
-      'Los Super Chats de YouTube y los eventos de membresía se muestran en /alerts. Los datos de cada alerta conservan la plataforma para poder agregar Twitch y Kick más adelante.';
+      'Los Super Chats de YouTube y los eventos de membresía de YouTube y Kick se muestran en /alerts. Los datos conservan la plataforma de origen.';
 
   @override
   String get alertFontSize => 'Tamaño de fuente de alerta';

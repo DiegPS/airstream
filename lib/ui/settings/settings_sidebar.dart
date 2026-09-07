@@ -76,14 +76,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _textSettingsDebounce?.cancel();
     final notifier = ref.read(settingsProvider.notifier);
     final current = ref.read(settingsProvider);
-    final normalizedTwitch = _normalizePlatformChannel(_form.twitch.text);
-    final normalizedKick = _normalizePlatformChannel(_form.kick.text);
-    final blockedUsers = _parseFilterList(_form.blockedUsers.text);
-    final blockedWords = _parseFilterList(_form.blockedWords.text);
-    final parsedOverlayPort = int.tryParse(_form.port.text.trim());
-    final validOverlayPort = parsedOverlayPort != null &&
-        parsedOverlayPort >= 1 &&
-        parsedOverlayPort <= 65535;
+    final normalizedTwitch =
+        SettingsInputNormalizer.platformChannel(_form.twitch.text);
+    final normalizedKick =
+        SettingsInputNormalizer.platformChannel(_form.kick.text);
+    final blockedUsers = SettingsInputNormalizer.filterList(
+      _form.blockedUsers.text,
+    );
+    final blockedWords = SettingsInputNormalizer.filterList(
+      _form.blockedWords.text,
+    );
     final next = current.copyWith(
       youtubeHandle: _form.ytHandle.text.trim(),
       youtubeLiveId: '',
@@ -93,16 +95,19 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       kickSlug: normalizedKick,
       blockedUsers: blockedUsers,
       blockedWords: blockedWords,
-      overlayPort: validOverlayPort ? parsedOverlayPort : current.overlayPort,
-      overlayChromaColor: _normalizeHexColor(
+      overlayPort: SettingsInputNormalizer.overlayPort(
+        _form.port.text,
+        fallback: current.overlayPort,
+      ),
+      overlayChromaColor: SettingsInputNormalizer.hexColor(
         _form.overlayChromaColor.text,
         fallback: current.overlayChromaColor,
       ),
-      overlayTextStrokeColor: _normalizeHexColor(
+      overlayTextStrokeColor: SettingsInputNormalizer.hexColor(
         _form.overlayTextStrokeColor.text,
         fallback: current.overlayTextStrokeColor,
       ),
-      overlaySuperChatBarColor: _normalizeHexColor(
+      overlaySuperChatBarColor: SettingsInputNormalizer.hexColor(
         _form.overlaySuperChatBarColor.text,
         fallback: current.overlaySuperChatBarColor,
       ),
@@ -119,8 +124,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.youtubeVerticalUrl == next.youtubeVerticalUrl &&
         current.twitchChannel == next.twitchChannel &&
         current.kickSlug == next.kickSlug &&
-        _listEquals(current.blockedUsers, next.blockedUsers) &&
-        _listEquals(current.blockedWords, next.blockedWords) &&
+        SettingsInputNormalizer.listsEqual(
+          current.blockedUsers,
+          next.blockedUsers,
+        ) &&
+        SettingsInputNormalizer.listsEqual(
+          current.blockedWords,
+          next.blockedWords,
+        ) &&
         current.overlayPort == next.overlayPort &&
         current.overlayChromaColor == next.overlayChromaColor &&
         current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
@@ -169,66 +180,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     return s.youtubeHandle;
   }
 
-  static String _normalizePlatformChannel(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return '';
-
-    try {
-      final uri = Uri.parse(trimmed);
-      if (uri.hasScheme && uri.host.isNotEmpty) {
-        final parts =
-            uri.pathSegments.where((part) => part.isNotEmpty).toList();
-        final lastPath = parts.isNotEmpty ? parts.last : '';
-        return lastPath.replaceFirst(RegExp(r'^@'), '').trim();
-      }
-    } catch (_) {
-      // Non-URL channel values are valid and are normalized below.
-    }
-
-    return trimmed.replaceFirst(RegExp(r'^@'), '').trim();
-  }
-
-  static String _normalizeHexColor(
-    String value, {
-    required String fallback,
-  }) {
-    final trimmed = value.trim().toUpperCase();
-    final normalized = trimmed.startsWith('#') ? trimmed : '#$trimmed';
-    final isValid = RegExp(r'^#[0-9A-F]{6}$').hasMatch(normalized);
-    return isValid ? normalized : fallback.toUpperCase();
-  }
-
-  static List<String> _parseFilterList(String raw) {
-    final seen = <String>{};
-    final values = <String>[];
-
-    for (final part in raw.split(RegExp(r'[\r\n,;]+'))) {
-      final trimmed = part.trim();
-      if (trimmed.isEmpty) continue;
-      final key = trimmed.toLowerCase();
-      if (!seen.add(key)) continue;
-      values.add(trimmed);
-    }
-
-    return values;
-  }
-
-  static String _formatFilterList(List<String> values) => values.join('\n');
-
-  static bool _listEquals(List<String> a, List<String> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
   bool get _dualYoutubeUrlsAreValid {
-    final horizontal =
-        YouTubeService.videoIdFromUrl(_form.ytHorizontalUrl.text);
-    final vertical = YouTubeService.videoIdFromUrl(_form.ytVerticalUrl.text);
-    return horizontal != null && vertical != null && horizontal != vertical;
+    return SettingsInputNormalizer.distinctYoutubeVideoUrls(
+      _form.ytHorizontalUrl.text,
+      _form.ytVerticalUrl.text,
+    );
   }
 
   static (ServiceStatus, String?) _combinedYoutubeStatus(
@@ -257,9 +213,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     String? otherUrl,
   }) {
     if (value.trim().isEmpty) return null;
-    final videoId = YouTubeService.videoIdFromUrl(value);
+    final videoId = SettingsInputNormalizer.youtubeVideoId(value);
     if (videoId == null) return l.youtubeInvalidStreamUrl;
-    final otherId = YouTubeService.videoIdFromUrl(otherUrl ?? '');
+    final otherId = SettingsInputNormalizer.youtubeVideoId(otherUrl ?? '');
     if (otherId != null && otherId == videoId) {
       return l.youtubeDuplicateStreamUrl;
     }
@@ -483,12 +439,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _syncController(
       _form.blockedUsers,
       _form.blockedUsersFocus,
-      _formatFilterList(s.blockedUsers),
+      SettingsInputNormalizer.formatFilterList(s.blockedUsers),
     );
     _syncController(
       _form.blockedWords,
       _form.blockedWordsFocus,
-      _formatFilterList(s.blockedWords),
+      SettingsInputNormalizer.formatFilterList(s.blockedWords),
     );
 
     final dualYoutubeValid = _dualYoutubeUrlsAreValid;
@@ -724,8 +680,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       );
 
   String? _overlayPortError(AppLocalizations l) {
-    final value = int.tryParse(_form.port.text.trim());
-    if (value != null && value >= 1 && value <= 65535) return null;
-    return l.invalidOverlayPort;
+    return SettingsInputNormalizer.isValidOverlayPort(_form.port.text)
+        ? null
+        : l.invalidOverlayPort;
   }
 }

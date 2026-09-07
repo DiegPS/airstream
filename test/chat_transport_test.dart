@@ -7,6 +7,7 @@ import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/models/chat_message.dart' as app;
+import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
@@ -74,7 +75,7 @@ void main() {
     final subscription = service.statusStream.listen(statuses.add);
     addTearDown(subscription.cancel);
     await service.connect(liveId: 'abcdefghijk');
-    ready.errorController.add(Exception('provider failure'));
+    ready.chatErrorController.add(Exception('provider failure'));
     await _eventually(
         () => statuses.any((event) => event.$1 == ServiceStatus.error));
     expect(statuses.last.$2, contains('provider failure'));
@@ -238,6 +239,62 @@ void main() {
     expect(service.currentMetadata, isNull);
   });
 
+  test('YouTube metadata errors preserve chat status and last metadata',
+      () async {
+    final chat = _FakeYouTubeTransport();
+    final service = YouTubeService(transportFactory: (_) => chat);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await service.connect(liveId: 'abcdefghijk');
+    chat.metadataStateController.add(_metadataState(viewers: 777));
+    await _eventually(() => service.currentMetadata?.viewerCount == 777);
+
+    chat.metadataErrorController.add(Exception('metadata unavailable'));
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+
+    expect(statuses.last.$1, ServiceStatus.connected);
+    expect(service.currentMetadata?.viewerCount, 777);
+  });
+
+  test('YouTube converts and deduplicates gifted membership events', () async {
+    final chat = _FakeYouTubeTransport();
+    final service = YouTubeService(transportFactory: (_) => chat);
+    addTearDown(service.dispose);
+    await service.connect(liveId: 'abcdefghijk');
+    final messages = <app.ChatMessage>[];
+    final subscription = service.messages.listen(messages.add);
+    addTearDown(subscription.cancel);
+    final event = yt.LiveChatEvent(
+      kind: yt.LiveChatEventKind.membershipGiftPurchased,
+      actionType: 'addChatItemAction',
+      rendererType: 'liveChatSponsorshipsGiftPurchaseAnnouncementRenderer',
+      id: 'gift-1',
+      text: 'Gifted 5 memberships',
+      authorChannelId: 'gifter-channel',
+      authorName: 'Gifter',
+      authorThumbnail: const yt.ImageItem(
+        url: '//lh3.googleusercontent.com/gifter',
+        alt: 'Gifter',
+      ),
+      giftMembershipCount: 5,
+      timestamp: DateTime.utc(2026),
+    );
+
+    chat.eventController.add(event);
+    chat.eventController.add(event);
+    await _eventually(() => messages.isNotEmpty);
+
+    expect(messages, hasLength(1));
+    expect(messages.single.author.name, 'Gifter');
+    expect(messages.single.author.avatarUrl, startsWith('https://'));
+    expect(messages.single.isMembershipEvent, isTrue);
+    expect(messages.single.membershipEventKind, app.MembershipEventKind.gift);
+    expect(messages.single.membershipGiftCount, 5);
+    expect(messages.single.plainText, 'Gifted 5 memberships');
+  });
+
   test('YouTube converts provider deletion events into moderation events',
       () async {
     final chat = _FakeYouTubeTransport();
@@ -266,7 +323,7 @@ void main() {
         event.youtubeStreamOrientation, app.YoutubeStreamOrientation.vertical);
   });
 
-  test('Kick injects connection, reports corrupt messages, and closes once',
+  test('Kick injects connection, reports transport errors, and closes once',
       () async {
     final transport = _FakeKickTransport();
     final service = KickService(transportFactory: () async => transport);
@@ -277,7 +334,7 @@ void main() {
 
     await service.connect('creator');
     expect(transport.joined, ['creator']);
-    transport.messageController.add({'invalid': true});
+    transport.errorController.add(Exception('corrupt provider frame'));
     await _eventually(
         () => statuses.any((event) => event.$1 == ServiceStatus.error));
     await service.disconnect();
@@ -303,6 +360,89 @@ void main() {
     );
     expect(statuses.last.$1, ServiceStatus.error);
     expect(statuses.last.$2, contains('TimeoutException'));
+  });
+
+  test('Kick converts subscription gifts once per correlated batch', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messages = <app.ChatMessage>[];
+    final subscription = service.messages.listen(messages.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+
+    final payload = {
+      'gifter_username': 'generous',
+      'gifted_usernames': ['one', 'two'],
+      'gifted_total': 2,
+      'gifter_total': 8,
+      'chunk_details': {
+        'correlation_id': 'gift-batch',
+        'chunk_index': 0,
+        'total_chunks': 2,
+      },
+    };
+    transport.eventController.add(
+      kick.parseKickEvent('GiftedSubscriptionsEvent', payload),
+    );
+    transport.eventController.add(
+      kick.parseKickEvent('GiftedSubscriptionsEvent', payload),
+    );
+    await _eventually(() => messages.isNotEmpty);
+
+    expect(messages, hasLength(1));
+    expect(messages.single.membershipEventKind, app.MembershipEventKind.gift);
+    expect(messages.single.membershipGiftCount, 2);
+  });
+
+  test('Kick consumes modern image badges, roles and supplied avatars',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messageFuture = service.messages.first;
+    await service.connect('creator');
+    transport.messageController.add(kick.ChatMessage.fromJson({
+      'id': 'kick-message',
+      'chatroom_id': 9,
+      'content': 'hello',
+      'type': 'celebration',
+      'metadata': {
+        'celebration': {
+          'type': 'subscription_renewed',
+          'total_months': 12,
+        },
+      },
+      'created_at': '2026-09-06T12:00:00Z',
+      'sender': {
+        'id': 7,
+        'username': 'viewer',
+        'slug': 'viewer',
+        'profile_pic': 'https://cdn/avatar.webp',
+        'identity': {
+          'color': '#53FC18',
+          'badges': [],
+          'badges_v2': [
+            {
+              'name': 'verified',
+              'badge_type': 'global',
+              'image_url': 'https://cdn/verified.png',
+              'selected': true,
+              'sort_order': 1,
+              'metadata': {},
+            },
+          ],
+        },
+      },
+    }));
+
+    final message = await messageFuture;
+    expect(message.author.avatarUrl, 'https://cdn/avatar.webp');
+    expect(message.author.badges.single.imageUrl, 'https://cdn/verified.png');
+    expect(message.isVerified, isTrue);
+    expect(message.isMembershipEvent, isTrue);
+    expect(message.membershipEventKind, app.MembershipEventKind.resubscription);
+    expect(message.membershipMonths, 12);
   });
 }
 
@@ -345,7 +485,8 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   final eventController = StreamController<yt.LiveChatEvent>.broadcast();
   final metadataStateController =
       StreamController<yt.UpdatedMetadataState>.broadcast();
-  final errorController = StreamController<Exception>.broadcast();
+  final chatErrorController = StreamController<Exception>.broadcast();
+  final metadataErrorController = StreamController<Exception>.broadcast();
   final pollController = StreamController<DateTime>.broadcast();
   bool stopped = false;
   @override
@@ -356,7 +497,9 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   Stream<yt.UpdatedMetadataState> get metadataStates =>
       metadataStateController.stream;
   @override
-  Stream<Exception> get errors => errorController.stream;
+  Stream<Exception> get chatErrors => chatErrorController.stream;
+  @override
+  Stream<Exception> get metadataErrors => metadataErrorController.stream;
   @override
   Stream<DateTime> get polls => pollController.stream;
   @override
@@ -396,14 +539,17 @@ yt.UpdatedMetadataState _metadataState({
 }
 
 class _FakeKickTransport implements KickChatTransport {
-  final messageController = StreamController<dynamic>.broadcast();
-  final errorController = StreamController<dynamic>.broadcast();
+  final messageController = StreamController<kick.ChatMessage>.broadcast();
+  final eventController = StreamController<kick.KickEvent>.broadcast();
+  final errorController = StreamController<Exception>.broadcast();
   final joined = <String>[];
   int closeCount = 0;
   @override
-  Stream<dynamic> get messages => messageController.stream;
+  Stream<kick.ChatMessage> get messages => messageController.stream;
   @override
-  Stream<dynamic> get errors => errorController.stream;
+  Stream<kick.KickEvent> get events => eventController.stream;
+  @override
+  Stream<Exception> get errors => errorController.stream;
   @override
   Future<void> joinBySlug(String slug) async => joined.add(slug);
   @override

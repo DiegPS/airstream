@@ -1,7 +1,7 @@
 name: airstream
 description: Airstream - YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0-rc.1+1
 
 environment:
   sdk: ^3.0.0

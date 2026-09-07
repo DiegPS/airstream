@@ -1,4 +1,3 @@
-import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 import 'package:flutter_test/flutter_test.dart';
@@ -66,17 +65,36 @@ void main() {
     );
   });
 
-  test('Kick roles inspect every badge instead of only the first', () {
-    final roles = KickUserRoles.fromBadges(const [
-      kick.Badge(type: 'subscriber', text: 'Subscriber', count: 8),
-      kick.Badge(type: 'moderator', text: 'Moderator', count: 1),
-      kick.Badge(type: 'vip', text: 'VIP', count: 1),
-      kick.Badge(type: 'broadcaster', text: 'Broadcaster', count: 1),
-    ]);
+  test('Kick library derives roles across legacy and modern badges', () {
+    const identity = kick.Identity(
+      color: '#fff',
+      badges: [
+        kick.Badge(type: 'subscriber', text: 'Subscriber', count: 8),
+        kick.Badge(type: 'moderator', text: 'Moderator', count: 1),
+      ],
+      badgesV2: [
+        kick.BadgeV2(
+          name: 'vip',
+          badgeType: 'channel',
+          imageUrl: 'https://cdn/vip.png',
+          selected: true,
+          sortOrder: 1,
+          metadata: {},
+        ),
+        kick.BadgeV2(
+          name: 'broadcaster',
+          badgeType: 'channel',
+          imageUrl: '',
+          selected: true,
+          sortOrder: 2,
+          metadata: {},
+        ),
+      ],
+    );
 
-    expect(roles.isSubscriber, isTrue);
-    expect(roles.isModerator, isTrue);
-    expect(roles.isVip, isTrue);
-    expect(roles.isOwner, isTrue);
+    expect(identity.isSubscriber, isTrue);
+    expect(identity.isModerator, isTrue);
+    expect(identity.isVip, isTrue);
+    expect(identity.isBroadcaster, isTrue);
   });
 }

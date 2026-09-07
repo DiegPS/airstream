@@ -34,6 +34,7 @@ if (-not (Test-Path -LiteralPath $speech -PathType Container)) {
 }
 
 $env:AIRSTREAM_SHERPA_LIBRARY_DIR = $native
+$env:AIRSTREAM_CAPTIONS_MODEL_DIR = $speech
 $env:AIRSTREAM_SILERO_VAD_MODEL = Join-Path $speech 'silero_vad.onnx'
 $env:AIRSTREAM_GTCRN_MODEL = Join-Path $speech 'gtcrn_simple.onnx'
 

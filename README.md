@@ -30,7 +30,26 @@ flutter test
 flutter run -d windows
 ```
 
-Create a Windows release build with `flutter build windows`.
+Run the complete local gate (format, analysis, tests, Windows release build,
+and native launch smoke test) with:
+
+```powershell
+.\tool\run_release_gate.ps1
+```
+
+The final candidate additionally requires every native Sherpa model test:
+
+```powershell
+.\tool\run_release_gate.ps1 -Candidate -ModelRoot C:\path\to\models
+```
+
+Create a portable Windows archive and SHA-256 checksum with
+`.\tool\package_windows_portable.ps1`. Microsoft Store MSIX identity and
+signing are intentionally performed with the publisher identity assigned by
+Partner Center; the portable archive does not pretend to be a signed Store
+package.
 
 The model integrity guarantees, architecture, and licensing notes are described
 in [docs/TTS.md](docs/TTS.md) and [docs/SPEECH.md](docs/SPEECH.md).
+
+See [PRIVACY.md](PRIVACY.md) for the data-processing and local-storage policy.

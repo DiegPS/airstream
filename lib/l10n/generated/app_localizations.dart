@@ -809,7 +809,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsDescription.
   ///
   /// In en, this message translates to:
-  /// **'YouTube Super Chats and membership events show on /alerts. The alert payload keeps platform data so Twitch and Kick can be added later.'**
+  /// **'YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.'**
   String get alertsDescription;
 
   /// No description provided for @alertFontSize.
