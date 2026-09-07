@@ -1,5 +1,26 @@
 import 'settings_model_codec.dart';
 
+const defaultProviderEventBannerKinds = <String>[
+  'raid',
+  'unraid',
+  'pinnedMessage',
+  'unpinnedMessage',
+  'poll',
+  'reward',
+  'support',
+  'host',
+  'goal',
+  'notice',
+  'modiversary',
+  'viewerMilestone',
+  'watchStreak',
+  'sharedChat',
+  'roomState',
+  'streamOnline',
+  'streamOffline',
+  'unknown',
+];
+
 /// All persisted settings for the app.
 class SettingsModel {
   final String appLanguageCode;
@@ -39,6 +60,8 @@ class SettingsModel {
   final bool chatTextShadow;
   final double chatTextStroke;
   final int maxMessages;
+  final List<String> providerEventBannerKinds;
+  final int providerEventBannerSeconds;
 
   // Filtering
   final List<String> blockedUsers;
@@ -158,6 +181,8 @@ class SettingsModel {
     this.chatTextShadow = false,
     this.chatTextStroke = 0.0,
     this.maxMessages = 200,
+    this.providerEventBannerKinds = defaultProviderEventBannerKinds,
+    this.providerEventBannerSeconds = 6,
     this.blockedUsers = const [],
     this.blockedWords = const [],
     this.ttsEnabled = false,
@@ -268,6 +293,8 @@ class SettingsModel {
     bool? chatTextShadow,
     double? chatTextStroke,
     int? maxMessages,
+    List<String>? providerEventBannerKinds,
+    int? providerEventBannerSeconds,
     List<String>? blockedUsers,
     List<String>? blockedWords,
     bool? ttsEnabled,
@@ -380,6 +407,10 @@ class SettingsModel {
         chatTextShadow: chatTextShadow ?? this.chatTextShadow,
         chatTextStroke: chatTextStroke ?? this.chatTextStroke,
         maxMessages: maxMessages ?? this.maxMessages,
+        providerEventBannerKinds:
+            providerEventBannerKinds ?? this.providerEventBannerKinds,
+        providerEventBannerSeconds:
+            providerEventBannerSeconds ?? this.providerEventBannerSeconds,
         blockedUsers: blockedUsers ?? this.blockedUsers,
         blockedWords: blockedWords ?? this.blockedWords,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,

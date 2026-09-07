@@ -13,6 +13,7 @@ import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
     show Platform, YoutubeStreamOrientation;
@@ -279,7 +280,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final l = AppLocalizations.of(context)!;
     final chat = ref.watch(chatProvider);
     final settings = ref.watch(settingsProvider);
-    final providerEvent = ref.watch(chatProviderEventProvider).valueOrNull;
+    final latestProviderEvent =
+        ref.watch(chatProviderEventProvider).valueOrNull;
+    final providerEvent = latestProviderEvent != null &&
+            settings.providerEventBannerKinds
+                .contains(latestProviderEvent.kind.name)
+        ? latestProviderEvent
+        : null;
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final showObsCard = settings.obsEnabled;
@@ -326,6 +333,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 alignment: chatHorizontalAlignment(settings.chatTextAlign),
                 child: TransientChatProviderEventBanner(
                   event: providerEvent,
+                  visibleDuration: Duration(
+                    seconds: settings.providerEventBannerSeconds,
+                  ),
                 ),
               ),
             ),

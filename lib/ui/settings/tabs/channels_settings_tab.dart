@@ -349,7 +349,74 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
             ),
           ],
         ),
+        UiCard(
+          title: l.eventBanners,
+          icon: Icons.campaign_outlined,
+          description: l.eventBannersDescription,
+          isCollapsible: true,
+          initiallyExpanded: false,
+          children: [
+            StyledSliderRow(
+              label: l.eventBannerDuration,
+              value: s.providerEventBannerSeconds.toDouble(),
+              min: 1,
+              max: 20,
+              divisions: 19,
+              unit: 's',
+              onChanged: (value) => notifier.update(
+                s.copyWith(providerEventBannerSeconds: value.round()),
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final kind in ChatProviderEventKind.values)
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                title: Text(
+                  _providerEventLabel(l, kind),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                value: s.providerEventBannerKinds.contains(kind.name),
+                onChanged: (enabled) {
+                  final kinds = [...s.providerEventBannerKinds];
+                  if (enabled) {
+                    if (!kinds.contains(kind.name)) kinds.add(kind.name);
+                  } else {
+                    kinds.remove(kind.name);
+                  }
+                  notifier.update(s.copyWith(providerEventBannerKinds: kinds));
+                },
+                activeThumbColor: const Color(0xFF53FC18),
+              ),
+          ],
+        ),
       ],
     );
   }
+
+  String _providerEventLabel(
+    AppLocalizations l,
+    ChatProviderEventKind kind,
+  ) =>
+      switch (kind) {
+        ChatProviderEventKind.raid => l.chatEventRaid,
+        ChatProviderEventKind.unraid => l.chatEventUnraid,
+        ChatProviderEventKind.pinnedMessage => l.chatEventPinnedMessage,
+        ChatProviderEventKind.unpinnedMessage => l.chatEventUnpinnedMessage,
+        ChatProviderEventKind.poll => l.chatEventPoll,
+        ChatProviderEventKind.reward => l.chatEventReward,
+        ChatProviderEventKind.support => l.chatEventSupport,
+        ChatProviderEventKind.host => l.chatEventHost,
+        ChatProviderEventKind.goal => l.chatEventGoal,
+        ChatProviderEventKind.notice => l.chatEventNotice,
+        ChatProviderEventKind.modiversary => l.chatEventModiversary,
+        ChatProviderEventKind.viewerMilestone => l.chatEventViewerMilestone,
+        ChatProviderEventKind.watchStreak => l.chatEventWatchStreak,
+        ChatProviderEventKind.sharedChat => l.chatEventSharedChat,
+        ChatProviderEventKind.roomState => l.chatEventRoomState,
+        ChatProviderEventKind.streamOnline => l.chatEventStreamOnline,
+        ChatProviderEventKind.streamOffline => l.chatEventStreamOffline,
+        ChatProviderEventKind.unknown => l.chatEventUnknown,
+      };
 }

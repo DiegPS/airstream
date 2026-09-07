@@ -109,30 +109,24 @@ packages:
   dart_kick_chat:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "45fd4d8ad29f2f8c9c62f4b02382b066b0597ce6"
-      url: "git@github.com:DiegPS/dart_kick_chat.git"
-    source: git
-    version: "0.3.0"
+      path: "C:/Users/dpahu/Desktop/airchat-port/dart_kick_chat"
+      relative: false
+    source: path
+    version: "0.5.0"
   dart_twitch_chat:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "0bbe23418755df0bb59eb7167ab8abadb2af6130"
-      url: "git@github.com:DiegPS/dart_twitch_chat.git"
-    source: git
-    version: "0.2.0"
+      path: "C:/Users/dpahu/Desktop/airchat-port/dart_twitch_chat"
+      relative: false
+    source: path
+    version: "0.3.0"
   dart_youtube_chat:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: c2dd27d0854dba79d0bb74102e2ab36c0dc3f132
-      url: "git@github.com:DiegPS/dart_youtube_chat.git"
-    source: git
-    version: "0.5.0"
+      path: "C:/Users/dpahu/Desktop/airchat-port/dart_youtube_chat"
+      relative: false
+    source: path
+    version: "0.6.0"
   extended_image:
     dependency: "direct main"
     description:

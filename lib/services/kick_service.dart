@@ -23,6 +23,8 @@ class KickService {
   StreamSubscription<Exception>? _errorSub;
   StreamSubscription<kick.KickChannel>? _metadataSub;
   StreamSubscription<kick.KickConnectionUpdate>? _connectionSub;
+  StreamSubscription<kick.KickProfileUpdate>? _profileSub;
+  StreamSubscription<Exception>? _enrichmentErrorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _statusController =
       StreamController<(ServiceStatus, String?)>.broadcast();
@@ -32,6 +34,8 @@ class KickService {
       StreamController<ChatModerationEvent>.broadcast();
   final _metadataController =
       StreamController<PlatformLiveMetadata?>.broadcast();
+  final _authorUpdateController =
+      StreamController<ChatAuthorUpdate>.broadcast();
   final _seenGiftBatches = <String>{};
   String? _lastRoomStateSignature;
   String? _lastPinnedMessageId;
@@ -45,6 +49,7 @@ class KickService {
       _moderationController.stream;
   Stream<PlatformLiveMetadata?> get metadataStream =>
       _metadataController.stream;
+  Stream<ChatAuthorUpdate> get authorUpdates => _authorUpdateController.stream;
 
   /// Connect using the public Kick channel slug.
   Future<void> connect(String slug) async {
@@ -84,6 +89,10 @@ class KickService {
       _metadataSub = null;
       await _connectionSub?.cancel();
       _connectionSub = null;
+      await _profileSub?.cancel();
+      _profileSub = null;
+      await _enrichmentErrorSub?.cancel();
+      _enrichmentErrorSub = null;
       await _client?.close();
       _client = null;
       AppLogger.error('Kick connection failed', error: e, stackTrace: stack);
@@ -172,6 +181,24 @@ class KickService {
         _emit(status, update.error?.toString());
       });
     }
+    if (_client case final KickEnrichmentTransport transport) {
+      _profileSub = transport.profileUpdates.listen((update) {
+        if (generation != _generation || _authorUpdateController.isClosed) {
+          return;
+        }
+        _authorUpdateController.add(ChatAuthorUpdate(
+          platform: Platform.kick,
+          authorName: update.username,
+          authorId: update.slug,
+          avatarUrl: update.avatarUrl,
+        ));
+      });
+      _enrichmentErrorSub = transport.enrichmentErrors.listen((error) {
+        if (generation == _generation) {
+          AppLogger.debug('Optional Kick enrichment unavailable: $error');
+        }
+      });
+    }
   }
 
   Future<void> disconnect() async {
@@ -189,6 +216,10 @@ class KickService {
     _metadataSub = null;
     await _connectionSub?.cancel();
     _connectionSub = null;
+    await _profileSub?.cancel();
+    _profileSub = null;
+    await _enrichmentErrorSub?.cancel();
+    _enrichmentErrorSub = null;
     if (!_metadataController.isClosed) _metadataController.add(null);
     await _client?.close();
     _client = null;
@@ -203,6 +234,7 @@ class KickService {
     await _appEventController.close();
     await _moderationController.close();
     await _metadataController.close();
+    await _authorUpdateController.close();
   }
 
   void _emit(ServiceStatus status, String? error) {

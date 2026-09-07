@@ -19,13 +19,19 @@ abstract interface class KickConnectionTransport {
   kick.KickConnectionState get connectionState;
 }
 
+abstract interface class KickEnrichmentTransport {
+  Stream<kick.KickProfileUpdate> get profileUpdates;
+  Stream<Exception> get enrichmentErrors;
+}
+
 typedef KickChatTransportFactory = Future<KickChatTransport> Function();
 
 class DartKickChatTransport
     implements
         KickChatTransport,
         KickMetadataTransport,
-        KickConnectionTransport {
+        KickConnectionTransport,
+        KickEnrichmentTransport {
   DartKickChatTransport._(this._client, this._monitor) {
     _clientErrorSubscription = _client.errors.listen(_forwardError);
     _metadataErrorSubscription = _monitor.errors.listen(_forwardError);
@@ -51,6 +57,10 @@ class DartKickChatTransport
   Stream<kick.KickChannel> get metadata => _monitor.states;
   @override
   Stream<kick.KickConnectionUpdate> get connections => _client.connections;
+  @override
+  Stream<kick.KickProfileUpdate> get profileUpdates => _client.profileUpdates;
+  @override
+  Stream<Exception> get enrichmentErrors => _client.enrichmentErrors;
   @override
   kick.KickConnectionState get connectionState => _client.connectionState;
   @override

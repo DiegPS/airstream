@@ -2085,6 +2085,24 @@ abstract class AppLocalizations {
   /// **'Stream offline'**
   String get chatEventStreamOffline;
 
+  /// No description provided for @eventBanners.
+  ///
+  /// In en, this message translates to:
+  /// **'Event banners'**
+  String get eventBanners;
+
+  /// No description provided for @eventBannersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which anonymous platform events appear above chat.'**
+  String get eventBannersDescription;
+
+  /// No description provided for @eventBannerDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible duration'**
+  String get eventBannerDuration;
+
   /// No description provided for @chatEventUnknown.
   ///
   /// In en, this message translates to:

@@ -43,6 +43,10 @@ abstract interface class MetadataChannelChatClient {
   Stream<PlatformLiveMetadata?> get platformMetadataStream;
 }
 
+abstract interface class EnrichingChannelChatClient {
+  Stream<ChatAuthorUpdate> get authorUpdates;
+}
+
 class YouTubeChatServiceAdapter
     implements YouTubeChatClient, ProviderEventChatClient {
   YouTubeChatServiceAdapter(this.service);
@@ -77,7 +81,8 @@ class KickChatServiceAdapter
         ChannelChatClient,
         ModeratingChannelChatClient,
         ProviderEventChatClient,
-        MetadataChannelChatClient {
+        MetadataChannelChatClient,
+        EnrichingChannelChatClient {
   KickChatServiceAdapter(this.service);
 
   final KickService service;
@@ -93,6 +98,8 @@ class KickChatServiceAdapter
   @override
   Stream<PlatformLiveMetadata?> get platformMetadataStream =>
       service.metadataStream;
+  @override
+  Stream<ChatAuthorUpdate> get authorUpdates => service.authorUpdates;
   @override
   Future<void> connect(String channel) => service.connect(channel);
   @override
@@ -226,6 +233,14 @@ class ChatCoordinator {
           }),
         );
       }
+      if (service case final EnrichingChannelChatClient source) {
+        _authorUpdateSubscriptions.add(source.authorUpdates.listen((update) {
+          if (_pipeline.applyAuthorUpdate(update) &&
+              !_listController.isClosed) {
+            _listController.add(_pipeline.buffer);
+          }
+        }));
+      }
     }
   }
 
@@ -254,6 +269,7 @@ class ChatCoordinator {
   final _providerEventSubscriptions = <StreamSubscription<ChatProviderEvent>>[];
   final _platformMetadataSubscriptions =
       <StreamSubscription<PlatformLiveMetadata?>>[];
+  final _authorUpdateSubscriptions = <StreamSubscription<ChatAuthorUpdate>>[];
   final _platformMetadata = <Platform, PlatformLiveMetadata>{};
   StreamSubscription<ChatMessage>? _pipelineSub;
   final _platformStatus = <String, (ServiceStatus, String?)>{
@@ -691,6 +707,9 @@ class ChatCoordinator {
       await subscription.cancel();
     }
     for (final subscription in _platformMetadataSubscriptions) {
+      await subscription.cancel();
+    }
+    for (final subscription in _authorUpdateSubscriptions) {
       await subscription.cancel();
     }
     await _youtube.dispose();

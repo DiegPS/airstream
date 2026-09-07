@@ -1101,6 +1101,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatEventStreamOffline => 'Stream offline';
 
   @override
+  String get eventBanners => 'Event banners';
+
+  @override
+  String get eventBannersDescription =>
+      'Choose which anonymous platform events appear above chat.';
+
+  @override
+  String get eventBannerDuration => 'Visible duration';
+
+  @override
   String get chatEventUnknown => 'Event';
 
   @override

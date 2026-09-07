@@ -94,6 +94,24 @@ void main() {
     expect(restored.chatTextStroke, 1.5);
   });
 
+  test('persists and sanitizes provider event banner preferences', () {
+    const settings = SettingsModel(
+      providerEventBannerKinds: ['raid', 'support'],
+      providerEventBannerSeconds: 12,
+    );
+
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+    final corrupt = SettingsModel.fromJson({
+      'providerEventBannerKinds': ['poll', 'not-a-real-event', 42],
+      'providerEventBannerSeconds': 999,
+    });
+
+    expect(restored.providerEventBannerKinds, ['raid', 'support']);
+    expect(restored.providerEventBannerSeconds, 12);
+    expect(corrupt.providerEventBannerKinds, ['poll']);
+    expect(corrupt.providerEventBannerSeconds, 60);
+  });
+
   test('persists OBS recording HUD settings', () {
     const settings = SettingsModel(
       obsShowRecordingState: false,

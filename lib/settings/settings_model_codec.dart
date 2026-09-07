@@ -35,6 +35,8 @@ abstract final class SettingsModelCodec {
         'chatTextShadow': model.chatTextShadow,
         'chatTextStroke': model.chatTextStroke,
         'maxMessages': model.maxMessages,
+        'providerEventBannerKinds': model.providerEventBannerKinds,
+        'providerEventBannerSeconds': model.providerEventBannerSeconds,
         'blockedUsers': model.blockedUsers,
         'blockedWords': model.blockedWords,
         'ttsEnabled': model.ttsEnabled,
@@ -148,6 +150,11 @@ abstract final class SettingsModelCodec {
       chatTextShadow: j['chatTextShadow'] as bool? ?? false,
       chatTextStroke: (j['chatTextStroke'] as num?)?.toDouble() ?? 0.0,
       maxMessages: j['maxMessages'] as int? ?? 200,
+      providerEventBannerKinds: List<String>.from(
+        j['providerEventBannerKinds'] as List? ??
+            defaultProviderEventBannerKinds,
+      ),
+      providerEventBannerSeconds: j['providerEventBannerSeconds'] as int? ?? 6,
       blockedUsers: List<String>.from(j['blockedUsers'] as List? ?? []),
       blockedWords: List<String>.from(j['blockedWords'] as List? ?? []),
       ttsEnabled: j['ttsEnabled'] as bool? ?? false,
@@ -307,6 +314,7 @@ abstract final class SettingsModelCodec {
 
     clampInt('overlayPort', 1, 65535);
     clampInt('maxMessages', 1, 1000);
+    clampInt('providerEventBannerSeconds', 1, 60);
     clampInt('overlayMaxMessages', 1, 500);
     clampInt('overlayMessageTtlSeconds', 1, 3600);
     clampInt('ttsSteps', 1, 64);
@@ -344,6 +352,13 @@ abstract final class SettingsModelCodec {
     color('overlayChromaColor', '#00FF00');
     color('overlayTextStrokeColor', '#000000');
     color('overlaySuperChatBarColor', '#1DE9B6');
+    final bannerKinds = sanitized['providerEventBannerKinds'];
+    sanitized['providerEventBannerKinds'] = bannerKinds is List
+        ? bannerKinds
+            .where(defaultProviderEventBannerKinds.contains)
+            .toSet()
+            .toList()
+        : defaultProviderEventBannerKinds;
     return sanitized;
   }
 

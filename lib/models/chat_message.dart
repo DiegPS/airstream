@@ -123,6 +123,29 @@ class ChatAuthor {
         if (badge != null) badge!,
         ...badges,
       ];
+
+  ChatAuthor copyWith({String? avatarUrl}) => ChatAuthor(
+        name: name,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        channelId: channelId,
+        color: color,
+        badge: badge,
+        badges: badges,
+      );
+}
+
+class ChatAuthorUpdate {
+  const ChatAuthorUpdate({
+    required this.platform,
+    required this.authorName,
+    required this.avatarUrl,
+    this.authorId = '',
+  });
+
+  final Platform platform;
+  final String authorName;
+  final String authorId;
+  final String avatarUrl;
 }
 
 class SuperChat {
@@ -210,4 +233,30 @@ class ChatMessage {
 
   String get dedupeKey =>
       dedupeIdKey.isNotEmpty ? dedupeIdKey : dedupeContentKey;
+
+  ChatMessage copyWith({ChatAuthor? author}) => ChatMessage(
+        platform: platform,
+        id: id,
+        author: author ?? this.author,
+        items: items,
+        superChat: superChat,
+        isMembership: isMembership,
+        isMembershipEvent: isMembershipEvent,
+        isOwner: isOwner,
+        isModerator: isModerator,
+        isVip: isVip,
+        isVerified: isVerified,
+        youtubeStreamOrientation: youtubeStreamOrientation,
+        membershipEventKind: membershipEventKind,
+        membershipMonths: membershipMonths,
+        membershipGiftCount: membershipGiftCount,
+        timestamp: timestamp,
+        reply: reply,
+        sharedSource: sharedSource,
+        isAction: isAction,
+        providerRoomId: providerRoomId,
+        isFirstMessage: isFirstMessage,
+        isReturningChatter: isReturningChatter,
+        rewardId: rewardId,
+      );
 }

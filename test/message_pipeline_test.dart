@@ -243,6 +243,36 @@ void main() {
     pipeline.dispose();
   });
 
+  test('enriches buffered author avatars without replaying messages', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    final emitted = <ChatMessage>[];
+    final sub = pipeline.stream.listen(emitted.add);
+    pipeline.addSource(source.stream);
+    source.add(_message(
+      id: 'kick-1',
+      text: 'Hello',
+      authorName: 'Viewer',
+      timestamp: DateTime.utc(2026, 9, 7),
+      platform: Platform.kick,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final changed = pipeline.applyAuthorUpdate(const ChatAuthorUpdate(
+      platform: Platform.kick,
+      authorName: 'viewer',
+      avatarUrl: 'https://kick/avatar.webp',
+    ));
+
+    expect(changed, isTrue);
+    expect(pipeline.buffer.single.author.avatarUrl, 'https://kick/avatar.webp');
+    expect(emitted, hasLength(1));
+
+    await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
+
   test('applies message and author moderation within the matching stream',
       () async {
     final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));

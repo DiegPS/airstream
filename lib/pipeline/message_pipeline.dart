@@ -54,6 +54,28 @@ class MessagePipeline {
     return _buffer.length != previousLength;
   }
 
+  /// Enriches visible messages without replaying them through deduplication.
+  bool applyAuthorUpdate(ChatAuthorUpdate update) {
+    var changed = false;
+    final normalized = _normalizeUserKey(update.authorName);
+    final normalizedId = _normalizeUserKey(update.authorId);
+    for (var index = 0; index < _buffer.length; index++) {
+      final message = _buffer[index];
+      if (message.platform != update.platform ||
+          (normalizedId.isNotEmpty
+              ? _normalizeUserKey(message.author.channelId) != normalizedId
+              : _normalizeUserKey(message.author.name) != normalized) ||
+          message.author.avatarUrl == update.avatarUrl) {
+        continue;
+      }
+      _buffer[index] = message.copyWith(
+        author: message.author.copyWith(avatarUrl: update.avatarUrl),
+      );
+      changed = true;
+    }
+    return changed;
+  }
+
   /// Applies settings to both future messages and the current buffer.
   ///
   /// Returns whether existing buffered messages were removed, allowing the

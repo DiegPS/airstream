@@ -30,6 +30,7 @@ class YouTubeService {
   StreamSubscription<DateTime>? _pollSub;
   StreamSubscription<yt.UpdatedMetadataState>? _metadataSub;
   StreamSubscription<yt.YoutubeLiveLifecycle>? _lifecycleSub;
+  StreamSubscription<Exception>? _enrichmentErrorSub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _moderationController =
       StreamController<ChatModerationEvent>.broadcast();
@@ -186,6 +187,13 @@ class YouTubeService {
         }
       });
     }
+    if (chat case final YouTubeEnrichmentTransport enrichment) {
+      _enrichmentErrorSub = enrichment.enrichmentErrors.listen((error) {
+        if (generation == _generation && _chat == chat) {
+          AppLogger.debug('Optional YouTube emotes unavailable: $error');
+        }
+      });
+    }
     try {
       await chat.start().timeout(_connectionTimeout);
       if (generation != _generation || _chat != chat) {
@@ -254,6 +262,8 @@ class YouTubeService {
     _metadataSub = null;
     await _lifecycleSub?.cancel();
     _lifecycleSub = null;
+    await _enrichmentErrorSub?.cancel();
+    _enrichmentErrorSub = null;
     _currentMetadata = null;
     _liveEnded = false;
     _seenEventIds.clear();
