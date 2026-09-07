@@ -157,4 +157,33 @@ void main() {
     final messages = await updated;
     expect(messages.single.plainText, 'Vertical');
   });
+
+  test('applies Twitch moderation without affecting other providers', () async {
+    final timestamp = DateTime.utc(2026, 9, 6);
+    twitch.messageController.add(ChatMessage(
+      platform: Platform.twitch,
+      id: 'twitch-message',
+      author: const ChatAuthor(name: 'Author', channelId: 'author-id'),
+      items: const [MessageItem.text('Twitch')],
+      timestamp: timestamp,
+    ));
+    kick.messageController.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'kick-message',
+      author: const ChatAuthor(name: 'Author', channelId: 'author-id'),
+      items: const [MessageItem.text('Kick')],
+      timestamp: timestamp,
+    ));
+    await settleCoordinatorTasks();
+
+    final updated = coordinator.messageListStream.firstWhere(
+      (messages) => messages.length == 1,
+    );
+    twitch.moderationController.add(
+      const ChatModerationEvent.platform(platform: Platform.twitch),
+    );
+
+    final messages = await updated;
+    expect(messages.single.id, 'kick-message');
+  });
 }

@@ -30,6 +30,10 @@ abstract interface class ChannelChatClient {
   Future<void> dispose();
 }
 
+abstract interface class ModeratingChannelChatClient {
+  Stream<ChatModerationEvent> get moderationEvents;
+}
+
 class YouTubeChatServiceAdapter implements YouTubeChatClient {
   YouTubeChatServiceAdapter(this.service);
 
@@ -73,7 +77,8 @@ class KickChatServiceAdapter implements ChannelChatClient {
   Future<void> dispose() => service.dispose();
 }
 
-class TwitchChatServiceAdapter implements ChannelChatClient {
+class TwitchChatServiceAdapter
+    implements ChannelChatClient, ModeratingChannelChatClient {
   TwitchChatServiceAdapter(this.service);
 
   final TwitchService service;
@@ -82,6 +87,8 @@ class TwitchChatServiceAdapter implements ChannelChatClient {
   Stream<ChatMessage> get messages => service.messages;
   @override
   Stream<(ServiceStatus, String?)> get statusStream => service.statusStream;
+  @override
+  Stream<ChatModerationEvent> get moderationEvents => service.moderationEvents;
   @override
   Future<void> connect(String channel) => service.connect(channel);
   @override
@@ -150,6 +157,11 @@ class ChatCoordinator {
       _youtubeHorizontal.moderationEvents.listen(_handleModeration),
       _youtubeVertical.moderationEvents.listen(_handleModeration),
     ]);
+    if (_twitch case final ModeratingChannelChatClient twitch) {
+      _moderationSubscriptions.add(
+        twitch.moderationEvents.listen(_handleModeration),
+      );
+    }
   }
 
   final YouTubeChatClient _youtube;

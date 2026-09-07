@@ -294,6 +294,37 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('platform moderation clears only that provider', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final timestamp = DateTime.utc(2026, 9, 6);
+
+    source.add(_message(
+      id: 'twitch-1',
+      text: 'Twitch',
+      timestamp: timestamp,
+      platform: Platform.twitch,
+    ));
+    source.add(_message(
+      id: 'youtube-1',
+      text: 'YouTube',
+      timestamp: timestamp,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(
+      pipeline.applyModeration(
+        const ChatModerationEvent.platform(platform: Platform.twitch),
+      ),
+      isTrue,
+    );
+    expect(pipeline.buffer.map((message) => message.id), ['youtube-1']);
+
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({
@@ -302,10 +333,11 @@ ChatMessage _message({
   required DateTime timestamp,
   String authorName = 'Tester',
   String authorChannelId = 'tester-channel',
+  Platform platform = Platform.youtube,
   YoutubeStreamOrientation? youtubeStreamOrientation,
 }) {
   return ChatMessage(
-    platform: Platform.youtube,
+    platform: platform,
     id: id,
     author: ChatAuthor(
       name: authorName,

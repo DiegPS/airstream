@@ -137,6 +137,57 @@ void main() {
           'Kappa');
     });
 
+    test('maps rich identity, server time, Bits and Twitch GIFs', () async {
+      await service.connect('channel');
+      final messageFuture = service.messages.first;
+
+      socket.receive(
+        '@badges=;bits=250;color=#9146FF;display-name=RichUser;emotes=;'
+        'first-msg=1;gifs=0-4|gif-id|https://cdn.example/hello.gif;'
+        'id=rich-1;returning-chatter=1;room-id=room-1;'
+        'tmi-sent-ts=1760000000123;user-id=user-42 '
+        ':richuser!richuser@richuser.tmi.twitch.tv PRIVMSG #channel :Hello\r\n',
+      );
+
+      final message = await messageFuture.timeout(const Duration(seconds: 1));
+      expect(message.author.channelId, 'user-42');
+      expect(message.timestamp,
+          DateTime.fromMillisecondsSinceEpoch(1760000000123, isUtc: true));
+      expect(message.superChat?.amount, '250 Bits');
+      expect(message.superChat?.color, '#9146FF');
+      expect(message.items.single.emoji?.url, 'https://cdn.example/hello.gif');
+      expect(message.items.single.emoji?.alt, 'Hello');
+      expect(message.items.single.emoji?.isAnimated, isTrue);
+    });
+
+    test('maps Twitch deletions, user bans and room clears to moderation',
+        () async {
+      await service.connect('channel');
+      final events = <ChatModerationEvent>[];
+      final subscription = service.moderationEvents.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      socket.receive(
+        '@login=author;room-id=room;target-msg-id=message-1;'
+        'tmi-sent-ts=1760000000123 '
+        ':tmi.twitch.tv CLEARMSG #channel :deleted\r\n'
+        '@ban-duration=600;room-id=room;target-user-id=user-42;'
+        'tmi-sent-ts=1760000001123 '
+        ':tmi.twitch.tv CLEARCHAT #channel :author\r\n'
+        '@room-id=room;tmi-sent-ts=1760000002123 '
+        ':tmi.twitch.tv CLEARCHAT #channel\r\n',
+      );
+
+      await _eventually(() => events.length == 3);
+      expect(events[0].scope, ChatModerationScope.message);
+      expect(events[0].messageId, 'message-1');
+      expect(events[1].scope, ChatModerationScope.author);
+      expect(events[1].authorChannelId, 'user-42');
+      expect(events[2].scope, ChatModerationScope.platform);
+      expect(
+          events.every((event) => event.platform == Platform.twitch), isTrue);
+    });
+
     test('maps resubscription kind and cumulative months', () async {
       await service.connect('channel');
       final messageFuture = service.messages.first;

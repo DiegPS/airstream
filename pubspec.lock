@@ -120,10 +120,10 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "527511c3689a0c0b4952bdc6c1e2fa9885717307"
+      resolved-ref: "0d59d5daafc16aa5b94664a9fcad1079643b8efa"
       url: "git@github.com:DiegPS/dart_twitch_chat.git"
     source: git
-    version: "0.1.0"
+    version: "0.2.0"
   dart_youtube_chat:
     dependency: "direct main"
     description:

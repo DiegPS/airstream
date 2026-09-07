@@ -48,6 +48,7 @@ class MessagePipeline {
         ChatModerationScope.message => message.id == event.messageId,
         ChatModerationScope.author =>
           message.author.channelId == event.authorChannelId,
+        ChatModerationScope.platform => true,
       };
     });
     return _buffer.length != previousLength;

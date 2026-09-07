@@ -29,19 +29,24 @@ class TwitchService {
     _messageSubscription = _client.messages.listen(_handleMessage);
     _connectionSubscription = _client.connections.listen(_handleConnection);
     _failureSubscription = _client.failures.listen(_handleFailure);
+    _eventSubscription = _client.events.listen(_handleProviderEvent);
   }
 
   final twitch.TwitchChatClient _client;
   final _messages = StreamController<ChatMessage>.broadcast();
   final _statuses = StreamController<(ServiceStatus, String?)>.broadcast();
+  final _moderationEvents = StreamController<ChatModerationEvent>.broadcast();
   late final StreamSubscription<twitch.TwitchChatMessage> _messageSubscription;
   late final StreamSubscription<twitch.TwitchConnectionUpdate>
       _connectionSubscription;
   late final StreamSubscription<twitch.TwitchFailure> _failureSubscription;
+  late final StreamSubscription<twitch.TwitchEvent> _eventSubscription;
   bool _disposed = false;
 
   Stream<ChatMessage> get messages => _messages.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statuses.stream;
+  Stream<ChatModerationEvent> get moderationEvents => _moderationEvents.stream;
+  Stream<twitch.TwitchEvent> get providerEvents => _client.events;
 
   Future<void> connect(String channelName) => _client.connect(channelName);
 
@@ -53,9 +58,11 @@ class TwitchService {
     await _messageSubscription.cancel();
     await _connectionSubscription.cancel();
     await _failureSubscription.cancel();
+    await _eventSubscription.cancel();
     await _client.dispose();
     await _messages.close();
     await _statuses.close();
+    await _moderationEvents.close();
   }
 
   List<MessageItem> parseMessageForTesting({
@@ -83,7 +90,7 @@ class TwitchService {
         id: message.id,
         author: ChatAuthor(
           name: message.author.name,
-          channelId: message.author.login,
+          channelId: message.author.id ?? message.author.login,
           color: message.author.color,
           badges: message.author.badges
               .map(
@@ -95,6 +102,12 @@ class TwitchService {
               .toList(growable: false),
         ),
         items: message.parts.map(_messagePart).toList(growable: false),
+        superChat: message.bits == null
+            ? null
+            : SuperChat(
+                amount: '${message.bits} Bits',
+                color: '#9146FF',
+              ),
         isModerator: message.author.isModerator,
         isMembership: message.author.isSubscriber,
         isMembershipEvent: message.isMembershipEvent,
@@ -115,6 +128,16 @@ class TwitchService {
   }
 
   static MessageItem _messagePart(twitch.TwitchMessagePart part) {
+    if (part.isGif) {
+      final gif = part.gif!;
+      return MessageItem.emoji(
+        EmojiItem(
+          url: gif.url,
+          alt: gif.alt,
+          isAnimated: true,
+        ),
+      );
+    }
     if (!part.isEmote) return MessageItem.text(part.text);
     final emote = part.emote!;
     return MessageItem.emoji(
@@ -124,6 +147,34 @@ class TwitchService {
         isAnimated: emote.isAnimated,
       ),
     );
+  }
+
+  void _handleProviderEvent(twitch.TwitchEvent event) {
+    if (_moderationEvents.isClosed) return;
+    switch (event) {
+      case twitch.TwitchClearMessageEvent(:final targetMessageId)
+          when targetMessageId.isNotEmpty:
+        _moderationEvents.add(
+          ChatModerationEvent.message(
+            platform: Platform.twitch,
+            messageId: targetMessageId,
+          ),
+        );
+      case twitch.TwitchClearChatEvent(clearsEntireRoom: true):
+        _moderationEvents.add(
+          const ChatModerationEvent.platform(platform: Platform.twitch),
+        );
+      case twitch.TwitchClearChatEvent(:final targetUserId)
+          when targetUserId != null && targetUserId.isNotEmpty:
+        _moderationEvents.add(
+          ChatModerationEvent.author(
+            platform: Platform.twitch,
+            authorChannelId: targetUserId,
+          ),
+        );
+      default:
+        break;
+    }
   }
 
   void _handleConnection(twitch.TwitchConnectionUpdate update) {
