@@ -53,8 +53,7 @@ void main() {
         hasLength(1));
   });
 
-  test('YouTube reports timeout and malformed messages through status',
-      () async {
+  test('YouTube reports timeout and provider errors through status', () async {
     final transport = _FakeYouTubeTransport(
       startFuture: Completer<void>().future,
     );
@@ -67,31 +66,52 @@ void main() {
         throwsA(isA<TimeoutException>()));
 
     final ready = _FakeYouTubeTransport();
-    final metadata = _FakeYouTubeMetadataTransport();
     final service = YouTubeService(
       transportFactory: (_) => ready,
-      metadataTransportFactory: (_) => metadata,
     );
     addTearDown(service.dispose);
     final statuses = <(ServiceStatus, String?)>[];
     final subscription = service.statusStream.listen(statuses.add);
     addTearDown(subscription.cancel);
     await service.connect(liveId: 'abcdefghijk');
-    ready.messageController.add({'corrupt': true});
+    ready.errorController.add(Exception('provider failure'));
     await _eventually(
         () => statuses.any((event) => event.$1 == ServiceStatus.error));
-    expect(statuses.last.$2, contains('Invalid YouTube'));
+    expect(statuses.last.$2, contains('provider failure'));
     await service.disconnect();
     expect(ready.stopped, isTrue);
+  });
+
+  test('YouTube rejects foreign URLs before creating a transport', () async {
+    var transports = 0;
+    final service = YouTubeService(
+      transportFactory: (_) {
+        transports++;
+        return _FakeYouTubeTransport();
+      },
+    );
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+
+    await expectLater(
+      service.connect(
+        handle: 'https://example.test/watch?v=dQw4w9WgXcQ',
+      ),
+      throwsFormatException,
+    );
+
+    expect(transports, 0);
+    await _eventually(() => statuses.isNotEmpty);
+    expect(statuses.last.$1, ServiceStatus.error);
   });
 
   test('YouTube normalizes every media URL and preserves custom emoji',
       () async {
     final transport = _FakeYouTubeTransport();
-    final metadata = _FakeYouTubeMetadataTransport();
     final service = YouTubeService(
       transportFactory: (_) => transport,
-      metadataTransportFactory: (_) => metadata,
     );
     addTearDown(service.dispose);
     await service.connect(liveId: 'abcdefghijk');
@@ -184,14 +204,12 @@ void main() {
     expect(message.platform, app.Platform.youtube);
   });
 
-  test('YouTube merges incremental live metadata and stops it on disconnect',
+  test('YouTube consumes accumulated live metadata and stops on disconnect',
       () async {
     final chat = _FakeYouTubeTransport();
-    final transport = _FakeYouTubeMetadataTransport();
     final service = YouTubeService(
       streamOrientation: app.YoutubeStreamOrientation.horizontal,
       transportFactory: (_) => chat,
-      metadataTransportFactory: (_) => transport,
     );
     addTearDown(service.dispose);
 
@@ -199,14 +217,15 @@ void main() {
     final subscription = service.metadataStream.listen(updates.add);
     addTearDown(subscription.cancel);
     await service.connect(liveId: 'abcdefghijk');
-    await _eventually(() => transport.started);
-
-    transport.batchController.add(_metadataBatch(
+    chat.metadataStateController.add(_metadataState(
       viewers: 1200,
       title: 'Horizontal broadcast',
     ));
     await _eventually(() => service.currentMetadata?.viewerCount == 1200);
-    transport.batchController.add(_metadataBatch(viewers: 1350));
+    chat.metadataStateController.add(_metadataState(
+      viewers: 1350,
+      title: 'Horizontal broadcast',
+    ));
     await _eventually(() => service.currentMetadata?.viewerCount == 1350);
 
     expect(service.currentMetadata?.title, 'Horizontal broadcast');
@@ -215,26 +234,26 @@ void main() {
     expect(updates.whereType<Object>(), isNotEmpty);
 
     await service.disconnect();
-    expect(transport.stopped, isTrue);
+    expect(chat.stopped, isTrue);
     expect(service.currentMetadata, isNull);
   });
 
   test('YouTube converts provider deletion events into moderation events',
       () async {
     final chat = _FakeYouTubeTransport();
-    final metadata = _FakeYouTubeMetadataTransport();
     final service = YouTubeService(
       streamOrientation: app.YoutubeStreamOrientation.vertical,
       transportFactory: (_) => chat,
-      metadataTransportFactory: (_) => metadata,
     );
     addTearDown(service.dispose);
     await service.connect(liveId: 'abcdefghijk');
 
     final deletedMessage = service.moderationEvents.first;
     chat.eventController.add(const yt.LiveChatEvent(
+      kind: yt.LiveChatEventKind.messageDeleted,
       actionType: 'markChatItemAsDeletedAction',
       rendererType: '',
+      targetItemId: 'message-1',
       raw: {
         'markChatItemAsDeletedAction': {'targetItemId': 'message-1'},
       },
@@ -322,19 +341,24 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   _FakeYouTubeTransport({Future<void>? startFuture})
       : _startFuture = startFuture ?? Future<void>.value();
   final Future<void> _startFuture;
-  final messageController = StreamController<dynamic>.broadcast();
-  final eventController = StreamController<dynamic>.broadcast();
-  final errorController = StreamController<dynamic>.broadcast();
-  final pollController = StreamController<dynamic>.broadcast();
+  final messageController = StreamController<yt.ChatItem>.broadcast();
+  final eventController = StreamController<yt.LiveChatEvent>.broadcast();
+  final metadataStateController =
+      StreamController<yt.UpdatedMetadataState>.broadcast();
+  final errorController = StreamController<Exception>.broadcast();
+  final pollController = StreamController<DateTime>.broadcast();
   bool stopped = false;
   @override
-  Stream<dynamic> get messages => messageController.stream;
+  Stream<yt.ChatItem> get messages => messageController.stream;
   @override
-  Stream<dynamic> get events => eventController.stream;
+  Stream<yt.LiveChatEvent> get events => eventController.stream;
   @override
-  Stream<dynamic> get errors => errorController.stream;
+  Stream<yt.UpdatedMetadataState> get metadataStates =>
+      metadataStateController.stream;
   @override
-  Stream<dynamic> get polls => pollController.stream;
+  Stream<Exception> get errors => errorController.stream;
+  @override
+  Stream<DateTime> get polls => pollController.stream;
   @override
   String get liveId => 'live-id';
   @override
@@ -343,31 +367,11 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   void stop() => stopped = true;
 }
 
-class _FakeYouTubeMetadataTransport implements YouTubeMetadataTransport {
-  final batchController = StreamController<yt.UpdatedMetadataBatch>.broadcast();
-  final errorController = StreamController<Exception>.broadcast();
-  bool started = false;
-  bool stopped = false;
-
-  @override
-  Stream<yt.UpdatedMetadataBatch> get batches => batchController.stream;
-  @override
-  Stream<Exception> get errors => errorController.stream;
-  @override
-  Future<void> start() async => started = true;
-  @override
-  Future<void> stop() async {
-    stopped = true;
-    await batchController.close();
-    await errorController.close();
-  }
-}
-
-yt.UpdatedMetadataBatch _metadataBatch({
+yt.UpdatedMetadataState _metadataState({
   required int viewers,
   String? title,
 }) {
-  return yt.UpdatedMetadataBatch.fromJson({
+  final batch = yt.UpdatedMetadataBatch.fromJson({
     'actions': [
       {
         'updateViewershipAction': {
@@ -388,6 +392,7 @@ yt.UpdatedMetadataBatch _metadataBatch({
         },
     ],
   });
+  return const yt.UpdatedMetadataState().apply(batch);
 }
 
 class _FakeKickTransport implements KickChatTransport {

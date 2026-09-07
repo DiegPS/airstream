@@ -23,36 +23,6 @@ class YoutubeLiveMetadata {
   final String dateText;
   final String description;
   final DateTime? updatedAt;
-
-  YoutubeLiveMetadata merge({
-    int? viewerCount,
-    String? viewerCountText,
-    bool? isLive,
-    String? title,
-    String? dateText,
-    String? description,
-    DateTime? updatedAt,
-  }) {
-    return YoutubeLiveMetadata(
-      liveId: liveId,
-      streamOrientation: streamOrientation,
-      viewerCount: viewerCount ?? this.viewerCount,
-      viewerCountText: _nonEmptyOrPrevious(
-        viewerCountText,
-        this.viewerCountText,
-      ),
-      isLive: isLive ?? this.isLive,
-      title: _nonEmptyOrPrevious(title, this.title),
-      dateText: _nonEmptyOrPrevious(dateText, this.dateText),
-      description: _nonEmptyOrPrevious(description, this.description),
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  static String _nonEmptyOrPrevious(String? next, String previous) {
-    final normalized = next?.trim() ?? '';
-    return normalized.isEmpty ? previous : normalized;
-  }
 }
 
 class YoutubeLiveMetadataSummary {

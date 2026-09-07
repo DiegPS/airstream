@@ -21,25 +21,6 @@ void main() {
     ),
   );
 
-  test('incremental metadata retains static fields and updates viewers', () {
-    const initial = YoutubeLiveMetadata(
-      liveId: 'live',
-      viewerCount: 100,
-      title: 'Original title',
-      description: 'Description',
-    );
-
-    final updated = initial.merge(
-      viewerCount: 125,
-      title: '',
-      description: null,
-    );
-
-    expect(updated.viewerCount, 125);
-    expect(updated.title, 'Original title');
-    expect(updated.description, 'Description');
-  });
-
   test('total ignores streams whose audience is not available yet', () {
     const partial = YoutubeLiveMetadataSummary(
       horizontal: YoutubeLiveMetadata(liveId: 'horizontal', viewerCount: 42),
