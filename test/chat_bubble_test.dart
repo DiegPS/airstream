@@ -269,6 +269,68 @@ void main() {
     expect(find.text('↪ Bob: Original message'), findsOneWidget);
     expect(find.text('My answer'), findsOneWidget);
   });
+
+  testWidgets('marks messages received from Twitch shared chat',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(showBadges: true),
+    );
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'shared',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [MessageItem.text('From another channel')],
+      sharedSource: const ChatSharedSource(channelId: 'source-channel'),
+      timestamp: DateTime.utc(2026, 9, 7),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('COMPARTIDO'), findsOneWidget);
+  });
+
+  testWidgets('shows anonymous Twitch chatter and reward indicators',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(showBadges: true),
+    );
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'contextual',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [MessageItem.text('Hello')],
+      isFirstMessage: true,
+      isReturningChatter: true,
+      rewardId: 'reward-42',
+      timestamp: DateTime.utc(2026, 9, 7),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          locale: const Locale('es'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('PRIMER MENSAJE'), findsOneWidget);
+    expect(find.text('HA VUELTO'), findsOneWidget);
+    expect(find.text('RECOMPENSA'), findsOneWidget);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

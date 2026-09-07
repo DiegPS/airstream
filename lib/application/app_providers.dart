@@ -47,6 +47,10 @@ final platformMetadataProvider =
   return ref.watch(appControllerProvider).platformMetadataStream;
 });
 
+final chatProviderEventProvider = StreamProvider<ChatProviderEvent>((ref) {
+  return ref.watch(appControllerProvider).chatProviderEvents;
+});
+
 /// Per-platform connection status: map of platform name → (status, error message).
 final connectionStatusProvider =
     StreamProvider<Map<String, (ServiceStatus, String?)>>((ref) {

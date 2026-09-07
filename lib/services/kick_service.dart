@@ -33,6 +33,8 @@ class KickService {
   final _metadataController =
       StreamController<PlatformLiveMetadata?>.broadcast();
   final _seenGiftBatches = <String>{};
+  String? _lastRoomStateSignature;
+  String? _lastPinnedMessageId;
   int _generation = 0;
 
   Stream<ChatMessage> get messages => _controller.stream;
@@ -126,6 +128,11 @@ class KickService {
     _eventSub = _client!.events.listen((event) {
       if (generation != _generation) return;
       if (!_eventController.isClosed) _eventController.add(event);
+      if (event is kick.KickPinnedMessageCreatedEvent) {
+        _lastPinnedMessageId = event.message.id;
+      } else if (event is kick.KickPinnedMessageDeletedEvent) {
+        _lastPinnedMessageId = '';
+      }
       final moderation = _convertModeration(event);
       if (moderation != null && !_moderationController.isClosed) {
         _moderationController.add(moderation);
@@ -149,6 +156,7 @@ class KickService {
           title: live?.title ?? '',
           updatedAt: DateTime.now().toUtc(),
         ));
+        _publishChannelState(channel);
       });
     }
     if (_client case final KickConnectionTransport transport) {
@@ -169,6 +177,8 @@ class KickService {
   Future<void> disconnect() async {
     _generation++;
     _seenGiftBatches.clear();
+    _lastRoomStateSignature = null;
+    _lastPinnedMessageId = null;
     await _sub?.cancel();
     _sub = null;
     await _errorSub?.cancel();
@@ -267,7 +277,7 @@ class KickService {
 
   ChatMessage? _convertEvent(kick.KickEvent event) {
     if (event is kick.KickSubscriptionEvent) {
-      if (event.months > 1) return null;
+      final isRenewal = event.months > 1;
       return ChatMessage(
         platform: Platform.kick,
         id: 'subscription:${event.username}:${event.months}',
@@ -275,7 +285,7 @@ class KickService {
         items: [MessageItem.text(event.customMessage)],
         isMembership: true,
         isMembershipEvent: true,
-        membershipEventKind: event.months > 1
+        membershipEventKind: isRenewal
             ? MembershipEventKind.resubscription
             : MembershipEventKind.subscription,
         membershipMonths: event.months,
@@ -332,19 +342,20 @@ class KickService {
         ChatProviderEventKind.pinnedMessage,
       kick.KickPinnedMessageDeletedEvent() =>
         ChatProviderEventKind.unpinnedMessage,
-      _ when event.eventName.contains('Poll') => ChatProviderEventKind.poll,
-      _
-          when event.eventName.contains('Reward') ||
-              event.eventName.contains('KicksGifted') =>
-        ChatProviderEventKind.reward,
-      _ when event.eventName.toLowerCase().contains('raid') =>
-        ChatProviderEventKind.raid,
-      _ when event.eventName.contains('Hosted') => ChatProviderEventKind.host,
-      _ when event.eventName.contains('Goal') => ChatProviderEventKind.goal,
-      _ when event.eventName.contains('StreamerIsLive') =>
+      kick.KickPollUpdatedEvent() ||
+      kick.KickPollDeletedEvent() =>
+        ChatProviderEventKind.poll,
+      kick.KickRewardRedeemedEvent() => ChatProviderEventKind.reward,
+      kick.KickKicksGiftedEvent() => ChatProviderEventKind.support,
+      kick.KickStreamHostedEvent() => ChatProviderEventKind.host,
+      kick.KickGoalEvent() => ChatProviderEventKind.goal,
+      kick.KickLivestreamEvent(action: kick.KickLivestreamAction.started) =>
         ChatProviderEventKind.streamOnline,
-      _ when event.eventName.contains('StopStream') =>
+      kick.KickLivestreamEvent(action: kick.KickLivestreamAction.stopped) =>
         ChatProviderEventKind.streamOffline,
+      kick.KickLivestreamEvent() ||
+      kick.KickChatMovedEvent() =>
+        ChatProviderEventKind.notice,
       kick.KickKnownEvent() ||
       kick.KickUnknownEvent() =>
         ChatProviderEventKind.unknown,
@@ -353,15 +364,193 @@ class KickService {
     if (kind == null) return null;
     final text = switch (event) {
       kick.KickPinnedMessageCreatedEvent(:final message) => message.content,
+      kick.KickPollUpdatedEvent(:final title) => title,
+      kick.KickRewardRedeemedEvent(:final reward, :final userInput) => [
+          reward.title,
+          userInput
+        ].where((value) => value.isNotEmpty).join(' · '),
+      kick.KickKicksGiftedEvent(:final gift, :final message) => [
+          gift.name,
+          message,
+          gift.message
+        ].where((value) => value.isNotEmpty).toSet().join(' · '),
+      kick.KickGoalEvent(:final title) => title,
+      kick.KickStreamHostedEvent(:final hostedChannel) => hostedChannel,
+      kick.KickLivestreamEvent(:final title) => title,
+      kick.KickChatMovedEvent(:final channelSlug) => channelSlug,
       _ => event.raw['message']?.toString() ?? '',
+    };
+    final authorName = switch (event) {
+      kick.KickRewardRedeemedEvent(:final redeemer) => redeemer.username,
+      kick.KickKicksGiftedEvent(:final sender) => sender.username,
+      kick.KickStreamHostedEvent(:final host) => host.username,
+      _ => '',
+    };
+    final count = switch (event) {
+      kick.KickKicksGiftedEvent(:final gift) => gift.amount,
+      kick.KickStreamHostedEvent(:final viewerCount) => viewerCount,
+      _ => null,
+    };
+    final timestamp = switch (event) {
+      kick.KickRewardRedeemedEvent(:final redeemedAt?) => redeemedAt,
+      kick.KickKicksGiftedEvent(:final createdAt?) => createdAt,
+      kick.KickLivestreamEvent(:final createdAt?) => createdAt,
+      _ => DateTime.now().toUtc(),
+    };
+    final id = switch (event) {
+      kick.KickPinnedMessageCreatedEvent(:final message) => message.id,
+      kick.KickPollUpdatedEvent(:final pollId) => pollId,
+      kick.KickPollDeletedEvent(:final pollId) => pollId,
+      kick.KickRewardRedeemedEvent(:final redemptionId) => redemptionId,
+      kick.KickKicksGiftedEvent(:final transactionId)
+          when transactionId.isNotEmpty =>
+        transactionId,
+      kick.KickGoalEvent(:final goalId) => goalId,
+      kick.KickLivestreamEvent(:final livestreamId) => livestreamId,
+      kick.KickKicksGiftedEvent(:final sender, :final gift, :final createdAt) =>
+        '${sender.id}:${sender.username}:${gift.id}:${createdAt?.toIso8601String() ?? ''}',
+      _ => event.raw['id']?.toString() ?? '',
     };
     return ChatProviderEvent(
       platform: Platform.kick,
       kind: kind,
-      id: event.raw['id']?.toString() ?? event.eventName,
-      timestamp: DateTime.now().toUtc(),
+      id: id.isEmpty ? event.eventName : id,
+      timestamp: timestamp.toUtc(),
+      authorName: authorName,
       text: text,
-      data: Map<String, Object?>.unmodifiable(event.raw),
+      count: count,
+      data: Map<String, Object?>.unmodifiable({
+        ...event.raw,
+        ..._normalizedProviderData(event),
+      }),
     );
+  }
+
+  Map<String, Object?> _normalizedProviderData(kick.KickEvent event) =>
+      switch (event) {
+        kick.KickPollUpdatedEvent(
+          :final status,
+          :final durationSeconds,
+          :final endsAt,
+          :final options
+        ) =>
+          {
+            'status': status,
+            'durationSeconds': durationSeconds,
+            'endsAt': endsAt?.toIso8601String(),
+            'options': [
+              for (final option in options)
+                {
+                  'id': option.id,
+                  'label': option.label,
+                  'votes': option.votes,
+                },
+            ],
+          },
+        kick.KickPollDeletedEvent() => const {'deleted': true},
+        kick.KickRewardRedeemedEvent(
+          :final reward,
+          :final status,
+          :final userInput
+        ) =>
+          {
+            'rewardId': reward.id,
+            'rewardTitle': reward.title,
+            'rewardDescription': reward.description,
+            'cost': reward.cost,
+            'status': status,
+            'userInput': userInput,
+          },
+        kick.KickKicksGiftedEvent(:final gift) => {
+            'giftId': gift.id,
+            'giftName': gift.name,
+            'giftType': gift.type,
+            'tier': gift.tier,
+            'amount': gift.amount,
+            'imageUrl': gift.imageUrl,
+            'pinnedTimeSeconds': gift.pinnedTimeSeconds,
+          },
+        kick.KickGoalEvent(
+          :final action,
+          :final current,
+          :final target,
+          :final status,
+          :final endsAt
+        ) =>
+          {
+            'action': action.name,
+            'current': current,
+            'target': target,
+            'status': status,
+            'endsAt': endsAt?.toIso8601String(),
+          },
+        kick.KickStreamHostedEvent(:final hostedChannel, :final viewerCount) =>
+          {'hostedChannel': hostedChannel, 'viewerCount': viewerCount},
+        kick.KickLivestreamEvent(:final action, :final viewerCount) => {
+            'action': action.name,
+            'viewerCount': viewerCount,
+          },
+        kick.KickChatMovedEvent(:final channelId, :final channelSlug) => {
+            'channelId': channelId,
+            'channelSlug': channelSlug,
+          },
+        _ => const {},
+      };
+
+  void _publishChannelState(kick.KickChannel channel) {
+    if (_appEventController.isClosed) return;
+    final room = channel.chatroom;
+    final signature = [
+      room.slowMode,
+      room.messageInterval,
+      room.followersMode,
+      room.followingMinimumMinutes,
+      room.subscribersMode,
+      room.emotesMode,
+      room.accountAgeMode,
+      room.accountAgeMinimumMinutes,
+    ].join(':');
+    if (_lastRoomStateSignature != signature) {
+      _lastRoomStateSignature = signature;
+      _appEventController.add(ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.roomState,
+        id: 'kick-room-state:${room.id}:$signature',
+        timestamp: DateTime.now().toUtc(),
+        data: {
+          'slowModeSeconds': room.slowMode ? room.messageInterval : 0,
+          'followersOnlyMinutes':
+              room.followersMode ? room.followingMinimumMinutes : -1,
+          'subscribersOnly': room.subscribersMode,
+          'emoteOnly': room.emotesMode,
+          'accountAgeMinutes':
+              room.accountAgeMode ? room.accountAgeMinimumMinutes : 0,
+        },
+      ));
+    }
+
+    final pinned = room.pinnedMessage;
+    final pinnedId = pinned?.message.id ?? '';
+    if (_lastPinnedMessageId == pinnedId) return;
+    final previous = _lastPinnedMessageId;
+    _lastPinnedMessageId = pinnedId;
+    if (pinned != null && pinnedId.isNotEmpty) {
+      _appEventController.add(ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.pinnedMessage,
+        id: pinnedId,
+        timestamp: pinned.message.createdAt,
+        authorName: pinned.pinnedBy.username,
+        text: pinned.message.content,
+        data: Map<String, Object?>.unmodifiable(pinned.raw),
+      ));
+    } else if (previous != null && previous.isNotEmpty) {
+      _appEventController.add(ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.unpinnedMessage,
+        id: previous,
+        timestamp: DateTime.now().toUtc(),
+      ));
+    }
   }
 }

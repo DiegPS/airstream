@@ -474,8 +474,7 @@ void main() {
     expect((await metadata)!.viewerCount, 321);
   });
 
-  test('Kick forwards public polls, pins and KICK gifts as common events',
-      () async {
+  test('Kick forwards typed polls and KICK gifts with useful fields', () async {
     final transport = _FakeKickTransport();
     final service = KickService(transportFactory: () async => transport);
     addTearDown(service.dispose);
@@ -485,18 +484,142 @@ void main() {
 
     transport.eventController.add(kick.parseKickEvent(
       r'App\Events\PollUpdateEvent',
-      {'id': 'poll-1'},
+      {
+        'poll': {
+          'id': 'poll-1',
+          'question': 'Choose',
+          'options': [
+            {'id': 'a', 'text': 'One', 'votes': 4},
+          ],
+        },
+      },
     ));
     transport.eventController.add(kick.parseKickEvent(
       'KicksGifted',
-      {'id': 'gift-1'},
+      {
+        'gift_transaction_id': 'gift-1',
+        'sender': {'id': 1, 'username': 'supporter'},
+        'gift': {'gift_id': 'hell_yeah', 'name': 'Hell Yeah', 'amount': 3},
+      },
     ));
     await _eventually(() => events.length == 2);
 
     expect(events.map((event) => event.kind), [
       ChatProviderEventKind.poll,
-      ChatProviderEventKind.reward,
+      ChatProviderEventKind.support,
     ]);
+    expect(events[0].id, 'poll-1');
+    expect(events[0].text, 'Choose');
+    expect((events[0].data['options'] as List).single, {
+      'id': 'a',
+      'label': 'One',
+      'votes': 4,
+    });
+    expect(events[1].id, 'gift-1');
+    expect(events[1].authorName, 'supporter');
+    expect(events[1].text, 'Hell Yeah');
+    expect(events[1].count, 3);
+    expect(
+      events[1].data['imageUrl'],
+      'https://files.kick.com/kicks/gifts/hell-yeah.webp',
+    );
+  });
+
+  test('Kick converts rewards, goals, hosts and lifecycle by concrete type',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <ChatProviderEvent>[];
+    service.appEvents.listen(events.add);
+    await service.connect('creator');
+
+    transport.eventController.add(kick.parseKickEvent('RewardRedeemedEvent', {
+      'redemption_id': 'redemption-1',
+      'reward': {'id': 'reward-1', 'title': 'Hydrate', 'cost': 500},
+      'redeemer': {'id': 3, 'username': 'viewer'},
+      'user_input': 'please',
+      'redeemed_at': '2026-09-06T12:00:00Z',
+    }));
+    transport.eventController.add(kick.parseKickEvent('GoalUpdatedEvent', {
+      'id': 'goal-1',
+      'title': 'Subscriptions',
+      'current': 8,
+      'target': 10,
+    }));
+    transport.eventController
+        .add(kick.parseKickEvent(r'App\Events\StreamHostedEvent', {
+      'host': {'id': 4, 'username': 'raider'},
+      'hosted_channel': {'slug': 'creator'},
+      'viewer_count': 42,
+    }));
+    transport.eventController
+        .add(kick.parseKickEvent(r'App\Events\StreamerIsLive', {
+      'livestream_id': 'live-1',
+      'session_title': 'Live now',
+    }));
+    await _eventually(() => events.length == 4);
+
+    expect(events[0].kind, ChatProviderEventKind.reward);
+    expect(events[0].authorName, 'viewer');
+    expect(events[0].text, 'Hydrate · please');
+    expect(events[0].data['cost'], 500);
+    expect(events[0].timestamp, DateTime.utc(2026, 9, 6, 12));
+    expect(events[1].kind, ChatProviderEventKind.goal);
+    expect(events[1].data, containsPair('current', 8));
+    expect(events[1].data, containsPair('target', 10));
+    expect(events[2].kind, ChatProviderEventKind.host);
+    expect(events[2].authorName, 'raider');
+    expect(events[2].count, 42);
+    expect(events[3].kind, ChatProviderEventKind.streamOnline);
+    expect(events[3].text, 'Live now');
+  });
+
+  test('Kick exposes room restrictions and initial pin without duplicates',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <ChatProviderEvent>[];
+    service.appEvents.listen(events.add);
+    await service.connect('creator');
+    final channel = kick.KickChannel.fromJson({
+      'id': 1,
+      'slug': 'creator',
+      'user': const <String, Object?>{},
+      'chatroom': {
+        'id': 2,
+        'slow_mode': {'enabled': true, 'message_interval': 7},
+        'followers_mode': {'enabled': true, 'min_duration': 10},
+        'subscribers_mode': true,
+        'emotes_mode': true,
+        'pinned_message': {
+          'message': {
+            'id': 'pin-1',
+            'content': 'Rules',
+            'created_at': '2026-09-06T12:00:00Z',
+            'sender': const <String, Object?>{},
+          },
+          'pinned_by': {'id': 3, 'username': 'moderator'},
+        },
+      },
+    });
+
+    transport.metadataController.add(channel);
+    transport.metadataController.add(channel);
+    await _eventually(() => events.length == 2);
+
+    expect(events[0].kind, ChatProviderEventKind.roomState);
+    expect(events[0].data['slowModeSeconds'], 7);
+    expect(events[0].data['followersOnlyMinutes'], 10);
+    expect(events[0].data['subscribersOnly'], isTrue);
+    expect(events[0].data['emoteOnly'], isTrue);
+    expect(events[1].kind, ChatProviderEventKind.pinnedMessage);
+    expect(events[1].id, 'pin-1');
+    expect(events[1].authorName, 'moderator');
+    expect(events[1].text, 'Rules');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(events, hasLength(2));
   });
 
   test('Kick consumes modern image badges, roles and supplied avatars',
@@ -547,6 +670,24 @@ void main() {
     expect(message.isMembershipEvent, isTrue);
     expect(message.membershipEventKind, app.MembershipEventKind.resubscription);
     expect(message.membershipMonths, 12);
+  });
+
+  test('Kick preserves legacy multi-month subscription renewals', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messageFuture = service.messages.first;
+    await service.connect('creator');
+
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\SubscriptionEvent',
+      {'username': 'member', 'months': 6, 'custom_message': 'still here'},
+    ));
+
+    final message = await messageFuture;
+    expect(message.membershipEventKind, app.MembershipEventKind.resubscription);
+    expect(message.membershipMonths, 6);
+    expect(message.plainText, 'still here');
   });
 }
 

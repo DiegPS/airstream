@@ -73,6 +73,8 @@ class AppController {
 
     _subscriptions.addAll([
       _chat.messages.listen(_audio.handleChatMessage),
+      _chat.moderationEvents.listen(_overlay.broadcastModeration),
+      _chat.providerEvents.listen(_overlay.broadcastProviderEvent),
       _audio.finalizedCaptions.listen(_overlay.broadcastCaption),
       _audio.voiceCommands.listen(
         (command) => unawaited(_obs.executeVoiceCommand(command)),
@@ -99,6 +101,8 @@ class AppController {
   Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream =>
       _chat.youtubeMetadataStream;
   Stream<ChatProviderEvent> get chatProviderEvents => _chat.providerEvents;
+  Stream<ChatModerationEvent> get chatModerationEvents =>
+      _chat.moderationEvents;
   Stream<Map<Platform, PlatformLiveMetadata>> get platformMetadataStream =>
       _chat.platformMetadataStream;
   Stream<TtsLoadState> get ttsLoadStateStream => _audio.ttsLoadStateStream;

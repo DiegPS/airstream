@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,6 +108,9 @@ void main() {
       expect(overlayResponse.body, contains("new WebSocket(protocol"));
       expect(overlayResponse.body, contains("owner: 'OWNER'"));
       expect(overlayResponse.body, contains("owner: 'DUEÑO'"));
+      expect(overlayResponse.body, contains("envelope.type === 'moderation'"));
+      expect(
+          overlayResponse.body, contains("envelope.type === 'providerEvent'"));
       expect(alertsResponse.body, contains('document.createElement'));
       expect(alertsResponse.body, contains("membership: 'Membresía'"));
 
@@ -143,6 +147,33 @@ void main() {
             as Map<String, dynamic>)['youtubeStreamOrientation'],
         'vertical',
       );
+
+      server.broadcastModeration(const ChatModerationEvent.message(
+        platform: Platform.youtube,
+        messageId: 'vertical-message',
+        youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+      ));
+      expect(await events.moveNext(), isTrue);
+      final moderationEnvelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(moderationEnvelope['type'], 'moderation');
+      expect(
+        (moderationEnvelope['data'] as Map)['messageId'],
+        'vertical-message',
+      );
+
+      server.broadcastProviderEvent(ChatProviderEvent(
+        platform: Platform.twitch,
+        kind: ChatProviderEventKind.raid,
+        id: 'raid-1',
+        timestamp: DateTime.utc(2026, 9, 7),
+        count: 50,
+      ));
+      expect(await events.moveNext(), isTrue);
+      final providerEnvelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(providerEnvelope['type'], 'providerEvent');
+      expect((providerEnvelope['data'] as Map)['count'], 50);
       await events.cancel();
       await socket.sink.close();
     } finally {

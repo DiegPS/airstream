@@ -244,6 +244,8 @@ class ChatCoordinator {
       StreamController<YoutubeLiveMetadataSummary>.broadcast();
   final _providerEventController =
       StreamController<ChatProviderEvent>.broadcast();
+  final _moderationEventController =
+      StreamController<ChatModerationEvent>.broadcast();
   final _platformMetadataController =
       StreamController<Map<Platform, PlatformLiveMetadata>>.broadcast();
   final _statusSubscriptions = <StreamSubscription<(ServiceStatus, String?)>>[];
@@ -297,6 +299,9 @@ class ChatCoordinator {
 
   Stream<ChatProviderEvent> get providerEvents =>
       _providerEventController.stream;
+
+  Stream<ChatModerationEvent> get moderationEvents =>
+      _moderationEventController.stream;
 
   Stream<Map<Platform, PlatformLiveMetadata>>
       get platformMetadataStream async* {
@@ -658,7 +663,11 @@ class ChatCoordinator {
   }
 
   void _handleModeration(ChatModerationEvent event) {
-    if (_disposed || !_pipeline.applyModeration(event)) return;
+    if (_disposed) return;
+    if (!_moderationEventController.isClosed) {
+      _moderationEventController.add(event);
+    }
+    if (!_pipeline.applyModeration(event)) return;
     if (!_listController.isClosed) {
       _listController.add(_pipeline.buffer);
     }
@@ -695,6 +704,7 @@ class ChatCoordinator {
     await _youtubeBadgeController.close();
     await _youtubeMetadataController.close();
     await _providerEventController.close();
+    await _moderationEventController.close();
     await _platformMetadataController.close();
   }
 }

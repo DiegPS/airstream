@@ -119,6 +119,34 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     vertical-align: middle;
     margin: 0 0.1em;
   }
+  .reply-context {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.78em;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .provider-event {
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(720px, 90%);
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(0,0,0,0.42);
+    font-size: 0.82em;
+    overflow: hidden;
+  }
+  .provider-event-label { font-weight: 800; white-space: nowrap; }
+  .provider-event-text {
+    opacity: 0.82;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .membership-flair {
     margin-top: 6px;
     opacity: 0.95;
@@ -287,6 +315,20 @@ const UI_STRINGS = {
     giftSubscription: 'Gift subscription',
     subscriptionUpdate: 'Subscription update',
     membershipUpdate: 'Membership update',
+    sharedChat: 'SHARED',
+    firstMessage: 'FIRST MESSAGE',
+    returningChatter: 'RETURNING',
+    reward: 'REWARD',
+    events: {
+      raid: 'Raid', unraid: 'Raid ended', pinnedMessage: 'Pinned message',
+      unpinnedMessage: 'Message unpinned', poll: 'Poll', reward: 'Reward',
+      host: 'Host', goal: 'Goal', notice: 'Notice',
+      modiversary: 'Moderator anniversary', viewerMilestone: 'Viewer milestone',
+      watchStreak: 'Watch streak',
+      support: 'Support', sharedChat: 'Shared chat', roomState: 'Chat settings updated',
+      streamOnline: 'Stream online', streamOffline: 'Stream offline',
+      unknown: 'Event'
+    },
   },
   es: {
     owner: 'DUEÑO',
@@ -299,6 +341,20 @@ const UI_STRINGS = {
     giftSubscription: 'Suscripción regalada',
     subscriptionUpdate: 'Actualización de suscripción',
     membershipUpdate: 'Actualización de membresía',
+    sharedChat: 'COMPARTIDO',
+    firstMessage: 'PRIMER MENSAJE',
+    returningChatter: 'HA VUELTO',
+    reward: 'RECOMPENSA',
+    events: {
+      raid: 'Raid', unraid: 'Raid finalizado', pinnedMessage: 'Mensaje fijado',
+      unpinnedMessage: 'Mensaje desfijado', poll: 'Encuesta', reward: 'Recompensa',
+      host: 'Alojamiento', goal: 'Meta', notice: 'Aviso',
+      modiversary: 'Aniversario de moderador', viewerMilestone: 'Hito de audiencia',
+      watchStreak: 'Racha de visualización',
+      support: 'Apoyo', sharedChat: 'Chat compartido', roomState: 'Configuración del chat actualizada',
+      streamOnline: 'Transmisión iniciada', streamOffline: 'Transmisión finalizada',
+      unknown: 'Evento'
+    },
   },
 };
 
@@ -423,6 +479,10 @@ function createMessageBubble(message, animate) {
   authorRow.appendChild(author);
 
   if (settings.showBadges) {
+    if (message.sharedSource) addBadge(authorRow, 'generic-badge', strings.sharedChat);
+    if (message.isFirstMessage) addBadge(authorRow, 'generic-badge', strings.firstMessage);
+    if (message.isReturningChatter) addBadge(authorRow, 'generic-badge', strings.returningChatter);
+    if (message.rewardId) addBadge(authorRow, 'generic-badge', strings.reward);
     if (message.isOwner) addBadge(authorRow, 'owner-badge', strings.owner);
     if (message.isModerator) addBadge(authorRow, 'mod-badge', strings.moderator);
     if (message.isVip) addBadge(authorRow, 'vip-badge', 'VIP');
@@ -471,6 +531,17 @@ function createMessageBubble(message, animate) {
   }
   content.appendChild(authorRow);
 
+  if (message.reply && (message.reply.authorName || message.reply.text)) {
+    const reply = document.createElement('div');
+    reply.className = 'reply-context';
+    const replyAuthor = String(message.reply.authorName || '').trim();
+    const replyText = String(message.reply.text || '').trim();
+    reply.textContent = replyAuthor && replyText
+      ? '↪ ' + replyAuthor + ': ' + replyText
+      : '↪ ' + (replyAuthor || replyText);
+    content.appendChild(reply);
+  }
+
   const messageText = document.createElement('div');
   messageText.className = 'message-text';
   messageText.style.webkitTextStroke = settings.textStroke + 'px ' + settings.textStrokeColor;
@@ -478,6 +549,7 @@ function createMessageBubble(message, animate) {
   messageText.style.fontWeight = String(settings.fontWeight);
   messageText.style.lineHeight = String(settings.lineHeight);
   messageText.style.textAlign = settings.textAlign;
+  messageText.style.fontStyle = message.isAction ? 'italic' : 'normal';
   appendMessageItems(messageText, message.items);
 
   if (isMembershipEvent) {
@@ -506,6 +578,23 @@ function createMessageBubble(message, animate) {
   content.appendChild(messageText);
   bubble.appendChild(content);
   return bubble;
+}
+
+function createProviderEventBubble(event) {
+  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+  const item = document.createElement('div');
+  item.className = 'provider-event';
+  const label = document.createElement('span');
+  label.className = 'provider-event-label';
+  label.textContent = (strings.events && strings.events[event.kind]) || strings.events.unknown;
+  const detail = document.createElement('span');
+  detail.className = 'provider-event-text';
+  const parts = [event.authorName, event.text, event.count == null ? '' : String(event.count)].filter(Boolean);
+  detail.textContent = parts.join(' · ');
+  item.appendChild(platformIcon(event.platform));
+  item.appendChild(label);
+  if (detail.textContent) item.appendChild(detail);
+  return item;
 }
 
 const root = document.getElementById('root');
@@ -592,7 +681,9 @@ function renderExistingMessages() {
   if (resizeObserver) resizeObserver.disconnect();
   const fragment = document.createDocumentFragment();
   for (const record of records) {
-    record.element = createMessageBubble(record.message, false);
+    record.element = record.event
+      ? createProviderEventBubble(record.event)
+      : createMessageBubble(record.message, false);
     fragment.appendChild(record.element);
     if (resizeObserver) resizeObserver.observe(record.element);
   }
@@ -620,6 +711,46 @@ function addMessage(message) {
   scheduleScrollToBottom();
 }
 
+function addProviderEvent(event) {
+  if (event.data && event.data.duplicatesMessage === true) return;
+  const existing = records.findIndex((record) => record.event &&
+    record.event.platform === event.platform && record.event.kind === event.kind &&
+    record.event.id === event.id);
+  if (existing >= 0) removeRecord(records.splice(existing, 1)[0]);
+  const record = {
+    event: event,
+    receivedAt: Date.now(),
+    element: createProviderEventBubble(event),
+  };
+  records.push(record);
+  chatOverlay.appendChild(record.element);
+  if (resizeObserver) resizeObserver.observe(record.element);
+  pruneMessages();
+  scheduleScrollToBottom();
+}
+
+function applyModeration(moderation) {
+  const orientationMatches = (message) => !moderation.youtubeStreamOrientation ||
+    message.youtubeStreamOrientation === moderation.youtubeStreamOrientation;
+  const matches = (record) => {
+    const message = record.message;
+    if (!message || message.platform !== moderation.platform || !orientationMatches(message)) return false;
+    if (moderation.scope === 'platform') return true;
+    if (moderation.scope === 'message') return !!moderation.messageId && message.id === moderation.messageId;
+    if (moderation.scope === 'author') return !!moderation.authorChannelId && message.authorChannelId === moderation.authorChannelId;
+    return false;
+  };
+  const retained = [];
+  for (const record of records) {
+    if (matches(record)) removeRecord(record);
+    else retained.push(record);
+  }
+  if (retained.length !== records.length) {
+    records = retained;
+    scheduleScrollToBottom();
+  }
+}
+
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   socket = new WebSocket(protocol + location.host + '/ws');
@@ -629,6 +760,8 @@ function connect() {
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'message' && envelope.data) addMessage(envelope.data);
+      else if (envelope.type === 'moderation' && envelope.data) applyModeration(envelope.data);
+      else if (envelope.type === 'providerEvent' && envelope.data) addProviderEvent(envelope.data);
     } catch (error) {
       console.warn('Ignored malformed overlay message', error);
     }

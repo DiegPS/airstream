@@ -1021,6 +1021,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgeVerified => 'VERIFIED';
 
   @override
+  String get badgeFirstMessage => 'FIRST MESSAGE';
+
+  @override
+  String get badgeReturningChatter => 'RETURNING';
+
+  @override
+  String get badgeReward => 'REWARD';
+
+  @override
   String get newSubscriberEvent => 'New subscriber!';
 
   @override
@@ -1036,6 +1045,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get membershipUpdateEvent => 'Membership update';
+
+  @override
+  String get chatSharedSource => 'SHARED';
+
+  @override
+  String get chatEventRaid => 'Raid';
+
+  @override
+  String get chatEventUnraid => 'Raid ended';
+
+  @override
+  String get chatEventPinnedMessage => 'Pinned message';
+
+  @override
+  String get chatEventUnpinnedMessage => 'Message unpinned';
+
+  @override
+  String get chatEventPoll => 'Poll';
+
+  @override
+  String get chatEventReward => 'Reward';
+
+  @override
+  String get chatEventSupport => 'Support';
+
+  @override
+  String get chatEventHost => 'Host';
+
+  @override
+  String get chatEventGoal => 'Goal';
+
+  @override
+  String get chatEventNotice => 'Notice';
+
+  @override
+  String get chatEventModiversary => 'Moderator anniversary';
+
+  @override
+  String get chatEventViewerMilestone => 'Viewer milestone';
+
+  @override
+  String get chatEventWatchStreak => 'Watch streak';
+
+  @override
+  String get chatEventSharedChat => 'Shared chat';
+
+  @override
+  String get chatEventRoomState => 'Chat settings updated';
+
+  @override
+  String get chatEventStreamOnline => 'Stream online';
+
+  @override
+  String get chatEventStreamOffline => 'Stream offline';
+
+  @override
+  String get chatEventUnknown => 'Event';
+
+  @override
+  String get chatRoomEmoteOnly => 'Emote-only';
+
+  @override
+  String chatRoomFollowersOnly(int minutes) {
+    return 'Followers $minutes min';
+  }
+
+  @override
+  String get chatRoomUnique => 'Unique chat';
+
+  @override
+  String chatRoomSlowMode(int seconds) {
+    return 'Slow mode $seconds s';
+  }
+
+  @override
+  String get chatRoomSubscribersOnly => 'Subscribers-only';
 
   @override
   String get languageArabic => 'Arabic';

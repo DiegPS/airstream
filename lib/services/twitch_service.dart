@@ -143,8 +143,16 @@ class TwitchService {
                 messageId: message.sharedChatSource!.messageId ?? '',
                 channelId: message.sharedChatSource!.roomId ?? '',
                 messageType: message.sharedChatSource!.messageType ?? '',
+                badges: Map.unmodifiable(message.sharedChatSource!.badges),
+                badgeInfo:
+                    Map.unmodifiable(message.sharedChatSource!.badgeInfo),
+                sourceOnly: message.sharedChatSource!.sourceOnly,
               ),
         isAction: message.isAction,
+        providerRoomId: message.roomId ?? '',
+        isFirstMessage: message.isFirstMessage,
+        isReturningChatter: message.isReturningChatter,
+        rewardId: _nonEmpty(message.rawTags['custom-reward-id']),
       ),
     );
   }
@@ -201,22 +209,31 @@ class TwitchService {
     if (appEvent != null && !_appEvents.isClosed) {
       _appEvents.add(appEvent);
     }
-    if (event case twitch.TwitchUserNoticeEvent(:final notice)
-        when _isVisibleSpecialNotice(notice.kind)) {
-      _emitSpecialNotice(notice);
-    }
   }
 
   ChatProviderEvent? _convertProviderEvent(twitch.TwitchEvent event) {
     if (event case twitch.TwitchUserNoticeEvent(:final notice)) {
-      final kind = switch (notice.kind) {
-        twitch.TwitchUserNoticeKind.raid => ChatProviderEventKind.raid,
-        twitch.TwitchUserNoticeKind.unraid => ChatProviderEventKind.unraid,
-        twitch.TwitchUserNoticeKind.modiversary =>
+      final kind = switch (notice) {
+        twitch.TwitchUserNotice(
+          kind: twitch.TwitchUserNoticeKind.viewerMilestone,
+          milestoneCategory: 'watch-streak',
+        ) =>
+          ChatProviderEventKind.watchStreak,
+        twitch.TwitchUserNotice(kind: twitch.TwitchUserNoticeKind.raid) =>
+          ChatProviderEventKind.raid,
+        twitch.TwitchUserNotice(kind: twitch.TwitchUserNoticeKind.unraid) =>
+          ChatProviderEventKind.unraid,
+        twitch.TwitchUserNotice(
+          kind: twitch.TwitchUserNoticeKind.modiversary,
+        ) =>
           ChatProviderEventKind.modiversary,
-        twitch.TwitchUserNoticeKind.viewerMilestone =>
+        twitch.TwitchUserNotice(
+          kind: twitch.TwitchUserNoticeKind.viewerMilestone,
+        ) =>
           ChatProviderEventKind.viewerMilestone,
-        twitch.TwitchUserNoticeKind.sharedChatNotice =>
+        twitch.TwitchUserNotice(
+          kind: twitch.TwitchUserNoticeKind.sharedChatNotice,
+        ) =>
           ChatProviderEventKind.sharedChat,
         _ => ChatProviderEventKind.notice,
       };
@@ -230,7 +247,7 @@ class TwitchService {
         authorName: notice.senderName ?? notice.message.author.name,
         text: notice.systemMessage ?? notice.message.plainText,
         count: notice.viewerCount ?? notice.milestoneValue,
-        data: Map<String, Object?>.unmodifiable(notice.parameters),
+        data: _userNoticeData(notice),
       );
     }
     if (event
@@ -247,34 +264,80 @@ class TwitchService {
         data: Map<String, Object?>.unmodifiable(event.frame.tags),
       );
     }
+    if (event
+        case twitch.TwitchRoomStateEvent(
+          :final roomId,
+          :final emoteOnly,
+          :final followersOnlyMinutes,
+          :final uniqueChat,
+          :final slowModeSeconds,
+          :final subscribersOnly,
+        )) {
+      return ChatProviderEvent(
+        platform: Platform.twitch,
+        kind: ChatProviderEventKind.roomState,
+        id: 'roomstate:${roomId ?? 'unknown'}',
+        timestamp: DateTime.now().toUtc(),
+        data: Map.unmodifiable({
+          'roomId': roomId,
+          'emoteOnly': emoteOnly,
+          'followersOnlyMinutes': followersOnlyMinutes,
+          'uniqueChat': uniqueChat,
+          'slowModeSeconds': slowModeSeconds,
+          'subscribersOnly': subscribersOnly,
+        }),
+      );
+    }
     return null;
   }
 
-  static bool _isVisibleSpecialNotice(twitch.TwitchUserNoticeKind kind) =>
-      const {
-        twitch.TwitchUserNoticeKind.raid,
-        twitch.TwitchUserNoticeKind.modiversary,
-        twitch.TwitchUserNoticeKind.viewerMilestone,
-      }.contains(kind);
+  static Map<String, Object?> _userNoticeData(twitch.TwitchUserNotice notice) {
+    final source = notice.source;
+    return Map<String, Object?>.unmodifiable({
+      'messageType': notice.messageType,
+      'roomId': notice.roomId,
+      'cumulativeMonths': notice.cumulativeMonths,
+      'streakMonths': notice.streakMonths,
+      'months': notice.months,
+      'giftMonths': notice.giftMonths,
+      'subscriptionPlan': notice.subscriptionPlan,
+      'subscriptionPlanName': notice.subscriptionPlanName,
+      'recipientDisplayName': notice.recipientDisplayName,
+      'recipientId': notice.recipientId,
+      'recipientLogin': notice.recipientLogin,
+      'senderLogin': notice.senderLogin,
+      'senderName': notice.senderName,
+      'viewerCount': notice.viewerCount,
+      'bitsThreshold': notice.bitsThreshold,
+      'promotionName': notice.promotionName,
+      'promotionGiftTotal': notice.promotionGiftTotal,
+      'milestoneCategory': notice.milestoneCategory,
+      'milestoneId': notice.milestoneId,
+      'milestoneValue': notice.milestoneValue,
+      'shouldShareStreak': notice.shouldShareStreak,
+      'duplicatesMessage': const {
+        'sub',
+        'resub',
+        'subgift',
+        'anonsubgift',
+      }.contains(notice.messageType),
+      'source': source == null
+          ? null
+          : Map<String, Object?>.unmodifiable({
+              'messageId': source.messageId,
+              'roomId': source.roomId,
+              'messageType': source.messageType,
+              'badges': Map<String, String>.unmodifiable(source.badges),
+              'badgeInfo': Map<String, String>.unmodifiable(source.badgeInfo),
+              'sourceOnly': source.sourceOnly,
+            }),
+      'rawParameters': Map<String, String>.unmodifiable(notice.parameters),
+    });
+  }
 
-  void _emitSpecialNotice(twitch.TwitchUserNotice notice) {
-    if (_messages.isClosed) return;
-    final author = notice.senderName ?? notice.message.author.name;
-    final text = notice.systemMessage?.trim().isNotEmpty == true
-        ? notice.systemMessage!.trim()
-        : notice.message.plainText;
-    _messages.add(ChatMessage(
-      platform: Platform.twitch,
-      id: notice.message.id.isEmpty
-          ? '${notice.messageType}:${notice.timestamp.microsecondsSinceEpoch}'
-          : notice.message.id,
-      author: ChatAuthor(
-        name: author.isEmpty ? 'Twitch' : author,
-        channelId: notice.senderLogin ?? notice.message.author.login,
-      ),
-      items: [MessageItem.text(text)],
-      timestamp: notice.timestamp,
-    ));
+  static String? _nonEmpty(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 
   void _handleConnection(twitch.TwitchConnectionUpdate update) {

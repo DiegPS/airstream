@@ -195,6 +195,8 @@ class FakeOverlayClient implements OverlayClient {
   int stopCount = 0;
   int settingsCount = 0;
   int captionCount = 0;
+  int moderationCount = 0;
+  int providerEventCount = 0;
   bool disposed = false;
   bool hasClients = true;
   Object? startError;
@@ -225,6 +227,10 @@ class FakeOverlayClient implements OverlayClient {
   bool broadcastTestAlert(String kind) => hasClients;
   @override
   void broadcastCaption(String text) => captionCount++;
+  @override
+  void broadcastModeration(ChatModerationEvent event) => moderationCount++;
+  @override
+  void broadcastProviderEvent(ChatProviderEvent event) => providerEventCount++;
   @override
   Future<void> stop() async => stopCount++;
   @override

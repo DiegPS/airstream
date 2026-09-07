@@ -143,8 +143,9 @@ void main() {
       final messageFuture = service.messages.first;
 
       socket.receive(
-        '@badges=;bits=250;color=#9146FF;display-name=RichUser;emotes=;'
-        'first-msg=1;gifs=0-4|gif-id|https://cdn.example/hello.gif;'
+        '@badges=;bits=250;color=#9146FF;custom-reward-id=reward-42;'
+        'display-name=RichUser;emotes=;first-msg=1;'
+        'gifs=0-4|gif-id|https://cdn.example/hello.gif;'
         'id=rich-1;returning-chatter=1;room-id=room-1;'
         'tmi-sent-ts=1760000000123;user-id=user-42 '
         ':richuser!richuser@richuser.tmi.twitch.tv PRIVMSG #channel :Hello\r\n',
@@ -155,6 +156,10 @@ void main() {
       expect(message.timestamp,
           DateTime.fromMillisecondsSinceEpoch(1760000000123, isUtc: true));
       expect(message.superChat?.amount, '250 Bits');
+      expect(message.providerRoomId, 'room-1');
+      expect(message.isFirstMessage, isTrue);
+      expect(message.isReturningChatter, isTrue);
+      expect(message.rewardId, 'reward-42');
       expect(message.superChat?.color, '#9146FF');
       expect(message.items.single.emoji?.url, 'https://cdn.example/hello.gif');
       expect(message.items.single.emoji?.alt, 'Hello');
@@ -206,10 +211,59 @@ void main() {
       expect(message.plainText, 'Un año');
     });
 
-    test('surfaces raids as common events and visible chat notices', () async {
+    test('preserves all typed USERNOTICE parameters for app consumers',
+        () async {
       await service.connect('channel');
       final eventFuture = service.appEvents.first;
-      final messageFuture = service.messages.first;
+
+      socket.receive(
+        '@id=gift-1;login=gifter;msg-id=subgift;'
+        'msg-param-cumulative-months=12;msg-param-streak-months=4;'
+        'msg-param-months=12;msg-param-gift-months=3;'
+        'msg-param-sub-plan=2000;msg-param-sub-plan-name=Tier\\s2;'
+        'msg-param-recipient-display-name=Receiver;'
+        'msg-param-recipient-id=recipient-id;'
+        'msg-param-recipient-user-name=receiver;'
+        'msg-param-sender-login=sender;msg-param-sender-name=Sender;'
+        'msg-param-viewerCount=42;msg-param-threshold=1000;'
+        'msg-param-promo-name=Subtember;msg-param-promo-gift-total=8;'
+        'msg-param-category=community;msg-param-id=milestone-id;'
+        'msg-param-value=5;msg-param-should-share-streak=0;'
+        'room-id=room;tmi-sent-ts=1760000000123 '
+        ':tmi.twitch.tv USERNOTICE #channel :Gift\r\n',
+      );
+
+      final data = (await eventFuture).data;
+      expect(data['messageType'], 'subgift');
+      expect(data['roomId'], 'room');
+      expect(data['cumulativeMonths'], 12);
+      expect(data['streakMonths'], 4);
+      expect(data['months'], 12);
+      expect(data['giftMonths'], 3);
+      expect(data['subscriptionPlan'], '2000');
+      expect(data['subscriptionPlanName'], 'Tier 2');
+      expect(data['recipientDisplayName'], 'Receiver');
+      expect(data['recipientId'], 'recipient-id');
+      expect(data['recipientLogin'], 'receiver');
+      expect(data['senderLogin'], 'sender');
+      expect(data['senderName'], 'Sender');
+      expect(data['viewerCount'], 42);
+      expect(data['bitsThreshold'], 1000);
+      expect(data['promotionName'], 'Subtember');
+      expect(data['promotionGiftTotal'], 8);
+      expect(data['milestoneCategory'], 'community');
+      expect(data['milestoneId'], 'milestone-id');
+      expect(data['milestoneValue'], 5);
+      expect(data['shouldShareStreak'], isFalse);
+      expect(data['duplicatesMessage'], isTrue);
+      expect(data['rawParameters'], containsPair('sub-plan', '2000'));
+    });
+
+    test('surfaces raids once as complete common events', () async {
+      await service.connect('channel');
+      final eventFuture = service.appEvents.first;
+      final messages = <ChatMessage>[];
+      final subscription = service.messages.listen(messages.add);
 
       socket.receive(
         '@display-name=Raider;id=raid-1;login=raider;msg-id=raid;'
@@ -220,11 +274,71 @@ void main() {
       );
 
       final event = await eventFuture;
-      final message = await messageFuture;
+      await Future<void>.delayed(Duration.zero);
       expect(event.kind, ChatProviderEventKind.raid);
       expect(event.count, 42);
-      expect(message.id, 'raid-1');
-      expect(message.plainText, contains('42 viewers'));
+      expect(event.data['messageType'], 'raid');
+      expect(event.data['viewerCount'], 42);
+      expect(event.data['rawParameters'], containsPair('viewerCount', '42'));
+      expect(messages, isEmpty);
+      await subscription.cancel();
+    });
+
+    test('types watch streaks and preserves every USERNOTICE field', () async {
+      await service.connect('channel');
+      final eventFuture = service.appEvents.first;
+
+      socket.receive(
+        '@display-name=Viewer;id=streak-1;login=viewer;msg-id=viewermilestone;'
+        'msg-param-category=watch-streak;msg-param-id=milestone-id;'
+        'msg-param-value=7;msg-param-should-share-streak=1;room-id=room-1;'
+        'source-id=source-message;source-room-id=source-room;'
+        'source-badges=vip/1;source-badge-info=subscriber/5;source-only=1;'
+        'system-msg=Viewer\\shas\\sa\\s7\\sstream\\sstreak;'
+        'tmi-sent-ts=1760000000123 '
+        ':tmi.twitch.tv USERNOTICE #channel\r\n',
+      );
+
+      final event = await eventFuture;
+      expect(event.kind, ChatProviderEventKind.watchStreak);
+      expect(event.count, 7);
+      expect(event.data['roomId'], 'room-1');
+      expect(event.data['milestoneCategory'], 'watch-streak');
+      expect(event.data['milestoneId'], 'milestone-id');
+      expect(event.data['milestoneValue'], 7);
+      expect(event.data['shouldShareStreak'], isTrue);
+      expect(event.data['duplicatesMessage'], isFalse);
+      expect(event.data['source'], {
+        'messageId': 'source-message',
+        'roomId': 'source-room',
+        'messageType': null,
+        'badges': {'vip': '1'},
+        'badgeInfo': {'subscriber': '5'},
+        'sourceOnly': true,
+      });
+    });
+
+    test('surfaces every anonymous ROOMSTATE restriction', () async {
+      await service.connect('channel');
+      final eventFuture = service.appEvents.firstWhere(
+        (event) => event.kind == ChatProviderEventKind.roomState,
+      );
+
+      socket.receive(
+        '@emote-only=1;followers-only=10;r9k=1;room-id=room-1;slow=5;subs-only=1 '
+        ':tmi.twitch.tv ROOMSTATE #channel\r\n',
+      );
+
+      final event = await eventFuture;
+      expect(event.id, 'roomstate:room-1');
+      expect(event.data, {
+        'roomId': 'room-1',
+        'emoteOnly': true,
+        'followersOnlyMinutes': 10,
+        'uniqueChat': true,
+        'slowModeSeconds': 5,
+        'subscribersOnly': true,
+      });
     });
 
     test('preserves replies, action messages and Shared Chat origin', () async {
@@ -235,7 +349,8 @@ void main() {
         '@display-name=Ana;id=reply-1;reply-parent-display-name=Bob;'
         'reply-parent-msg-body=Original\\smessage;reply-parent-msg-id=parent-1;'
         'reply-parent-user-id=bob-id;source-id=source-message;'
-        'source-room-id=source-room;source-msg-id=chat '
+        'source-room-id=source-room;source-badges=vip/1;'
+        'source-badge-info=subscriber/5;source-msg-id=chat;source-only=1 '
         ':ana!ana@ana.tmi.twitch.tv PRIVMSG #channel '
         ':\u0001ACTION waves\u0001\r\n',
       );
@@ -245,6 +360,9 @@ void main() {
       expect(message.reply?.authorName, 'Bob');
       expect(message.reply?.text, 'Original message');
       expect(message.sharedSource?.channelId, 'source-room');
+      expect(message.sharedSource?.badges, {'vip': '1'});
+      expect(message.sharedSource?.badgeInfo, {'subscriber': '5'});
+      expect(message.sharedSource?.sourceOnly, isTrue);
       expect(message.isAction, isTrue);
     });
 

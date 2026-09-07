@@ -209,6 +209,19 @@ void main() {
     expect(await updated, isEmpty);
   });
 
+  test('forwards moderation even when the target is no longer buffered',
+      () async {
+    final forwarded = coordinator.moderationEvents.first;
+    const event = ChatModerationEvent.message(
+      platform: Platform.twitch,
+      messageId: 'already-gone',
+    );
+
+    twitch.moderationController.add(event);
+
+    expect(await forwarded, same(event));
+  });
+
   test('forwards common provider events and live platform metadata', () async {
     final eventFuture = coordinator.providerEvents.first;
     final metadataFuture = coordinator.platformMetadataStream.firstWhere(

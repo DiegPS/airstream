@@ -1929,6 +1929,24 @@ abstract class AppLocalizations {
   /// **'VERIFIED'**
   String get badgeVerified;
 
+  /// No description provided for @badgeFirstMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'FIRST MESSAGE'**
+  String get badgeFirstMessage;
+
+  /// No description provided for @badgeReturningChatter.
+  ///
+  /// In en, this message translates to:
+  /// **'RETURNING'**
+  String get badgeReturningChatter;
+
+  /// No description provided for @badgeReward.
+  ///
+  /// In en, this message translates to:
+  /// **'REWARD'**
+  String get badgeReward;
+
   /// No description provided for @newSubscriberEvent.
   ///
   /// In en, this message translates to:
@@ -1958,6 +1976,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Membership update'**
   String get membershipUpdateEvent;
+
+  /// No description provided for @chatSharedSource.
+  ///
+  /// In en, this message translates to:
+  /// **'SHARED'**
+  String get chatSharedSource;
+
+  /// No description provided for @chatEventRaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Raid'**
+  String get chatEventRaid;
+
+  /// No description provided for @chatEventUnraid.
+  ///
+  /// In en, this message translates to:
+  /// **'Raid ended'**
+  String get chatEventUnraid;
+
+  /// No description provided for @chatEventPinnedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned message'**
+  String get chatEventPinnedMessage;
+
+  /// No description provided for @chatEventUnpinnedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message unpinned'**
+  String get chatEventUnpinnedMessage;
+
+  /// No description provided for @chatEventPoll.
+  ///
+  /// In en, this message translates to:
+  /// **'Poll'**
+  String get chatEventPoll;
+
+  /// No description provided for @chatEventReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Reward'**
+  String get chatEventReward;
+
+  /// No description provided for @chatEventSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get chatEventSupport;
+
+  /// No description provided for @chatEventHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get chatEventHost;
+
+  /// No description provided for @chatEventGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get chatEventGoal;
+
+  /// No description provided for @chatEventNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice'**
+  String get chatEventNotice;
+
+  /// No description provided for @chatEventModiversary.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderator anniversary'**
+  String get chatEventModiversary;
+
+  /// No description provided for @chatEventViewerMilestone.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer milestone'**
+  String get chatEventViewerMilestone;
+
+  /// No description provided for @chatEventWatchStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch streak'**
+  String get chatEventWatchStreak;
+
+  /// No description provided for @chatEventSharedChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared chat'**
+  String get chatEventSharedChat;
+
+  /// No description provided for @chatEventRoomState.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat settings updated'**
+  String get chatEventRoomState;
+
+  /// No description provided for @chatEventStreamOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream online'**
+  String get chatEventStreamOnline;
+
+  /// No description provided for @chatEventStreamOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream offline'**
+  String get chatEventStreamOffline;
+
+  /// No description provided for @chatEventUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get chatEventUnknown;
+
+  /// No description provided for @chatRoomEmoteOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Emote-only'**
+  String get chatRoomEmoteOnly;
+
+  /// No description provided for @chatRoomFollowersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Followers {minutes} min'**
+  String chatRoomFollowersOnly(int minutes);
+
+  /// No description provided for @chatRoomUnique.
+  ///
+  /// In en, this message translates to:
+  /// **'Unique chat'**
+  String get chatRoomUnique;
+
+  /// No description provided for @chatRoomSlowMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow mode {seconds} s'**
+  String chatRoomSlowMode(int seconds);
+
+  /// No description provided for @chatRoomSubscribersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribers-only'**
+  String get chatRoomSubscribersOnly;
 
   /// No description provided for @languageArabic.
   ///

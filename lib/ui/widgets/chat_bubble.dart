@@ -513,6 +513,26 @@ class _AuthorRow extends StatelessWidget {
             text: l.badgeVerified,
             backgroundColor: const Color(0xFF1D9BF0),
           ),
+        if (showBadges && message.isFirstMessage)
+          _LabelBadge(
+            text: l.badgeFirstMessage,
+            backgroundColor: const Color(0xFF6441A5),
+          ),
+        if (showBadges && message.isReturningChatter)
+          _LabelBadge(
+            text: l.badgeReturningChatter,
+            backgroundColor: const Color(0xFF3B6E8F),
+          ),
+        if (showBadges && message.rewardId != null)
+          _LabelBadge(
+            text: l.badgeReward,
+            backgroundColor: const Color(0xFF9146FF),
+          ),
+        if (showBadges && message.sharedSource != null)
+          _LabelBadge(
+            text: l.chatSharedSource,
+            backgroundColor: const Color(0xFF454545),
+          ),
         if (showBadges &&
             showYoutubeStreamBadges &&
             message.youtubeStreamOrientation != null)

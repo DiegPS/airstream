@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
@@ -159,6 +160,20 @@ class OverlayServer {
     _broadcastEnvelope({
       'type': 'caption',
       'data': {'text': caption}
+    });
+  }
+
+  void broadcastModeration(ChatModerationEvent event) {
+    _broadcastEnvelope({
+      'type': 'moderation',
+      'data': OverlayPayloadEncoder.moderation(event),
+    });
+  }
+
+  void broadcastProviderEvent(ChatProviderEvent event) {
+    _broadcastEnvelope({
+      'type': 'providerEvent',
+      'data': OverlayPayloadEncoder.providerEvent(event),
     });
   }
 

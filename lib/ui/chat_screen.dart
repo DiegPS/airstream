@@ -29,6 +29,7 @@ import 'package:airstream/settings/settings_input_normalizer.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
 import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'package:airstream/ui/widgets/styled_slider_row.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
@@ -278,6 +279,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final l = AppLocalizations.of(context)!;
     final chat = ref.watch(chatProvider);
     final settings = ref.watch(settingsProvider);
+    final providerEvent = ref.watch(chatProviderEventProvider).valueOrNull;
     final obsState =
         ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final showObsCard = settings.obsEnabled;
@@ -286,23 +288,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final obsReservedSpace = 56.0 + obsBottomSpacing;
 
     Widget buildPane(Widget child) {
-      if (!showObsCard) return child;
+      Widget pane = child;
+      if (showObsCard) {
+        pane = Stack(
+          children: [
+            Positioned.fill(child: pane),
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: obsBottomSpacing,
+              child: Align(
+                alignment: chatHorizontalAlignment(settings.chatTextAlign),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: _ObsStatusCard(
+                    state: obsState,
+                    compact: true,
+                    styleSettings: settings,
+                    displaySettings: settings,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      if (providerEvent == null) return pane;
       return Stack(
         children: [
-          Positioned.fill(child: child),
+          Positioned.fill(child: pane),
           Positioned(
-            left: 24,
-            right: 24,
-            bottom: obsBottomSpacing,
-            child: Align(
-              alignment: chatHorizontalAlignment(settings.chatTextAlign),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: _ObsStatusCard(
-                  state: obsState,
-                  compact: true,
-                  styleSettings: settings,
-                  displaySettings: settings,
+            left: 16,
+            right: 16,
+            top: 12,
+            child: IgnorePointer(
+              child: Align(
+                alignment: chatHorizontalAlignment(settings.chatTextAlign),
+                child: TransientChatProviderEventBanner(
+                  event: providerEvent,
                 ),
               ),
             ),

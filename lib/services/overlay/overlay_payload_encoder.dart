@@ -1,4 +1,5 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 abstract final class OverlayPayloadEncoder {
@@ -48,6 +49,48 @@ abstract final class OverlayPayloadEncoder {
         'isVerified': msg.isVerified,
         'youtubeStreamOrientation': msg.youtubeStreamOrientation?.name,
         'timestamp': msg.timestamp.toIso8601String(),
+        'reply': msg.reply == null
+            ? null
+            : {
+                'messageId': msg.reply!.messageId,
+                'authorId': msg.reply!.authorId,
+                'authorName': msg.reply!.authorName,
+                'text': msg.reply!.text,
+              },
+        'sharedSource': msg.sharedSource == null
+            ? null
+            : {
+                'messageId': msg.sharedSource!.messageId,
+                'channelId': msg.sharedSource!.channelId,
+                'messageType': msg.sharedSource!.messageType,
+                'badges': msg.sharedSource!.badges,
+                'badgeInfo': msg.sharedSource!.badgeInfo,
+                'sourceOnly': msg.sharedSource!.sourceOnly,
+              },
+        'isAction': msg.isAction,
+        'providerRoomId': msg.providerRoomId,
+        'isFirstMessage': msg.isFirstMessage,
+        'isReturningChatter': msg.isReturningChatter,
+        'rewardId': msg.rewardId,
+      };
+
+  static Map<String, dynamic> moderation(ChatModerationEvent event) => {
+        'platform': event.platform.name,
+        'scope': event.scope.name,
+        'messageId': event.messageId,
+        'authorChannelId': event.authorChannelId,
+        'youtubeStreamOrientation': event.youtubeStreamOrientation?.name,
+      };
+
+  static Map<String, dynamic> providerEvent(ChatProviderEvent event) => {
+        'platform': event.platform.name,
+        'kind': event.kind.name,
+        'id': event.id,
+        'timestamp': event.timestamp.toIso8601String(),
+        'authorName': event.authorName,
+        'text': event.text,
+        'count': event.count,
+        'data': event.data,
       };
 
   static Map<String, dynamic> settings(SettingsModel settings) => {

@@ -28,11 +28,17 @@ class ChatSharedSource {
     this.messageId = '',
     this.channelId = '',
     this.messageType = '',
+    this.badges = const {},
+    this.badgeInfo = const {},
+    this.sourceOnly = false,
   });
 
   final String messageId;
   final String channelId;
   final String messageType;
+  final Map<String, String> badges;
+  final Map<String, String> badgeInfo;
+  final bool sourceOnly;
 }
 
 class ChatModerationEvent {
@@ -147,6 +153,10 @@ class ChatMessage {
   final ChatReplyContext? reply;
   final ChatSharedSource? sharedSource;
   final bool isAction;
+  final String providerRoomId;
+  final bool isFirstMessage;
+  final bool isReturningChatter;
+  final String? rewardId;
 
   const ChatMessage({
     required this.platform,
@@ -168,6 +178,10 @@ class ChatMessage {
     this.reply,
     this.sharedSource,
     this.isAction = false,
+    this.providerRoomId = '',
+    this.isFirstMessage = false,
+    this.isReturningChatter = false,
+    this.rewardId,
   });
 
   String get plainText =>

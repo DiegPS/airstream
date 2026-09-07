@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -19,6 +20,8 @@ abstract interface class OverlayClient {
   bool reloadClients();
   bool broadcastTestAlert(String kind);
   void broadcastCaption(String text);
+  void broadcastModeration(ChatModerationEvent event);
+  void broadcastProviderEvent(ChatProviderEvent event);
   Future<void> stop();
   Future<void> dispose();
 }
@@ -50,6 +53,12 @@ class OverlayServerAdapter implements OverlayClient {
   @override
   void broadcastCaption(String text) => server.broadcastCaption(text);
   @override
+  void broadcastModeration(ChatModerationEvent event) =>
+      server.broadcastModeration(event);
+  @override
+  void broadcastProviderEvent(ChatProviderEvent event) =>
+      server.broadcastProviderEvent(event);
+  @override
   Future<void> stop() => server.stop();
   @override
   Future<void> dispose() => server.dispose();
@@ -77,6 +86,10 @@ class OverlayCoordinator {
   bool reload() => _overlay.reloadClients();
   bool testAlert(String kind) => _overlay.broadcastTestAlert(kind);
   void broadcastCaption(String text) => _overlay.broadcastCaption(text);
+  void broadcastModeration(ChatModerationEvent event) =>
+      _overlay.broadcastModeration(event);
+  void broadcastProviderEvent(ChatProviderEvent event) =>
+      _overlay.broadcastProviderEvent(event);
 
   void applySettings(
     SettingsModel settings, {
