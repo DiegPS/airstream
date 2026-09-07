@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:airstream/services/chat/kick_transport.dart';
-import 'package:airstream/services/chat/twitch_transport.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/models/chat_message.dart' as app;
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
+import 'package:dart_twitch_chat/dart_twitch_chat.dart' show TwitchSocket;
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';

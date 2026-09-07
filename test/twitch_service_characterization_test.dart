@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:airstream/models/chat_message.dart';
-import 'package:airstream/services/chat/twitch_transport.dart';
 import 'package:airstream/services/twitch_service.dart';
+import 'package:dart_twitch_chat/dart_twitch_chat.dart' show TwitchSocket;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

@@ -67,6 +67,10 @@ dependencies:
     git:
       url: git@github.com:DiegPS/dart_kick_chat.git
       ref: main
+  dart_twitch_chat:
+    git:
+      url: git@github.com:DiegPS/dart_twitch_chat.git
+      ref: main
 
 dev_dependencies:
   flutter_test:
