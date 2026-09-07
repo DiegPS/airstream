@@ -139,6 +139,22 @@ class ChatBubble extends ConsumerWidget {
                                     showAvatars: s.showAvatars,
                                     showTimestamp: s.showTimestamp,
                                   ),
+                                  if (message.reply != null &&
+                                      (message.reply!.authorName.isNotEmpty ||
+                                          message.reply!.text.isNotEmpty)) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      _replyLabel(message.reply!),
+                                      key: Key('chat-reply-${message.id}'),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: textAlign,
+                                      style: contentTextStyle.copyWith(
+                                        color: Colors.white70,
+                                        fontSize: s.fontSize * 0.78,
+                                      ),
+                                    ),
+                                  ],
                                   if (message.items.isNotEmpty ||
                                       isMembershipEvent ||
                                       message.superChat?.stickerUrl != null)
@@ -147,8 +163,16 @@ class ChatBubble extends ConsumerWidget {
                                     _MessageContent(
                                       items: message.items,
                                       textAlign: textAlign,
-                                      textStyle: contentTextStyle,
-                                      strokeStyle: textStrokeStyle,
+                                      textStyle: message.isAction
+                                          ? contentTextStyle.copyWith(
+                                              fontStyle: FontStyle.italic,
+                                            )
+                                          : contentTextStyle,
+                                      strokeStyle: message.isAction
+                                          ? textStrokeStyle?.copyWith(
+                                              fontStyle: FontStyle.italic,
+                                            )
+                                          : textStrokeStyle,
                                     ),
                                   if (isMembershipEvent)
                                     Padding(
@@ -318,6 +342,14 @@ class ChatBubble extends ConsumerWidget {
       Platform.kick => l.subscriptionUpdateEvent,
       Platform.youtube => l.membershipUpdateEvent,
     };
+  }
+
+  static String _replyLabel(ChatReplyContext reply) {
+    final author = reply.authorName.trim();
+    final text = reply.text.trim();
+    if (author.isEmpty) return '↪ $text';
+    if (text.isEmpty) return '↪ $author';
+    return '↪ $author: $text';
   }
 
   static CrossAxisAlignment _contentCrossAxisAlignment(String value) {

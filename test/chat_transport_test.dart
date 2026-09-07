@@ -6,6 +6,7 @@ import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/models/chat_message.dart' as app;
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 import 'package:dart_twitch_chat/dart_twitch_chat.dart' show TwitchSocket;
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
@@ -258,6 +259,29 @@ void main() {
     expect(service.currentMetadata?.viewerCount, 777);
   });
 
+  test('YouTube reports the explicit end of a live session', () async {
+    final chat = _FakeYouTubeTransport();
+    final service = YouTubeService(transportFactory: (_) => chat);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    service.statusStream.listen(statuses.add);
+    final status = service.statusStream.firstWhere(
+      (value) => value.$1 == ServiceStatus.idle,
+    );
+    final event = service.appEvents.firstWhere(
+      (value) => value.kind == ChatProviderEventKind.streamOffline,
+    );
+    await service.connect(liveId: 'abcdefghijk');
+
+    chat.lifecycleController.add(yt.YoutubeLiveLifecycle.ended);
+
+    expect((await status).$1, ServiceStatus.idle);
+    expect((await event).platform, app.Platform.youtube);
+    chat.pollController.add(DateTime.now().toUtc());
+    await Future<void>.delayed(Duration.zero);
+    expect(statuses.last.$1, ServiceStatus.idle);
+  });
+
   test('YouTube converts and deduplicates gifted membership events', () async {
     final chat = _FakeYouTubeTransport();
     final service = YouTubeService(transportFactory: (_) => chat);
@@ -395,6 +419,86 @@ void main() {
     expect(messages.single.membershipGiftCount, 2);
   });
 
+  test('Kick applies message, author and room moderation events', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <app.ChatModerationEvent>[];
+    service.moderationEvents.listen(events.add);
+    await service.connect('creator');
+
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\MessageDeletedEvent',
+      {
+        'message': {'id': 'message-1'}
+      },
+    ));
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\UserBannedEvent',
+      {
+        'user': {'slug': 'author-1'},
+      },
+    ));
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\ChatroomClearEvent',
+      const <String, Object?>{},
+    ));
+    await _eventually(() => events.length == 3);
+
+    expect(events[0].messageId, 'message-1');
+    expect(events[1].authorChannelId, 'author-1');
+    expect(events[2].scope, app.ChatModerationScope.platform);
+  });
+
+  test('Kick exposes anonymous live viewer metadata', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final metadata =
+        service.metadataStream.firstWhere((value) => value != null);
+    await service.connect('creator');
+
+    transport.metadataController.add(kick.KickChannel.fromJson({
+      'id': 1,
+      'slug': 'creator',
+      'user': const <String, Object?>{},
+      'chatroom': {'id': 2},
+      'livestream': {
+        'id': 3,
+        'is_live': true,
+        'session_title': 'Anonymous live',
+        'viewer_count': 321,
+      },
+    }));
+
+    expect((await metadata)!.viewerCount, 321);
+  });
+
+  test('Kick forwards public polls, pins and KICK gifts as common events',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <ChatProviderEvent>[];
+    service.appEvents.listen(events.add);
+    await service.connect('creator');
+
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\PollUpdateEvent',
+      {'id': 'poll-1'},
+    ));
+    transport.eventController.add(kick.parseKickEvent(
+      'KicksGifted',
+      {'id': 'gift-1'},
+    ));
+    await _eventually(() => events.length == 2);
+
+    expect(events.map((event) => event.kind), [
+      ChatProviderEventKind.poll,
+      ChatProviderEventKind.reward,
+    ]);
+  });
+
   test('Kick consumes modern image badges, roles and supplied avatars',
       () async {
     final transport = _FakeKickTransport();
@@ -477,7 +581,8 @@ class _FakeTwitchSocket implements TwitchSocket {
   Future<void> remoteClose() => controller.close();
 }
 
-class _FakeYouTubeTransport implements YouTubeChatTransport {
+class _FakeYouTubeTransport
+    implements YouTubeChatTransport, YouTubeLifecycleTransport {
   _FakeYouTubeTransport({Future<void>? startFuture})
       : _startFuture = startFuture ?? Future<void>.value();
   final Future<void> _startFuture;
@@ -487,6 +592,8 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
       StreamController<yt.UpdatedMetadataState>.broadcast();
   final chatErrorController = StreamController<Exception>.broadcast();
   final metadataErrorController = StreamController<Exception>.broadcast();
+  final lifecycleController =
+      StreamController<yt.YoutubeLiveLifecycle>.broadcast();
   final pollController = StreamController<DateTime>.broadcast();
   bool stopped = false;
   @override
@@ -500,6 +607,8 @@ class _FakeYouTubeTransport implements YouTubeChatTransport {
   Stream<Exception> get chatErrors => chatErrorController.stream;
   @override
   Stream<Exception> get metadataErrors => metadataErrorController.stream;
+  @override
+  Stream<yt.YoutubeLiveLifecycle> get lifecycle => lifecycleController.stream;
   @override
   Stream<DateTime> get polls => pollController.stream;
   @override
@@ -538,10 +647,11 @@ yt.UpdatedMetadataState _metadataState({
   return const yt.UpdatedMetadataState().apply(batch);
 }
 
-class _FakeKickTransport implements KickChatTransport {
+class _FakeKickTransport implements KickChatTransport, KickMetadataTransport {
   final messageController = StreamController<kick.ChatMessage>.broadcast();
   final eventController = StreamController<kick.KickEvent>.broadcast();
   final errorController = StreamController<Exception>.broadcast();
+  final metadataController = StreamController<kick.KickChannel>.broadcast();
   final joined = <String>[];
   int closeCount = 0;
   @override
@@ -550,6 +660,8 @@ class _FakeKickTransport implements KickChatTransport {
   Stream<kick.KickEvent> get events => eventController.stream;
   @override
   Stream<Exception> get errors => errorController.stream;
+  @override
+  Stream<kick.KickChannel> get metadata => metadataController.stream;
   @override
   Future<void> joinBySlug(String slug) async => joined.add(slug);
   @override

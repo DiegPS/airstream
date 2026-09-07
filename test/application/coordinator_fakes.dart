@@ -5,6 +5,7 @@ import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
@@ -60,12 +61,20 @@ class FakeYouTubeChatClient implements YouTubeChatClient {
 }
 
 class FakeChannelChatClient
-    implements ChannelChatClient, ModeratingChannelChatClient {
+    implements
+        ChannelChatClient,
+        ModeratingChannelChatClient,
+        ProviderEventChatClient,
+        MetadataChannelChatClient {
   final messageController = StreamController<ChatMessage>.broadcast(sync: true);
   final statusController =
       StreamController<(ServiceStatus, String?)>.broadcast(sync: true);
   final moderationController =
       StreamController<ChatModerationEvent>.broadcast(sync: true);
+  final eventController =
+      StreamController<ChatProviderEvent>.broadcast(sync: true);
+  final platformMetadataController =
+      StreamController<PlatformLiveMetadata?>.broadcast(sync: true);
   int connectCount = 0;
   int disconnectCount = 0;
   bool disposed = false;
@@ -77,6 +86,11 @@ class FakeChannelChatClient
   @override
   Stream<ChatModerationEvent> get moderationEvents =>
       moderationController.stream;
+  @override
+  Stream<ChatProviderEvent> get appEvents => eventController.stream;
+  @override
+  Stream<PlatformLiveMetadata?> get platformMetadataStream =>
+      platformMetadataController.stream;
   @override
   Stream<(ServiceStatus, String?)> get statusStream => statusController.stream;
   @override
@@ -94,6 +108,8 @@ class FakeChannelChatClient
     disposed = true;
     await messageController.close();
     await moderationController.close();
+    await eventController.close();
+    await platformMetadataController.close();
     await statusController.close();
   }
 }

@@ -9,6 +9,32 @@ enum MembershipEventKind { subscription, resubscription, gift }
 
 enum ChatModerationScope { message, author, platform }
 
+class ChatReplyContext {
+  const ChatReplyContext({
+    required this.messageId,
+    this.authorId = '',
+    this.authorName = '',
+    this.text = '',
+  });
+
+  final String messageId;
+  final String authorId;
+  final String authorName;
+  final String text;
+}
+
+class ChatSharedSource {
+  const ChatSharedSource({
+    this.messageId = '',
+    this.channelId = '',
+    this.messageType = '',
+  });
+
+  final String messageId;
+  final String channelId;
+  final String messageType;
+}
+
 class ChatModerationEvent {
   const ChatModerationEvent.message({
     required this.platform,
@@ -118,6 +144,9 @@ class ChatMessage {
   final int? membershipMonths;
   final int? membershipGiftCount;
   final DateTime timestamp;
+  final ChatReplyContext? reply;
+  final ChatSharedSource? sharedSource;
+  final bool isAction;
 
   const ChatMessage({
     required this.platform,
@@ -136,6 +165,9 @@ class ChatMessage {
     this.membershipMonths,
     this.membershipGiftCount,
     required this.timestamp,
+    this.reply,
+    this.sharedSource,
+    this.isAction = false,
   });
 
   String get plainText =>

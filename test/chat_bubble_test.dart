@@ -238,6 +238,37 @@ void main() {
 
     expect(find.text('VERTICAL'), findsOneWidget);
   });
+
+  testWidgets('shows preserved reply context without changing the message',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(const SettingsModel());
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'reply',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [MessageItem.text('My answer')],
+      reply: const ChatReplyContext(
+        messageId: 'parent',
+        authorName: 'Bob',
+        text: 'Original message',
+      ),
+      timestamp: DateTime.utc(2026, 9, 7),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChatBubble(message: message)),
+        ),
+      ),
+    );
+
+    expect(find.text('↪ Bob: Original message'), findsOneWidget);
+    expect(find.text('My answer'), findsOneWidget);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

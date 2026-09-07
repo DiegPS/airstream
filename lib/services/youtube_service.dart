@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
@@ -28,9 +29,11 @@ class YouTubeService {
   StreamSubscription<Exception>? _metadataErrorSub;
   StreamSubscription<DateTime>? _pollSub;
   StreamSubscription<yt.UpdatedMetadataState>? _metadataSub;
+  StreamSubscription<yt.YoutubeLiveLifecycle>? _lifecycleSub;
   final _controller = StreamController<ChatMessage>.broadcast();
   final _moderationController =
       StreamController<ChatModerationEvent>.broadcast();
+  final _appEventController = StreamController<ChatProviderEvent>.broadcast();
   final _metadataController =
       StreamController<YoutubeLiveMetadata?>.broadcast();
   final _statusController =
@@ -40,10 +43,12 @@ class YouTubeService {
   final Set<String> _seenEventIds = <String>{};
   final List<String> _seenEventOrder = <String>[];
   int _generation = 0;
+  bool _liveEnded = false;
 
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<ChatModerationEvent> get moderationEvents =>
       _moderationController.stream;
+  Stream<ChatProviderEvent> get appEvents => _appEventController.stream;
   Stream<YoutubeLiveMetadata?> get metadataStream async* {
     yield _currentMetadata;
     yield* _metadataController.stream;
@@ -92,7 +97,7 @@ class YouTubeService {
     _sub = chat.messages.listen(
       (item) {
         if (generation != _generation || _chat != chat) return;
-        if (_lastStatus != ServiceStatus.connected) {
+        if (!_liveEnded && _lastStatus != ServiceStatus.connected) {
           _emit(ServiceStatus.connected, null);
         }
         try {
@@ -141,6 +146,10 @@ class YouTubeService {
         if (membership != null && !_controller.isClosed) {
           _controller.add(membership);
         }
+        final appEvent = _convertProviderEvent(event);
+        if (appEvent != null && !_appEventController.isClosed) {
+          _appEventController.add(appEvent);
+        }
       } catch (error, stack) {
         AppLogger.warning(
           'YouTube returned a malformed chat event',
@@ -151,7 +160,7 @@ class YouTubeService {
     });
     _pollSub = chat.polls.listen((_) {
       if (generation != _generation || _chat != chat) return;
-      if (_lastStatus != ServiceStatus.connected) {
+      if (!_liveEnded && _lastStatus != ServiceStatus.connected) {
         _emit(ServiceStatus.connected, null);
       }
     });
@@ -160,6 +169,23 @@ class YouTubeService {
       _currentMetadata = _convertMetadata(state, chat.liveId);
       _emitMetadata();
     });
+    if (chat case final YouTubeLifecycleTransport lifecycle) {
+      _lifecycleSub = lifecycle.lifecycle.listen((state) {
+        if (generation != _generation || _chat != chat) return;
+        _liveEnded = state == yt.YoutubeLiveLifecycle.ended;
+        if (_liveEnded) {
+          _emit(ServiceStatus.idle, null);
+          if (!_appEventController.isClosed) {
+            _appEventController.add(ChatProviderEvent(
+              platform: Platform.youtube,
+              kind: ChatProviderEventKind.streamOffline,
+              id: 'stream-ended:${chat.liveId}',
+              timestamp: DateTime.now().toUtc(),
+            ));
+          }
+        }
+      });
+    }
     try {
       await chat.start().timeout(_connectionTimeout);
       if (generation != _generation || _chat != chat) {
@@ -226,7 +252,10 @@ class YouTubeService {
     _pollSub = null;
     await _metadataSub?.cancel();
     _metadataSub = null;
+    await _lifecycleSub?.cancel();
+    _lifecycleSub = null;
     _currentMetadata = null;
+    _liveEnded = false;
     _seenEventIds.clear();
     _seenEventOrder.clear();
     _emitMetadata();
@@ -238,6 +267,7 @@ class YouTubeService {
     await disconnect();
     await _controller.close();
     await _moderationController.close();
+    await _appEventController.close();
     await _metadataController.close();
     await _statusController.close();
   }
@@ -348,6 +378,35 @@ class YouTubeService {
         return null;
     }
     return null;
+  }
+
+  ChatProviderEvent? _convertProviderEvent(yt.LiveChatEvent event) {
+    final kind = switch (event.kind) {
+      yt.LiveChatEventKind.bannerAdded => ChatProviderEventKind.pinnedMessage,
+      yt.LiveChatEventKind.bannerRemoved =>
+        ChatProviderEventKind.unpinnedMessage,
+      yt.LiveChatEventKind.pollUpdated => ChatProviderEventKind.poll,
+      yt.LiveChatEventKind.viewerNotice ||
+      yt.LiveChatEventKind.tooltip ||
+      yt.LiveChatEventKind.tickerAdded ||
+      yt.LiveChatEventKind.tickerRemoved =>
+        ChatProviderEventKind.notice,
+      yt.LiveChatEventKind.chatItemReplaced ||
+      yt.LiveChatEventKind.unknown =>
+        ChatProviderEventKind.unknown,
+      _ => null,
+    };
+    if (kind == null) return null;
+    return ChatProviderEvent(
+      platform: Platform.youtube,
+      kind: kind,
+      id: event.id.isNotEmpty
+          ? event.id
+          : '${event.actionType}:${DateTime.now().microsecondsSinceEpoch}',
+      timestamp: DateTime.now().toUtc(),
+      text: event.text,
+      data: Map<String, Object?>.unmodifiable(event.raw),
+    );
   }
 
   ChatMessage? _convertMembershipEvent(yt.LiveChatEvent event) {

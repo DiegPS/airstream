@@ -12,11 +12,16 @@ abstract interface class YouTubeChatTransport {
   void stop();
 }
 
+abstract interface class YouTubeLifecycleTransport {
+  Stream<yt.YoutubeLiveLifecycle> get lifecycle;
+}
+
 typedef YouTubeChatTransportFactory = YouTubeChatTransport Function(
   yt.YoutubeId id,
 );
 
-class DartYouTubeChatTransport implements YouTubeChatTransport {
+class DartYouTubeChatTransport
+    implements YouTubeChatTransport, YouTubeLifecycleTransport {
   DartYouTubeChatTransport(yt.YoutubeId id)
       : _session = yt.YoutubeLiveSession(id: id);
 
@@ -34,6 +39,8 @@ class DartYouTubeChatTransport implements YouTubeChatTransport {
   Stream<Exception> get metadataErrors => _session.metadataErrors;
   @override
   Stream<DateTime> get polls => _session.chatPolls;
+  @override
+  Stream<yt.YoutubeLiveLifecycle> get lifecycle => _session.lifecycle;
   @override
   String get liveId => _session.liveId;
   @override

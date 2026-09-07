@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
@@ -34,7 +35,16 @@ abstract interface class ModeratingChannelChatClient {
   Stream<ChatModerationEvent> get moderationEvents;
 }
 
-class YouTubeChatServiceAdapter implements YouTubeChatClient {
+abstract interface class ProviderEventChatClient {
+  Stream<ChatProviderEvent> get appEvents;
+}
+
+abstract interface class MetadataChannelChatClient {
+  Stream<PlatformLiveMetadata?> get platformMetadataStream;
+}
+
+class YouTubeChatServiceAdapter
+    implements YouTubeChatClient, ProviderEventChatClient {
   YouTubeChatServiceAdapter(this.service);
 
   final YouTubeService service;
@@ -43,6 +53,8 @@ class YouTubeChatServiceAdapter implements YouTubeChatClient {
   Stream<ChatMessage> get messages => service.messages;
   @override
   Stream<ChatModerationEvent> get moderationEvents => service.moderationEvents;
+  @override
+  Stream<ChatProviderEvent> get appEvents => service.appEvents;
   @override
   Stream<YoutubeLiveMetadata?> get metadataStream => service.metadataStream;
   @override
@@ -60,7 +72,12 @@ class YouTubeChatServiceAdapter implements YouTubeChatClient {
   Future<void> dispose() => service.dispose();
 }
 
-class KickChatServiceAdapter implements ChannelChatClient {
+class KickChatServiceAdapter
+    implements
+        ChannelChatClient,
+        ModeratingChannelChatClient,
+        ProviderEventChatClient,
+        MetadataChannelChatClient {
   KickChatServiceAdapter(this.service);
 
   final KickService service;
@@ -70,6 +87,13 @@ class KickChatServiceAdapter implements ChannelChatClient {
   @override
   Stream<(ServiceStatus, String?)> get statusStream => service.statusStream;
   @override
+  Stream<ChatModerationEvent> get moderationEvents => service.moderationEvents;
+  @override
+  Stream<ChatProviderEvent> get appEvents => service.appEvents;
+  @override
+  Stream<PlatformLiveMetadata?> get platformMetadataStream =>
+      service.metadataStream;
+  @override
   Future<void> connect(String channel) => service.connect(channel);
   @override
   Future<void> disconnect() => service.disconnect();
@@ -78,7 +102,10 @@ class KickChatServiceAdapter implements ChannelChatClient {
 }
 
 class TwitchChatServiceAdapter
-    implements ChannelChatClient, ModeratingChannelChatClient {
+    implements
+        ChannelChatClient,
+        ModeratingChannelChatClient,
+        ProviderEventChatClient {
   TwitchChatServiceAdapter(this.service);
 
   final TwitchService service;
@@ -89,6 +116,8 @@ class TwitchChatServiceAdapter
   Stream<(ServiceStatus, String?)> get statusStream => service.statusStream;
   @override
   Stream<ChatModerationEvent> get moderationEvents => service.moderationEvents;
+  @override
+  Stream<ChatProviderEvent> get appEvents => service.appEvents;
   @override
   Future<void> connect(String channel) => service.connect(channel);
   @override
@@ -162,6 +191,42 @@ class ChatCoordinator {
         twitch.moderationEvents.listen(_handleModeration),
       );
     }
+    if (_kick case final ModeratingChannelChatClient kick) {
+      _moderationSubscriptions.add(
+        kick.moderationEvents.listen(_handleModeration),
+      );
+    }
+    for (final service in [
+      _youtube,
+      _youtubeHorizontal,
+      _youtubeVertical,
+      _kick,
+      _twitch,
+    ]) {
+      if (service case final ProviderEventChatClient source) {
+        _providerEventSubscriptions.add(source.appEvents.listen((event) {
+          if (!_providerEventController.isClosed) {
+            _providerEventController.add(event);
+          }
+        }));
+      }
+      if (service case final MetadataChannelChatClient source) {
+        _platformMetadataSubscriptions.add(
+          source.platformMetadataStream.listen((metadata) {
+            if (metadata == null) {
+              // The only metadata-capable channel adapter is Kick today.
+              _platformMetadata.remove(Platform.kick);
+            } else {
+              _platformMetadata[metadata.platform] = metadata;
+            }
+            if (!_platformMetadataController.isClosed) {
+              _platformMetadataController
+                  .add(Map.unmodifiable(_platformMetadata));
+            }
+          }),
+        );
+      }
+    }
   }
 
   final YouTubeChatClient _youtube;
@@ -177,9 +242,17 @@ class ChatCoordinator {
   final _youtubeBadgeController = StreamController<String?>.broadcast();
   final _youtubeMetadataController =
       StreamController<YoutubeLiveMetadataSummary>.broadcast();
+  final _providerEventController =
+      StreamController<ChatProviderEvent>.broadcast();
+  final _platformMetadataController =
+      StreamController<Map<Platform, PlatformLiveMetadata>>.broadcast();
   final _statusSubscriptions = <StreamSubscription<(ServiceStatus, String?)>>[];
   final _metadataSubscriptions = <StreamSubscription<YoutubeLiveMetadata?>>[];
   final _moderationSubscriptions = <StreamSubscription<ChatModerationEvent>>[];
+  final _providerEventSubscriptions = <StreamSubscription<ChatProviderEvent>>[];
+  final _platformMetadataSubscriptions =
+      <StreamSubscription<PlatformLiveMetadata?>>[];
+  final _platformMetadata = <Platform, PlatformLiveMetadata>{};
   StreamSubscription<ChatMessage>? _pipelineSub;
   final _platformStatus = <String, (ServiceStatus, String?)>{
     'youtube': (ServiceStatus.idle, null),
@@ -220,6 +293,15 @@ class ChatCoordinator {
   Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream async* {
     yield _metadataSummary;
     yield* _youtubeMetadataController.stream;
+  }
+
+  Stream<ChatProviderEvent> get providerEvents =>
+      _providerEventController.stream;
+
+  Stream<Map<Platform, PlatformLiveMetadata>>
+      get platformMetadataStream async* {
+    yield Map.unmodifiable(_platformMetadata);
+    yield* _platformMetadataController.stream;
   }
 
   void applySettings(SettingsModel settings, {required bool connectChats}) {
@@ -596,6 +678,12 @@ class ChatCoordinator {
     for (final subscription in _moderationSubscriptions) {
       await subscription.cancel();
     }
+    for (final subscription in _providerEventSubscriptions) {
+      await subscription.cancel();
+    }
+    for (final subscription in _platformMetadataSubscriptions) {
+      await subscription.cancel();
+    }
     await _youtube.dispose();
     await _youtubeHorizontal.dispose();
     await _youtubeVertical.dispose();
@@ -606,5 +694,7 @@ class ChatCoordinator {
     await _statusController.close();
     await _youtubeBadgeController.close();
     await _youtubeMetadataController.close();
+    await _providerEventController.close();
+    await _platformMetadataController.close();
   }
 }

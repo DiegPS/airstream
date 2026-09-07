@@ -1,5 +1,6 @@
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -185,5 +186,53 @@ void main() {
 
     final messages = await updated;
     expect(messages.single.id, 'kick-message');
+  });
+
+  test('applies Kick moderation through the common pipeline', () async {
+    kick.messageController.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'kick-message',
+      author: const ChatAuthor(name: 'Author', channelId: 'author-id'),
+      items: const [MessageItem.text('Kick')],
+      timestamp: DateTime.utc(2026, 9, 7),
+    ));
+    await settleCoordinatorTasks();
+    final updated = coordinator.messageListStream.firstWhere(
+      (messages) => messages.isEmpty,
+    );
+
+    kick.moderationController.add(const ChatModerationEvent.author(
+      platform: Platform.kick,
+      authorChannelId: 'author-id',
+    ));
+
+    expect(await updated, isEmpty);
+  });
+
+  test('forwards common provider events and live platform metadata', () async {
+    final eventFuture = coordinator.providerEvents.first;
+    final metadataFuture = coordinator.platformMetadataStream.firstWhere(
+      (values) => values[Platform.kick]?.viewerCount == 84,
+    );
+    final now = DateTime.utc(2026, 9, 7);
+
+    twitch.eventController.add(ChatProviderEvent(
+      platform: Platform.twitch,
+      kind: ChatProviderEventKind.raid,
+      id: 'raid-1',
+      timestamp: now,
+      count: 42,
+    ));
+    kick.platformMetadataController.add(PlatformLiveMetadata(
+      platform: Platform.kick,
+      channel: 'creator',
+      isLive: true,
+      viewerCount: 84,
+      title: 'Live',
+      updatedAt: now,
+    ));
+
+    expect((await eventFuture).kind, ChatProviderEventKind.raid);
+    expect((await metadataFuture)[Platform.kick]?.viewerCount, 84);
   });
 }

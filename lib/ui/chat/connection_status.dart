@@ -6,6 +6,8 @@ class _ConnectionDots extends ConsumerWidget {
     final status = ref.watch(connectionStatusProvider);
     final settings = ref.watch(settingsProvider);
     final metadata = ref.watch(youtubeMetadataProvider).valueOrNull;
+    final platformMetadata =
+        ref.watch(platformMetadataProvider).valueOrNull ?? const {};
     final youtubeConfigured = settings.youtubeEnabled &&
         (settings.youtubeDualStreamEnabled
             ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
@@ -71,6 +73,26 @@ class _ConnectionDots extends ConsumerWidget {
                       metadata?.totalViewerCount != null) ...[
                     const SizedBox(width: 4),
                     YoutubeLiveStats(summary: metadata!, compact: true),
+                  ],
+                  if (p.$3 == 'kick' &&
+                      platformMetadata[Platform.kick]?.viewerCount != null) ...[
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.visibility_outlined,
+                      key: Key('kick-viewers-icon'),
+                      size: 11,
+                      color: Colors.white70,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${platformMetadata[Platform.kick]!.viewerCount}',
+                      key: const Key('kick-viewer-count'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ],
               ),

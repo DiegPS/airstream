@@ -111,7 +111,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: cfe45cd59a89c67984328a282a052b6231146c36
+      resolved-ref: "45fd4d8ad29f2f8c9c62f4b02382b066b0597ce6"
       url: "git@github.com:DiegPS/dart_kick_chat.git"
     source: git
     version: "0.3.0"
@@ -120,7 +120,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "0d59d5daafc16aa5b94664a9fcad1079643b8efa"
+      resolved-ref: "0bbe23418755df0bb59eb7167ab8abadb2af6130"
       url: "git@github.com:DiegPS/dart_twitch_chat.git"
     source: git
     version: "0.2.0"
@@ -129,7 +129,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: e3113fcf26163fe9f9e6df3d22f3e3063308b0a3
+      resolved-ref: c2dd27d0854dba79d0bb74102e2ab36c0dc3f132
       url: "git@github.com:DiegPS/dart_youtube_chat.git"
     source: git
     version: "0.5.0"

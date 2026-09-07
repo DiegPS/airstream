@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/twitch_service.dart';
 import 'package:dart_twitch_chat/dart_twitch_chat.dart' show TwitchSocket;
 import 'package:flutter_test/flutter_test.dart';
@@ -203,6 +204,48 @@ void main() {
       expect(message.membershipEventKind, MembershipEventKind.resubscription);
       expect(message.membershipMonths, 12);
       expect(message.plainText, 'Un año');
+    });
+
+    test('surfaces raids as common events and visible chat notices', () async {
+      await service.connect('channel');
+      final eventFuture = service.appEvents.first;
+      final messageFuture = service.messages.first;
+
+      socket.receive(
+        '@display-name=Raider;id=raid-1;login=raider;msg-id=raid;'
+        'msg-param-displayName=Raider;msg-param-login=raider;'
+        'msg-param-viewerCount=42;system-msg=Raider\\sraided\\swith\\s42\\sviewers;'
+        'tmi-sent-ts=1760000000123 '
+        ':tmi.twitch.tv USERNOTICE #channel\r\n',
+      );
+
+      final event = await eventFuture;
+      final message = await messageFuture;
+      expect(event.kind, ChatProviderEventKind.raid);
+      expect(event.count, 42);
+      expect(message.id, 'raid-1');
+      expect(message.plainText, contains('42 viewers'));
+    });
+
+    test('preserves replies, action messages and Shared Chat origin', () async {
+      await service.connect('channel');
+      final messageFuture = service.messages.first;
+
+      socket.receive(
+        '@display-name=Ana;id=reply-1;reply-parent-display-name=Bob;'
+        'reply-parent-msg-body=Original\\smessage;reply-parent-msg-id=parent-1;'
+        'reply-parent-user-id=bob-id;source-id=source-message;'
+        'source-room-id=source-room;source-msg-id=chat '
+        ':ana!ana@ana.tmi.twitch.tv PRIVMSG #channel '
+        ':\u0001ACTION waves\u0001\r\n',
+      );
+
+      final message = await messageFuture;
+      expect(message.reply?.messageId, 'parent-1');
+      expect(message.reply?.authorName, 'Bob');
+      expect(message.reply?.text, 'Original message');
+      expect(message.sharedSource?.channelId, 'source-room');
+      expect(message.isAction, isTrue);
     });
 
     test('keeps Unicode offsets exact and only replaces full emote tokens', () {

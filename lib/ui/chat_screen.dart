@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' as io;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
-    show YoutubeStreamOrientation;
+    show Platform, YoutubeStreamOrientation;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/services/obs_service.dart';
@@ -259,7 +259,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
 
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (io.Platform.isWindows || io.Platform.isMacOS || io.Platform.isLinux) {
       return _DesktopResizeFrame(child: scaffold);
     }
 
