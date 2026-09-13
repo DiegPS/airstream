@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:airstream/main.dart';
@@ -67,6 +67,53 @@ void main() {
     await tester.pump();
     expect(find.text('Voice Reader (TTS)'), findsOneWidget);
     expect(find.text('Lector de voz (TTS)'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('channel input keeps its height when the clear button appears',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    Finder youtubeInput() => find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.hintText == '@handle · channel ID · video ID',
+        );
+    Finder youtubeInputDecorator() => find.descendant(
+          of: youtubeInput(),
+          matching: find.byType(InputDecorator),
+        );
+
+    double paintedHeight() => InputDecorator.containerOf(
+          tester.element(find.descendant(
+            of: youtubeInputDecorator(),
+            matching: find.byType(EditableText),
+          )),
+        )!
+            .size
+            .height;
+
+    final emptyHeight = paintedHeight();
+    await tester.enterText(youtubeInput(), '@channel');
+    await tester.pump();
+    final populatedHeight = paintedHeight();
+
+    expect(emptyHeight, 36);
+    expect(populatedHeight, emptyHeight);
+    expect(find.byTooltip('Clear'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear'));
+    await tester.pump();
+    expect(paintedHeight(), emptyHeight);
+
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

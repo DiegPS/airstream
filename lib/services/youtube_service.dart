@@ -392,6 +392,12 @@ class YouTubeService {
   }
 
   ChatProviderEvent? _convertProviderEvent(yt.LiveChatEvent event) {
+    // Hide only YouTube's standard welcome notice, not other viewer notices.
+    if (event.kind == yt.LiveChatEventKind.viewerNotice &&
+        event.text.trim().replaceAll(RegExp(r'\s+'), ' ') ==
+            'Welcome to live chat! Remember to guard your privacy and abide by our community guidelines.') {
+      return null;
+    }
     final kind = switch (event.kind) {
       yt.LiveChatEventKind.bannerAdded => ChatProviderEventKind.pinnedMessage,
       yt.LiveChatEventKind.bannerRemoved =>

@@ -643,6 +643,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         onSubmitted: onSubmitted,
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
+          constraints: minLines == 1 && maxLines == 1 && errorText == null
+              ? const BoxConstraints.tightFor(height: 36)
+              : null,
           hintText: hint,
           errorText: errorText,
           hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
@@ -651,18 +654,29 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           isDense: true,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          suffixIconConstraints: const BoxConstraints.tightFor(
+            width: 36,
+            height: 36,
+          ),
           suffixIcon: onClear != null && ctrl.text.isNotEmpty
               ? IconButton(
                   tooltip: AppLocalizations.of(context)!.clear,
                   onPressed: onClear,
                   splashRadius: 16,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 36,
+                    height: 36,
+                  ),
                   icon: const Icon(
                     Icons.close_rounded,
                     size: 16,
                     color: Colors.white54,
                   ),
                 )
-              : null,
+              : onClear != null
+                  ? const SizedBox(width: 36, height: 36)
+                  : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: Color(0xFF333333)),

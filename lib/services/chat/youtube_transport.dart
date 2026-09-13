@@ -30,7 +30,10 @@ class DartYouTubeChatTransport
         YouTubeLifecycleTransport,
         YouTubeEnrichmentTransport {
   DartYouTubeChatTransport(yt.YoutubeId id)
-      : _session = yt.YoutubeLiveSession(id: id);
+      : _session = yt.YoutubeLiveSession(
+          id: id,
+          chatInterval: const Duration(seconds: 1),
+        );
 
   final yt.YoutubeLiveSession _session;
 

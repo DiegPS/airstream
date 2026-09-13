@@ -347,6 +347,34 @@ void main() {
         event.youtubeStreamOrientation, app.YoutubeStreamOrientation.vertical);
   });
 
+  test('YouTube hides only the standard welcome notice', () async {
+    final chat = _FakeYouTubeTransport();
+    final service = YouTubeService(transportFactory: (_) => chat);
+    addTearDown(service.dispose);
+    await service.connect(liveId: 'abcdefghijk');
+    final received = <String>[];
+    final subscription =
+        service.appEvents.listen((event) => received.add(event.text));
+    addTearDown(subscription.cancel);
+    for (final text in [
+      'Welcome to live chat! Remember to guard your privacy and abide by our community guidelines.',
+      'Another viewer notice',
+      'Welcome to live chat! A different announcement',
+    ]) {
+      chat.eventController.add(yt.LiveChatEvent(
+        kind: yt.LiveChatEventKind.viewerNotice,
+        actionType: 'addChatItemAction',
+        rendererType: 'liveChatViewerEngagementMessageRenderer',
+        text: text,
+      ));
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(received, [
+      'Another viewer notice',
+      'Welcome to live chat! A different announcement'
+    ]);
+  });
+
   test('Kick injects connection, reports transport errors, and closes once',
       () async {
     final transport = _FakeKickTransport();
