@@ -393,6 +393,86 @@ void main() {
     expect(transport.closeCount, 1);
   });
 
+  test('Kick metadata failures never mark the chat as failed', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+
+    transport.metadataErrorController
+        .add(Exception('HTTP 429 from channel API'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(statuses.map((s) => s.$1), isNot(contains(ServiceStatus.error)));
+    expect(statuses.last.$1, ServiceStatus.connected);
+  });
+
+  test('Kick status follows the connection, not transient client errors',
+      () async {
+    final transport = _FakeKickConnectionTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+    transport.setState(kick.KickConnectionState.connected);
+    await _eventually(() => statuses.last.$1 == ServiceStatus.connected);
+
+    transport.errorController
+        .add(Exception('subscription to channel_9 rejected'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(statuses.last.$1, ServiceStatus.connected);
+
+    transport.setState(
+      kick.KickConnectionState.reconnecting,
+      error: Exception('socket closed'),
+    );
+    await _eventually(() => statuses.last.$1 == ServiceStatus.connecting);
+    expect(statuses.last.$2, contains('socket closed'));
+
+    transport.setState(kick.KickConnectionState.connected);
+    await _eventually(() => statuses.last.$1 == ServiceStatus.connected);
+  });
+
+  test('Kick returns to connected when messages flow after an error', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+
+    transport.errorController.add(Exception('temporary failure'));
+    await _eventually(() => statuses.last.$1 == ServiceStatus.error);
+
+    transport.messageController.add(_kickChatMessage('after-error'));
+    await _eventually(() => statuses.last.$1 == ServiceStatus.connected);
+  });
+
+  test('Kick does not claim connected while the socket is reconnecting',
+      () async {
+    final transport = _FakeKickConnectionTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = service.statusStream.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+    transport.setState(kick.KickConnectionState.reconnecting);
+    await _eventually(() => statuses.last.$1 == ServiceStatus.connecting);
+
+    // A message already in flight from the old socket.
+    transport.messageController.add(_kickChatMessage('late'));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(statuses.last.$1, ServiceStatus.connecting);
+  });
+
   test('Kick reports a transport timeout and leaves no active client',
       () async {
     final pending = Completer<KickChatTransport>();
@@ -821,6 +901,7 @@ class _FakeKickTransport implements KickChatTransport, KickMetadataTransport {
   final eventController = StreamController<kick.KickEvent>.broadcast();
   final errorController = StreamController<Exception>.broadcast();
   final metadataController = StreamController<kick.KickChannel>.broadcast();
+  final metadataErrorController = StreamController<Exception>.broadcast();
   final joined = <String>[];
   int closeCount = 0;
   @override
@@ -832,7 +913,42 @@ class _FakeKickTransport implements KickChatTransport, KickMetadataTransport {
   @override
   Stream<kick.KickChannel> get metadata => metadataController.stream;
   @override
+  Stream<Exception> get metadataErrors => metadataErrorController.stream;
+  @override
   Future<void> joinBySlug(String slug) async => joined.add(slug);
   @override
   Future<void> close() async => closeCount++;
 }
+
+/// A Kick transport that also reports its connection state, like the real one.
+class _FakeKickConnectionTransport extends _FakeKickTransport
+    implements KickConnectionTransport {
+  final connectionController =
+      StreamController<kick.KickConnectionUpdate>.broadcast();
+  kick.KickConnectionState state = kick.KickConnectionState.connecting;
+
+  void setState(kick.KickConnectionState next, {Exception? error}) {
+    state = next;
+    connectionController.add(kick.KickConnectionUpdate(next, error: error));
+  }
+
+  @override
+  Stream<kick.KickConnectionUpdate> get connections =>
+      connectionController.stream;
+  @override
+  kick.KickConnectionState get connectionState => state;
+}
+
+kick.ChatMessage _kickChatMessage(String id) => kick.ChatMessage.fromJson({
+      'id': id,
+      'chatroom_id': 9,
+      'content': 'hello',
+      'type': 'message',
+      'created_at': '2026-09-06T12:00:00Z',
+      'sender': {
+        'id': 7,
+        'username': 'viewer',
+        'slug': 'viewer',
+        'identity': {'color': '#53FC18', 'badges': []},
+      },
+    });

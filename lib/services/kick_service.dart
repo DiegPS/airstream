@@ -22,6 +22,7 @@ class KickService {
   StreamSubscription<kick.KickEvent>? _eventSub;
   StreamSubscription<Exception>? _errorSub;
   StreamSubscription<kick.KickChannel>? _metadataSub;
+  StreamSubscription<Exception>? _metadataErrorSub;
   StreamSubscription<kick.KickConnectionUpdate>? _connectionSub;
   StreamSubscription<kick.KickProfileUpdate>? _profileSub;
   StreamSubscription<Exception>? _enrichmentErrorSub;
@@ -40,6 +41,7 @@ class KickService {
   String? _lastRoomStateSignature;
   String? _lastPinnedMessageId;
   int _generation = 0;
+  ServiceStatus _lastStatus = ServiceStatus.idle;
 
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
@@ -87,6 +89,8 @@ class KickService {
       _eventSub = null;
       await _metadataSub?.cancel();
       _metadataSub = null;
+      await _metadataErrorSub?.cancel();
+      _metadataErrorSub = null;
       await _connectionSub?.cancel();
       _connectionSub = null;
       await _profileSub?.cancel();
@@ -108,6 +112,7 @@ class KickService {
           if (!_controller.isClosed) {
             _controller.add(_convertMessage(msg));
           }
+          _markLiveIfDelivering();
         } catch (error, stack) {
           AppLogger.warning(
             'Kick returned a malformed chat message',
@@ -131,7 +136,12 @@ class KickService {
       (e) {
         if (generation != _generation) return;
         AppLogger.warning('Kick client reported an error', error: e);
-        _emit(ServiceStatus.error, e.toString());
+        // A transport that reports its connection state recovers on its own
+        // (reconnecting -> connected), so its errors are diagnostics and the
+        // status follows the connection. Without that signal, surface them.
+        if (_client is! KickConnectionTransport) {
+          _emit(ServiceStatus.error, e.toString());
+        }
       },
     );
     _eventSub = _client!.events.listen((event) {
@@ -166,6 +176,11 @@ class KickService {
           updatedAt: DateTime.now().toUtc(),
         ));
         _publishChannelState(channel);
+      });
+      _metadataErrorSub = transport.metadataErrors.listen((error) {
+        if (generation != _generation) return;
+        // Viewer counts and titles are optional: never mark chat as failed.
+        AppLogger.debug('Kick channel metadata unavailable: $error');
       });
     }
     if (_client case final KickConnectionTransport transport) {
@@ -214,6 +229,8 @@ class KickService {
     _eventSub = null;
     await _metadataSub?.cancel();
     _metadataSub = null;
+    await _metadataErrorSub?.cancel();
+    _metadataErrorSub = null;
     await _connectionSub?.cancel();
     _connectionSub = null;
     await _profileSub?.cancel();
@@ -238,7 +255,18 @@ class KickService {
   }
 
   void _emit(ServiceStatus status, String? error) {
+    _lastStatus = status;
     if (!_statusController.isClosed) _statusController.add((status, error));
+  }
+
+  /// Messages are flowing, so the chat is live again after a transient error.
+  void _markLiveIfDelivering() {
+    if (_lastStatus == ServiceStatus.connected) return;
+    if (_client case final KickConnectionTransport connection
+        when connection.connectionState != kick.KickConnectionState.connected) {
+      return;
+    }
+    _emit(ServiceStatus.connected, null);
   }
 
   ChatMessage _convertMessage(kick.ChatMessage msg) {

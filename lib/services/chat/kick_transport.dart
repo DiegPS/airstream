@@ -12,6 +12,10 @@ abstract interface class KickChatTransport {
 
 abstract interface class KickMetadataTransport {
   Stream<kick.KickChannel> get metadata;
+
+  /// Failures of the periodic channel-metadata lookup. They never affect the
+  /// chat connection, so they are kept apart from [KickChatTransport.errors].
+  Stream<Exception> get metadataErrors;
 }
 
 abstract interface class KickConnectionTransport {
@@ -32,15 +36,9 @@ class DartKickChatTransport
         KickMetadataTransport,
         KickConnectionTransport,
         KickEnrichmentTransport {
-  DartKickChatTransport._(this._client, this._monitor) {
-    _clientErrorSubscription = _client.errors.listen(_forwardError);
-    _metadataErrorSubscription = _monitor.errors.listen(_forwardError);
-  }
+  DartKickChatTransport._(this._client, this._monitor);
   final kick.KickClient _client;
   final kick.KickChannelMonitor _monitor;
-  final _errors = StreamController<Exception>.broadcast();
-  late final StreamSubscription<Exception> _clientErrorSubscription;
-  late final StreamSubscription<Exception> _metadataErrorSubscription;
 
   static Future<KickChatTransport> connect() async => DartKickChatTransport._(
         await kick.KickClient.connect(),
@@ -52,9 +50,11 @@ class DartKickChatTransport
   @override
   Stream<kick.KickEvent> get events => _client.events;
   @override
-  Stream<Exception> get errors => _errors.stream;
+  Stream<Exception> get errors => _client.errors;
   @override
   Stream<kick.KickChannel> get metadata => _monitor.states;
+  @override
+  Stream<Exception> get metadataErrors => _monitor.errors;
   @override
   Stream<kick.KickConnectionUpdate> get connections => _client.connections;
   @override
@@ -71,14 +71,7 @@ class DartKickChatTransport
 
   @override
   Future<void> close() async {
-    await _clientErrorSubscription.cancel();
-    await _metadataErrorSubscription.cancel();
     await _monitor.close();
     await _client.close();
-    await _errors.close();
-  }
-
-  void _forwardError(Exception error) {
-    if (!_errors.isClosed) _errors.add(error);
   }
 }
