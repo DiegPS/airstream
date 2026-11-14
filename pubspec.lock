@@ -110,7 +110,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
+      ref: "v0.7.0"
       resolved-ref: cca1a1f0b118182ca6977bdf03cab7cb40426b26
       url: "https://github.com/DiegPS/dart_kick_chat.git"
     source: git
@@ -119,7 +119,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
+      ref: "v0.4.0"
       resolved-ref: ebc2c0f6ae7ac03d1b6fc8ec27847b4fb782c148
       url: "https://github.com/DiegPS/dart_twitch_chat.git"
     source: git
@@ -128,7 +128,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
+      ref: "v0.7.0"
       resolved-ref: "32af1aee99125ce7e50cd1c50d707d01f9eacd5e"
       url: "https://github.com/DiegPS/dart_youtube_chat.git"
     source: git

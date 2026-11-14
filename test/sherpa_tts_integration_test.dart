@@ -67,6 +67,13 @@ void main() {
     ),
   ];
 
+  // The native smoke tests need the Sherpa/ONNX runtime DLLs, which ship with
+  // a Windows build. Without them a downloaded model alone cannot run.
+  final nativeLibraryDirectory = findSherpaNativeLibraryDirectory();
+  const missingNativeLibraries =
+      'Run `flutter build windows` or set AIRSTREAM_SHERPA_LIBRARY_DIR '
+      'for the native smoke tests.';
+
   for (final modelCase in cases) {
     final directory = findSherpaModelDirectory(
       environmentKey: modelCase.environmentKey,
@@ -78,7 +85,7 @@ void main() {
         final model = modelCase.model;
         final voice = model.voices.first;
         final engine = SherpaTtsEngine(
-          nativeLibraryDirectory: findSherpaNativeLibraryDirectory(),
+          nativeLibraryDirectory: nativeLibraryDirectory,
         );
         try {
           await engine.initialize(TtsModelInstallation(
@@ -102,7 +109,9 @@ void main() {
       },
       skip: directory == null
           ? 'Set ${modelCase.environmentKey} for this native smoke test.'
-          : false,
+          : nativeLibraryDirectory == null
+              ? missingNativeLibraries
+              : false,
       timeout: const Timeout(Duration(minutes: 3)),
     );
   }
@@ -115,7 +124,7 @@ void main() {
     'cancels native generation and can initialize again',
     () async {
       final engine = SherpaTtsEngine(
-        nativeLibraryDirectory: findSherpaNativeLibraryDirectory(),
+        nativeLibraryDirectory: nativeLibraryDirectory,
       );
       final installation = TtsModelInstallation(
         TtsModelCatalog.piperMexico,
@@ -154,6 +163,8 @@ void main() {
     },
     skip: piperDirectory == null
         ? 'Set AIRSTREAM_PIPER_MX_MODEL_DIR for the native cancellation test.'
-        : false,
+        : nativeLibraryDirectory == null
+            ? missingNativeLibraries
+            : false,
   );
 }

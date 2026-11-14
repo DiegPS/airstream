@@ -3,7 +3,13 @@
 ## Project Structure & Module Organization
 `lib/` contains application code: `ui/` for screens and widgets, `services/` for chat, OBS, TTS, and window integration, `pipeline/` for message flow, `settings/` for persisted app settings, `models/` for shared data types, and `window/` for desktop window state. Tests live in `test/` and follow the same feature split where practical. Static assets belong in `assets/`. Platform runners are in `android/`, `ios/`, `linux/`, `macos/`, `web/`, and `windows/`.
 
-This app also depends on local packages declared in [pubspec.yaml](/abs/path/C:/Users/dpahu/Desktop/airchat-port/airchat_flutter/pubspec.yaml): `../dart_youtube_chat` and `../dart_kick_chat`. Keep those available when resolving dependencies.
+The chat libraries (`dart_youtube_chat`, `dart_kick_chat`, `dart_twitch_chat`)
+are Git dependencies pinned to release tags in `pubspec.yaml`, so a clean
+checkout builds on its own. To develop against local clones, add a
+`pubspec_overrides.yaml` (ignored by Git) with `path:` overrides; publish and
+tag the library, then bump the tag here before pushing app code that needs it.
+CI (`.github/workflows/ci.yml`) checks formatting, analysis and tests from a
+clean checkout on every push and pull request.
 
 ## Build, Test, and Development Commands
 Run these from the repository root:

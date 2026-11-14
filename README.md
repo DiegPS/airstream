@@ -20,8 +20,15 @@ speech. It is designed to keep the streaming workflow in one lightweight app.
 
 ## Development
 
-The local chat packages referenced by `pubspec.yaml` must be available next to
-this repository. Then run:
+The chat libraries (`dart_youtube_chat`, `dart_kick_chat`, `dart_twitch_chat`)
+are Git dependencies pinned to release tags in `pubspec.yaml`, so a clean
+checkout builds on its own. To develop against local clones, add a
+`pubspec_overrides.yaml` (ignored by Git) with `path:` overrides; publish and
+tag the library, then bump the tag here before pushing app code that needs it.
+CI (`.github/workflows/ci.yml`) checks formatting, analysis and tests from a
+clean checkout on every push and pull request.
+
+Then run:
 
 ```sh
 flutter pub get

@@ -1,0 +1,45 @@
+name: CI
+
+# Builds from a clean checkout, without the local pubspec_overrides.yaml, so a
+# commit that only compiles against unpublished local packages fails here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Format, analyze and test
+    # Desktop-first Windows app: window, audio and overlay tests use Win32.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.2
+          cache: true
+
+      - name: Resolve dependencies from the lockfile
+        run: flutter pub get --enforce-lockfile
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        # Native TTS smoke tests skip themselves without models and a build.
+        run: flutter test
