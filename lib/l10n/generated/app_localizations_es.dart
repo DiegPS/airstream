@@ -1685,4 +1685,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatLogOpenFolder => 'Abrir carpeta';
+
+  @override
+  String get globalShortcutsTitle => 'Atajos globales';
+
+  @override
+  String get globalShortcutsDescription =>
+      'Funcionan desde cualquier aplicación, por ejemplo durante una partida. Cada uno está desactivado hasta que lo asignes, para no quitarle atajos a otras aplicaciones.';
+
+  @override
+  String get globalShortcutSilenceTts => 'Silenciar el lector de voz';
+
+  @override
+  String get globalShortcutToggleTts => 'Activar o desactivar el lector de voz';
+
+  @override
+  String get globalShortcutNone => 'Asignar';
+
+  @override
+  String get globalShortcutPress => 'Pulsa las teclas…';
+
+  @override
+  String get globalShortcutClear => 'Quitar atajo';
+
+  @override
+  String get globalShortcutNeedsModifier =>
+      'Usa Ctrl, Alt o Win junto con la tecla.';
+
+  @override
+  String get globalShortcutReserved =>
+      'Ctrl + Shift + C está reservado para ignorar clics.';
+
+  @override
+  String get globalShortcutDuplicate => 'Otra acción ya usa este atajo.';
+
+  @override
+  String get globalShortcutInUse =>
+      'Otra aplicación ya usa este atajo; elige otro.';
 }

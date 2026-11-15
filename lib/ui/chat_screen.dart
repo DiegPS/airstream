@@ -34,6 +34,7 @@ import 'package:airstream/ui/chat/paused_chat_view.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
+import 'package:airstream/ui/widgets/global_shortcuts_card.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
 import 'package:airstream/ui/widgets/session_summary_dialog.dart';
 import 'package:airstream/ui/widgets/settings_profiles_card.dart';
@@ -244,6 +245,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    ref.listen(globalShortcutsProvider, (_, __) {});
     ref.listen<bool>(chatPreviewProvider, (previous, enabled) {
       final app = ref.read(appControllerProvider);
       if (enabled) {

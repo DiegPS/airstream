@@ -491,5 +491,16 @@
   "chatLogTitle": "Registro del chat",
   "chatLogSave": "Guardar el chat de cada sesión",
   "chatLogDescription": "Escribe cada mensaje en un archivo de texto en Documentos\\Airstream\\Chat mientras el chat está activo.",
-  "chatLogOpenFolder": "Abrir carpeta"
+  "chatLogOpenFolder": "Abrir carpeta",
+  "globalShortcutsTitle": "Atajos globales",
+  "globalShortcutsDescription": "Funcionan desde cualquier aplicación, por ejemplo durante una partida. Cada uno está desactivado hasta que lo asignes, para no quitarle atajos a otras aplicaciones.",
+  "globalShortcutSilenceTts": "Silenciar el lector de voz",
+  "globalShortcutToggleTts": "Activar o desactivar el lector de voz",
+  "globalShortcutNone": "Asignar",
+  "globalShortcutPress": "Pulsa las teclas…",
+  "globalShortcutClear": "Quitar atajo",
+  "globalShortcutNeedsModifier": "Usa Ctrl, Alt o Win junto con la tecla.",
+  "globalShortcutReserved": "Ctrl + Shift + C está reservado para ignorar clics.",
+  "globalShortcutDuplicate": "Otra acción ya usa este atajo.",
+  "globalShortcutInUse": "Otra aplicación ya usa este atajo; elige otro."
 }

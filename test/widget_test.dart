@@ -925,6 +925,50 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a global shortcut is recorded from the keyboard',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings = _RecordingSettings(
+      const SettingsModel(overlayEnabled: false),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('System & Window'));
+    await tester.pump();
+
+    final record = find.byKey(const Key('shortcut-record-silenceTts'));
+    await tester.ensureVisible(record);
+    await tester.tap(record);
+    await tester.pump();
+    expect(find.text('Press the keys…'), findsOneWidget);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(find.text('Use Ctrl, Alt or Win with the key.'), findsOneWidget);
+    expect(settings.state.shortcutSilenceTts, isEmpty);
+
+    await tester.tap(record);
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyM);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(settings.state.shortcutSilenceTts, 'control+alt+M');
+    expect(find.text('Ctrl + Alt + M'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

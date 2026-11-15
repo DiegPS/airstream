@@ -71,6 +71,8 @@ class SettingsModel {
   final bool highlightSound;
   final bool highlightFirstMessages;
   final bool saveChatLog;
+  final String shortcutSilenceTts;
+  final String shortcutToggleTts;
   final Map<String, Map<String, dynamic>> profiles;
 
   // TTS
@@ -205,6 +207,8 @@ class SettingsModel {
     this.highlightSound = false,
     this.highlightFirstMessages = true,
     this.saveChatLog = false,
+    this.shortcutSilenceTts = '',
+    this.shortcutToggleTts = '',
     this.profiles = const {},
     this.ttsEnabled = false,
     this.ttsMembersOnly = false,
@@ -328,6 +332,8 @@ class SettingsModel {
     bool? highlightSound,
     bool? highlightFirstMessages,
     bool? saveChatLog,
+    String? shortcutSilenceTts,
+    String? shortcutToggleTts,
     Map<String, Map<String, dynamic>>? profiles,
     bool? ttsEnabled,
     bool? ttsMembersOnly,
@@ -456,6 +462,8 @@ class SettingsModel {
         highlightFirstMessages:
             highlightFirstMessages ?? this.highlightFirstMessages,
         saveChatLog: saveChatLog ?? this.saveChatLog,
+        shortcutSilenceTts: shortcutSilenceTts ?? this.shortcutSilenceTts,
+        shortcutToggleTts: shortcutToggleTts ?? this.shortcutToggleTts,
         profiles: profiles ?? this.profiles,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
         ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,

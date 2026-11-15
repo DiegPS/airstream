@@ -1673,4 +1673,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatLogOpenFolder => 'Open folder';
+
+  @override
+  String get globalShortcutsTitle => 'Global shortcuts';
+
+  @override
+  String get globalShortcutsDescription =>
+      'They work from any app, for example during a game. Each one is off until you assign it, so other apps keep their shortcuts.';
+
+  @override
+  String get globalShortcutSilenceTts => 'Silence the voice reader';
+
+  @override
+  String get globalShortcutToggleTts => 'Turn the voice reader on or off';
+
+  @override
+  String get globalShortcutNone => 'Assign';
+
+  @override
+  String get globalShortcutPress => 'Press the keys…';
+
+  @override
+  String get globalShortcutClear => 'Remove shortcut';
+
+  @override
+  String get globalShortcutNeedsModifier =>
+      'Use Ctrl, Alt or Win with the key.';
+
+  @override
+  String get globalShortcutReserved =>
+      'Ctrl + Shift + C is reserved for click-through.';
+
+  @override
+  String get globalShortcutDuplicate =>
+      'Another action already uses this shortcut.';
+
+  @override
+  String get globalShortcutInUse =>
+      'Another app already uses this shortcut; choose a different one.';
 }

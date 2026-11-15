@@ -693,5 +693,16 @@
   "chatLogTitle": "Chat log",
   "chatLogSave": "Save the chat of each session",
   "chatLogDescription": "Writes every message to a text file in Documents\\Airstream\\Chat while the chat runs.",
-  "chatLogOpenFolder": "Open folder"
+  "chatLogOpenFolder": "Open folder",
+  "globalShortcutsTitle": "Global shortcuts",
+  "globalShortcutsDescription": "They work from any app, for example during a game. Each one is off until you assign it, so other apps keep their shortcuts.",
+  "globalShortcutSilenceTts": "Silence the voice reader",
+  "globalShortcutToggleTts": "Turn the voice reader on or off",
+  "globalShortcutNone": "Assign",
+  "globalShortcutPress": "Press the keys…",
+  "globalShortcutClear": "Remove shortcut",
+  "globalShortcutNeedsModifier": "Use Ctrl, Alt or Win with the key.",
+  "globalShortcutReserved": "Ctrl + Shift + C is reserved for click-through.",
+  "globalShortcutDuplicate": "Another action already uses this shortcut.",
+  "globalShortcutInUse": "Another app already uses this shortcut; choose a different one."
 }

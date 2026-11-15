@@ -86,6 +86,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               ),
           ],
         ),
+        const GlobalShortcutsCard(),
         UiCard(
           key: const Key('chat-log-card'),
           title: l.chatLogTitle,

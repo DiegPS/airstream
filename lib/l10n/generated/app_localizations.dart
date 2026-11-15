@@ -3014,6 +3014,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open folder'**
   String get chatLogOpenFolder;
+
+  /// No description provided for @globalShortcutsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Global shortcuts'**
+  String get globalShortcutsTitle;
+
+  /// No description provided for @globalShortcutsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'They work from any app, for example during a game. Each one is off until you assign it, so other apps keep their shortcuts.'**
+  String get globalShortcutsDescription;
+
+  /// No description provided for @globalShortcutSilenceTts.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence the voice reader'**
+  String get globalShortcutSilenceTts;
+
+  /// No description provided for @globalShortcutToggleTts.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the voice reader on or off'**
+  String get globalShortcutToggleTts;
+
+  /// No description provided for @globalShortcutNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get globalShortcutNone;
+
+  /// No description provided for @globalShortcutPress.
+  ///
+  /// In en, this message translates to:
+  /// **'Press the keys…'**
+  String get globalShortcutPress;
+
+  /// No description provided for @globalShortcutClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove shortcut'**
+  String get globalShortcutClear;
+
+  /// No description provided for @globalShortcutNeedsModifier.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Ctrl, Alt or Win with the key.'**
+  String get globalShortcutNeedsModifier;
+
+  /// No description provided for @globalShortcutReserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Ctrl + Shift + C is reserved for click-through.'**
+  String get globalShortcutReserved;
+
+  /// No description provided for @globalShortcutDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Another action already uses this shortcut.'**
+  String get globalShortcutDuplicate;
+
+  /// No description provided for @globalShortcutInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Another app already uses this shortcut; choose a different one.'**
+  String get globalShortcutInUse;
 }
 
 class _AppLocalizationsDelegate

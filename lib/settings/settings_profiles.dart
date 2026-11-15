@@ -24,7 +24,9 @@ abstract final class SettingsProfiles {
       _connectionKeys.contains(key) ||
       key.startsWith('youtube') ||
       key.startsWith('twitch') ||
-      key.startsWith('kick');
+      key.startsWith('kick') ||
+      // Shortcuts belong to the computer, not to a kind of stream.
+      key.startsWith('shortcut');
 
   /// The part of [settings] a profile stores.
   static Map<String, dynamic> capture(SettingsModel settings) => {

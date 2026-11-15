@@ -14,6 +14,7 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/window/global_shortcuts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final chatConnectionProvider = StateProvider<bool>((ref) => false);
@@ -42,6 +43,37 @@ final chatPollProvider = StreamProvider<ChatPoll?>((ref) {
 
 /// Whether the search field above the chat is open.
 final chatSearchOpenProvider = StateProvider<bool>((ref) => false);
+
+/// The global shortcuts the user assigned, registered with Windows. Its
+/// state is the set of actions whose shortcut another app already owns.
+final globalShortcutsProvider =
+    StateNotifierProvider<GlobalShortcutsNotifier, Set<GlobalShortcutAction>>(
+  (ref) {
+    final shortcuts = GlobalShortcutsNotifier(
+      onPressed: (action) {
+        switch (action) {
+          case GlobalShortcutAction.silenceTts:
+            unawaited(ref.read(appControllerProvider).silenceTts());
+          case GlobalShortcutAction.toggleTts:
+            final settings = ref.read(settingsProvider);
+            unawaited(ref.read(settingsProvider.notifier).update(
+                  settings.copyWith(ttsEnabled: !settings.ttsEnabled),
+                ));
+        }
+      },
+    );
+    ref.listen(
+      settingsProvider
+          .select((s) => (s.shortcutSilenceTts, s.shortcutToggleTts)),
+      (_, next) => unawaited(shortcuts.apply({
+        GlobalShortcutAction.silenceTts: next.$1,
+        GlobalShortcutAction.toggleTts: next.$2,
+      })),
+      fireImmediately: true,
+    );
+    return shortcuts;
+  },
+);
 
 /// Whether the chat and the OBS overlay show sample messages.
 final chatPreviewProvider = StateProvider<bool>((ref) => false);
