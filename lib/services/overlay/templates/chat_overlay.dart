@@ -787,7 +787,11 @@ function applyModeration(moderation) {
     if (!message || message.platform !== moderation.platform || !orientationMatches(message)) return false;
     if (moderation.scope === 'platform') return true;
     if (moderation.scope === 'message') return !!moderation.messageId && message.id === moderation.messageId;
-    if (moderation.scope === 'author') return !!moderation.authorChannelId && message.authorChannelId === moderation.authorChannelId;
+    if (moderation.scope === 'author') {
+      if (moderation.authorChannelId && message.authorChannelId === moderation.authorChannelId) return true;
+      return !!moderation.authorName &&
+        String(message.author || '').toLowerCase() === String(moderation.authorName).toLowerCase();
+    }
     return false;
   };
   const retained = [];

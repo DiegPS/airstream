@@ -47,11 +47,13 @@ class ChatModerationEvent {
     required this.messageId,
     this.youtubeStreamOrientation,
   })  : scope = ChatModerationScope.message,
-        authorChannelId = '';
+        authorChannelId = '',
+        authorName = '';
 
   const ChatModerationEvent.author({
     required this.platform,
     required this.authorChannelId,
+    this.authorName = '',
     this.youtubeStreamOrientation,
   })  : scope = ChatModerationScope.author,
         messageId = '';
@@ -61,13 +63,27 @@ class ChatModerationEvent {
     this.youtubeStreamOrientation,
   })  : scope = ChatModerationScope.platform,
         messageId = '',
-        authorChannelId = '';
+        authorChannelId = '',
+        authorName = '';
 
   final Platform platform;
   final ChatModerationScope scope;
   final String messageId;
   final String authorChannelId;
+
+  /// Display name of the moderated author, for providers whose system
+  /// messages (such as Kick subscriptions) only carry the name.
+  final String authorName;
   final YoutubeStreamOrientation? youtubeStreamOrientation;
+
+  /// Whether [author] is the author this event moderates.
+  bool matchesAuthor(ChatAuthor author) {
+    if (authorChannelId.isNotEmpty && author.channelId == authorChannelId) {
+      return true;
+    }
+    return authorName.isNotEmpty &&
+        author.name.toLowerCase() == authorName.toLowerCase();
+  }
 }
 
 class MessageItem {

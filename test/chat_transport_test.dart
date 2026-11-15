@@ -797,6 +797,35 @@ void main() {
     expect(message.membershipMonths, 6);
     expect(message.plainText, 'still here');
   });
+
+  test('Kick shows repeated subscriptions and bans them by name', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messages = <app.ChatMessage>[];
+    final moderation = <app.ChatModerationEvent>[];
+    service.messages.listen(messages.add);
+    service.moderationEvents.listen(moderation.add);
+    await service.connect('creator');
+
+    for (var i = 0; i < 2; i++) {
+      transport.eventController.add(kick.parseKickEvent(
+        r'App\Events\SubscriptionEvent',
+        {'username': 'Some_User', 'months': 1},
+      ));
+    }
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\UserBannedEvent',
+      {
+        'user': {'slug': 'some-user', 'username': 'Some_User'},
+      },
+    ));
+    await _eventually(() => messages.length == 2 && moderation.isNotEmpty);
+
+    expect(messages.map((m) => m.id).toSet(), hasLength(2));
+    expect(moderation.single.authorName, 'Some_User');
+    expect(moderation.single.matchesAuthor(messages.first.author), isTrue);
+  });
 }
 
 Future<void> _eventually(bool Function() predicate) async {

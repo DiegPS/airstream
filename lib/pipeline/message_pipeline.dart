@@ -46,8 +46,7 @@ class MessagePipeline {
       }
       return switch (event.scope) {
         ChatModerationScope.message => message.id == event.messageId,
-        ChatModerationScope.author =>
-          message.author.channelId == event.authorChannelId,
+        ChatModerationScope.author => event.matchesAuthor(message.author),
         ChatModerationScope.platform => true,
       };
     });

@@ -95,6 +95,7 @@ void main() {
       'scope': 'message',
       'messageId': 'deleted',
       'authorChannelId': '',
+      'authorName': '',
       'youtubeStreamOrientation': 'vertical',
     });
   });

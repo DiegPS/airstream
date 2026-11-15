@@ -41,6 +41,10 @@ class KickService {
   String? _lastRoomStateSignature;
   String? _lastPinnedMessageId;
   int _generation = 0;
+
+  /// Distinguishes system messages that Kick sends without an ID. A clock is
+  /// not enough: two events can share a timestamp.
+  int _localEventSequence = 0;
   ServiceStatus _lastStatus = ServiceStatus.idle;
 
   Stream<ChatMessage> get messages => _controller.stream;
@@ -341,7 +345,10 @@ class KickService {
       final isRenewal = event.months > 1;
       return ChatMessage(
         platform: Platform.kick,
-        id: 'subscription:${event.username}:${event.months}',
+        // Kick's client already drops repeated deliveries of one event, so
+        // each event gets its own ID: the same viewer can subscribe again.
+        id: 'subscription:${event.username}:${event.months}:'
+            '${++_localEventSequence}',
         author: ChatAuthor(name: event.username, channelId: event.username),
         items: [MessageItem.text(event.customMessage)],
         isMembership: true,
@@ -361,7 +368,7 @@ class KickService {
       return ChatMessage(
         platform: Platform.kick,
         id: correlationId.isEmpty
-            ? 'gift:${DateTime.now().microsecondsSinceEpoch}'
+            ? 'gift:${++_localEventSequence}'
             : 'gift:$correlationId',
         author: ChatAuthor(
           name: event.gifterUsername,
@@ -389,6 +396,7 @@ class KickService {
       return ChatModerationEvent.author(
         platform: Platform.kick,
         authorChannelId: event.user.slug,
+        authorName: event.user.username,
       );
     }
     if (event is kick.KickChatroomClearedEvent) {

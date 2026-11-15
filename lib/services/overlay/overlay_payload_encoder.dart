@@ -80,6 +80,7 @@ abstract final class OverlayPayloadEncoder {
         'scope': event.scope.name,
         'messageId': event.messageId,
         'authorChannelId': event.authorChannelId,
+        'authorName': event.authorName,
         'youtubeStreamOrientation': event.youtubeStreamOrientation?.name,
       };
 

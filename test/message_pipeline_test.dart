@@ -390,6 +390,48 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('an author ban also matches messages that only carry the name',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    final timestamp = DateTime.utc(2026, 5, 9, 12);
+    source.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'chat',
+      author: const ChatAuthor(name: 'Some_User', channelId: 'some-user'),
+      items: const [MessageItem.text('hola')],
+      timestamp: timestamp,
+    ));
+    source.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'subscription',
+      author: const ChatAuthor(name: 'Some_User', channelId: 'Some_User'),
+      items: const [MessageItem.text('subscribed')],
+      isMembershipEvent: true,
+      timestamp: timestamp,
+    ));
+    source.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'other',
+      author: const ChatAuthor(name: 'Other', channelId: 'other'),
+      items: const [MessageItem.text('hi')],
+      timestamp: timestamp,
+    ));
+    await Future<void>.delayed(Duration.zero);
+
+    final changed = pipeline.applyModeration(const ChatModerationEvent.author(
+      platform: Platform.kick,
+      authorChannelId: 'some-user',
+      authorName: 'some_user',
+    ));
+
+    expect(changed, isTrue);
+    expect(pipeline.buffer.map((m) => m.id), ['other']);
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({
