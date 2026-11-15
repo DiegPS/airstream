@@ -21,7 +21,7 @@ speech. It is designed to keep the streaming workflow in one lightweight app.
 ## Development
 
 The chat libraries (`dart_youtube_chat`, `dart_kick_chat`, `dart_twitch_chat`)
-are Git dependencies pinned to release tags in `pubspec.yaml`, so a clean
+and `air_window_control` are Git dependencies pinned to release tags in `pubspec.yaml`, so a clean
 checkout builds on its own. To develop against local clones, add a
 `pubspec_overrides.yaml` (ignored by Git) with `path:` overrides; publish and
 tag the library, then bump the tag here before pushing app code that needs it.

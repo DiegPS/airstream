@@ -56,7 +56,7 @@ dependencies:
   air_window_control:
     git:
       url: https://github.com/DiegPS/air_window_control.git
-      ref: main
+      ref: v0.0.1
 
   # Chat clients
   dart_youtube_chat:

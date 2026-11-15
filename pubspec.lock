@@ -5,7 +5,7 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
+      ref: "v0.0.1"
       resolved-ref: f2458ec9af618fb6422502c6526af521ff5fc4c5
       url: "https://github.com/DiegPS/air_window_control.git"
     source: git
