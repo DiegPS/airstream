@@ -13,6 +13,10 @@ import 'package:airstream/window/window_bounds.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Decoded avatars and emotes stay in memory up to this size (Flutter's
+  // default is 100 MB). Long streams meet thousands of distinct viewers, and
+  // evicted images are read back from the disk cache.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20;
   await AppLogger.initialize();
   await LegacyImageCacheCleaner.cleanupOnce();
   final defaultFlutterErrorHandler = FlutterError.onError;

@@ -354,9 +354,24 @@ class LiveCaptionsService {
     final guard = _workerGuard;
     _workerGuard = null;
     await guard?.dispose(expectedExit: true);
-    if (commands != null) commands.send({'type': 'dispose'});
-    _worker?.kill(priority: Isolate.beforeNextEvent);
+    final worker = _worker;
     _worker = null;
+    if (commands != null) {
+      // The recognizer lives in native memory (about 250 MB). Killing the
+      // worker before it handles 'dispose' would skip free() and leak it, so
+      // wait for the worker to confirm, and only kill a worker that hangs.
+      final released = ReceivePort();
+      commands.send({'type': 'dispose', 'reply': released.sendPort});
+      try {
+        await released.first.timeout(const Duration(seconds: 5));
+      } catch (_) {
+        worker?.kill(priority: Isolate.immediate);
+      } finally {
+        released.close();
+      }
+    } else {
+      worker?.kill(priority: Isolate.immediate);
+    }
     if (emitIdle) _emit(const LiveCaptionsState());
   }
 
@@ -525,6 +540,7 @@ class LiveCaptionsService {
             vad = null;
             denoiser = null;
             recognizer = null;
+            (message['reply'] as SendPort?)?.send(true);
             commands.close();
             return;
         }

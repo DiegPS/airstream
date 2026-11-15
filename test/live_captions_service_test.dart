@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/speech_model_catalog.dart';
@@ -102,6 +104,36 @@ void main() {
     expect(model.targetsFor('es').map((item) => item.code), ['es', 'en']);
     expect(model.supportsDirection('es', 'fr'), isFalse);
   });
+
+  test('turning captions off releases the native model before the worker ends',
+      () async {
+    final root = await Directory.systemTemp.createTemp('airstream-captions-');
+    addTearDown(() => root.delete(recursive: true));
+    final service = LiveCaptionsService(
+      modelCache: _InstalledCache(root),
+      audioCapture: _SilentCapture(),
+      workerEntrypoint: _releasingWorker,
+    );
+    addTearDown(service.dispose);
+    final listening = service.states
+        .firstWhere((state) => state.phase == LiveCaptionsPhase.listening);
+    await service.updateConfig(
+      enabled: true,
+      sourceLanguage: 'es',
+      targetLanguage: 'es',
+      denoise: false,
+    );
+    await listening.timeout(const Duration(seconds: 10));
+
+    await service.updateConfig(
+      enabled: false,
+      sourceLanguage: 'es',
+      targetLanguage: 'es',
+      denoise: false,
+    );
+
+    expect(File('${root.path}/released').existsSync(), isTrue);
+  });
 }
 
 /// A model cache whose download stays pending until [finish] is called.
@@ -132,4 +164,45 @@ class _PendingDownloadCache extends TtsModelCache {
   }
 
   void finish() => _done.completeError(StateError('download stopped'));
+}
+
+/// A model cache that reports the caption model as installed in [directory].
+class _InstalledCache extends TtsModelCache {
+  _InstalledCache(this.directory);
+
+  final Directory directory;
+
+  @override
+  Future<TtsModelInstallation?> installed(TtsModelDefinition model) async =>
+      TtsModelInstallation(model, directory);
+}
+
+class _SilentCapture implements SpeechAudioCapture {
+  final _audio = StreamController<Uint8List>();
+
+  @override
+  Future<Stream<Uint8List>> start() async => _audio.stream;
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() => _audio.close();
+}
+
+/// Stands in for the native worker: releasing its model takes a moment, and
+/// leaves a mark so the test can tell it happened.
+void _releasingWorker(Map<String, Object> startup) {
+  final owner = startup['reply']! as SendPort;
+  final directory = startup['directory']! as String;
+  final commands = ReceivePort();
+  owner.send(commands.sendPort);
+  commands.listen((dynamic message) {
+    if (message is Map && message['type'] == 'dispose') {
+      sleep(const Duration(milliseconds: 200));
+      File('$directory/released').writeAsStringSync('freed');
+      (message['reply'] as SendPort?)?.send(true);
+      commands.close();
+    }
+  });
 }

@@ -367,6 +367,10 @@ class KickService {
       if (correlationId.isNotEmpty && !_seenGiftBatches.add(correlationId)) {
         return null;
       }
+      // Only recent batches can repeat; keep the set bounded on long streams.
+      if (_seenGiftBatches.length > 500) {
+        _seenGiftBatches.remove(_seenGiftBatches.first);
+      }
       return ChatMessage(
         platform: Platform.kick,
         id: correlationId.isEmpty
