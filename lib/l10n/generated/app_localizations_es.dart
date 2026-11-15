@@ -1341,4 +1341,20 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get highlightFirstMessagesDescription =>
       'Marca el primer mensaje que envía cada persona desde que inicias el chat, para darle la bienvenida.';
+
+  @override
+  String get ttsUserCooldown => 'Pausa por persona';
+
+  @override
+  String get ttsUserCooldownHelp =>
+      'Tras leer un mensaje, los siguientes de la misma persona esperan este tiempo. 0 s lo desactiva.';
+
+  @override
+  String get ttsMaxCharacters => 'Mensaje más largo que se lee';
+
+  @override
+  String get ttsIgnoredUsers => 'Usuarios que el lector de voz ignora';
+
+  @override
+  String get ttsIgnoredUsersHint => 'Uno por línea, por ejemplo nightbot';
 }

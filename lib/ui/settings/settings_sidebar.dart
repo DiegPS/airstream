@@ -101,6 +101,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
     final highlightWords =
         SettingsInputNormalizer.filterList(_form.highlightWords.text);
+    final ttsIgnoredUsers =
+        SettingsInputNormalizer.filterList(_form.ttsIgnoredUsers.text);
     final next = current.copyWith(
       youtubeHandle: _form.ytHandle.text.trim(),
       youtubeLiveId: '',
@@ -111,6 +113,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       blockedUsers: blockedUsers,
       blockedWords: blockedWords,
       highlightWords: highlightWords,
+      ttsIgnoredUsers: ttsIgnoredUsers,
       overlayPort: SettingsInputNormalizer.overlayPort(
         _form.port.text,
         fallback: current.overlayPort,
@@ -150,6 +153,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         ) &&
         SettingsInputNormalizer.listsEqual(
             current.highlightWords, next.highlightWords) &&
+        SettingsInputNormalizer.listsEqual(
+            current.ttsIgnoredUsers, next.ttsIgnoredUsers) &&
         current.overlayPort == next.overlayPort &&
         current.overlayChromaColor == next.overlayChromaColor &&
         current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
@@ -439,6 +444,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _form.highlightWords,
       _form.highlightWordsFocus,
       SettingsInputNormalizer.formatFilterList(s.highlightWords),
+    );
+    _syncController(
+      _form.ttsIgnoredUsers,
+      _form.ttsIgnoredUsersFocus,
+      SettingsInputNormalizer.formatFilterList(s.ttsIgnoredUsers),
     );
   }
 

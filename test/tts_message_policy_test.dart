@@ -124,6 +124,46 @@ void main() {
       reason: 'history never arrives this long after connecting',
     );
   });
+
+  test('long messages are cut to the configured length', () {
+    expect(limitTtsText('hola', 40), 'hola');
+    final long = List.filled(60, 'a').join();
+    expect(limitTtsText(long, 40), '${List.filled(40, 'a').join()}…');
+    final emoji = List.filled(50, '🟢').join();
+    expect(limitTtsText(emoji, 40).runes.length, 41);
+  });
+
+  test('ignored users match without case or @', () {
+    const bot = ChatAuthor(name: 'Nightbot', channelId: 'nightbot');
+    const viewer = ChatAuthor(name: 'Ana', channelId: 'ana');
+    expect(isTtsIgnoredAuthor(bot, ['@NIGHTBOT']), isTrue);
+    expect(isTtsIgnoredAuthor(viewer, ['nightbot', 'streamelements']), isFalse);
+    expect(isTtsIgnoredAuthor(viewer, []), isFalse);
+  });
+
+  test('a viewer waits for the cooldown between read messages', () {
+    final cooldown = TtsAuthorCooldown();
+    final start = DateTime.utc(2026, 11, 15, 12);
+    const wait = Duration(seconds: 10);
+    expect(cooldown.tryAcquire('twitch:ana', start, wait), isTrue);
+    expect(
+      cooldown.tryAcquire(
+          'twitch:ana', start.add(const Duration(seconds: 5)), wait),
+      isFalse,
+    );
+    expect(
+      cooldown.tryAcquire(
+          'twitch:beto', start.add(const Duration(seconds: 5)), wait),
+      isTrue,
+    );
+    expect(
+      cooldown.tryAcquire(
+          'twitch:ana', start.add(const Duration(seconds: 10)), wait),
+      isTrue,
+    );
+    expect(cooldown.tryAcquire('twitch:ana', start, Duration.zero), isTrue,
+        reason: 'no cooldown when it is off');
+  });
 }
 
 ChatMessage _message(DateTime timestamp) {

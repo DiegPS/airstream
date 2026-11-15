@@ -302,6 +302,50 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 s.ttsMembersOnly,
                 (v) => notifier.update(s.copyWith(ttsMembersOnly: v)),
               ),
+              const SizedBox(height: 8),
+              StyledSliderRow(
+                label: l.ttsUserCooldown,
+                value: s.ttsUserCooldownSeconds.toDouble(),
+                min: 0,
+                max: 60,
+                divisions: 12,
+                unit: 's',
+                onChanged: (v) => notifier.update(
+                  s.copyWith(ttsUserCooldownSeconds: v.round()),
+                ),
+              ),
+              Text(
+                l.ttsUserCooldownHelp,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+              StyledSliderRow(
+                label: l.ttsMaxCharacters,
+                value: s.ttsMaxCharacters.toDouble(),
+                min: 40,
+                max: ttsMaxCharactersLimit.toDouble(),
+                divisions: 22,
+                onChanged: (v) => notifier.update(
+                  s.copyWith(ttsMaxCharacters: v.round()),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _label(l.ttsIgnoredUsers),
+              _field(
+                _form.ttsIgnoredUsers,
+                l.ttsIgnoredUsersHint,
+                focusNode: _form.ttsIgnoredUsersFocus,
+                onChanged: (_) => _queueTextSettingsSave(),
+                onSubmitted: (_) => _saveTextSettings(),
+                onClear: () {
+                  _form.ttsIgnoredUsers.clear();
+                  _mutate(() {});
+                  _queueTextSettingsSave();
+                },
+                minLines: 2,
+                maxLines: 4,
+              ),
+              const SizedBox(height: 8),
               _switchRow(
                 l.commandMode,
                 s.ttsCommandMode,

@@ -58,3 +58,42 @@ String? extractTtsCommandText(
   final body = remainder.trim();
   return body.isEmpty ? null : body;
 }
+
+/// Shortens [text] to [maxCharacters] characters (Unicode code points),
+/// ending it with an ellipsis.
+String limitTtsText(String text, int maxCharacters) {
+  final runes = text.runes;
+  if (runes.length <= maxCharacters) return text;
+  return '${String.fromCharCodes(runes.take(maxCharacters)).trim()}…';
+}
+
+/// Whether [author] is on the list of users the voice reader skips (bots
+/// such as Nightbot, for example). Names match without case or a leading @.
+bool isTtsIgnoredAuthor(ChatAuthor author, List<String> ignoredUsers) {
+  if (ignoredUsers.isEmpty) return false;
+  String key(String value) =>
+      value.trim().toLowerCase().replaceFirst(RegExp(r'^@+'), '');
+  final ignored = {for (final user in ignoredUsers) key(user)}..remove('');
+  return ignored.contains(key(author.name)) ||
+      ignored.contains(key(author.channelId));
+}
+
+/// Keeps one viewer from taking over the voice reader: after a message of
+/// theirs is read, their next ones wait for the cooldown.
+class TtsAuthorCooldown {
+  final _lastSpoken = <String, DateTime>{};
+
+  /// Whether [authorKey] may be read at [now]; records it when it may.
+  bool tryAcquire(String authorKey, DateTime now, Duration cooldown) {
+    if (cooldown <= Duration.zero) return true;
+    final last = _lastSpoken[authorKey];
+    if (last != null && now.difference(last) < cooldown) return false;
+    _lastSpoken[authorKey] = now;
+    if (_lastSpoken.length > 2000) {
+      _lastSpoken.removeWhere((_, time) => now.difference(time) >= cooldown);
+    }
+    return true;
+  }
+
+  void clear() => _lastSpoken.clear();
+}

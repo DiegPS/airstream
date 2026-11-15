@@ -1330,4 +1330,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get highlightFirstMessagesDescription =>
       'Mark the first message each viewer sends after you start the chat, to welcome them.';
+
+  @override
+  String get ttsUserCooldown => 'Pause per viewer';
+
+  @override
+  String get ttsUserCooldownHelp =>
+      'After reading a message, the next ones from the same viewer wait this long. 0 s turns it off.';
+
+  @override
+  String get ttsMaxCharacters => 'Longest message read';
+
+  @override
+  String get ttsIgnoredUsers => 'Users the voice reader skips';
+
+  @override
+  String get ttsIgnoredUsersHint => 'One per line, for example nightbot';
 }

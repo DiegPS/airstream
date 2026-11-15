@@ -83,6 +83,9 @@ class SettingsModel {
   final String ttsLanguage;
   final double ttsSpeed;
   final int ttsSteps;
+  final int ttsUserCooldownSeconds;
+  final List<String> ttsIgnoredUsers;
+  final int ttsMaxCharacters;
   final String ttsReferenceAudioPath;
   final String ttsReferenceText;
 
@@ -210,6 +213,9 @@ class SettingsModel {
     this.ttsLanguage = 'es',
     this.ttsSpeed = 1.05,
     this.ttsSteps = 8,
+    this.ttsUserCooldownSeconds = 0,
+    this.ttsIgnoredUsers = const [],
+    this.ttsMaxCharacters = ttsMaxCharactersLimit,
     this.ttsReferenceAudioPath = '',
     this.ttsReferenceText = '',
     this.liveCaptionsEnabled = false,
@@ -328,6 +334,9 @@ class SettingsModel {
     String? ttsLanguage,
     double? ttsSpeed,
     int? ttsSteps,
+    int? ttsUserCooldownSeconds,
+    List<String>? ttsIgnoredUsers,
+    int? ttsMaxCharacters,
     String? ttsReferenceAudioPath,
     String? ttsReferenceText,
     bool? liveCaptionsEnabled,
@@ -451,6 +460,10 @@ class SettingsModel {
         ttsLanguage: ttsLanguage ?? this.ttsLanguage,
         ttsSpeed: ttsSpeed ?? this.ttsSpeed,
         ttsSteps: ttsSteps ?? this.ttsSteps,
+        ttsUserCooldownSeconds:
+            ttsUserCooldownSeconds ?? this.ttsUserCooldownSeconds,
+        ttsIgnoredUsers: ttsIgnoredUsers ?? this.ttsIgnoredUsers,
+        ttsMaxCharacters: ttsMaxCharacters ?? this.ttsMaxCharacters,
         ttsReferenceAudioPath:
             ttsReferenceAudioPath ?? this.ttsReferenceAudioPath,
         ttsReferenceText: ttsReferenceText ?? this.ttsReferenceText,
@@ -550,3 +563,6 @@ class SettingsModel {
 
 /// Overlay port for new installs: 8080 is used by many other local servers.
 const defaultOverlayPort = 18080;
+
+/// The longest chat message the voice reader reads, in characters.
+const ttsMaxCharactersLimit = 260;

@@ -54,6 +54,9 @@ abstract final class SettingsModelCodec {
         'ttsLanguage': model.ttsLanguage,
         'ttsSpeed': model.ttsSpeed,
         'ttsSteps': model.ttsSteps,
+        'ttsUserCooldownSeconds': model.ttsUserCooldownSeconds,
+        'ttsIgnoredUsers': model.ttsIgnoredUsers,
+        'ttsMaxCharacters': model.ttsMaxCharacters,
         'ttsReferenceAudioPath': model.ttsReferenceAudioPath,
         'ttsReferenceText': model.ttsReferenceText,
         'liveCaptionsEnabled': model.liveCaptionsEnabled,
@@ -178,6 +181,11 @@ abstract final class SettingsModelCodec {
       ttsLanguage: j['ttsLanguage'] as String? ?? 'es',
       ttsSpeed: (j['ttsSpeed'] as num?)?.toDouble() ?? 1.05,
       ttsSteps: (j['ttsSteps'] as num?)?.round() ?? 8,
+      ttsUserCooldownSeconds:
+          (j['ttsUserCooldownSeconds'] as num?)?.round() ?? 0,
+      ttsIgnoredUsers: List<String>.from(j['ttsIgnoredUsers'] as List? ?? []),
+      ttsMaxCharacters:
+          (j['ttsMaxCharacters'] as num?)?.round() ?? ttsMaxCharactersLimit,
       ttsReferenceAudioPath: j['ttsReferenceAudioPath'] as String? ?? '',
       ttsReferenceText: j['ttsReferenceText'] as String? ?? '',
       liveCaptionsEnabled: j['liveCaptionsEnabled'] as bool? ?? false,
@@ -332,6 +340,8 @@ abstract final class SettingsModelCodec {
     clampInt('overlayMaxMessages', 10, 500);
     clampInt('overlayMessageTtlSeconds', 5, 120);
     clampInt('ttsSteps', 1, 64);
+    clampInt('ttsUserCooldownSeconds', 0, 60);
+    clampInt('ttsMaxCharacters', 40, ttsMaxCharactersLimit);
     clampInt('alertDisplaySeconds', 3, 20);
 
     clampDouble('fontSize', 10, 28);

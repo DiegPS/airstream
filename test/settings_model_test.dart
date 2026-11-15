@@ -240,4 +240,26 @@ void main() {
     expect(restored.voiceCommandsEnabled, isTrue);
     expect(restored.voiceCommandsWakeWord, 'computadora');
   });
+
+  test('voice reader limits survive a save and stay in range', () {
+    const settings = SettingsModel(
+      ttsUserCooldownSeconds: 15,
+      ttsIgnoredUsers: ['nightbot'],
+      ttsMaxCharacters: 120,
+    );
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+    expect(restored.ttsUserCooldownSeconds, 15);
+    expect(restored.ttsIgnoredUsers, ['nightbot']);
+    expect(restored.ttsMaxCharacters, 120);
+
+    final clamped = SettingsModel.fromJson({
+      'ttsUserCooldownSeconds': 500,
+      'ttsMaxCharacters': 5,
+    });
+    expect(clamped.ttsUserCooldownSeconds, 60);
+    expect(clamped.ttsMaxCharacters, 40);
+    expect(const SettingsModel().ttsUserCooldownSeconds, 0,
+        reason: 'off by default: reading stays as before');
+    expect(const SettingsModel().ttsMaxCharacters, ttsMaxCharactersLimit);
+  });
 }

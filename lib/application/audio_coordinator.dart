@@ -156,6 +156,7 @@ class AudioCoordinator {
   final AlertSoundClient _alertSound;
   final DateTime Function() _clock;
   ChatHighlighter _highlighter = ChatHighlighter(ownNames: [], words: []);
+  final _ttsCooldown = TtsAuthorCooldown();
   DateTime? _lastAlertAt;
 
   /// At most one highlight sound in this window: a burst of matches (or the
@@ -320,6 +321,7 @@ class AudioCoordinator {
     if (settings == null || !settings.ttsEnabled) return;
     if (settings.ttsMembersOnly && !message.isMembership) return;
     if (!isTtsMessageFresh(message, _ttsSessionStartedAt)) return;
+    if (isTtsIgnoredAuthor(message.author, settings.ttsIgnoredUsers)) return;
 
     final speakKey = message.dedupeKey;
     if (_spokenMessageKeys.contains(speakKey)) return;
@@ -338,6 +340,18 @@ class AudioCoordinator {
       if (commandText == null) return;
       text = commandText;
     }
+
+    final author = message.author.channelId.isNotEmpty
+        ? message.author.channelId
+        : message.author.name;
+    if (!_ttsCooldown.tryAcquire(
+      '${message.platform.name}:${author.toLowerCase()}',
+      _clock(),
+      Duration(seconds: settings.ttsUserCooldownSeconds),
+    )) {
+      return;
+    }
+    text = limitTtsText(text, settings.ttsMaxCharacters);
 
     _rememberSpokenMessage(speakKey);
     final separator = settings.ttsSeparatorText.trim().isEmpty
@@ -408,6 +422,7 @@ class AudioCoordinator {
   }
 
   void _resetTtsSession() {
+    _ttsCooldown.clear();
     _ttsSessionStartedAt = DateTime.now().toUtc();
     _spokenMessageKeys.clear();
     _spokenMessageOrder.clear();

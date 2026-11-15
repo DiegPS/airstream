@@ -551,5 +551,10 @@
   "highlightSoundDescription": "A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.",
   "badgeFirstInSession": "First message this stream",
   "highlightFirstMessages": "First message of each viewer",
-  "highlightFirstMessagesDescription": "Mark the first message each viewer sends after you start the chat, to welcome them."
+  "highlightFirstMessagesDescription": "Mark the first message each viewer sends after you start the chat, to welcome them.",
+  "ttsUserCooldown": "Pause per viewer",
+  "ttsUserCooldownHelp": "After reading a message, the next ones from the same viewer wait this long. 0 s turns it off.",
+  "ttsMaxCharacters": "Longest message read",
+  "ttsIgnoredUsers": "Users the voice reader skips",
+  "ttsIgnoredUsersHint": "One per line, for example nightbot"
 }

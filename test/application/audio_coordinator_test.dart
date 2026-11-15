@@ -199,4 +199,49 @@ void main() {
     audio.handleChatMessage(message('6', 'pregunta sin sonido'));
     expect(alert.plays, 2, reason: 'the sound is off');
   });
+
+  test(
+      'the voice reader skips ignored users, waits per viewer and cuts '
+      'long messages', () async {
+    var now = DateTime.utc(2026, 11, 15, 12);
+    final audio = AudioCoordinator(
+      tts: tts,
+      captions: captions,
+      alertSound: FakeAlertSound(),
+      clock: () => now,
+    );
+    addTearDown(audio.dispose);
+    audio.applySettings(
+      const SettingsModel(
+        ttsEnabled: true,
+        ttsSeparatorText: 'dice',
+        ttsIgnoredUsers: ['nightbot'],
+        ttsUserCooldownSeconds: 10,
+        ttsMaxCharacters: 40,
+      ),
+      connectChats: false,
+    );
+    var next = 0;
+    ChatMessage message(String author, String text) => ChatMessage(
+          platform: Platform.twitch,
+          id: 'm${next++}',
+          author: ChatAuthor(name: author, channelId: author.toLowerCase()),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.now().toUtc(),
+        );
+
+    audio.handleChatMessage(message('Nightbot', 'sigue al canal'));
+    audio.handleChatMessage(message('Ana', 'hola'));
+    now = now.add(const Duration(seconds: 3));
+    audio.handleChatMessage(message('Ana', 'otra vez'));
+    audio.handleChatMessage(message('Beto', List.filled(60, 'b').join()));
+    now = now.add(const Duration(seconds: 10));
+    audio.handleChatMessage(message('Ana', 'ya puedo'));
+
+    expect(tts.spoken, [
+      'Ana dice: hola',
+      'Beto dice: ${List.filled(40, 'b').join()}…',
+      'Ana dice: ya puedo',
+    ]);
+  });
 }

@@ -2486,6 +2486,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mark the first message each viewer sends after you start the chat, to welcome them.'**
   String get highlightFirstMessagesDescription;
+
+  /// No description provided for @ttsUserCooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause per viewer'**
+  String get ttsUserCooldown;
+
+  /// No description provided for @ttsUserCooldownHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'After reading a message, the next ones from the same viewer wait this long. 0 s turns it off.'**
+  String get ttsUserCooldownHelp;
+
+  /// No description provided for @ttsMaxCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest message read'**
+  String get ttsMaxCharacters;
+
+  /// No description provided for @ttsIgnoredUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users the voice reader skips'**
+  String get ttsIgnoredUsers;
+
+  /// No description provided for @ttsIgnoredUsersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One per line, for example nightbot'**
+  String get ttsIgnoredUsersHint;
 }
 
 class _AppLocalizationsDelegate
