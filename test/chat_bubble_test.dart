@@ -1,3 +1,4 @@
+import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -5,7 +6,7 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/author_avatar.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,7 +34,7 @@ void main() {
           settingsProvider.overrideWith((ref) => notifier),
         ],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: SizedBox(
@@ -74,7 +75,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: _message())),
         ),
@@ -96,7 +97,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: _message())),
         ),
@@ -121,7 +122,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: _message())),
         ),
@@ -155,7 +156,7 @@ void main() {
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
           locale: const Locale('es'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -196,7 +197,7 @@ void main() {
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
           locale: const Locale('es'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -229,7 +230,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -259,7 +260,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -289,7 +290,7 @@ void main() {
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
           locale: const Locale('es'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -320,7 +321,7 @@ void main() {
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
           locale: const Locale('es'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -353,7 +354,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -384,7 +385,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(body: ChatBubble(message: message)),
         ),
@@ -407,7 +408,7 @@ void main() {
       ProviderScope(
         overrides: [settingsProvider.overrideWith((ref) => notifier)],
         child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ChatBubble(
@@ -426,6 +427,50 @@ void main() {
 
     expect(
         find.text('${two(local.hour)}:${two(local.minute)}'), findsOneWidget);
+  });
+
+  testWidgets('soft hyphens in chat text stay invisible', (tester) async {
+    final notifier = _TestSettingsNotifier(const SettingsModel());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 220,
+              child: ChatBubble(
+                message: ChatMessage(
+                  platform: Platform.twitch,
+                  id: 'soft-hyphen',
+                  author: const ChatAuthor(
+                    name: 'some­viewer',
+                    channelId: 'viewer',
+                  ),
+                  items: const [
+                    MessageItem.text('pala­bra muy­larga con gui­ones'),
+                  ],
+                  timestamp: DateTime.utc(2026, 11, 15),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final texts = tester.widgetList<RichText>(
+      find.descendant(
+        of: find.byType(ChatBubble),
+        matching: find.byType(RichText),
+      ),
+    );
+    final withText = texts.where(
+      (text) => text.text.toPlainText().contains('­'),
+    );
+    expect(withText, isNotEmpty);
+    expect(withText.every((text) => text.hyphens == Hyphens.hidden), isTrue);
   });
 }
 

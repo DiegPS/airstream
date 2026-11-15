@@ -1,5 +1,5 @@
 import 'package:airstream/models/chat_message.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 enum PlatformBadgeMode { overlay, inline }
 

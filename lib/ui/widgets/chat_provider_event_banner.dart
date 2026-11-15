@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/ui/widgets/chat_bubble.dart' show chatTextHyphens;
 import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class TransientChatProviderEventBanner extends StatefulWidget {
   const TransientChatProviderEventBanner({
@@ -151,6 +152,7 @@ class ChatProviderEventBanner extends StatelessWidget {
               ],
               Flexible(
                 child: Text.rich(
+                  hyphens: chatTextHyphens,
                   TextSpan(
                     children: [
                       TextSpan(

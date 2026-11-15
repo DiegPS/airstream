@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # Material widgets, moved out of the Flutter SDK in 3.50.
+  material_ui: ^1.11.0
 
   # HTTP / WebSocket
   http: ^1.2.0
@@ -74,6 +76,7 @@ dependencies:
       url: https://github.com/DiegPS/dart_twitch_chat.git
       ref: v0.4.0
 
+  intl: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

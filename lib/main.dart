@@ -1,6 +1,7 @@
+import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'dart:io';
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -123,8 +124,13 @@ class AirstreamApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       locale: Locale(languageCode),
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       theme: _airstreamTheme,
+      // Dependencies that still use the SDK's Material library (image and
+      // window packages) read the app theme and localizations through this
+      // bridge. Remove it once they move to material_ui.
+      // ignore: deprecated_member_use
+      builder: (context, child) => MaterialUiCompatibilityBridge(child: child!),
       home: const ChatScreen(),
     );
   }

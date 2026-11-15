@@ -7,8 +7,15 @@ import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
 import 'package:extended_image/extended_image.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Chat text keeps soft hyphens (U+00AD) invisible, as before Flutter 3.50.
+///
+/// Since 3.50 Flutter draws a hyphen where a line breaks at a soft hyphen,
+/// and sometimes where it does not break. Viewers paste text with soft
+/// hyphens (often to dodge filters), which would show stray hyphens.
+const chatTextHyphens = Hyphens.hidden;
 
 class ChatBubble extends ConsumerWidget {
   const ChatBubble({super.key, required this.message});
@@ -146,6 +153,7 @@ class ChatBubble extends ConsumerWidget {
                                     Text(
                                       _replyLabel(message.reply!),
                                       key: Key('chat-reply-${message.id}'),
+                                      hyphens: chatTextHyphens,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: textAlign,
@@ -732,6 +740,7 @@ class _MessageContent extends StatelessWidget {
     final visualItems = _composeEmojiClusters(items);
 
     return Text.rich(
+      hyphens: chatTextHyphens,
       TextSpan(
         style: style,
         children: [
@@ -850,12 +859,22 @@ class _OutlinedText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fill = Text(text, textAlign: textAlign, style: style);
+    final fill = Text(
+      text,
+      textAlign: textAlign,
+      style: style,
+      hyphens: chatTextHyphens,
+    );
     if (strokeStyle == null) return fill;
 
     return Stack(
       children: [
-        Text(text, textAlign: textAlign, style: strokeStyle),
+        Text(
+          text,
+          textAlign: textAlign,
+          style: strokeStyle,
+          hyphens: chatTextHyphens,
+        ),
         fill,
       ],
     );

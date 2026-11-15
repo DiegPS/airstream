@@ -1,7 +1,7 @@
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class YoutubeLiveStats extends StatelessWidget {
   const YoutubeLiveStats({
