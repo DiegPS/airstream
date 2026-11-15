@@ -155,6 +155,7 @@ class OverlayServer {
       'superchat-empty' => {
           'platform': 'youtube',
           'kind': 'superchat',
+          'alertType': 'superchat',
           'id': 'test-superchat-empty-$now',
           'author': donorName,
           'authorAvatarUrl': donorAvatar,
@@ -170,6 +171,7 @@ class OverlayServer {
       'membership' => {
           'platform': 'youtube',
           'kind': 'membership',
+          'alertType': 'membership',
           'id': 'test-membership-$now',
           'author': memberName,
           'authorAvatarUrl': memberAvatar,
@@ -187,6 +189,7 @@ class OverlayServer {
       _ => {
           'platform': 'youtube',
           'kind': 'superchat',
+          'alertType': 'superchat',
           'id': 'test-superchat-$now',
           'author': donorName,
           'authorAvatarUrl': donorAvatar,
@@ -261,6 +264,7 @@ class OverlayServer {
       {
         'platform': event.platform.name,
         'kind': kind,
+        'alertType': _alertType(kind, event.platform, null),
         'id': event.id,
         'author': event.authorName,
         'authorAvatarUrl': null,
@@ -446,6 +450,7 @@ class OverlayServer {
   static Map<String, Object?> _alertData(ChatMessage msg, String kind) => {
         'platform': msg.platform.name,
         'kind': kind,
+        'alertType': _alertType(kind, msg.platform, msg.membershipEventKind),
         'id': msg.id,
         'author': msg.author.name,
         'authorAvatarUrl': msg.author.avatarUrl,

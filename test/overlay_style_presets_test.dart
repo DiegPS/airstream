@@ -124,6 +124,12 @@ SettingsModel _different() {
     overlayMessageTtlSeconds: 60,
     alertDisplaySeconds: 12,
     alertDisabledTypes: ['raid'],
+    alertPosition: 'bottom',
+    alertLayout: 'stacked',
+    alertAnimation: 'zoom',
+    alertTypeOptions: const {
+      'raid': {'seconds': 12},
+    },
     connectChatOnLaunch: !d.connectChatOnLaunch,
     obsEnabled: !d.obsEnabled,
     obsConnectOnLaunch: !d.obsConnectOnLaunch,

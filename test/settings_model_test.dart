@@ -278,4 +278,41 @@ void main() {
         }).alertDisabledTypes,
         ['gift', 'unknown']);
   });
+  test('alert appearance defaults, validation and persistence', () {
+    const defaults = SettingsModel();
+    expect(defaults.alertPosition, 'center');
+    expect(defaults.alertLayout, 'row');
+    expect(defaults.alertAnimation, 'pop');
+    expect(defaults.alertTypeOptions, isEmpty);
+    for (final invalid in [null, 42, [], {}, 'unknown']) {
+      final s = SettingsModel.fromJson({
+        'alertPosition': invalid,
+        'alertLayout': invalid,
+        'alertAnimation': invalid
+      });
+      expect(s.alertPosition, 'center');
+      expect(s.alertLayout, 'row');
+      expect(s.alertAnimation, 'pop');
+    }
+    for (final position in ['top', 'center', 'bottom']) {
+      for (final layout in ['row', 'stacked']) {
+        for (final animation in [
+          'pop',
+          'slide-up',
+          'slide-down',
+          'fade',
+          'zoom'
+        ]) {
+          final s = defaults.copyWith(
+              alertPosition: position,
+              alertLayout: layout,
+              alertAnimation: animation);
+          final restored = SettingsModel.fromJsonString(s.toJsonString());
+          expect(restored.alertPosition, position);
+          expect(restored.alertLayout, layout);
+          expect(restored.alertAnimation, animation);
+        }
+      }
+    }
+  });
 }

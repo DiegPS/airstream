@@ -147,6 +147,10 @@ class SettingsModel {
   final int alertDisplaySeconds;
   final bool alertShowAvatars;
   final List<String> alertDisabledTypes;
+  final String alertPosition;
+  final String alertLayout;
+  final String alertAnimation;
+  final Map<String, Map<String, dynamic>> alertTypeOptions;
 
   /// Starts the chat when Airstream opens.
   final bool connectChatOnLaunch;
@@ -278,6 +282,10 @@ class SettingsModel {
     this.alertDisplaySeconds = 7,
     this.alertShowAvatars = true,
     this.alertDisabledTypes = const [],
+    this.alertPosition = 'center',
+    this.alertLayout = 'row',
+    this.alertAnimation = 'pop',
+    this.alertTypeOptions = const {},
     this.connectChatOnLaunch = false,
     this.obsEnabled = false,
     this.obsConnectOnLaunch = false,
@@ -404,6 +412,10 @@ class SettingsModel {
     int? alertDisplaySeconds,
     bool? alertShowAvatars,
     List<String>? alertDisabledTypes,
+    String? alertPosition,
+    String? alertLayout,
+    String? alertAnimation,
+    Map<String, Map<String, dynamic>>? alertTypeOptions,
     bool? connectChatOnLaunch,
     bool? obsEnabled,
     bool? obsConnectOnLaunch,
@@ -553,6 +565,10 @@ class SettingsModel {
         alertDisplaySeconds: alertDisplaySeconds ?? this.alertDisplaySeconds,
         alertShowAvatars: alertShowAvatars ?? this.alertShowAvatars,
         alertDisabledTypes: alertDisabledTypes ?? this.alertDisabledTypes,
+        alertPosition: alertPosition ?? this.alertPosition,
+        alertLayout: alertLayout ?? this.alertLayout,
+        alertAnimation: alertAnimation ?? this.alertAnimation,
+        alertTypeOptions: alertTypeOptions ?? this.alertTypeOptions,
         connectChatOnLaunch: connectChatOnLaunch ?? this.connectChatOnLaunch,
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsConnectOnLaunch: obsConnectOnLaunch ?? this.obsConnectOnLaunch,

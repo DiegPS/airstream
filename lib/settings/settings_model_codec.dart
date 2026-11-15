@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'settings_model.dart';
+import 'alert_type_options.dart';
 
 abstract final class SettingsModelCodec {
   static Map<String, dynamic> toJson(SettingsModel model) => {
@@ -114,6 +115,10 @@ abstract final class SettingsModelCodec {
         'alertDisplaySeconds': model.alertDisplaySeconds,
         'alertShowAvatars': model.alertShowAvatars,
         'alertDisabledTypes': model.alertDisabledTypes,
+        'alertPosition': model.alertPosition,
+        'alertLayout': model.alertLayout,
+        'alertAnimation': model.alertAnimation,
+        'alertTypeOptions': model.alertTypeOptions,
         'connectChatOnLaunch': model.connectChatOnLaunch,
         'obsEnabled': model.obsEnabled,
         'obsConnectOnLaunch': model.obsConnectOnLaunch,
@@ -270,6 +275,18 @@ abstract final class SettingsModelCodec {
       alertShowAvatars: j['alertShowAvatars'] as bool? ?? true,
       alertDisabledTypes:
           List<String>.from(j['alertDisabledTypes'] as List? ?? []),
+      alertPosition:
+          const ['top', 'center', 'bottom'].contains(j['alertPosition'])
+              ? j['alertPosition'] as String
+              : 'center',
+      alertLayout: const ['row', 'stacked'].contains(j['alertLayout'])
+          ? j['alertLayout'] as String
+          : 'row',
+      alertAnimation: const ['pop', 'slide-up', 'slide-down', 'fade', 'zoom']
+              .contains(j['alertAnimation'])
+          ? j['alertAnimation'] as String
+          : 'pop',
+      alertTypeOptions: AlertTypeOptions.sanitize(j['alertTypeOptions']),
       connectChatOnLaunch: j['connectChatOnLaunch'] as bool? ?? false,
       obsEnabled: j['obsEnabled'] as bool? ?? false,
       obsConnectOnLaunch: j['obsConnectOnLaunch'] as bool? ?? false,
@@ -293,6 +310,10 @@ abstract final class SettingsModelCodec {
     for (final entry in source.entries) {
       final expected = schema[entry.key];
       final value = entry.value;
+      if (entry.key == 'alertTypeOptions') {
+        sanitized[entry.key] = AlertTypeOptions.sanitize(value);
+        continue;
+      }
       if (entry.key == 'obsPassword') {
         if (value is String) sanitized[entry.key] = value;
         continue;

@@ -313,6 +313,35 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 s.alertShowAvatars,
                 (v) => notifier.update(s.copyWith(alertShowAvatars: v)),
               ),
+              _dropdownRow(
+                  l.alertPosition,
+                  s.alertPosition,
+                  const ['top', 'center', 'bottom'],
+                  (v) => notifier.update(s.copyWith(alertPosition: v)),
+                  optionLabel: (v) => {
+                        'top': l.alertPositionTop,
+                        'center': l.alertPositionCenter,
+                        'bottom': l.alertPositionBottom
+                      }[v]!),
+              _dropdownRow(
+                  l.alertLayout,
+                  s.alertLayout,
+                  const ['row', 'stacked'],
+                  (v) => notifier.update(s.copyWith(alertLayout: v)),
+                  optionLabel: (v) =>
+                      v == 'stacked' ? l.alertLayoutStacked : l.alertLayoutRow),
+              _dropdownRow(
+                  l.alertEntrance,
+                  s.alertAnimation,
+                  const ['pop', 'slide-up', 'slide-down', 'fade', 'zoom'],
+                  (v) => notifier.update(s.copyWith(alertAnimation: v)),
+                  optionLabel: (v) => {
+                        'pop': l.alertAnimationPop,
+                        'slide-up': l.alertAnimationSlideUp,
+                        'slide-down': l.alertAnimationSlideDown,
+                        'fade': l.alertAnimationFade,
+                        'zoom': l.alertAnimationZoom
+                      }[v]!),
               const SizedBox(height: 8),
               _section(l.alertTypes),
               for (final (id, label) in [
@@ -324,18 +353,12 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ('raid', l.alertTypeRaid),
                 ('kicks', l.alertTypeKicks),
               ])
-                KeyedSubtree(
-                  key: Key('alert-type-$id'),
-                  child: _switchRow(
-                    label,
-                    !s.alertDisabledTypes.contains(id),
-                    (enabled) => notifier.update(s.copyWith(
-                      alertDisabledTypes: {
-                        ...s.alertDisabledTypes.where((type) => type != id),
-                        if (!enabled) id,
-                      }.toList(),
-                    )),
-                  ),
+                _AlertTypeRow(
+                  key: ValueKey(id),
+                  id: id,
+                  label: label,
+                  settings: s,
+                  onChanged: (next) => notifier.update(next),
                 ),
               const SizedBox(height: 8),
               _alertTestButtons(
@@ -669,5 +692,95 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
         const PollCard(),
       ],
     );
+  }
+}
+
+class _AlertTypeRow extends StatefulWidget {
+  const _AlertTypeRow(
+      {super.key,
+      required this.id,
+      required this.label,
+      required this.settings,
+      required this.onChanged});
+  final String id;
+  final String label;
+  final SettingsModel settings;
+  final ValueChanged<SettingsModel> onChanged;
+
+  @override
+  State<_AlertTypeRow> createState() => _AlertTypeRowState();
+}
+
+class _AlertTypeRowState extends State<_AlertTypeRow> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final s = widget.settings;
+    final id = widget.id;
+    final option = AlertTypeOptions.of(s, id);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(
+            child: KeyedSubtree(
+          key: Key('alert-type-$id'),
+          child: _switchRow(
+              widget.label,
+              !s.alertDisabledTypes.contains(id),
+              (enabled) => widget.onChanged(s.copyWith(
+                      alertDisabledTypes: {
+                    ...s.alertDisabledTypes.where((type) => type != id),
+                    if (!enabled) id,
+                  }.toList()))),
+        )),
+        if (option.seconds != 0 || option.animation.isNotEmpty)
+          Tooltip(
+              message: l.alertTypeCustomized,
+              child: const Icon(Icons.circle, size: 6, color: Colors.white70)),
+        IconButton(
+            key: Key('alert-type-options-$id'),
+            tooltip: l.alertTypeOptions,
+            icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+            onPressed: () => setState(() => _expanded = !_expanded)),
+      ]),
+      if (_expanded) ...[
+        KeyedSubtree(
+            key: Key('alert-type-duration-switch-$id'),
+            child: _switchRow(
+                l.alertTypeOwnDuration,
+                option.seconds != 0,
+                (enabled) => widget.onChanged(AlertTypeOptions.withOption(s, id,
+                    seconds:
+                        enabled ? s.alertDisplaySeconds.clamp(3, 20) : 0)))),
+        if (option.seconds != 0)
+          StyledSliderRow(
+              key: Key('alert-type-duration-$id'),
+              label: l.alertDuration,
+              value: option.seconds.toDouble(),
+              min: 3,
+              max: 20,
+              divisions: 17,
+              unit: 's',
+              onChanged: (v) => widget.onChanged(
+                  AlertTypeOptions.withOption(s, id, seconds: v.round()))),
+        KeyedSubtree(
+            key: Key('alert-type-animation-$id'),
+            child: _dropdownRow(
+                l.alertEntrance,
+                option.animation,
+                const ['', 'pop', 'slide-up', 'slide-down', 'fade', 'zoom'],
+                (v) => widget.onChanged(
+                    AlertTypeOptions.withOption(s, id, animation: v)),
+                optionLabel: (v) => {
+                      '': l.alertTypeUseGeneral,
+                      'pop': l.alertAnimationPop,
+                      'slide-up': l.alertAnimationSlideUp,
+                      'slide-down': l.alertAnimationSlideDown,
+                      'fade': l.alertAnimationFade,
+                      'zoom': l.alertAnimationZoom
+                    }[v]!)),
+      ],
+    ]);
   }
 }

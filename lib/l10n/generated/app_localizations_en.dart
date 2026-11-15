@@ -1825,4 +1825,55 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get overlayStyleVerticalDescription =>
       'Made for vertical streams such as Shorts or TikTok.';
+
+  @override
+  String get alertPosition => 'Position';
+
+  @override
+  String get alertPositionTop => 'Top';
+
+  @override
+  String get alertPositionCenter => 'Centre';
+
+  @override
+  String get alertPositionBottom => 'Bottom';
+
+  @override
+  String get alertLayout => 'Layout';
+
+  @override
+  String get alertLayoutRow => 'Side by side';
+
+  @override
+  String get alertLayoutStacked => 'Stacked';
+
+  @override
+  String get alertEntrance => 'Entrance';
+
+  @override
+  String get alertAnimationPop => 'Pop';
+
+  @override
+  String get alertAnimationSlideUp => 'Slide up';
+
+  @override
+  String get alertAnimationSlideDown => 'Slide down';
+
+  @override
+  String get alertAnimationFade => 'Fade';
+
+  @override
+  String get alertAnimationZoom => 'Zoom';
+
+  @override
+  String get alertTypeOptions => 'Options for this type';
+
+  @override
+  String get alertTypeOwnDuration => 'Own duration';
+
+  @override
+  String get alertTypeUseGeneral => 'Use general';
+
+  @override
+  String get alertTypeCustomized => 'Custom';
 }

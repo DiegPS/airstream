@@ -1039,6 +1039,57 @@ void main() {
     expect(container.read(chatPreviewProvider), isFalse);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets(
+      'OBS raid options store duration and remove general entrance override',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: true));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => settings),
+      overlayUrlProvider.overrideWith((ref) => null),
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final expand = find.byKey(const Key('alert-type-options-raid'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pumpAndSettle();
+    final own = find.descendant(
+        of: find.byKey(const Key('alert-type-duration-switch-raid')),
+        matching: find.byType(Switch));
+    await tester.ensureVisible(own);
+    await tester.tap(own);
+    await tester.pumpAndSettle();
+    final duration = find.byKey(const Key('alert-type-duration-raid'));
+    expect(tester.getSize(duration).width, lessThanOrEqualTo(360));
+    final slider = find.descendant(of: duration, matching: find.byType(Slider));
+    await tester.ensureVisible(slider);
+    await tester.drag(slider, const Offset(45, 0));
+    await tester.pumpAndSettle();
+    expect(settings.state.alertTypeOptions['raid']!['seconds'],
+        inInclusiveRange(3, 20));
+    final entrance = find.descendant(
+        of: find.byKey(const Key('alert-type-animation-raid')),
+        matching: find.byType(DropdownButton<String>));
+    await tester.ensureVisible(entrance);
+    await tester.tap(entrance);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fade').last);
+    await tester.pumpAndSettle();
+    expect(settings.state.alertTypeOptions['raid']!['animation'], 'fade');
+    await tester.tap(entrance);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use general').last);
+    await tester.pumpAndSettle();
+    expect(settings.state.alertTypeOptions['raid']!.containsKey('animation'),
+        isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

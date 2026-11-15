@@ -136,6 +136,7 @@ void main() {
         payment: const SuperChat(
             amount: r'$10', color: '#FFD600', stickerUrl: 'sticker.png')));
     expect(await alert, {
+      'alertType': 'superchat',
       'platform': 'youtube',
       'kind': 'superchat',
       'id': 'first',
@@ -207,6 +208,7 @@ void main() {
     expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
     expect(received.first['data'], containsPair('text', 'System message'));
     expect(received.last['data'], {
+      'alertType': 'raid',
       'platform': 'twitch',
       'kind': 'raid',
       'id': 'provider',
@@ -434,6 +436,7 @@ void main() {
         expect(alert['author'],
             language == 'es' ? 'Espectador de prueba' : 'Test viewer');
         expect(alert.keys.toSet(), {
+          'alertType',
           'platform',
           'kind',
           'id',
@@ -458,6 +461,105 @@ void main() {
         if (testKind == 'kicks') expect(alert['message'], isNotEmpty);
       }
     }
+  });
+  test('automatic cards and grouped gifts carry their type and original fields',
+      () async {
+    for (final (msg, type) in [
+      (
+        message(Platform.youtube,
+            payment: const SuperChat(amount: r'$5', color: '#FFD600')),
+        'superchat'
+      ),
+      (
+        message(Platform.youtube, membership: MembershipEventKind.subscription),
+        'membership'
+      ),
+      (
+        message(Platform.twitch,
+            payment: const SuperChat(amount: '100 Bits', color: '#9146FF')),
+        'bits'
+      ),
+      (
+        message(Platform.twitch, membership: MembershipEventKind.subscription),
+        'subscription'
+      ),
+      (
+        message(Platform.kick,
+            membership: MembershipEventKind.resubscription, months: 6),
+        'subscription'
+      ),
+      (
+        message(Platform.youtube,
+            membership: MembershipEventKind.gift, gifts: 5),
+        'gift'
+      ),
+      (
+        message(Platform.kick, membership: MembershipEventKind.gift, gifts: 5),
+        'gift'
+      ),
+      (message(Platform.twitch, membership: MembershipEventKind.gift), 'gift'),
+    ]) {
+      final next = connection.nextAlert();
+      await connection.send(msg);
+      final alert = await next;
+      expect(alert['alertType'], type);
+      expect(alert['id'], msg.id);
+      expect(alert['platform'], msg.platform.name);
+      expect(alert['author'], msg.author.name);
+      expect(alert['amount'], msg.superChat?.amount);
+      expect(alert['membershipKind'], msg.membershipEventKind?.name);
+      expect(alert['months'], msg.membershipMonths);
+      expect(
+          alert['giftCount'],
+          msg.platform == Platform.twitch && type == 'gift'
+              ? 1
+              : msg.membershipGiftCount);
+      expect(alert['message'],
+          msg.platform == Platform.twitch && type == 'gift' ? '' : 'Hello!');
+    }
+    for (final (platform, kind, type) in [
+      (Platform.twitch, ChatProviderEventKind.raid, 'raid'),
+      (Platform.kick, ChatProviderEventKind.host, 'raid'),
+      (Platform.kick, ChatProviderEventKind.support, 'kicks'),
+    ]) {
+      final received = await sendProviders(
+          [providerEvent(platform, kind, id: kind.name, count: 42)]);
+      final alert = received.last['data'] as Map;
+      expect(alert['alertType'], type);
+      expect(alert['count'], 42);
+      expect(alert['kind'],
+          kind == ChatProviderEventKind.support ? 'kicks' : kind.name);
+    }
+  });
+
+  test('all eight test cards have types and featured has null', () async {
+    for (final kind in [
+      'superchat',
+      'superchat-empty',
+      'membership',
+      'bits',
+      'subscription',
+      'gift',
+      'raid',
+      'kicks'
+    ]) {
+      final next = connection.nextAlert();
+      connection.server.broadcastTestAlert(kind);
+      expect((await next)['alertType'],
+          kind == 'superchat-empty' ? 'superchat' : kind);
+    }
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
+    final next = connection.nextAlert();
+    final delivery =
+        connection.server.broadcastFeaturedMessage(message(Platform.youtube));
+    final alert = await next;
+    expect(alert.containsKey('alertType'), isTrue);
+    expect(alert['alertType'], isNull);
+    expect(alert['deliveryId'], delivery.id);
   });
 }
 

@@ -3284,6 +3284,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Made for vertical streams such as Shorts or TikTok.'**
   String get overlayStyleVerticalDescription;
+
+  /// No description provided for @alertPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get alertPosition;
+
+  /// No description provided for @alertPositionTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get alertPositionTop;
+
+  /// No description provided for @alertPositionCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Centre'**
+  String get alertPositionCenter;
+
+  /// No description provided for @alertPositionBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get alertPositionBottom;
+
+  /// No description provided for @alertLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get alertLayout;
+
+  /// No description provided for @alertLayoutRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Side by side'**
+  String get alertLayoutRow;
+
+  /// No description provided for @alertLayoutStacked.
+  ///
+  /// In en, this message translates to:
+  /// **'Stacked'**
+  String get alertLayoutStacked;
+
+  /// No description provided for @alertEntrance.
+  ///
+  /// In en, this message translates to:
+  /// **'Entrance'**
+  String get alertEntrance;
+
+  /// No description provided for @alertAnimationPop.
+  ///
+  /// In en, this message translates to:
+  /// **'Pop'**
+  String get alertAnimationPop;
+
+  /// No description provided for @alertAnimationSlideUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide up'**
+  String get alertAnimationSlideUp;
+
+  /// No description provided for @alertAnimationSlideDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide down'**
+  String get alertAnimationSlideDown;
+
+  /// No description provided for @alertAnimationFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade'**
+  String get alertAnimationFade;
+
+  /// No description provided for @alertAnimationZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get alertAnimationZoom;
+
+  /// No description provided for @alertTypeOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Options for this type'**
+  String get alertTypeOptions;
+
+  /// No description provided for @alertTypeOwnDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Own duration'**
+  String get alertTypeOwnDuration;
+
+  /// No description provided for @alertTypeUseGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'Use general'**
+  String get alertTypeUseGeneral;
+
+  /// No description provided for @alertTypeCustomized.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get alertTypeCustomized;
 }
 
 class _AppLocalizationsDelegate

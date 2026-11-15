@@ -543,5 +543,22 @@
         "type": "String"
       }
     }
-  }
+  },
+  "alertPosition": "Posición",
+  "alertPositionTop": "Arriba",
+  "alertPositionCenter": "Centro",
+  "alertPositionBottom": "Abajo",
+  "alertLayout": "Disposición",
+  "alertLayoutRow": "Horizontal",
+  "alertLayoutStacked": "Vertical",
+  "alertEntrance": "Entrada",
+  "alertAnimationPop": "Emergente",
+  "alertAnimationSlideUp": "Subir",
+  "alertAnimationSlideDown": "Bajar",
+  "alertAnimationFade": "Aparecer",
+  "alertAnimationZoom": "Zoom",
+  "alertTypeOptions": "Opciones de este tipo",
+  "alertTypeOwnDuration": "Duración propia",
+  "alertTypeUseGeneral": "Usar la general",
+  "alertTypeCustomized": "Personalizado"
 }

@@ -137,5 +137,9 @@ abstract final class OverlayPayloadEncoder {
         'alertFontSize': settings.alertFontSize,
         'alertDisplaySeconds': settings.alertDisplaySeconds,
         'alertShowAvatars': settings.alertShowAvatars,
+        'alertPosition': settings.alertPosition,
+        'alertLayout': settings.alertLayout,
+        'alertAnimation': settings.alertAnimation,
+        'alertTypeOptions': settings.alertTypeOptions,
       };
 }

@@ -35,6 +35,7 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
     box-shadow: 0 20px 70px rgba(0, 0, 0, 0.45);
     animation: alert-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+  .alert-card.stacked { flex-direction: column; text-align: center; }
   .alert-avatar {
     width: 76px;
     height: 76px;
@@ -87,6 +88,21 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
     from { opacity: 0; transform: translateY(24px) scale(0.94); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
+  @keyframes alert-slide-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes alert-slide-down {
+    from { opacity: 0; transform: translateY(-40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes alert-fade {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes alert-zoom {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
 </style>
 </head>
 <body>
@@ -97,6 +113,10 @@ const DEFAULT_SETTINGS = {
   alertFontSize: 28,
   alertDisplaySeconds: 7,
   alertShowAvatars: true,
+  alertPosition: 'center',
+  alertLayout: 'row',
+  alertAnimation: 'pop',
+  alertTypeOptions: {},
 };
 
 function normalizeUrl(url) {
@@ -191,7 +211,16 @@ function createImage(className, url, alt, onError) {
   return image;
 }
 
-function renderAlert(alert) {
+const ENTRANCES = {
+  pop: 'alert-in', 'slide-up': 'alert-slide-up',
+  'slide-down': 'alert-slide-down', fade: 'alert-fade', zoom: 'alert-zoom',
+};
+
+function typeOption(alert) {
+  return alert.kind === 'featured' ? {} : (settings.alertTypeOptions || {})[alert.alertType] || {};
+}
+
+function renderAlert(alert, animate = true) {
   const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
   const author = String(alert.author || strings.someone);
@@ -237,7 +266,9 @@ function renderAlert(alert) {
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
   const card = document.createElement('div');
-  card.className = 'alert-card';
+  card.className = 'alert-card' + (settings.alertLayout === 'stacked' ? ' stacked' : '');
+  const entrance = typeOption(alert).animation || settings.alertAnimation;
+  card.style.animationName = animate ? (ENTRANCES[entrance] || ENTRANCES.pop) : 'none';
   card.style.borderBottom = '5px solid ' + accent;
 
   if (settings.alertShowAvatars) {
@@ -293,7 +324,8 @@ function applySettings(next) {
   settings = { ...settings, ...next };
   document.documentElement.lang = settings.appLanguageCode || 'en';
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
-  if (active) renderAlert(active);
+  stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
+  if (active) renderAlert(active, false);
 }
 
 const MAX_PENDING_ALERTS = 20;
@@ -331,7 +363,7 @@ function showNext() {
       }));
     }
   }));
-  const seconds = Math.max(1, Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
+  const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
   const duration = active.kind !== 'featured' && queue.length >= 5
     ? Math.max(2, seconds / 2) : seconds;
   hideTimer = window.setTimeout(() => {

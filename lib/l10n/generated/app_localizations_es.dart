@@ -1837,4 +1837,55 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get overlayStyleVerticalDescription =>
       'Pensado para directos verticales como Shorts o TikTok.';
+
+  @override
+  String get alertPosition => 'Posición';
+
+  @override
+  String get alertPositionTop => 'Arriba';
+
+  @override
+  String get alertPositionCenter => 'Centro';
+
+  @override
+  String get alertPositionBottom => 'Abajo';
+
+  @override
+  String get alertLayout => 'Disposición';
+
+  @override
+  String get alertLayoutRow => 'Horizontal';
+
+  @override
+  String get alertLayoutStacked => 'Vertical';
+
+  @override
+  String get alertEntrance => 'Entrada';
+
+  @override
+  String get alertAnimationPop => 'Emergente';
+
+  @override
+  String get alertAnimationSlideUp => 'Subir';
+
+  @override
+  String get alertAnimationSlideDown => 'Bajar';
+
+  @override
+  String get alertAnimationFade => 'Aparecer';
+
+  @override
+  String get alertAnimationZoom => 'Zoom';
+
+  @override
+  String get alertTypeOptions => 'Opciones de este tipo';
+
+  @override
+  String get alertTypeOwnDuration => 'Duración propia';
+
+  @override
+  String get alertTypeUseGeneral => 'Usar la general';
+
+  @override
+  String get alertTypeCustomized => 'Personalizado';
 }

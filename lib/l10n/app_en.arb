@@ -745,5 +745,22 @@
         "type": "String"
       }
     }
-  }
+  },
+  "alertPosition": "Position",
+  "alertPositionTop": "Top",
+  "alertPositionCenter": "Centre",
+  "alertPositionBottom": "Bottom",
+  "alertLayout": "Layout",
+  "alertLayoutRow": "Side by side",
+  "alertLayoutStacked": "Stacked",
+  "alertEntrance": "Entrance",
+  "alertAnimationPop": "Pop",
+  "alertAnimationSlideUp": "Slide up",
+  "alertAnimationSlideDown": "Slide down",
+  "alertAnimationFade": "Fade",
+  "alertAnimationZoom": "Zoom",
+  "alertTypeOptions": "Options for this type",
+  "alertTypeOwnDuration": "Own duration",
+  "alertTypeUseGeneral": "Use general",
+  "alertTypeCustomized": "Custom"
 }
