@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:airstream/settings/secure_settings_store.dart';
@@ -202,6 +203,32 @@ void main() {
       'es',
     );
   });
+
+  test('a change made while settings load keeps every saved setting', () async {
+    final saved = SettingsDocumentCodec.encode(const SettingsModel(
+      twitchEnabled: true,
+      twitchChannel: 'saved-channel',
+      maxMessages: 321,
+    ));
+    final repository = _GatedSettingsRepository(saved);
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: repository,
+    );
+
+    // The UI shows defaults until loading finishes; the user edits one field.
+    final pending = notifier.update(notifier.state.copyWith(fontSize: 20));
+    repository.release();
+    await pending;
+
+    expect(notifier.state.fontSize, 20);
+    expect(notifier.state.twitchChannel, 'saved-channel');
+    expect(notifier.state.maxMessages, 321);
+    final persisted = SettingsDocumentCodec.decode(repository.json!).settings;
+    expect(persisted.fontSize, 20);
+    expect(persisted.twitchChannel, 'saved-channel');
+    expect(persisted.maxMessages, 321);
+  });
 }
 
 class _RecoverableMemorySettingsRepository
@@ -261,5 +288,26 @@ class _MemorySecureSettingsStore implements SecureSettingsStore {
       throw StateError('Secure storage unavailable');
     }
     this.password = password;
+  }
+}
+
+/// A repository whose first read waits until [release] is called.
+class _GatedSettingsRepository implements SettingsRepository {
+  _GatedSettingsRepository(this.json);
+
+  String? json;
+  final _gate = Completer<void>();
+
+  void release() => _gate.complete();
+
+  @override
+  Future<String?> read() async {
+    await _gate.future;
+    return json;
+  }
+
+  @override
+  Future<void> write(String json) async {
+    this.json = json;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_document.dart';
@@ -41,10 +43,19 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   final SecureSettingsStore _secureStore;
   final SettingsRepository _settingsRepository;
   late final Future<void> ready;
+  bool _loaded = false;
   Future<void> _updateQueue = Future<void>.value();
   String? _persistedObsPassword;
 
   Future<void> _load() async {
+    try {
+      await _loadPersisted();
+    } finally {
+      _loaded = true;
+    }
+  }
+
+  Future<void> _loadPersisted() async {
     var source = await _settingsRepository.read();
     if (source != null) {
       try {
@@ -111,6 +122,13 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   }
 
   Future<void> update(SettingsModel settings) {
+    if (!_loaded) {
+      // The change was made on top of the defaults shown while loading.
+      // Persisting it as-is would overwrite every saved setting, so replay
+      // only what changed on top of the loaded settings.
+      final base = state;
+      return ready.then((_) => update(_rebase(base, settings, state)));
+    }
     final next = settings.appLanguageCode == state.appLanguageCode
         ? settings
         : _localizeBuiltInTtsDefaults(settings);
@@ -138,6 +156,27 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       _persistedObsPassword = settings.obsPassword;
     }
     await _settingsRepository.write(SettingsDocumentCodec.encode(settings));
+  }
+
+  /// Applies the fields that differ between [base] and [edited] to [target].
+  static SettingsModel _rebase(
+    SettingsModel base,
+    SettingsModel edited,
+    SettingsModel target,
+  ) {
+    final baseJson = base.toJson();
+    final editedJson = edited.toJson();
+    final merged = Map<String, dynamic>.from(target.toJson());
+    for (final entry in editedJson.entries) {
+      if (jsonEncode(entry.value) != jsonEncode(baseJson[entry.key])) {
+        merged[entry.key] = entry.value;
+      }
+    }
+    return SettingsModel.fromJson(merged).copyWith(
+      obsPassword: edited.obsPassword != base.obsPassword
+          ? edited.obsPassword
+          : target.obsPassword,
+    );
   }
 
   static SettingsModel _localizeBuiltInTtsDefaults(SettingsModel settings) {
