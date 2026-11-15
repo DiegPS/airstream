@@ -8,9 +8,23 @@ class _SettingsSidebar extends ConsumerStatefulWidget {
 }
 
 class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
-  void _mutate(VoidCallback mutation) => setState(mutation);
+  /// Re-renders the visible tab after a local form change (typing in a
+  /// field) without rebuilding the whole sidebar.
+  void _mutate(VoidCallback mutation) {
+    mutation();
+    _tabRevisions[_selectedTab].value++;
+  }
 
   int _selectedTab = 0;
+  final _visitedTabs = <int>{0};
+  final _tabPages = <int, Widget>{};
+  final _tabContents = <int, Widget>{};
+
+  /// Bumped to rebuild one tab's content.
+  final _tabRevisions = List.generate(_tabCount, (_) => ValueNotifier<int>(0));
+
+  /// Hidden tabs whose data changed since they were last shown.
+  final _staleTabs = <int>{};
 
   late final _SettingsFormControllers _form;
   Timer? _textSettingsDebounce;
@@ -23,6 +37,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     for (final node in _form.focusNodes) {
       node.addListener(_handleFocusChange);
     }
+    ref.listenManual<SettingsModel>(
+      settingsProvider,
+      (_, next) => _syncControllers(next),
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -34,6 +53,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     }
 
     _form.dispose();
+    for (final revision in _tabRevisions) {
+      revision.dispose();
+    }
     super.dispose();
   }
 
@@ -60,6 +82,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
     if (!anyHasFocus) {
       _saveTextSettings();
+      // Show the saved (normalized) values once editing ends.
+      _syncControllers(ref.read(settingsProvider));
     }
   }
 
@@ -330,13 +354,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 AppLocalizations.of(context)!.youtubeStreamUrlHint,
                 focusNode: focusNode,
                 errorText: errorText,
-                onChanged: (_) {
-                  setState(() {});
-                },
+                onChanged: (_) => _mutate(() {}),
                 onSubmitted: (_) => _saveTextSettings(),
                 onClear: () {
                   controller.clear();
-                  setState(() {});
+                  _mutate(() {});
                   _saveTextSettings();
                 },
               ),
@@ -365,37 +387,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final s = ref.watch(settingsProvider);
-    final l = AppLocalizations.of(context)!;
-    final notifier = ref.read(settingsProvider.notifier);
-    final chatRequested = ref.watch(chatConnectionProvider);
-    final sessionPhase = ref.watch(chatSessionPhaseProvider);
-    final isRunning = sessionPhase == ChatSessionPhase.connecting ||
-        sessionPhase == ChatSessionPhase.connected ||
-        sessionPhase == ChatSessionPhase.partiallyConnected;
-    final connectionStatus =
-        ref.watch(connectionStatusProvider).valueOrNull ?? {};
-    final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider).valueOrNull;
-    final youtubeMetadata = ref.watch(youtubeMetadataProvider).valueOrNull ??
-        const YoutubeLiveMetadataSummary();
-    final appController = ref.read(appControllerProvider);
-    final ttsLoadState = ref.watch(ttsLoadStateProvider).valueOrNull;
-    final ttsBusy = ref.watch(ttsBusyProvider).valueOrNull ?? false;
-    final captionsState = ref.watch(liveCaptionsStateProvider).valueOrNull ??
-        const LiveCaptionsState();
-    final obsState =
-        ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
-    final overlayUrl = ref.watch(overlayUrlProvider);
-    final overlayState = ref.watch(overlayServerStateProvider).valueOrNull ??
-        const OverlayServerState();
-    final overlayClientCount =
-        ref.watch(overlayClientCountProvider).valueOrNull ?? 0;
-    final overlayCopyUrl = overlayUrl ?? 'http://localhost:${s.overlayPort}';
-    final alertsCopyUrl = '$overlayCopyUrl/alerts';
-    final captionsCopyUrl = '$overlayCopyUrl/captions';
-
+  /// Keeps the text fields in step with settings changed elsewhere (for
+  /// example the language or a value restored after loading). Fields being
+  /// edited keep what the user is typing.
+  void _syncControllers(SettingsModel s) {
     _syncController(_form.ytHandle, _form.ytFocus, _youtubeInputValue(s));
     _syncController(
       _form.ytHorizontalUrl,
@@ -453,32 +448,158 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _form.blockedWordsFocus,
       SettingsInputNormalizer.formatFilterList(s.blockedWords),
     );
+  }
 
-    final dualYoutubeValid = _dualYoutubeUrlsAreValid;
-    final hasChannels = (s.youtubeEnabled &&
-            (s.youtubeDualStreamEnabled
-                ? dualYoutubeValid
-                : _form.ytHandle.text.trim().isNotEmpty)) ||
-        (s.twitchEnabled && _form.twitch.text.trim().isNotEmpty) ||
-        (s.kickEnabled && _form.kick.text.trim().isNotEmpty);
-    final youtubeState = connectionStatus['youtube'];
-    final twitchState = connectionStatus['twitch'];
-    final kickState = connectionStatus['kick'];
-    final youtubeError = s.youtubeEnabled &&
-            !s.youtubeDualStreamEnabled &&
-            youtubeState?.$1 == ServiceStatus.error
-        ? youtubeState?.$2
-        : null;
-    final youtubeHorizontalError = s.youtubeEnabled &&
-            s.youtubeDualStreamEnabled &&
-            connectionStatus['youtubeHorizontal']?.$1 == ServiceStatus.error
-        ? connectionStatus['youtubeHorizontal']?.$2
-        : null;
-    final youtubeVerticalError = s.youtubeEnabled &&
-            s.youtubeDualStreamEnabled &&
-            connectionStatus['youtubeVertical']?.$1 == ServiceStatus.error
-        ? connectionStatus['youtubeVertical']?.$2
-        : null;
+  static const _tabCount = 5;
+
+  void _selectTab(int index) {
+    if (index == _selectedTab) return;
+    setState(() {
+      _selectedTab = index;
+      _visitedTabs.add(index);
+    });
+    // A tab whose data did not change shows its kept build as is.
+    if (_staleTabs.remove(index)) _tabRevisions[index].value++;
+  }
+
+  /// A tab page built once and kept: its scroll position, expanded cards and
+  /// fields survive tab switches. Only the selected tab rebuilds when the
+  /// data it shows changes.
+  Widget _tabPage(int index) => _tabPages[index] ??= SingleChildScrollView(
+        key: PageStorageKey<String>('sidebar-tab-$index'),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+        child: ValueListenableBuilder<int>(
+          valueListenable: _tabRevisions[index],
+          builder: (context, _, __) => Consumer(
+            builder: (context, ref, _) {
+              final cached = _tabContents[index];
+              if (index != _selectedTab && cached != null) {
+                // Something it shows changed while hidden: keep the old build
+                // (and stop watching) until the tab is opened again.
+                _staleTabs.add(index);
+                return cached;
+              }
+              return _tabContents[index] = _tabContent(context, ref, index);
+            },
+          ),
+        ),
+      );
+
+  Widget _tabContent(BuildContext context, WidgetRef ref, int index) {
+    final l = AppLocalizations.of(context)!;
+    final s = ref.watch(settingsProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+    switch (index) {
+      case 0:
+        final sessionPhase = ref.watch(chatSessionPhaseProvider);
+        final isRunning = sessionPhase == ChatSessionPhase.connecting ||
+            sessionPhase == ChatSessionPhase.connected ||
+            sessionPhase == ChatSessionPhase.partiallyConnected;
+        final connectionStatus =
+            ref.watch(connectionStatusProvider).valueOrNull ?? {};
+        final youtubeMetadata =
+            ref.watch(youtubeMetadataProvider).valueOrNull ??
+                const YoutubeLiveMetadataSummary();
+        final hasChannels = (s.youtubeEnabled &&
+                (s.youtubeDualStreamEnabled
+                    ? _dualYoutubeUrlsAreValid
+                    : _form.ytHandle.text.trim().isNotEmpty)) ||
+            (s.twitchEnabled && _form.twitch.text.trim().isNotEmpty) ||
+            (s.kickEnabled && _form.kick.text.trim().isNotEmpty);
+        final youtubeState = connectionStatus['youtube'];
+        final twitchState = connectionStatus['twitch'];
+        final kickState = connectionStatus['kick'];
+        final youtubeError = s.youtubeEnabled &&
+                !s.youtubeDualStreamEnabled &&
+                youtubeState?.$1 == ServiceStatus.error
+            ? youtubeState?.$2
+            : null;
+        final youtubeHorizontalError = s.youtubeEnabled &&
+                s.youtubeDualStreamEnabled &&
+                connectionStatus['youtubeHorizontal']?.$1 == ServiceStatus.error
+            ? connectionStatus['youtubeHorizontal']?.$2
+            : null;
+        final youtubeVerticalError = s.youtubeEnabled &&
+                s.youtubeDualStreamEnabled &&
+                connectionStatus['youtubeVertical']?.$1 == ServiceStatus.error
+            ? connectionStatus['youtubeVertical']?.$2
+            : null;
+        final twitchError =
+            s.twitchEnabled && twitchState?.$1 == ServiceStatus.error
+                ? twitchState?.$2
+                : null;
+        final kickError = s.kickEnabled && kickState?.$1 == ServiceStatus.error
+            ? kickState?.$2
+            : null;
+        return _buildChannelsTab(
+          ref,
+          context,
+          l,
+          s,
+          notifier,
+          isRunning,
+          sessionPhase,
+          hasChannels,
+          youtubeError,
+          youtubeHorizontalError,
+          youtubeVerticalError,
+          youtubeMetadata,
+          twitchError,
+          kickError,
+        );
+      case 1:
+        final overlayUrl = ref.watch(overlayUrlProvider);
+        final overlayState =
+            ref.watch(overlayServerStateProvider).valueOrNull ??
+                const OverlayServerState();
+        final overlayCopyUrl =
+            overlayUrl ?? 'http://localhost:${s.overlayPort}';
+        return _buildAudioTab(
+          ref,
+          context,
+          l,
+          s,
+          notifier,
+          ref.read(appControllerProvider),
+          ref.watch(ttsLoadStateProvider).valueOrNull,
+          ref.watch(ttsBusyProvider).valueOrNull ?? false,
+          ref.watch(liveCaptionsStateProvider).valueOrNull ??
+              const LiveCaptionsState(),
+          '$overlayCopyUrl/captions',
+          overlayState.phase == OverlayServerPhase.ready,
+        );
+      case 2:
+        return _buildStyleTab(ref, context, l, s, notifier);
+      case 3:
+        final overlayUrl = ref.watch(overlayUrlProvider);
+        final overlayCopyUrl =
+            overlayUrl ?? 'http://localhost:${s.overlayPort}';
+        return _buildObsTab(
+          ref,
+          context,
+          l,
+          s,
+          notifier,
+          ref.read(appControllerProvider),
+          ref.watch(obsStateProvider).valueOrNull ?? const ObsState(),
+          ref.watch(overlayServerStateProvider).valueOrNull ??
+              const OverlayServerState(),
+          ref.watch(overlayClientCountProvider).valueOrNull ?? 0,
+          overlayCopyUrl,
+          '$overlayCopyUrl/alerts',
+        );
+      default:
+        return _buildSystemTab(ref, context, l, s, notifier);
+    }
+  }
+
+  Widget _header(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final s = ref.watch(settingsProvider);
+    final chatRequested = ref.watch(chatConnectionProvider);
+    final connectionStatus =
+        ref.watch(connectionStatusProvider).valueOrNull ?? {};
+    final youtubeBadgeValue = ref.watch(youtubeBadgeValueProvider).valueOrNull;
     final displayConnectionStatus = Map<String, (ServiceStatus, String?)>.from(
       connectionStatus,
     );
@@ -488,48 +609,66 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         connectionStatus['youtubeVertical'],
       );
     }
-    final twitchError =
-        s.twitchEnabled && twitchState?.$1 == ServiceStatus.error
-            ? twitchState?.$2
-            : null;
-    final kickError = s.kickEnabled && kickState?.$1 == ServiceStatus.error
-        ? kickState?.$2
-        : null;
+    return _sidebarHeader(
+      youtubeValue: chatRequested && s.youtubeEnabled
+          ? (s.youtubeDualStreamEnabled
+              ? l.youtubeDualMode
+              : (youtubeBadgeValue ?? _youtubeInputValue(s)))
+          : null,
+      twitchValue: chatRequested && s.twitchEnabled ? s.twitchChannel : '',
+      kickValue: chatRequested && s.kickEnabled ? s.kickSlug : '',
+      statusMap: displayConnectionStatus,
+    );
+  }
 
-    final tabs = [
-      SidebarTabItem(
-        icon: Icons.sensors_rounded,
-        label: l.connections,
-        badgeColor: switch (sessionPhase) {
-          ChatSessionPhase.connected => const Color(0xFF53FC18),
-          ChatSessionPhase.partiallyConnected => Colors.amber,
-          ChatSessionPhase.connecting => Colors.amber,
-          ChatSessionPhase.failed => const Color(0xFFFF6B6B),
-          ChatSessionPhase.idle => null,
-        },
-      ),
-      SidebarTabItem(
-        icon: Icons.record_voice_over_rounded,
-        label: l.ttsAndVoice,
-        badgeColor: (s.ttsEnabled || s.liveCaptionsEnabled)
-            ? const Color(0xFF53FC18)
-            : null,
-      ),
-      SidebarTabItem(
-        icon: Icons.palette_outlined,
-        label: l.appearance,
-      ),
-      SidebarTabItem(
-        icon: Icons.videocam_outlined,
-        label: l.obsAndOverlay,
-        badgeColor: obsState.connected ? const Color(0xFF5B9CFF) : null,
-      ),
-      SidebarTabItem(
-        icon: Icons.tune_rounded,
-        label: l.systemTab,
-      ),
-    ];
+  Widget _tabBar(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final sessionPhase = ref.watch(chatSessionPhaseProvider);
+    final voiceActive = ref.watch(
+      settingsProvider.select((s) => s.ttsEnabled || s.liveCaptionsEnabled),
+    );
+    final obsConnected = ref.watch(
+      obsStateProvider.select((state) => state.valueOrNull?.connected == true),
+    );
+    return SidebarTabBar(
+      selectedIndex: _selectedTab,
+      onTabSelected: _selectTab,
+      tabs: [
+        SidebarTabItem(
+          icon: Icons.sensors_rounded,
+          label: l.connections,
+          badgeColor: switch (sessionPhase) {
+            ChatSessionPhase.connected => const Color(0xFF53FC18),
+            ChatSessionPhase.partiallyConnected => Colors.amber,
+            ChatSessionPhase.connecting => Colors.amber,
+            ChatSessionPhase.failed => const Color(0xFFFF6B6B),
+            ChatSessionPhase.idle => null,
+          },
+        ),
+        SidebarTabItem(
+          icon: Icons.record_voice_over_rounded,
+          label: l.ttsAndVoice,
+          badgeColor: voiceActive ? const Color(0xFF53FC18) : null,
+        ),
+        SidebarTabItem(
+          icon: Icons.palette_outlined,
+          label: l.appearance,
+        ),
+        SidebarTabItem(
+          icon: Icons.videocam_outlined,
+          label: l.obsAndOverlay,
+          badgeColor: obsConnected ? const Color(0xFF5B9CFF) : null,
+        ),
+        SidebarTabItem(
+          icon: Icons.tune_rounded,
+          label: l.systemTab,
+        ),
+      ],
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return SizedBox.expand(
       child: ColoredBox(
         color: const Color(0xFF141414),
@@ -540,84 +679,29 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _sidebarHeader(
-                    youtubeValue: chatRequested && s.youtubeEnabled
-                        ? (s.youtubeDualStreamEnabled
-                            ? l.youtubeDualMode
-                            : (youtubeBadgeValue ?? _youtubeInputValue(s)))
-                        : null,
-                    twitchValue:
-                        chatRequested && s.twitchEnabled ? s.twitchChannel : '',
-                    kickValue: chatRequested && s.kickEnabled ? s.kickSlug : '',
-                    statusMap: displayConnectionStatus,
+                  Consumer(
+                    builder: (context, ref, _) => _header(context, ref),
                   ),
                   const SizedBox(height: 12),
-                  SidebarTabBar(
-                    selectedIndex: _selectedTab,
-                    onTabSelected: (index) =>
-                        setState(() => _selectedTab = index),
-                    tabs: tabs,
+                  Consumer(
+                    builder: (context, ref, _) => _tabBar(context, ref),
                   ),
                 ],
               ),
             ),
             const Divider(height: 1, color: Color(0xFF242424)),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-                child: switch (_selectedTab) {
-                  0 => _buildChannelsTab(
-                      context,
-                      l,
-                      s,
-                      notifier,
-                      isRunning,
-                      sessionPhase,
-                      hasChannels,
-                      youtubeError,
-                      youtubeHorizontalError,
-                      youtubeVerticalError,
-                      youtubeMetadata,
-                      twitchError,
-                      kickError,
-                    ),
-                  1 => _buildAudioTab(
-                      context,
-                      l,
-                      s,
-                      notifier,
-                      appController,
-                      ttsLoadState,
-                      ttsBusy,
-                      captionsState,
-                      captionsCopyUrl,
-                      overlayState.phase == OverlayServerPhase.ready,
-                    ),
-                  2 => _buildStyleTab(
-                      context,
-                      l,
-                      s,
-                      notifier,
-                    ),
-                  3 => _buildObsTab(
-                      context,
-                      l,
-                      s,
-                      notifier,
-                      appController,
-                      obsState,
-                      overlayState,
-                      overlayClientCount,
-                      overlayCopyUrl,
-                      alertsCopyUrl,
-                    ),
-                  _ => _buildSystemTab(
-                      context,
-                      l,
-                      s,
-                      notifier,
-                    ),
-                },
+              child: IndexedStack(
+                index: _selectedTab,
+                sizing: StackFit.expand,
+                children: [
+                  for (var index = 0; index < _tabCount; index++)
+                    // Tabs are built the first time they are opened.
+                    // IndexedStack keeps hidden tabs out of focus traversal.
+                    _visitedTabs.contains(index)
+                        ? _tabPage(index)
+                        : const SizedBox.shrink(),
+                ],
               ),
             ),
           ],

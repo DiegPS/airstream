@@ -196,8 +196,15 @@ class AudioCoordinator {
     _lastSettings = settings;
     _lastConnectChats = connectChats;
 
-    unawaited(_updateTtsConfig(settings));
-    unawaited(_updateCaptionsConfig(settings));
+    // Reconfiguring stops, reloads or checks models on disk, so it only
+    // happens when a setting those services use changes, not on every
+    // settings update (a slider produces one per frame).
+    if (previous == null || _ttsConfigChanged(previous, settings)) {
+      unawaited(_updateTtsConfig(settings));
+    }
+    if (previous == null || _captionsConfigChanged(previous, settings)) {
+      unawaited(_updateCaptionsConfig(settings));
+    }
 
     final youtubeChanged = connectionChanged ||
         previous.youtubeEnabled != settings.youtubeEnabled ||
@@ -237,6 +244,22 @@ class AudioCoordinator {
       _clearTtsHistory();
     }
   }
+
+  static bool _ttsConfigChanged(SettingsModel a, SettingsModel b) =>
+      a.ttsEnabled != b.ttsEnabled ||
+      a.ttsModelId != b.ttsModelId ||
+      a.ttsVoice != b.ttsVoice ||
+      a.ttsLanguage != b.ttsLanguage ||
+      a.ttsSpeed != b.ttsSpeed ||
+      a.ttsSteps != b.ttsSteps ||
+      a.ttsReferenceAudioPath != b.ttsReferenceAudioPath ||
+      a.ttsReferenceText != b.ttsReferenceText;
+
+  static bool _captionsConfigChanged(SettingsModel a, SettingsModel b) =>
+      a.liveCaptionsEnabled != b.liveCaptionsEnabled ||
+      a.liveCaptionsSourceLanguage != b.liveCaptionsSourceLanguage ||
+      a.liveCaptionsTargetLanguage != b.liveCaptionsTargetLanguage ||
+      a.liveCaptionsDenoiseEnabled != b.liveCaptionsDenoiseEnabled;
 
   Future<void> _updateTtsConfig(SettingsModel settings) async {
     try {

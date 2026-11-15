@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart' show listEquals;
+
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -70,8 +72,16 @@ class MessagePipeline {
   /// Returns whether existing buffered messages were removed, allowing the
   /// owner to publish an immediate list update without waiting for new chat.
   bool updateSettings(SettingsModel settings) {
-    final previousLength = _buffer.length;
+    final previous = _settings;
     _settings = settings;
+    // Only the filters and the message limit affect the buffer; other
+    // settings change often (a slider produces one update per frame).
+    if (previous.maxMessages == settings.maxMessages &&
+        listEquals(previous.blockedUsers, settings.blockedUsers) &&
+        listEquals(previous.blockedWords, settings.blockedWords)) {
+      return false;
+    }
+    final previousLength = _buffer.length;
     _rebuildFilterCache();
     _buffer.removeWhere(_shouldBlock);
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;

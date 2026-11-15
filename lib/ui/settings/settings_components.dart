@@ -779,7 +779,7 @@ Widget _obsHudGroupLabel(String label) {
 }
 
 extension _ChatPreviewControls on _SettingsSidebarState {
-  Widget _previewSwitch(AppLocalizations l) {
+  Widget _previewSwitch(WidgetRef ref, AppLocalizations l) {
     final enabled = ref.watch(chatPreviewProvider);
     return _switchTileWithSubtitle(
       l.chatPreviewSwitch,
@@ -789,9 +789,9 @@ extension _ChatPreviewControls on _SettingsSidebarState {
     );
   }
 
-  Widget _previewCard(AppLocalizations l) => UiCard(
+  Widget _previewCard(WidgetRef ref, AppLocalizations l) => UiCard(
         title: l.chatPreview,
         icon: Icons.visibility_outlined,
-        children: [_previewSwitch(l)],
+        children: [_previewSwitch(ref, l)],
       );
 }

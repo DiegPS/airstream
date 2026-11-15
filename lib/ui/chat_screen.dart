@@ -277,8 +277,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
       },
     );
-    final s = ref.watch(settingsProvider);
-    final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: s.bgOpacity);
+    final bgOpacity = ref.watch(settingsProvider.select((s) => s.bgOpacity));
+    final scaffoldBg = const Color(0xFF0D0D0D).withValues(alpha: bgOpacity);
     final availableWidth = MediaQuery.sizeOf(context).width;
     final usesSidebarDrawer = _usesSidebarDrawer(availableWidth);
     final scaffold = Focus(
@@ -358,7 +358,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return availableWidth < _sidebarWidth ? availableWidth : _sidebarWidth;
   }
 
-  Widget _chatList() {
+  /// The chat pane rebuilds on its own, without the window around it.
+  Widget _chatList() => Consumer(
+        builder: (context, ref, _) => _chatListContent(context, ref),
+      );
+
+  /// Bubbles already built, reused while their message is unchanged so a new
+  /// message only builds its own bubble.
+  final _bubbles = <String, ChatBubble>{};
+
+  Widget _bubbleFor(ChatMessage message) {
+    final cached = _bubbles[message.dedupeKey];
+    if (cached != null && identical(cached.message, message)) return cached;
+    return _bubbles[message.dedupeKey] = ChatBubble(
+      key: ValueKey(message.dedupeKey),
+      message: message,
+    );
+  }
+
+  void _forgetRemovedBubbles(List<ChatMessage> messages) {
+    if (_bubbles.length <= messages.length) return;
+    final keys = {for (final message in messages) message.dedupeKey};
+    _bubbles.removeWhere((key, _) => !keys.contains(key));
+  }
+
+  Widget _chatListContent(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final chat = ref.watch(chatProvider);
     final settings = ref.watch(settingsProvider);
@@ -369,8 +393,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 .contains(latestProviderEvent.kind.name)
         ? latestProviderEvent
         : null;
-    final obsState =
-        ref.watch(obsStateProvider).valueOrNull ?? const ObsState();
     final showObsCard = settings.obsEnabled;
     final obsBottomSpacing =
         settings.messageGap < 6 ? 6.0 : settings.messageGap;
@@ -390,11 +412,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 alignment: chatHorizontalAlignment(settings.chatTextAlign),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 320),
-                  child: _ObsStatusCard(
-                    state: obsState,
-                    compact: true,
-                    styleSettings: settings,
-                    displaySettings: settings,
+                  // OBS stats update every second: only this card follows.
+                  child: Consumer(
+                    builder: (context, ref, _) => _ObsStatusCard(
+                      state: ref.watch(obsStateProvider).valueOrNull ??
+                          const ObsState(),
+                      compact: true,
+                      styleSettings: settings,
+                      displaySettings: settings,
+                    ),
                   ),
                 ),
               ),
@@ -452,6 +478,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ? null
             : pausedChatView(_pausedSnapshot!, liveMessages);
         final messages = paused?.messages ?? liveMessages;
+        _forgetRemovedBubbles(messages);
+        final positions = <String, int>{
+          for (var i = 0; i < messages.length; i++) messages[i].dedupeKey: i,
+        };
         if (liveMessages.isEmpty) {
           final sessionPhase = ref.watch(chatSessionPhaseProvider);
           final hasChannels = hasStartableChat(settings);
@@ -521,10 +551,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   showObsCard ? obsReservedSpace : 20,
                 ),
                 itemCount: messages.length,
-                itemBuilder: (_, i) => ChatBubble(
-                  key: ValueKey(messages[messages.length - 1 - i].dedupeKey),
-                  message: messages[messages.length - 1 - i],
-                ),
+                itemBuilder: (_, i) =>
+                    _bubbleFor(messages[messages.length - 1 - i]),
+                // New messages enter at index 0 and shift every other one.
+                // Finding bubbles by key lets each keep its element (and its
+                // loaded avatar) instead of being rebuilt from scratch.
+                findChildIndexCallback: (key) {
+                  if (key is! ValueKey<String>) return null;
+                  final position = positions[key.value];
+                  return position == null
+                      ? null
+                      : messages.length - 1 - position;
+                },
               ),
               if (!_autoScroll)
                 Positioned(

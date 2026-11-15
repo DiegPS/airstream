@@ -2,6 +2,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 
 extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
   Widget _buildChannelsTab(
+    WidgetRef ref,
     BuildContext context,
     AppLocalizations l,
     SettingsModel s,

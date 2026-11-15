@@ -2,6 +2,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 
 extension _AudioSettingsTabBuilder on _SettingsSidebarState {
   Widget _buildAudioTab(
+    WidgetRef ref,
     BuildContext context,
     AppLocalizations l,
     SettingsModel s,

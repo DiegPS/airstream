@@ -268,6 +268,27 @@ void main() {
 
     expect(notifier.state.appLanguageCode, 'en');
   });
+
+  test('a burst of changes only writes the latest settings', () async {
+    final repository = _CountingSettingsRepository();
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: repository,
+    );
+    await notifier.ready;
+
+    final writes = [
+      for (var i = 0; i < 30; i++)
+        notifier.update(notifier.state.copyWith(fontSize: 10.0 + i / 2)),
+    ];
+    await Future.wait(writes);
+
+    expect(repository.writes, lessThanOrEqualTo(2));
+    expect(
+      SettingsDocumentCodec.decode(repository.json!).settings.fontSize,
+      24.5,
+    );
+  });
 }
 
 class _RecoverableMemorySettingsRepository
@@ -347,6 +368,21 @@ class _GatedSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> write(String json) async {
+    this.json = json;
+  }
+}
+
+class _CountingSettingsRepository implements SettingsRepository {
+  String? json;
+  int writes = 0;
+
+  @override
+  Future<String?> read() async => json;
+
+  @override
+  Future<void> write(String json) async {
+    writes++;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
     this.json = json;
   }
 }

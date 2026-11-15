@@ -97,14 +97,26 @@ final obsStateProvider = StreamProvider<ObsState>((ref) {
   return app.obsStateStream;
 });
 
+/// The application controller.
+///
+/// Settings and the chat switch are pushed to it through listeners, so the
+/// provider itself never rebuilds: every stream provider below depends on it,
+/// and rebuilding it would resubscribe all of them (and rebuild every widget
+/// that watches them) on each settings change, such as each slider step.
 final appControllerProvider = Provider<AppController>((ref) {
-  final settings = ref.watch(settingsProvider);
-  final connectChats = ref.watch(chatConnectionProvider);
-  final controller = ref.read(_appControllerInstanceProvider);
-  final initialization = ref.watch(settingsInitializationProvider);
-  if (initialization is AsyncData<void>) {
-    controller.applySettings(settings, connectChats: connectChats);
+  final controller = ref.watch(_appControllerInstanceProvider);
+  void apply() {
+    if (ref.read(settingsInitializationProvider) is! AsyncData<void>) return;
+    controller.applySettings(
+      ref.read(settingsProvider),
+      connectChats: ref.read(chatConnectionProvider),
+    );
   }
+
+  ref.listen(settingsProvider, (_, __) => apply());
+  ref.listen(chatConnectionProvider, (_, __) => apply());
+  ref.listen(settingsInitializationProvider, (_, __) => apply());
+  apply();
   return controller;
 });
 

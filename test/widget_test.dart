@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart' as widgets;
 
 import 'package:airstream/main.dart';
 import 'package:airstream/models/chat_session_state.dart';
@@ -11,6 +12,9 @@ import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/application/app_providers.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/obs_service.dart';
+import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/window/window_state.dart';
 
 class _WidgetTestSettings extends SettingsNotifier {
@@ -550,6 +554,85 @@ void main() {
     container.read(chatConnectionProvider.notifier).state = false;
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 30));
+  });
+
+  testWidgets('a settings tab keeps its state when the user comes back',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    // Open the collapsed Filters card and type a draft in a channel field.
+    await tester.ensureVisible(find.text('Filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Filters'));
+    await tester.pumpAndSettle();
+    expect(find.text('Blocked users'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('System & Window'));
+    await tester.pump();
+    expect(find.text('Blocked users'), findsNothing);
+
+    await tester.tap(find.byTooltip('Connections'));
+    await tester.pump();
+    expect(find.text('Blocked users'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('OBS stats updates do not rebuild chat messages',
+      (WidgetTester tester) async {
+    final obs = StreamController<ObsState>();
+    addTearDown(obs.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            (ref) => _WidgetTestSettings(
+              'en',
+              '',
+              const SettingsModel(overlayEnabled: false, obsEnabled: true),
+            ),
+          ),
+          obsStateProvider.overrideWith((ref) => obs.stream),
+          chatProvider.overrideWith(
+            (ref) => Stream.value([
+              for (var i = 0; i < 5; i++)
+                ChatMessage(
+                  platform: Platform.twitch,
+                  id: 'message-$i',
+                  author: ChatAuthor(name: 'viewer$i', channelId: 'v$i'),
+                  items: const [MessageItem.text('hola')],
+                  timestamp: DateTime.utc(2026, 5, 9, 12),
+                ),
+            ]),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ChatBubble), findsNWidgets(5));
+
+    var bubbleBuilds = 0;
+    widgets.debugOnRebuildDirtyWidget = (element, _) {
+      if (element.widget is ChatBubble) bubbleBuilds++;
+    };
+    addTearDown(() => widgets.debugOnRebuildDirtyWidget = null);
+    for (var i = 0; i < 5; i++) {
+      obs.add(ObsState(connected: true, bitrateKbps: 6000.0 + i));
+      await tester.pump();
+    }
+    widgets.debugOnRebuildDirtyWidget = null;
+
+    expect(bubbleBuilds, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
 

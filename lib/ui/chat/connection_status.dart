@@ -5,7 +5,23 @@ class _ConnectionDots extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final status = ref.watch(connectionStatusProvider);
-    final settings = ref.watch(settingsProvider);
+    // Rebuilds only when the channels change, not on every setting.
+    final settings = ref.watch(
+      settingsProvider.select(
+        (s) => (
+          youtubeEnabled: s.youtubeEnabled,
+          youtubeDualStreamEnabled: s.youtubeDualStreamEnabled,
+          youtubeHorizontalUrl: s.youtubeHorizontalUrl,
+          youtubeVerticalUrl: s.youtubeVerticalUrl,
+          youtubeHandle: s.youtubeHandle,
+          youtubeLiveId: s.youtubeLiveId,
+          twitchEnabled: s.twitchEnabled,
+          twitchChannel: s.twitchChannel,
+          kickEnabled: s.kickEnabled,
+          kickSlug: s.kickSlug,
+        ),
+      ),
+    );
     final metadata = ref.watch(youtubeMetadataProvider).valueOrNull;
     final platformMetadata =
         ref.watch(platformMetadataProvider).valueOrNull ?? const {};

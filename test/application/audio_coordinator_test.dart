@@ -118,4 +118,34 @@ void main() {
     await coordinator.silenceTts();
     expect(tts.silenceCount, 1);
   });
+
+  test('appearance changes do not reconfigure TTS or captions', () async {
+    const settings = SettingsModel(ttsEnabled: true);
+    coordinator.applySettings(settings, connectChats: false);
+    await settleCoordinatorTasks();
+    expect(tts.updateCount, 1);
+    expect(captions.updateCount, 1);
+
+    for (var i = 0; i < 10; i++) {
+      coordinator.applySettings(
+        settings.copyWith(fontSize: 14.0 + i),
+        connectChats: false,
+      );
+    }
+    await settleCoordinatorTasks();
+    expect(tts.updateCount, 1);
+    expect(captions.updateCount, 1);
+
+    coordinator.applySettings(
+      settings.copyWith(ttsVoice: 'F1'),
+      connectChats: false,
+    );
+    coordinator.applySettings(
+      settings.copyWith(ttsVoice: 'F1', liveCaptionsEnabled: true),
+      connectChats: false,
+    );
+    await settleCoordinatorTasks();
+    expect(tts.updateCount, 2);
+    expect(captions.updateCount, 2);
+  });
 }

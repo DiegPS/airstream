@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show PlatformDispatcher;
 
@@ -147,17 +148,33 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
         ? settings
         : _localizeBuiltInTtsDefaults(settings);
     state = next;
-    final operation = _updateQueue.then((_) => _persist(next));
-    _updateQueue = operation.catchError((Object error, StackTrace stack) {
-      // Keep later writes flowing even if one persistence operation fails.
-      AppLogger.warning(
-        'Settings persistence failed',
-        error: error,
-        stackTrace: stack,
-      );
+    // Only the latest settings need to reach the disk: a slider produces a
+    // change per frame, and writing each one would queue dozens of writes.
+    final previousPending = _pendingPersist;
+    final pending = _PendingPersist(next);
+    _pendingPersist = pending;
+    previousPending?.supersededBy(pending);
+    final writeAfter = _updateQueue;
+    _updateQueue = writeAfter.then((_) async {
+      if (!identical(_pendingPersist, pending)) return;
+      _pendingPersist = null;
+      try {
+        await _persist(pending.settings);
+        pending.complete();
+      } catch (error, stack) {
+        // Keep later writes flowing even if one persistence operation fails.
+        AppLogger.warning(
+          'Settings persistence failed',
+          error: error,
+          stackTrace: stack,
+        );
+        pending.fail(error, stack);
+      }
     });
-    return operation;
+    return pending.future;
   }
+
+  _PendingPersist? _pendingPersist;
 
   Future<void> _persist(SettingsModel settings) async {
     await ready;
@@ -211,5 +228,31 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       ttsCommandPrefix: localizedPrefix,
       ttsSeparatorText: localizedSeparator,
     );
+  }
+}
+
+/// A settings write waiting its turn. When a newer change replaces it, it
+/// completes with the newer write, which also stores this change.
+class _PendingPersist {
+  _PendingPersist(this.settings);
+
+  final SettingsModel settings;
+  final _completer = Completer<void>();
+
+  Future<void> get future => _completer.future;
+
+  void supersededBy(_PendingPersist newer) {
+    newer.future.then(
+      (_) => complete(),
+      onError: (Object error, StackTrace stack) => fail(error, stack),
+    );
+  }
+
+  void complete() {
+    if (!_completer.isCompleted) _completer.complete();
+  }
+
+  void fail(Object error, StackTrace stack) {
+    if (!_completer.isCompleted) _completer.completeError(error, stack);
   }
 }

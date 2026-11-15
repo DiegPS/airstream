@@ -72,48 +72,55 @@ void main() async {
   );
 }
 
+/// Built once: a theme rebuilt on every frame compares unequal (its switch
+/// colors are closures), which rebuilds every Material widget in the app.
+final _airstreamTheme = ThemeData(
+  colorScheme: const ColorScheme.dark(
+    primary: Color(0xFF53FC18),
+    surface: Color(0xFF121212),
+  ),
+  scaffoldBackgroundColor: const Color(0xFF0D0D0D),
+  switchTheme: SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? null
+          : states.contains(WidgetState.disabled)
+              ? const Color(0xFF3A3A3A)
+              : const Color(0xFF9A9A9A),
+    ),
+    trackColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? null
+          : const Color(0xFF1E1E1E),
+    ),
+    trackOutlineColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? null
+          : states.contains(WidgetState.disabled)
+              ? const Color(0xFF2A2A2A)
+              : const Color(0xFF4A4A4A),
+    ),
+  ),
+  useMaterial3: true,
+);
+
 class AirstreamApp extends ConsumerWidget {
   const AirstreamApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
+    // Only the language matters here; other settings must not rebuild the
+    // whole app.
+    final languageCode =
+        ref.watch(settingsProvider.select((s) => s.appLanguageCode));
 
     return MaterialApp(
       title: 'Airstream',
       debugShowCheckedModeBanner: false,
-      locale: Locale(settings.appLanguageCode),
+      locale: Locale(languageCode),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-      theme: ThemeData(
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF53FC18),
-          surface: Color(0xFF121212),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0D0D0D),
-        switchTheme: SwitchThemeData(
-          thumbColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? null
-                : states.contains(WidgetState.disabled)
-                    ? const Color(0xFF3A3A3A)
-                    : const Color(0xFF9A9A9A),
-          ),
-          trackColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? null
-                : const Color(0xFF1E1E1E),
-          ),
-          trackOutlineColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? null
-                : states.contains(WidgetState.disabled)
-                    ? const Color(0xFF2A2A2A)
-                    : const Color(0xFF4A4A4A),
-          ),
-        ),
-        useMaterial3: true,
-      ),
+      theme: _airstreamTheme,
       home: const ChatScreen(),
     );
   }

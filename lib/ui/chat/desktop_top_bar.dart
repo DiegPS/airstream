@@ -19,13 +19,13 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overlayUrl = ref.watch(overlayUrlProvider);
     final l = AppLocalizations.of(context)!;
-    final settings = ref.watch(settingsProvider);
     final chatRequested = ref.watch(chatConnectionProvider);
     final sessionPhase = ref.watch(chatSessionPhaseProvider);
     final isRunning = sessionPhase == ChatSessionPhase.connecting ||
         sessionPhase == ChatSessionPhase.connected ||
         sessionPhase == ChatSessionPhase.partiallyConnected;
-    final hasChannels = hasStartableChat(settings);
+    // Only whether a chat can start matters here, not every setting.
+    final hasChannels = ref.watch(settingsProvider.select(hasStartableChat));
     final ttsSpeaking = ref.watch(ttsBusyProvider).valueOrNull ?? false;
 
     return Material(

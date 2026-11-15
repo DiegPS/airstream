@@ -889,6 +889,9 @@ class _EmojiWidget extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.contain,
+        // Decode animated emotes at their on-screen size (keeping their
+        // aspect ratio): every frame is decoded while they play.
+        cacheHeight: (size * MediaQuery.devicePixelRatioOf(context)).ceil(),
       );
     }
 

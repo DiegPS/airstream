@@ -2,6 +2,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 
 extension _StyleSettingsTabBuilder on _SettingsSidebarState {
   Widget _buildStyleTab(
+    WidgetRef ref,
     BuildContext context,
     AppLocalizations l,
     SettingsModel s,
@@ -10,7 +11,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _previewCard(l),
+        _previewCard(ref, l),
         UiCard(
           title: l.appearance,
           icon: Icons.format_size_rounded,

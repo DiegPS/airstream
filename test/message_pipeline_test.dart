@@ -432,6 +432,38 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('settings that do not filter leave the buffer alone', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    source.add(ChatMessage(
+      platform: Platform.twitch,
+      id: 'kept',
+      author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
+      items: const [MessageItem.text('hola')],
+      timestamp: DateTime.utc(2026, 5, 9, 12),
+    ));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      pipeline.updateSettings(
+        const SettingsModel(maxMessages: 10, fontSize: 30),
+      ),
+      isFalse,
+    );
+    expect(pipeline.buffer.map((m) => m.id), ['kept']);
+    expect(
+      pipeline.updateSettings(
+        const SettingsModel(
+            maxMessages: 10, fontSize: 30, blockedUsers: ['viewer']),
+      ),
+      isTrue,
+    );
+    expect(pipeline.buffer, isEmpty);
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({

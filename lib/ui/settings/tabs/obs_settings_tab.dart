@@ -2,6 +2,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 
 extension _ObsSettingsTabBuilder on _SettingsSidebarState {
   Widget _buildObsTab(
+    WidgetRef ref,
     BuildContext context,
     AppLocalizations l,
     SettingsModel s,
@@ -187,7 +188,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               const SizedBox(height: 10),
-              _previewSwitch(l),
+              _previewSwitch(ref, l),
               if (overlayState.phase == OverlayServerPhase.starting)
                 _statusMessage(
                   l.overlayStarting,

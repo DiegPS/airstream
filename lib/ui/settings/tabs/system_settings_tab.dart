@@ -2,6 +2,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 
 extension _SystemSettingsTabBuilder on _SettingsSidebarState {
   Widget _buildSystemTab(
+    WidgetRef ref,
     BuildContext context,
     AppLocalizations l,
     SettingsModel s,
