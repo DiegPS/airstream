@@ -2,14 +2,29 @@ import 'package:airstream/models/chat_message.dart';
 
 const ttsSessionMessageTolerance = Duration(seconds: 2);
 
+/// Chat history (the YouTube backlog) only arrives right after connecting.
+/// Anything received later is live, whatever its timestamp says.
+const ttsBacklogWindow = Duration(seconds: 10);
+
+/// Whether a message should be read aloud in the current TTS session.
+///
+/// Messages stamped before the session started are history and are skipped,
+/// but only during [backlogWindow]: platform timestamps come from the
+/// provider's clock, so a computer clock running ahead would otherwise mute
+/// live chat for as long as the clocks differ.
 bool isTtsMessageFresh(
   ChatMessage message,
   DateTime? sessionStartedAt, {
   Duration tolerance = ttsSessionMessageTolerance,
+  Duration backlogWindow = ttsBacklogWindow,
+  DateTime? now,
 }) {
   if (sessionStartedAt == null) return true;
-  final threshold = sessionStartedAt.toUtc().subtract(tolerance);
-  return !message.timestamp.toUtc().isBefore(threshold);
+  final started = sessionStartedAt.toUtc();
+  final threshold = started.subtract(tolerance);
+  if (!message.timestamp.toUtc().isBefore(threshold)) return true;
+  final receivedAt = (now ?? DateTime.now()).toUtc();
+  return receivedAt.difference(started) >= backlogWindow;
 }
 
 String sanitizeTtsAuthorName(String rawName) {

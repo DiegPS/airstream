@@ -68,6 +68,7 @@ void main() {
       isTtsMessageFresh(
         _message(DateTime.utc(2026, 5, 9, 12, 0, 7)),
         sessionStartedAt,
+        now: sessionStartedAt.add(const Duration(seconds: 2)),
       ),
       isFalse,
     );
@@ -97,6 +98,31 @@ void main() {
     expect(sanitizeTtsAuthorName('@xqc123'), 'xqc');
     expect(sanitizeTtsAuthorName('player_99-test'), 'player test');
     expect(sanitizeTtsAuthorName('@@123'), isEmpty);
+  });
+
+  test('a computer clock running ahead does not mute live chat for long', () {
+    // The PC clock is a minute ahead of the platform's clock.
+    final sessionStartedAt = DateTime.utc(2026, 5, 9, 12, 1, 0);
+    final liveMessage = _message(DateTime.utc(2026, 5, 9, 12, 0, 5));
+
+    expect(
+      isTtsMessageFresh(
+        liveMessage,
+        sessionStartedAt,
+        now: sessionStartedAt.add(const Duration(seconds: 3)),
+      ),
+      isFalse,
+      reason: 'right after connecting it may be backlog',
+    );
+    expect(
+      isTtsMessageFresh(
+        liveMessage,
+        sessionStartedAt,
+        now: sessionStartedAt.add(const Duration(seconds: 12)),
+      ),
+      isTrue,
+      reason: 'history never arrives this long after connecting',
+    );
   });
 }
 
