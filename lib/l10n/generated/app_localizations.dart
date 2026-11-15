@@ -3110,6 +3110,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Another app already uses this shortcut; choose a different one.'**
   String get globalShortcutInUse;
+
+  /// No description provided for @alertTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert types'**
+  String get alertTypes;
+
+  /// No description provided for @alertTypeSuperChat.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube Super Chats'**
+  String get alertTypeSuperChat;
+
+  /// No description provided for @alertTypeMembership.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube new members'**
+  String get alertTypeMembership;
+
+  /// No description provided for @alertTypeBits.
+  ///
+  /// In en, this message translates to:
+  /// **'Twitch Bits'**
+  String get alertTypeBits;
+
+  /// No description provided for @alertTypeSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscriptions (Twitch and Kick)'**
+  String get alertTypeSubscription;
+
+  /// No description provided for @alertTypeGift.
+  ///
+  /// In en, this message translates to:
+  /// **'Gifted subscriptions and memberships'**
+  String get alertTypeGift;
+
+  /// No description provided for @alertTypeRaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Raids and hosts'**
+  String get alertTypeRaid;
+
+  /// No description provided for @alertTypeKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'Kick Kicks'**
+  String get alertTypeKicks;
+
+  /// No description provided for @testAlertBits.
+  ///
+  /// In en, this message translates to:
+  /// **'Bits'**
+  String get testAlertBits;
+
+  /// No description provided for @testAlertSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription'**
+  String get testAlertSubscription;
+
+  /// No description provided for @testAlertGift.
+  ///
+  /// In en, this message translates to:
+  /// **'Gift'**
+  String get testAlertGift;
+
+  /// No description provided for @testAlertRaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Raid'**
+  String get testAlertRaid;
+
+  /// No description provided for @testAlertKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'Kicks'**
+  String get testAlertKicks;
 }
 
 class _AppLocalizationsDelegate

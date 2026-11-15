@@ -146,6 +146,7 @@ class SettingsModel {
   final double alertFontSize;
   final int alertDisplaySeconds;
   final bool alertShowAvatars;
+  final List<String> alertDisabledTypes;
 
   /// Starts the chat when Airstream opens.
   final bool connectChatOnLaunch;
@@ -276,6 +277,7 @@ class SettingsModel {
     this.alertFontSize = 28.0,
     this.alertDisplaySeconds = 7,
     this.alertShowAvatars = true,
+    this.alertDisabledTypes = const [],
     this.connectChatOnLaunch = false,
     this.obsEnabled = false,
     this.obsConnectOnLaunch = false,
@@ -401,6 +403,7 @@ class SettingsModel {
     double? alertFontSize,
     int? alertDisplaySeconds,
     bool? alertShowAvatars,
+    List<String>? alertDisabledTypes,
     bool? connectChatOnLaunch,
     bool? obsEnabled,
     bool? obsConnectOnLaunch,
@@ -549,6 +552,7 @@ class SettingsModel {
         alertFontSize: alertFontSize ?? this.alertFontSize,
         alertDisplaySeconds: alertDisplaySeconds ?? this.alertDisplaySeconds,
         alertShowAvatars: alertShowAvatars ?? this.alertShowAvatars,
+        alertDisabledTypes: alertDisabledTypes ?? this.alertDisabledTypes,
         connectChatOnLaunch: connectChatOnLaunch ?? this.connectChatOnLaunch,
         obsEnabled: obsEnabled ?? this.obsEnabled,
         obsConnectOnLaunch: obsConnectOnLaunch ?? this.obsConnectOnLaunch,

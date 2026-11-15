@@ -262,4 +262,20 @@ void main() {
         reason: 'off by default: reading stays as before');
     expect(const SettingsModel().ttsMaxCharacters, ttsMaxCharactersLimit);
   });
+
+  test('disabled alert types persist, sanitize entries and default to empty',
+      () {
+    const defaults = SettingsModel();
+    expect(defaults.alertDisabledTypes, isEmpty);
+    expect(SettingsModel.fromJson(const {}).alertDisabledTypes, isEmpty);
+    final settings =
+        defaults.copyWith(alertDisabledTypes: ['raid', 'bits', 'future']);
+    final restored = SettingsModel.fromJsonString(settings.toJsonString());
+    expect(restored.alertDisabledTypes, ['raid', 'bits', 'future']);
+    expect(
+        SettingsModel.fromJson({
+          'alertDisabledTypes': ['gift', 42, null, false, 'unknown'],
+        }).alertDisabledTypes,
+        ['gift', 'unknown']);
+  });
 }

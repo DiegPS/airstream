@@ -709,5 +709,18 @@
   "globalShortcutNeedsModifier": "Use Ctrl, Alt or Win with the key.",
   "globalShortcutReserved": "Ctrl + Shift + C is reserved for click-through.",
   "globalShortcutDuplicate": "Another action already uses this shortcut.",
-  "globalShortcutInUse": "Another app already uses this shortcut; choose a different one."
+  "globalShortcutInUse": "Another app already uses this shortcut; choose a different one.",
+  "alertTypes": "Alert types",
+  "alertTypeSuperChat": "YouTube Super Chats",
+  "alertTypeMembership": "YouTube new members",
+  "alertTypeBits": "Twitch Bits",
+  "alertTypeSubscription": "Subscriptions (Twitch and Kick)",
+  "alertTypeGift": "Gifted subscriptions and memberships",
+  "alertTypeRaid": "Raids and hosts",
+  "alertTypeKicks": "Kick Kicks",
+  "testAlertBits": "Bits",
+  "testAlertSubscription": "Subscription",
+  "testAlertGift": "Gift",
+  "testAlertRaid": "Raid",
+  "testAlertKicks": "Kicks"
 }

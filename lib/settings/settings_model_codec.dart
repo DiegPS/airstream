@@ -113,6 +113,7 @@ abstract final class SettingsModelCodec {
         'alertFontSize': model.alertFontSize,
         'alertDisplaySeconds': model.alertDisplaySeconds,
         'alertShowAvatars': model.alertShowAvatars,
+        'alertDisabledTypes': model.alertDisabledTypes,
         'connectChatOnLaunch': model.connectChatOnLaunch,
         'obsEnabled': model.obsEnabled,
         'obsConnectOnLaunch': model.obsConnectOnLaunch,
@@ -267,6 +268,8 @@ abstract final class SettingsModelCodec {
       alertFontSize: (j['alertFontSize'] as num?)?.toDouble() ?? 28.0,
       alertDisplaySeconds: (j['alertDisplaySeconds'] as num?)?.round() ?? 7,
       alertShowAvatars: j['alertShowAvatars'] as bool? ?? true,
+      alertDisabledTypes:
+          List<String>.from(j['alertDisabledTypes'] as List? ?? []),
       connectChatOnLaunch: j['connectChatOnLaunch'] as bool? ?? false,
       obsEnabled: j['obsEnabled'] as bool? ?? false,
       obsConnectOnLaunch: j['obsConnectOnLaunch'] as bool? ?? false,

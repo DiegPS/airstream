@@ -304,6 +304,161 @@ void main() {
     expect(received.map((e) => e['type']),
         ['providerEvent', 'providerEvent', 'alert', 'providerEvent', 'alert']);
   });
+
+  test('default settings deliver every automatic alert type unchanged',
+      () async {
+    for (final msg in [
+      message(Platform.youtube,
+          payment: const SuperChat(amount: r'$5', color: '#FFD600')),
+      message(Platform.youtube, membership: MembershipEventKind.subscription),
+      message(Platform.twitch,
+          payment: const SuperChat(amount: '100 Bits', color: '#9146FF')),
+      message(Platform.kick,
+          membership: MembershipEventKind.resubscription, months: 6),
+      message(Platform.twitch, membership: MembershipEventKind.gift),
+    ]) {
+      final alert = connection.nextAlert();
+      await connection.send(msg);
+      await alert;
+    }
+    await sendProviders([
+      providerEvent(Platform.twitch, ChatProviderEventKind.raid, count: 42),
+      providerEvent(Platform.kick, ChatProviderEventKind.support, count: 100),
+    ]);
+    expect(connection.alerts.map((a) => a['kind']), [
+      'superchat',
+      'membership',
+      'bits',
+      'membership',
+      'membership',
+      'raid',
+      'kicks'
+    ]);
+    expect(connection.alerts[3]['membershipKind'], 'resubscription');
+    expect(connection.alerts[4]['membershipKind'], 'gift');
+    expect(connection.alerts[4]['giftCount'], 1);
+  });
+
+  test('disabled bits still allow Kick subscriptions', () async {
+    connection.server
+        .setSettings(const SettingsModel(alertDisabledTypes: ['bits']));
+    await connection.send(message(Platform.twitch,
+        payment: const SuperChat(amount: '100 Bits', color: '#9146FF')));
+    final alert = connection.nextAlert();
+    await connection.send(
+        message(Platform.kick, membership: MembershipEventKind.subscription));
+    expect(await alert, containsPair('membershipKind', 'subscription'));
+    expect(connection.alerts, hasLength(1));
+  });
+
+  test('disabled gifts create no Twitch group and suppress every platform',
+      () async {
+    connection.server
+        .setSettings(const SettingsModel(alertDisabledTypes: ['gift']));
+    for (final platform in Platform.values) {
+      await connection.send(
+          message(platform, membership: MembershipEventKind.gift, gifts: 5));
+    }
+    // Re-enable before the grouping window: an incorrectly created timer would fire.
+    connection.server.setSettings(const SettingsModel());
+    await expectLater(connection.nextAlert(const Duration(milliseconds: 150)),
+        throwsA(isA<TimeoutException>()));
+    await connection.server.dispose();
+    connection.disposed = true;
+    expect(connection.alerts, isEmpty);
+  });
+
+  test('disabled raids preserve provider envelopes and allow Kicks', () async {
+    final settingsReceived =
+        connection.envelopes.stream.firstWhere((e) => e['type'] == 'settings');
+    connection.server
+        .setSettings(const SettingsModel(alertDisabledTypes: ['raid']));
+    await settingsReceived.timeout(const Duration(seconds: 2));
+    final received = await sendProviders([
+      providerEvent(Platform.twitch, ChatProviderEventKind.raid),
+      providerEvent(Platform.kick, ChatProviderEventKind.host),
+      providerEvent(Platform.kick, ChatProviderEventKind.support, id: 'kicks'),
+    ]);
+    expect(received.map((e) => e['type']),
+        ['providerEvent', 'providerEvent', 'providerEvent', 'alert']);
+    expect(connection.alerts.single['kind'], 'kicks');
+  });
+
+  test('featured cards bypass all disabled types for an alerts client',
+      () async {
+    connection.server.setSettings(const SettingsModel(alertDisabledTypes: [
+      'superchat',
+      'membership',
+      'bits',
+      'subscription',
+      'gift',
+      'raid',
+      'kicks'
+    ]));
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered.timeout(const Duration(seconds: 2));
+    final alert = connection.nextAlert();
+    connection.server.broadcastFeaturedMessage(message(Platform.twitch));
+    expect(await alert, containsPair('kind', 'featured'));
+  });
+
+  test('new test alerts match real payload shapes even when disabled',
+      () async {
+    for (final language in ['en', 'es']) {
+      connection.server.setSettings(SettingsModel(
+          appLanguageCode: language,
+          alertDisabledTypes: const [
+            'bits',
+            'subscription',
+            'gift',
+            'raid',
+            'kicks'
+          ]));
+      for (final (testKind, kind, platform, membership, count) in [
+        ('bits', 'bits', 'twitch', null, null),
+        ('subscription', 'membership', 'kick', 'resubscription', null),
+        ('gift', 'membership', 'twitch', 'gift', null),
+        ('raid', 'raid', 'twitch', null, 42),
+        ('kicks', 'kicks', 'kick', null, 100),
+      ]) {
+        final next = connection.nextAlert();
+        expect(connection.server.broadcastTestAlert(testKind), isTrue);
+        final alert = await next;
+        expect(alert['kind'], kind);
+        expect(alert['platform'], platform);
+        expect(alert['membershipKind'], membership);
+        expect(alert['count'], count);
+        expect(alert['author'],
+            language == 'es' ? 'Espectador de prueba' : 'Test viewer');
+        expect(alert.keys.toSet(), {
+          'platform',
+          'kind',
+          'id',
+          'author',
+          'authorAvatarUrl',
+          'authorChannelId',
+          'badgeImageUrl',
+          'badgeLabel',
+          'message',
+          'amount',
+          'color',
+          'stickerUrl',
+          'timestamp',
+          'membershipKind',
+          'months',
+          'giftCount',
+          if (count != null) 'count',
+        });
+        if (testKind == 'bits') expect(alert['amount'], '100 Bits');
+        if (testKind == 'subscription') expect(alert['months'], 6);
+        if (testKind == 'gift') expect(alert['giftCount'], 5);
+        if (testKind == 'kicks') expect(alert['message'], isNotEmpty);
+      }
+    }
+  });
 }
 
 class _Connection {

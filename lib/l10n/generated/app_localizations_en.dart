@@ -1730,4 +1730,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get globalShortcutInUse =>
       'Another app already uses this shortcut; choose a different one.';
+
+  @override
+  String get alertTypes => 'Alert types';
+
+  @override
+  String get alertTypeSuperChat => 'YouTube Super Chats';
+
+  @override
+  String get alertTypeMembership => 'YouTube new members';
+
+  @override
+  String get alertTypeBits => 'Twitch Bits';
+
+  @override
+  String get alertTypeSubscription => 'Subscriptions (Twitch and Kick)';
+
+  @override
+  String get alertTypeGift => 'Gifted subscriptions and memberships';
+
+  @override
+  String get alertTypeRaid => 'Raids and hosts';
+
+  @override
+  String get alertTypeKicks => 'Kick Kicks';
+
+  @override
+  String get testAlertBits => 'Bits';
+
+  @override
+  String get testAlertSubscription => 'Subscription';
+
+  @override
+  String get testAlertGift => 'Gift';
+
+  @override
+  String get testAlertRaid => 'Raid';
+
+  @override
+  String get testAlertKicks => 'Kicks';
 }

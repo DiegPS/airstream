@@ -969,6 +969,36 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('OBS raid switch toggles the disabled alert setting',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: true));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => settings),
+        overlayUrlProvider.overrideWith((ref) => null),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final raid = find.descendant(
+        of: find.byKey(const Key('alert-type-raid')),
+        matching: find.byType(Switch));
+    await tester.ensureVisible(raid);
+    await tester.tap(raid);
+    await tester.pump();
+    expect(settings.state.alertDisabledTypes, ['raid']);
+    await tester.tap(raid);
+    await tester.pump();
+    expect(settings.state.alertDisabledTypes, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

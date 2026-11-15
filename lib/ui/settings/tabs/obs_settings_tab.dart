@@ -314,6 +314,30 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 (v) => notifier.update(s.copyWith(alertShowAvatars: v)),
               ),
               const SizedBox(height: 8),
+              _section(l.alertTypes),
+              for (final (id, label) in [
+                ('superchat', l.alertTypeSuperChat),
+                ('membership', l.alertTypeMembership),
+                ('bits', l.alertTypeBits),
+                ('subscription', l.alertTypeSubscription),
+                ('gift', l.alertTypeGift),
+                ('raid', l.alertTypeRaid),
+                ('kicks', l.alertTypeKicks),
+              ])
+                KeyedSubtree(
+                  key: Key('alert-type-$id'),
+                  child: _switchRow(
+                    label,
+                    !s.alertDisabledTypes.contains(id),
+                    (enabled) => notifier.update(s.copyWith(
+                      alertDisabledTypes: {
+                        ...s.alertDisabledTypes.where((type) => type != id),
+                        if (!enabled) id,
+                      }.toList(),
+                    )),
+                  ),
+                ),
+              const SizedBox(height: 8),
               _alertTestButtons(
                 l: l,
                 onTest: (kind) {

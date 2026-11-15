@@ -747,6 +747,12 @@ Widget _alertTestButtons({
               l.member,
               () => onTest('membership'),
             ),
+            _alertTestButton(l.testAlertBits, () => onTest('bits')),
+            _alertTestButton(
+                l.testAlertSubscription, () => onTest('subscription')),
+            _alertTestButton(l.testAlertGift, () => onTest('gift')),
+            _alertTestButton(l.testAlertRaid, () => onTest('raid')),
+            _alertTestButton(l.testAlertKicks, () => onTest('kicks')),
           ],
         ),
       ],

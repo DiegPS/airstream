@@ -1741,4 +1741,43 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get globalShortcutInUse =>
       'Otra aplicación ya usa este atajo; elige otro.';
+
+  @override
+  String get alertTypes => 'Tipos de alerta';
+
+  @override
+  String get alertTypeSuperChat => 'Super Chats de YouTube';
+
+  @override
+  String get alertTypeMembership => 'Nuevos miembros de YouTube';
+
+  @override
+  String get alertTypeBits => 'Bits de Twitch';
+
+  @override
+  String get alertTypeSubscription => 'Suscripciones (Twitch y Kick)';
+
+  @override
+  String get alertTypeGift => 'Suscripciones y membresías regaladas';
+
+  @override
+  String get alertTypeRaid => 'Raids y hosts';
+
+  @override
+  String get alertTypeKicks => 'Kicks de Kick';
+
+  @override
+  String get testAlertBits => 'Bits';
+
+  @override
+  String get testAlertSubscription => 'Suscripción';
+
+  @override
+  String get testAlertGift => 'Regalo';
+
+  @override
+  String get testAlertRaid => 'Raid';
+
+  @override
+  String get testAlertKicks => 'Kicks';
 }

@@ -113,7 +113,45 @@ class OverlayServer {
     final memberName = spanish ? 'Miembro de prueba' : 'Test member';
     const donorAvatar = null;
     const memberAvatar = null;
+    final viewerName = spanish ? 'Espectador de prueba' : 'Test viewer';
     final data = switch (kind) {
+      'bits' || 'subscription' || 'gift' => _alertData(
+          ChatMessage(
+            platform: kind == 'subscription' ? Platform.kick : Platform.twitch,
+            id: 'test-$kind-$now',
+            author: ChatAuthor(name: viewerName, channelId: 'test-viewer'),
+            items: const [],
+            timestamp: DateTime.parse(now),
+            superChat: kind == 'bits'
+                ? const SuperChat(amount: '100 Bits', color: '#9146FF')
+                : null,
+            isMembershipEvent: kind != 'bits',
+            membershipEventKind: switch (kind) {
+              'subscription' => MembershipEventKind.resubscription,
+              'gift' => MembershipEventKind.gift,
+              _ => null,
+            },
+            membershipMonths: kind == 'subscription' ? 6 : null,
+            membershipGiftCount: kind == 'gift' ? 5 : null,
+          ),
+          kind == 'bits' ? 'bits' : 'membership',
+        ),
+      'raid' || 'kicks' => _providerAlertData(
+          ChatProviderEvent(
+            platform: kind == 'raid' ? Platform.twitch : Platform.kick,
+            kind: kind == 'raid'
+                ? ChatProviderEventKind.raid
+                : ChatProviderEventKind.support,
+            id: 'test-$kind-$now',
+            timestamp: DateTime.parse(now),
+            authorName: viewerName,
+            count: kind == 'raid' ? 42 : 100,
+            text: kind == 'kicks'
+                ? (spanish ? '¡Buen directo!' : 'Great stream!')
+                : '',
+          ),
+          kind,
+        ),
       'superchat-empty' => {
           'platform': 'youtube',
           'kind': 'superchat',
@@ -204,7 +242,11 @@ class OverlayServer {
       (Platform.kick, ChatProviderEventKind.support) => 'kicks',
       _ => null,
     };
-    if (kind == null) return;
+    if (kind == null ||
+        _settings.alertDisabledTypes
+            .contains(_alertType(kind, event.platform, null))) {
+      return;
+    }
     final ids = _providerAlertIds.putIfAbsent(event.platform, () => <String>{});
     if (!ids.add(event.id)) return;
     if (ids.length > 200) ids.remove(ids.first);
@@ -339,13 +381,34 @@ class OverlayServer {
     }
   }
 
+  static String? _alertType(
+    String kind,
+    Platform platform,
+    MembershipEventKind? membershipKind,
+  ) =>
+      switch (kind) {
+        'superchat' || 'bits' || 'kicks' => kind,
+        'raid' || 'host' => 'raid',
+        'membership' when membershipKind == MembershipEventKind.gift => 'gift',
+        'membership' when platform == Platform.youtube => 'membership',
+        'membership'
+            when membershipKind == MembershipEventKind.subscription ||
+                membershipKind == MembershipEventKind.resubscription =>
+          'subscription',
+        _ => null,
+      };
+
   void _broadcastAlert(ChatMessage msg) {
     final kind = msg.superChat != null
         ? (msg.platform == Platform.twitch ? 'bits' : 'superchat')
         : msg.isMembershipEvent
             ? 'membership'
             : null;
-    if (kind == null) return;
+    if (kind == null ||
+        _settings.alertDisabledTypes.contains(
+            _alertType(kind, msg.platform, msg.membershipEventKind))) {
+      return;
+    }
     if (kind == 'membership' &&
         msg.platform == Platform.twitch &&
         msg.membershipEventKind == MembershipEventKind.gift) {
