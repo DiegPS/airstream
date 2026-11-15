@@ -762,5 +762,17 @@
   "alertTypeOptions": "Options for this type",
   "alertTypeOwnDuration": "Own duration",
   "alertTypeUseGeneral": "Use general",
-  "alertTypeCustomized": "Custom"
+  "alertTypeCustomized": "Custom",
+  "alertSound": "Sound",
+  "alertSoundNone": "None",
+  "alertSoundChime": "Chime",
+  "alertSoundCoin": "Coin",
+  "alertSoundFanfare": "Fanfare",
+  "alertSoundCustom": "Own file",
+  "alertSoundChoose": "Choose…",
+  "alertSoundNoFile": "No file chosen",
+  "alertSoundInvalid": "Use a WAV, MP3 or OGG file of up to 5 MB.",
+  "alertSoundVolume": "Alert sound volume",
+  "alertSoundObsHint": "Sounds play from the alerts page. In OBS, turn on “Control audio via OBS” for that browser source so your viewers hear them.",
+  "alertTypeTest": "Test"
 }

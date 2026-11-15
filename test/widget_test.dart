@@ -1090,6 +1090,42 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('raid sound stores Coin and its Test button sends feedback',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: true));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => settings),
+      overlayUrlProvider.overrideWith((ref) => null),
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final expand = find.byKey(const Key('alert-type-options-raid'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pumpAndSettle();
+    final sound = find.descendant(
+        of: find.byKey(const Key('alert-type-sound-raid')),
+        matching: find.byType(DropdownButton<String>));
+    await tester.ensureVisible(sound);
+    await tester.tap(sound);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Coin').last);
+    await tester.pumpAndSettle();
+    expect(settings.state.alertTypeOptions['raid']!['sound'], 'coin');
+    final test = find.byKey(const Key('alert-type-test-raid'));
+    await tester.ensureVisible(test);
+    await tester.tap(test);
+    await tester.pump();
+    expect(find.text('Open the alerts overlay in OBS/browser first'),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

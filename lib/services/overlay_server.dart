@@ -6,6 +6,8 @@ import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
+import 'package:airstream/services/overlay/alert_sounds.dart';
+import 'package:airstream/settings/alert_type_options.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -72,7 +74,12 @@ class OverlayServer {
       );
     });
 
-    final handler = buildOverlayRoutes(wsHandler);
+    final handler = buildOverlayRoutes(wsHandler, customSound: (type) {
+      final option = AlertTypeOptions.of(_settings, type);
+      return option.sound == 'custom'
+          ? AlertSounds.customFile(option.soundPath)
+          : null;
+    });
 
     final server =
         await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);

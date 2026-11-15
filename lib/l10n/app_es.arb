@@ -560,5 +560,17 @@
   "alertTypeOptions": "Opciones de este tipo",
   "alertTypeOwnDuration": "Duración propia",
   "alertTypeUseGeneral": "Usar la general",
-  "alertTypeCustomized": "Personalizado"
+  "alertTypeCustomized": "Personalizado",
+  "alertSound": "Sonido",
+  "alertSoundNone": "Sin sonido",
+  "alertSoundChime": "Campanilla",
+  "alertSoundCoin": "Moneda",
+  "alertSoundFanfare": "Fanfarria",
+  "alertSoundCustom": "Archivo propio",
+  "alertSoundChoose": "Elegir…",
+  "alertSoundNoFile": "Ningún archivo elegido",
+  "alertSoundInvalid": "Usa un archivo WAV, MP3 u OGG de hasta 5 MB.",
+  "alertSoundVolume": "Volumen de los sonidos de alerta",
+  "alertSoundObsHint": "Los sonidos se reproducen desde la página de alertas. En OBS, activa «Controlar audio mediante OBS» en esa fuente de navegador para que tu audiencia los oiga.",
+  "alertTypeTest": "Probar"
 }

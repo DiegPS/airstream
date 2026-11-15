@@ -1888,4 +1888,42 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertTypeCustomized => 'Personalizado';
+
+  @override
+  String get alertSound => 'Sonido';
+
+  @override
+  String get alertSoundNone => 'Sin sonido';
+
+  @override
+  String get alertSoundChime => 'Campanilla';
+
+  @override
+  String get alertSoundCoin => 'Moneda';
+
+  @override
+  String get alertSoundFanfare => 'Fanfarria';
+
+  @override
+  String get alertSoundCustom => 'Archivo propio';
+
+  @override
+  String get alertSoundChoose => 'Elegir…';
+
+  @override
+  String get alertSoundNoFile => 'Ningún archivo elegido';
+
+  @override
+  String get alertSoundInvalid =>
+      'Usa un archivo WAV, MP3 u OGG de hasta 5 MB.';
+
+  @override
+  String get alertSoundVolume => 'Volumen de los sonidos de alerta';
+
+  @override
+  String get alertSoundObsHint =>
+      'Los sonidos se reproducen desde la página de alertas. En OBS, activa «Controlar audio mediante OBS» en esa fuente de navegador para que tu audiencia los oiga.';
+
+  @override
+  String get alertTypeTest => 'Probar';
 }

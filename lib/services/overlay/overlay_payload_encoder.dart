@@ -140,6 +140,17 @@ abstract final class OverlayPayloadEncoder {
         'alertPosition': settings.alertPosition,
         'alertLayout': settings.alertLayout,
         'alertAnimation': settings.alertAnimation,
-        'alertTypeOptions': settings.alertTypeOptions,
+        'alertTypeOptions': {
+          for (final entry in settings.alertTypeOptions.entries)
+            entry.key: {
+              for (final key in ['seconds', 'animation', 'sound'])
+                if (entry.value.containsKey(key)) key: entry.value[key],
+              if (entry.value['sound'] == 'custom')
+                'soundKey': (entry.value['soundPath'] as String? ?? '')
+                    .hashCode
+                    .toRadixString(16),
+            },
+        },
+        'alertSoundVolume': settings.alertSoundVolume,
       };
 }

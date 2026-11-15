@@ -561,6 +561,28 @@ void main() {
     expect(alert['alertType'], isNull);
     expect(alert['deliveryId'], delivery.id);
   });
+  test('sound settings never expose local paths and keys change with paths',
+      () async {
+    Future<Map<String, dynamic>> update(String path) async {
+      final next = connection.envelopes.stream
+          .firstWhere((e) => e['type'] == 'settings');
+      connection.server.setSettings(SettingsModel(alertTypeOptions: {
+        'raid': {'sound': 'custom', 'soundPath': path},
+        'bits': {'sound': 'coin', 'soundPath': 'ignored-private.mp3'},
+      }));
+      return (await next)['data'] as Map<String, dynamic>;
+    }
+
+    final first = await update('private-a.wav');
+    final second = await update('private-b.wav');
+    expect(jsonEncode(first), isNot(contains('soundPath')));
+    expect(jsonEncode(first), isNot(contains('private-a.wav')));
+    expect(first['alertSoundVolume'], 70);
+    expect(first['alertTypeOptions']['bits'], {'sound': 'coin'});
+    expect(first['alertTypeOptions']['raid']['soundKey'], isA<String>());
+    expect(first['alertTypeOptions']['raid']['soundKey'],
+        isNot(second['alertTypeOptions']['raid']['soundKey']));
+  });
 }
 
 class _Connection {

@@ -3386,6 +3386,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom'**
   String get alertTypeCustomized;
+
+  /// No description provided for @alertSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get alertSound;
+
+  /// No description provided for @alertSoundNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get alertSoundNone;
+
+  /// No description provided for @alertSoundChime.
+  ///
+  /// In en, this message translates to:
+  /// **'Chime'**
+  String get alertSoundChime;
+
+  /// No description provided for @alertSoundCoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Coin'**
+  String get alertSoundCoin;
+
+  /// No description provided for @alertSoundFanfare.
+  ///
+  /// In en, this message translates to:
+  /// **'Fanfare'**
+  String get alertSoundFanfare;
+
+  /// No description provided for @alertSoundCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Own file'**
+  String get alertSoundCustom;
+
+  /// No description provided for @alertSoundChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose…'**
+  String get alertSoundChoose;
+
+  /// No description provided for @alertSoundNoFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No file chosen'**
+  String get alertSoundNoFile;
+
+  /// No description provided for @alertSoundInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a WAV, MP3 or OGG file of up to 5 MB.'**
+  String get alertSoundInvalid;
+
+  /// No description provided for @alertSoundVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert sound volume'**
+  String get alertSoundVolume;
+
+  /// No description provided for @alertSoundObsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sounds play from the alerts page. In OBS, turn on “Control audio via OBS” for that browser source so your viewers hear them.'**
+  String get alertSoundObsHint;
+
+  /// No description provided for @alertTypeTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get alertTypeTest;
 }
 
 class _AppLocalizationsDelegate

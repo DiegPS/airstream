@@ -77,4 +77,35 @@ void main() {
             .alertTypeOptions,
         isEmpty);
   });
+  test('sound options sanitize paths and preserve existing overrides', () {
+    for (final sound in ['chime', 'coin', 'fanfare', 'custom']) {
+      final sanitized = AlertTypeOptions.sanitize({
+        'raid': {'sound': sound, 'soundPath': 'C:/private.wav', 'seconds': 8},
+      })['raid']!;
+      expect(sanitized['sound'], sound);
+      expect(sanitized.containsKey('soundPath'), sound == 'custom');
+    }
+    for (final path in ['', 12, 'x' * 1025]) {
+      expect(
+          AlertTypeOptions.sanitize({
+            'raid': {'sound': 'custom', 'soundPath': path}
+          })['raid'],
+          {'sound': 'custom'});
+    }
+    expect(
+        AlertTypeOptions.sanitize({
+          'raid': {'sound': 'unknown', 'soundPath': 'x'}
+        }),
+        isEmpty);
+    var s = AlertTypeOptions.withOption(const SettingsModel(), 'raid',
+        seconds: 9, sound: 'custom', soundPath: 'private.wav');
+    expect(AlertTypeOptions.of(s, 'raid').soundPath, 'private.wav');
+    s = AlertTypeOptions.withOption(s, 'raid', sound: 'coin');
+    expect(s.alertTypeOptions['raid'], {'seconds': 9, 'sound': 'coin'});
+    s = AlertTypeOptions.withOption(s, 'raid',
+        sound: '', soundPath: 'ignored.wav');
+    expect(s.alertTypeOptions['raid'], {'seconds': 9});
+    expect(AlertTypeOptions.of(s, 'raid').sound, '');
+    expect(AlertTypeOptions.of(s, 'raid').soundPath, '');
+  });
 }

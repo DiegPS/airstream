@@ -351,6 +351,20 @@ function showNext() {
   if (active || queue.length === 0) return;
   active = queue.shift();
   renderAlert(active);
+  const sound = typeOption(active).sound;
+  const volume = Number(settings.alertSoundVolume ?? 70);
+  if (active.kind !== 'featured' && sound && volume > 0) {
+    const url = ['chime', 'coin', 'fanfare'].includes(sound)
+      ? '/sounds/' + sound + '.wav'
+      : sound === 'custom'
+        ? '/sounds/custom/' + encodeURIComponent(active.alertType) + '?k=' + encodeURIComponent(typeOption(active).soundKey || '')
+        : null;
+    if (url) {
+      const audio = new Audio(url);
+      audio.volume = Math.min(100, volume) / 100;
+      audio.play().catch(() => {});
+    }
+  }
   const displayed = active;
   const connection = displayed.deliverySocket;
   // Confirm only after the queued card has reached a browser paint frame.

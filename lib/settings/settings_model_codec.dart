@@ -119,6 +119,7 @@ abstract final class SettingsModelCodec {
         'alertLayout': model.alertLayout,
         'alertAnimation': model.alertAnimation,
         'alertTypeOptions': model.alertTypeOptions,
+        'alertSoundVolume': model.alertSoundVolume,
         'connectChatOnLaunch': model.connectChatOnLaunch,
         'obsEnabled': model.obsEnabled,
         'obsConnectOnLaunch': model.obsConnectOnLaunch,
@@ -287,6 +288,7 @@ abstract final class SettingsModelCodec {
           ? j['alertAnimation'] as String
           : 'pop',
       alertTypeOptions: AlertTypeOptions.sanitize(j['alertTypeOptions']),
+      alertSoundVolume: j['alertSoundVolume'] as int? ?? 70,
       connectChatOnLaunch: j['connectChatOnLaunch'] as bool? ?? false,
       obsEnabled: j['obsEnabled'] as bool? ?? false,
       obsConnectOnLaunch: j['obsConnectOnLaunch'] as bool? ?? false,
@@ -386,6 +388,7 @@ abstract final class SettingsModelCodec {
     clampInt('ttsUserCooldownSeconds', 0, 60);
     clampInt('ttsMaxCharacters', 40, ttsMaxCharactersLimit);
     clampInt('alertDisplaySeconds', 3, 20);
+    clampInt('alertSoundVolume', 0, 100);
 
     clampDouble('fontSize', 10, 28);
     clampDouble('bgOpacity', 0, 1);

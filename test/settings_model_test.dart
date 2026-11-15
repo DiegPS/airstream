@@ -315,4 +315,16 @@ void main() {
       }
     }
   });
+  test('alert sound volume defaults, persists and clamps', () {
+    expect(const SettingsModel().alertSoundVolume, 70);
+    for (final (raw, expected) in [(-1, 0), (101, 100), (42, 42)]) {
+      final s = SettingsModel.fromJson({'alertSoundVolume': raw});
+      expect(s.alertSoundVolume, expected);
+      expect(SettingsModel.fromJsonString(s.toJsonString()).alertSoundVolume,
+          expected);
+    }
+    expect(
+        const SettingsModel().copyWith(alertSoundVolume: 25).alertSoundVolume,
+        25);
+  });
 }

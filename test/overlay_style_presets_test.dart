@@ -130,6 +130,7 @@ SettingsModel _different() {
     alertTypeOptions: const {
       'raid': {'seconds': 12},
     },
+    alertSoundVolume: 35,
     connectChatOnLaunch: !d.connectChatOnLaunch,
     obsEnabled: !d.obsEnabled,
     obsConnectOnLaunch: !d.obsConnectOnLaunch,

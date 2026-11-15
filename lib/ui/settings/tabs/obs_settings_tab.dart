@@ -342,6 +342,19 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                         'fade': l.alertAnimationFade,
                         'zoom': l.alertAnimationZoom
                       }[v]!),
+              StyledSliderRow(
+                key: const Key('alert-sound-volume'),
+                label: l.alertSoundVolume,
+                value: s.alertSoundVolume.toDouble(),
+                min: 0,
+                max: 100,
+                unit: '%',
+                formatValue: (v) => '${v.round()}%',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(alertSoundVolume: v.round())),
+              ),
+              Text(l.alertSoundObsHint,
+                  style: const TextStyle(color: Colors.white38, fontSize: 10)),
               const SizedBox(height: 8),
               _section(l.alertTypes),
               for (final (id, label) in [
@@ -359,6 +372,14 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   label: label,
                   settings: s,
                   onChanged: (next) => notifier.update(next),
+                  onTest: () {
+                    final sent = appController.testOverlayAlert(id);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          sent ? l.testAlertSent : l.openAlertsOverlayFirst),
+                      duration: const Duration(milliseconds: 1400),
+                    ));
+                  },
                 ),
               const SizedBox(height: 8),
               _alertTestButtons(
@@ -701,11 +722,13 @@ class _AlertTypeRow extends StatefulWidget {
       required this.id,
       required this.label,
       required this.settings,
-      required this.onChanged});
+      required this.onChanged,
+      required this.onTest});
   final String id;
   final String label;
   final SettingsModel settings;
   final ValueChanged<SettingsModel> onChanged;
+  final VoidCallback onTest;
 
   @override
   State<_AlertTypeRow> createState() => _AlertTypeRowState();
@@ -713,6 +736,7 @@ class _AlertTypeRow extends StatefulWidget {
 
 class _AlertTypeRowState extends State<_AlertTypeRow> {
   bool _expanded = false;
+  bool _invalidSound = false;
 
   @override
   Widget build(BuildContext context) {
@@ -734,7 +758,9 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
                     if (!enabled) id,
                   }.toList()))),
         )),
-        if (option.seconds != 0 || option.animation.isNotEmpty)
+        if (option.seconds != 0 ||
+            option.animation.isNotEmpty ||
+            option.sound.isNotEmpty)
           Tooltip(
               message: l.alertTypeCustomized,
               child: const Icon(Icons.circle, size: 6, color: Colors.white70)),
@@ -780,6 +806,67 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
                       'fade': l.alertAnimationFade,
                       'zoom': l.alertAnimationZoom
                     }[v]!)),
+        KeyedSubtree(
+          key: Key('alert-type-sound-$id'),
+          child: _dropdownRow(
+            l.alertSound,
+            option.sound,
+            const ['', 'chime', 'coin', 'fanfare', 'custom'],
+            (v) {
+              setState(() => _invalidSound = false);
+              widget.onChanged(AlertTypeOptions.withOption(s, id, sound: v));
+            },
+            optionLabel: (v) => {
+              '': l.alertSoundNone,
+              'chime': l.alertSoundChime,
+              'coin': l.alertSoundCoin,
+              'fanfare': l.alertSoundFanfare,
+              'custom': l.alertSoundCustom,
+            }[v]!,
+          ),
+        ),
+        if (option.sound == 'custom') ...[
+          Row(children: [
+            Expanded(
+                child: Text(
+                    option.soundPath.isEmpty
+                        ? l.alertSoundNoFile
+                        : p.basename(option.soundPath),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 11))),
+            TextButton(
+              key: Key('alert-type-sound-file-$id'),
+              onPressed: () async {
+                final picked = await openFile(acceptedTypeGroups: [
+                  const XTypeGroup(
+                      label: 'Audio', extensions: ['wav', 'mp3', 'ogg']),
+                ]);
+                if (!mounted || picked == null) return;
+                final valid = picked.path.length <= 1024 &&
+                    AlertSounds.customFile(picked.path) != null;
+                setState(() => _invalidSound = !valid);
+                if (valid) {
+                  widget.onChanged(AlertTypeOptions.withOption(
+                      widget.settings, id,
+                      soundPath: picked.path));
+                }
+              },
+              child: Text(l.alertSoundChoose),
+            ),
+          ]),
+          if (_invalidSound)
+            Text(l.alertSoundInvalid,
+                style: const TextStyle(color: Color(0xFFFFB15C), fontSize: 11)),
+        ],
+        Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              key: Key('alert-type-test-$id'),
+              onPressed: widget.onTest,
+              child: Text(l.alertTypeTest),
+            )),
       ],
     ]);
   }

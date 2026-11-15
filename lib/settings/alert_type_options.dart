@@ -11,9 +11,15 @@ const alertTypeIds = [
 ];
 
 class AlertTypeOption {
-  const AlertTypeOption({this.seconds = 0, this.animation = ''});
+  const AlertTypeOption(
+      {this.seconds = 0,
+      this.animation = '',
+      this.sound = '',
+      this.soundPath = ''});
   final int seconds;
   final String animation;
+  final String sound;
+  final String soundPath;
 }
 
 abstract final class AlertTypeOptions {
@@ -33,6 +39,17 @@ abstract final class AlertTypeOptions {
       }
       final animation = entry['animation'];
       if (_animations.contains(animation)) option['animation'] = animation;
+      final sound = entry['sound'];
+      if (const ['chime', 'coin', 'fanfare', 'custom'].contains(sound)) {
+        option['sound'] = sound;
+        final path = entry['soundPath'];
+        if (sound == 'custom' &&
+            path is String &&
+            path.isNotEmpty &&
+            path.length <= 1024) {
+          option['soundPath'] = path;
+        }
+      }
       if (option.isNotEmpty) result[type] = option;
     }
     return result;
@@ -43,11 +60,13 @@ abstract final class AlertTypeOptions {
     return AlertTypeOption(
       seconds: entry?['seconds'] as int? ?? 0,
       animation: entry?['animation'] as String? ?? '',
+      sound: entry?['sound'] as String? ?? '',
+      soundPath: entry?['soundPath'] as String? ?? '',
     );
   }
 
   static SettingsModel withOption(SettingsModel settings, String type,
-      {int? seconds, String? animation}) {
+      {int? seconds, String? animation, String? sound, String? soundPath}) {
     final options = sanitize(settings.alertTypeOptions);
     final entry = <String, dynamic>{...?options[type]};
     if (seconds != null) {
@@ -64,6 +83,15 @@ abstract final class AlertTypeOptions {
         entry['animation'] = animation;
       }
     }
+    if (sound != null) {
+      if (sound.isEmpty) {
+        entry.remove('sound');
+        entry.remove('soundPath');
+      } else {
+        entry['sound'] = sound;
+      }
+    }
+    if (soundPath != null && sound != '') entry['soundPath'] = soundPath;
     options[type] = entry;
     return settings.copyWith(alertTypeOptions: sanitize(options));
   }
