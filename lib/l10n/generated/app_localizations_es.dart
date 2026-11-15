@@ -1115,7 +1115,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get eventBannersDescription =>
-      'Elige qué eventos anónimos de las plataformas aparecen sobre el chat.';
+      'Elige qué avisos de las plataformas (raids, encuestas, mensajes fijados…) aparecen sobre el chat.';
 
   @override
   String get eventBannerDuration => 'Tiempo visible';
@@ -1231,4 +1231,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get languageVietnamese => 'Vietnamita';
+
+  @override
+  String get noChannelsConfiguredMenuHidden =>
+      'Todavía no hay canales configurados.';
+
+  @override
+  String get configureChannels => 'Configurar canales';
+
+  @override
+  String platformStatusConnected(String platform) {
+    return '$platform: conectado';
+  }
+
+  @override
+  String platformStatusConnecting(String platform) {
+    return '$platform: conectando…';
+  }
+
+  @override
+  String platformStatusIdle(String platform) {
+    return '$platform: sin conectar';
+  }
 }

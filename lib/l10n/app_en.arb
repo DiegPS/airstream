@@ -52,7 +52,7 @@
   "bubble": "Bubble",
   "bubbleShadow": "Bubble shadow",
   "filters": "Filters",
-  "filtersDescription": "Blocked users and words are filtered in the message pipeline, so they are removed for your local chat view, TTS and the Shelf overlay.",
+  "filtersDescription": "Blocked users and words are removed from your chat, the TTS reader and the OBS overlay.",
   "blockedUsers": "Blocked users",
   "blockedUsersHelp": "One per line. Prefixing with @ is optional.",
   "blockedWordsOrPhrases": "Blocked words or phrases",
@@ -469,7 +469,7 @@
   "chatEventStreamOnline": "Stream online",
   "chatEventStreamOffline": "Stream offline",
   "eventBanners": "Event banners",
-  "eventBannersDescription": "Choose which anonymous platform events appear above chat.",
+  "eventBannersDescription": "Choose which platform notices (raids, polls, pinned messages…) appear above chat.",
   "eventBannerDuration": "Visible duration",
   "chatEventUnknown": "Event",
   "chatRoomEmoteOnly": "Emote-only",
@@ -508,5 +508,19 @@
   "languageSwedish": "Swedish",
   "languageTurkish": "Turkish",
   "languageUkrainian": "Ukrainian",
-  "languageVietnamese": "Vietnamese"
+  "languageVietnamese": "Vietnamese",
+  "noChannelsConfiguredMenuHidden": "No channels configured yet.",
+  "configureChannels": "Configure channels",
+  "platformStatusConnected": "{platform}: connected",
+  "@platformStatusConnected": {
+    "placeholders": { "platform": { "type": "String" } }
+  },
+  "platformStatusConnecting": "{platform}: connecting…",
+  "@platformStatusConnecting": {
+    "placeholders": { "platform": { "type": "String" } }
+  },
+  "platformStatusIdle": "{platform}: not connected",
+  "@platformStatusIdle": {
+    "placeholders": { "platform": { "type": "String" } }
+  }
 }

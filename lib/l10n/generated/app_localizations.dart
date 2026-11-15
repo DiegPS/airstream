@@ -377,7 +377,7 @@ abstract class AppLocalizations {
   /// No description provided for @filtersDescription.
   ///
   /// In en, this message translates to:
-  /// **'Blocked users and words are filtered in the message pipeline, so they are removed for your local chat view, TTS and the Shelf overlay.'**
+  /// **'Blocked users and words are removed from your chat, the TTS reader and the OBS overlay.'**
   String get filtersDescription;
 
   /// No description provided for @blockedUsers.
@@ -2094,7 +2094,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventBannersDescription.
   ///
   /// In en, this message translates to:
-  /// **'Choose which anonymous platform events appear above chat.'**
+  /// **'Choose which platform notices (raids, polls, pinned messages…) appear above chat.'**
   String get eventBannersDescription;
 
   /// No description provided for @eventBannerDuration.
@@ -2318,6 +2318,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vietnamese'**
   String get languageVietnamese;
+
+  /// No description provided for @noChannelsConfiguredMenuHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'No channels configured yet.'**
+  String get noChannelsConfiguredMenuHidden;
+
+  /// No description provided for @configureChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure channels'**
+  String get configureChannels;
+
+  /// No description provided for @platformStatusConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{platform}: connected'**
+  String platformStatusConnected(String platform);
+
+  /// No description provided for @platformStatusConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'{platform}: connecting…'**
+  String platformStatusConnecting(String platform);
+
+  /// No description provided for @platformStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'{platform}: not connected'**
+  String platformStatusIdle(String platform);
 }
 
 class _AppLocalizationsDelegate

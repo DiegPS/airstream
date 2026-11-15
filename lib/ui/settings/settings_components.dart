@@ -489,6 +489,7 @@ Widget _dropdownRow(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
+            flex: 3,
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
@@ -501,7 +502,7 @@ Widget _dropdownRow(
           ),
           const SizedBox(width: 8),
           Flexible(
-            flex: 3,
+            flex: 2,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(

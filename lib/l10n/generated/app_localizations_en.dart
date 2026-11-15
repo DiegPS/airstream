@@ -157,7 +157,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filtersDescription =>
-      'Blocked users and words are filtered in the message pipeline, so they are removed for your local chat view, TTS and the Shelf overlay.';
+      'Blocked users and words are removed from your chat, the TTS reader and the OBS overlay.';
 
   @override
   String get blockedUsers => 'Blocked users';
@@ -1105,7 +1105,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventBannersDescription =>
-      'Choose which anonymous platform events appear above chat.';
+      'Choose which platform notices (raids, polls, pinned messages…) appear above chat.';
 
   @override
   String get eventBannerDuration => 'Visible duration';
@@ -1221,4 +1221,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get languageVietnamese => 'Vietnamese';
+
+  @override
+  String get noChannelsConfiguredMenuHidden => 'No channels configured yet.';
+
+  @override
+  String get configureChannels => 'Configure channels';
+
+  @override
+  String platformStatusConnected(String platform) {
+    return '$platform: connected';
+  }
+
+  @override
+  String platformStatusConnecting(String platform) {
+    return '$platform: connecting…';
+  }
+
+  @override
+  String platformStatusIdle(String platform) {
+    return '$platform: not connected';
+  }
 }

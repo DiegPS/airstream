@@ -826,6 +826,23 @@ void main() {
     expect(moderation.single.authorName, 'Some_User');
     expect(moderation.single.matchesAuthor(messages.first.author), isTrue);
   });
+
+  test('Kick subscriptions without a message carry no empty text', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messageFuture = service.messages.first;
+    await service.connect('creator');
+
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\SubscriptionEvent',
+      {'username': 'member', 'months': 1},
+    ));
+
+    final message = await messageFuture;
+    expect(message.isMembershipEvent, isTrue);
+    expect(message.items, isEmpty);
+  });
 }
 
 Future<void> _eventually(bool Function() predicate) async {

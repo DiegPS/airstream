@@ -16,12 +16,14 @@ class _WidgetTestSettings extends SettingsNotifier {
   _WidgetTestSettings([
     String languageCode = 'en',
     String youtubeHandle = '',
+    SettingsModel? model,
   ]) {
-    state = SettingsModel(
-      appLanguageCode: languageCode,
-      overlayEnabled: false,
-      youtubeHandle: youtubeHandle,
-    );
+    state = model ??
+        SettingsModel(
+          appLanguageCode: languageCode,
+          overlayEnabled: false,
+          youtubeHandle: youtubeHandle,
+        );
   }
 }
 
@@ -249,4 +251,125 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a narrow window without channels offers to open the menu',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(420, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('in the sidebar'), findsNothing);
+    await tester.tap(find.byKey(const Key('configure-channels-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Connections'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the top bar fits a narrow window while chats run',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(380, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            (ref) => _WidgetTestSettings(
+              'en',
+              '',
+              const SettingsModel(
+                overlayEnabled: false,
+                youtubeHandle: '@creator',
+                twitchChannel: 'creator',
+                kickSlug: 'creator',
+              ),
+            ),
+          ),
+          chatSessionPhaseProvider.overrideWith(
+            (ref) => ChatSessionPhase.connected,
+          ),
+          connectionStatusProvider.overrideWith(
+            (ref) => Stream.value(const {
+              'youtube': (ServiceStatus.connected, null),
+              'twitch': (ServiceStatus.connecting, null),
+              'kick': (ServiceStatus.error, 'HTTP 404'),
+            }),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final stop = tester.getRect(find.text('Stop'));
+    final youtube = tester.getRect(find.text('YT'));
+    expect(youtube.right, lessThan(stop.left));
+    final tooltips = tester
+        .widgetList<Tooltip>(find.byType(Tooltip))
+        .map((tooltip) => tooltip.message)
+        .toList();
+    expect(tooltips, contains('YouTube: connected'));
+    expect(tooltips, contains('Twitch: connecting…'));
+    expect(tooltips, contains(contains('Kick could not connect')));
+    expect(tooltips, isNot(contains('HTTP 404')));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('dual YouTube mode turns YouTube back on',
+      (WidgetTester tester) async {
+    final settings = _RecordingSettings(
+      const SettingsModel(overlayEnabled: false, youtubeEnabled: false),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    final dualSwitch = find.descendant(
+      of: find
+          .ancestor(
+            of: find.text('Horizontal + vertical'),
+            matching: find.byType(Row),
+          )
+          .first,
+      matching: find.byType(Switch),
+    );
+    await tester.tap(dualSwitch);
+    await tester.pump();
+
+    expect(settings.state.youtubeDualStreamEnabled, isTrue);
+    expect(settings.state.youtubeEnabled, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+}
+
+/// Applies updates immediately, without the persisted settings load.
+class _RecordingSettings extends _WidgetTestSettings {
+  _RecordingSettings(SettingsModel model) : super('en', '', model);
+
+  @override
+  Future<void> update(SettingsModel settings) async {
+    state = settings;
+  }
 }

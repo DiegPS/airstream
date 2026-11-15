@@ -25,14 +25,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final isRunning = sessionPhase == ChatSessionPhase.connecting ||
         sessionPhase == ChatSessionPhase.connected ||
         sessionPhase == ChatSessionPhase.partiallyConnected;
-    final hasChannels = (settings.youtubeEnabled &&
-            (settings.youtubeDualStreamEnabled
-                ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
-                    settings.youtubeVerticalUrl.trim().isNotEmpty
-                : settings.youtubeHandle.trim().isNotEmpty ||
-                    settings.youtubeLiveId.trim().isNotEmpty)) ||
-        (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
-        (settings.kickEnabled && settings.kickSlug.isNotEmpty);
+    final hasChannels = hasStartableChat(settings);
 
     return Material(
       color: Colors.transparent,
@@ -54,23 +47,24 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                     child: ColoredBox(color: Colors.transparent),
                   ),
                 ),
-                Positioned(
-                  left: 12,
-                  top: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    child: _TitleBarCaption(
-                      overlayUrl: overlayUrl,
-                      showAppName: sidebarVisible,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 8,
-                  top: 0,
-                  bottom: 0,
+                Positioned.fill(
                   child: Row(
                     children: [
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          // Dragging the caption still moves the window, and
+                          // the status dots can be hovered for details.
+                          child: DragToMoveArea(
+                            child: _TitleBarCaption(
+                              overlayUrl: overlayUrl,
+                              showAppName: sidebarVisible,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       _TopBarActionButton(
                         label: isRunning
                             ? l.stop
@@ -125,6 +119,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                       const SizedBox(width: 6),
                       const WindowControlBar(),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
@@ -149,6 +144,7 @@ class _TitleBarCaption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 20,
@@ -183,7 +179,7 @@ class _TitleBarCaption extends StatelessWidget {
           const SizedBox(width: 12),
         ] else
           const SizedBox(width: 8),
-        _TitleBarCenterStatus(overlayUrl: overlayUrl),
+        Flexible(child: _TitleBarCenterStatus(overlayUrl: overlayUrl)),
       ],
     );
   }
@@ -201,7 +197,14 @@ class _TitleBarCenterStatus extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ConnectionDots(),
+          Flexible(
+            // Clips quietly when the window is too narrow for every status.
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: _ConnectionDots(),
+            ),
+          ),
           if (overlayUrl != null) ...[
             const SizedBox(width: 8),
             const Text(

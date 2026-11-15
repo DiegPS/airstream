@@ -361,14 +361,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       data: (messages) {
         if (messages.isEmpty) {
           final sessionPhase = ref.watch(chatSessionPhaseProvider);
-          final hasChannels = (settings.youtubeEnabled &&
-                  (settings.youtubeDualStreamEnabled
-                      ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
-                          settings.youtubeVerticalUrl.trim().isNotEmpty
-                      : settings.youtubeHandle.trim().isNotEmpty ||
-                          settings.youtubeLiveId.trim().isNotEmpty)) ||
-              (settings.twitchEnabled && settings.twitchChannel.isNotEmpty) ||
-              (settings.kickEnabled && settings.kickSlug.isNotEmpty);
+          final hasChannels = hasStartableChat(settings);
+          final sidebarShown = _sidebarVisible &&
+              !_usesSidebarDrawer(MediaQuery.sizeOf(context).width);
+          if (!hasChannels && !sidebarShown) {
+            return buildPane(
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l.noChannelsConfiguredMenuHidden,
+                      textAlign: TextAlign.center,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 14),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      key: const Key('configure-channels-button'),
+                      onPressed: _toggleSidebarVisibility,
+                      icon: const Icon(Icons.tune_rounded, size: 18),
+                      label: Text(l.configureChannels),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           final text = hasChannels
               ? switch (sessionPhase) {
                   ChatSessionPhase.connecting ||

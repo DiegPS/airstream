@@ -87,6 +87,27 @@ class AirstreamApp extends ConsumerWidget {
           surface: Color(0xFF121212),
         ),
         scaffoldBackgroundColor: const Color(0xFF0D0D0D),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? null
+                : states.contains(WidgetState.disabled)
+                    ? const Color(0xFF3A3A3A)
+                    : const Color(0xFF9A9A9A),
+          ),
+          trackColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? null
+                : const Color(0xFF1E1E1E),
+          ),
+          trackOutlineColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? null
+                : states.contains(WidgetState.disabled)
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFF4A4A4A),
+          ),
+        ),
         useMaterial3: true,
       ),
       home: const ChatScreen(),

@@ -67,3 +67,16 @@ ChatSessionPhase resolveChatSessionPhase({
   }
   return ChatSessionPhase.connecting;
 }
+
+/// Whether [settings] name at least one enabled chat that can be started.
+bool hasStartableChat(SettingsModel settings) {
+  final youtube = settings.youtubeEnabled &&
+      (settings.youtubeDualStreamEnabled
+          ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
+              settings.youtubeVerticalUrl.trim().isNotEmpty
+          : settings.youtubeHandle.trim().isNotEmpty ||
+              settings.youtubeLiveId.trim().isNotEmpty);
+  return youtube ||
+      (settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty) ||
+      (settings.kickEnabled && settings.kickSlug.trim().isNotEmpty);
+}

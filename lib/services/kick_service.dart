@@ -350,7 +350,9 @@ class KickService {
         id: 'subscription:${event.username}:${event.months}:'
             '${++_localEventSequence}',
         author: ChatAuthor(name: event.username, channelId: event.username),
-        items: [MessageItem.text(event.customMessage)],
+        items: event.customMessage.trim().isEmpty
+            ? const []
+            : [MessageItem.text(event.customMessage)],
         isMembership: true,
         isMembershipEvent: true,
         membershipEventKind: isRenewal

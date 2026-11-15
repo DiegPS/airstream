@@ -3,6 +3,7 @@ part of 'package:airstream/ui/chat_screen.dart';
 class _ConnectionDots extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final status = ref.watch(connectionStatusProvider);
     final settings = ref.watch(settingsProvider);
     final metadata = ref.watch(youtubeMetadataProvider).valueOrNull;
@@ -15,14 +16,20 @@ class _ConnectionDots extends ConsumerWidget {
             : settings.youtubeHandle.trim().isNotEmpty ||
                 settings.youtubeLiveId.trim().isNotEmpty);
 
-    final platforms = <(String, bool, String)>[
-      ('YT', youtubeConfigured, 'youtube'),
+    final platforms = <(String, bool, String, String)>[
+      ('YT', youtubeConfigured, 'youtube', 'YouTube'),
       (
         'TW',
         settings.twitchEnabled && settings.twitchChannel.isNotEmpty,
-        'twitch'
+        'twitch',
+        'Twitch',
       ),
-      ('KK', settings.kickEnabled && settings.kickSlug.isNotEmpty, 'kick'),
+      (
+        'KK',
+        settings.kickEnabled && settings.kickSlug.isNotEmpty,
+        'kick',
+        'Kick',
+      ),
     ];
 
     final statusMap = status.valueOrNull ?? {};
@@ -38,7 +45,6 @@ class _ConnectionDots extends ConsumerWidget {
                 )
               : statusMap[p.$3];
           final serviceStatus = s?.$1 ?? ServiceStatus.idle;
-          final error = s?.$2;
           final color = switch (serviceStatus) {
             ServiceStatus.connected => const Color(0xFF53FC18),
             ServiceStatus.connecting => Colors.amber,
@@ -46,7 +52,12 @@ class _ConnectionDots extends ConsumerWidget {
             ServiceStatus.idle => Colors.white24,
           };
           return Tooltip(
-            message: error ?? serviceStatus.name,
+            message: switch (serviceStatus) {
+              ServiceStatus.connected => l.platformStatusConnected(p.$4),
+              ServiceStatus.connecting => l.platformStatusConnecting(p.$4),
+              ServiceStatus.error => l.platformConnectionFailed(p.$4),
+              ServiceStatus.idle => l.platformStatusIdle(p.$4),
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Row(
@@ -65,7 +76,7 @@ class _ConnectionDots extends ConsumerWidget {
                     p.$1,
                     style: TextStyle(
                       color: color,
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -89,7 +100,7 @@ class _ConnectionDots extends ConsumerWidget {
                       key: const Key('kick-viewer-count'),
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
