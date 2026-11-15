@@ -86,6 +86,8 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               ),
           ],
         ),
+        const SettingsProfilesCard(),
+        const SettingsBackupCard(),
       ],
     );
   }

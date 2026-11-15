@@ -847,6 +847,42 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a profile is saved and applied from the system tab',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings = _RecordingSettings(
+      const SettingsModel(overlayEnabled: false, fontSize: 22),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('System & Window'));
+    await tester.pump();
+
+    final name = find.byKey(const Key('profile-name'));
+    await tester.ensureVisible(name);
+    await tester.enterText(name, 'Gaming');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+    expect(settings.state.profiles.keys, ['Gaming']);
+    expect(find.text('Gaming'), findsOneWidget);
+
+    settings.state = settings.state.copyWith(fontSize: 14);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('profile-apply-Gaming')));
+    await tester.pumpAndSettle();
+    expect(settings.state.fontSize, 22);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

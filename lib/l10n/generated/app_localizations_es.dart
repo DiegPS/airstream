@@ -1591,4 +1591,76 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sessionSummaryCopied => 'Resumen copiado';
+
+  @override
+  String get profilesTitle => 'Perfiles';
+
+  @override
+  String get profilesDescription =>
+      'Guarda tu configuración para cada tipo de directo y cámbiala con un clic. Los perfiles guardan estilo, lector de voz, superposición y resaltados; tus canales y OBS no cambian.';
+
+  @override
+  String get profilesEmpty => 'Todavía no hay perfiles.';
+
+  @override
+  String get profileNameHint => 'Nombre del perfil, por ejemplo Juegos';
+
+  @override
+  String get profileSave => 'Guardar';
+
+  @override
+  String get profileApply => 'Aplicar';
+
+  @override
+  String get profileDelete => 'Borrar perfil';
+
+  @override
+  String profileSaved(String name) {
+    return 'Perfil \"$name\" guardado';
+  }
+
+  @override
+  String profileApplied(String name) {
+    return 'Perfil \"$name\" aplicado';
+  }
+
+  @override
+  String get settingsBackupTitle => 'Copia de seguridad';
+
+  @override
+  String get settingsBackupDescription =>
+      'Guarda todos los ajustes en un archivo, recupéralos en otro equipo o vuelve a los valores de fábrica. La contraseña de OBS nunca se guarda en el archivo.';
+
+  @override
+  String get settingsExport => 'Exportar';
+
+  @override
+  String get settingsImport => 'Importar';
+
+  @override
+  String get settingsReset => 'Restablecer';
+
+  @override
+  String get settingsExported => 'Ajustes exportados';
+
+  @override
+  String get settingsExportFailed =>
+      'No se pudieron guardar los ajustes en ese archivo.';
+
+  @override
+  String get settingsImported => 'Ajustes importados';
+
+  @override
+  String get settingsImportFailed =>
+      'Ese archivo no es un archivo de ajustes de Airstream.';
+
+  @override
+  String get settingsResetTitle => '¿Restablecer los ajustes?';
+
+  @override
+  String get settingsResetConfirmation =>
+      'El estilo, el lector de voz, la superposición, los resaltados y lo demás vuelven a sus valores de fábrica. Tus canales, la conexión con OBS, el idioma y los perfiles se conservan.';
+
+  @override
+  String get settingsResetDone => 'Ajustes restablecidos';
 }

@@ -1579,4 +1579,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionSummaryCopied => 'Summary copied';
+
+  @override
+  String get profilesTitle => 'Profiles';
+
+  @override
+  String get profilesDescription =>
+      'Save your setup for each kind of stream and switch in one click. Profiles keep style, voice reader, overlay and highlights; your channels and OBS stay as they are.';
+
+  @override
+  String get profilesEmpty => 'No profiles yet.';
+
+  @override
+  String get profileNameHint => 'Profile name, for example Gaming';
+
+  @override
+  String get profileSave => 'Save';
+
+  @override
+  String get profileApply => 'Apply';
+
+  @override
+  String get profileDelete => 'Delete profile';
+
+  @override
+  String profileSaved(String name) {
+    return 'Profile \"$name\" saved';
+  }
+
+  @override
+  String profileApplied(String name) {
+    return 'Profile \"$name\" applied';
+  }
+
+  @override
+  String get settingsBackupTitle => 'Backup';
+
+  @override
+  String get settingsBackupDescription =>
+      'Save all settings to a file, bring them back on another computer, or return to the defaults. The OBS password is never saved to the file.';
+
+  @override
+  String get settingsExport => 'Export';
+
+  @override
+  String get settingsImport => 'Import';
+
+  @override
+  String get settingsReset => 'Reset';
+
+  @override
+  String get settingsExported => 'Settings exported';
+
+  @override
+  String get settingsExportFailed =>
+      'The settings could not be saved to that file.';
+
+  @override
+  String get settingsImported => 'Settings imported';
+
+  @override
+  String get settingsImportFailed =>
+      'That file is not an Airstream settings file.';
+
+  @override
+  String get settingsResetTitle => 'Reset settings?';
+
+  @override
+  String get settingsResetConfirmation =>
+      'Style, voice reader, overlay, highlights and the rest go back to their defaults. Your channels, OBS connection, language and profiles stay.';
+
+  @override
+  String get settingsResetDone => 'Settings reset';
 }

@@ -36,6 +36,7 @@ import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
 import 'package:airstream/ui/widgets/session_summary_dialog.dart';
+import 'package:airstream/ui/widgets/settings_profiles_card.dart';
 import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'package:airstream/ui/widgets/styled_slider_row.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';

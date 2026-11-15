@@ -2846,6 +2846,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Summary copied'**
   String get sessionSummaryCopied;
+
+  /// No description provided for @profilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles'**
+  String get profilesTitle;
+
+  /// No description provided for @profilesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your setup for each kind of stream and switch in one click. Profiles keep style, voice reader, overlay and highlights; your channels and OBS stay as they are.'**
+  String get profilesDescription;
+
+  /// No description provided for @profilesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No profiles yet.'**
+  String get profilesEmpty;
+
+  /// No description provided for @profileNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile name, for example Gaming'**
+  String get profileNameHint;
+
+  /// No description provided for @profileSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get profileSave;
+
+  /// No description provided for @profileApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get profileApply;
+
+  /// No description provided for @profileDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile'**
+  String get profileDelete;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile \"{name}\" saved'**
+  String profileSaved(String name);
+
+  /// No description provided for @profileApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile \"{name}\" applied'**
+  String profileApplied(String name);
+
+  /// No description provided for @settingsBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get settingsBackupTitle;
+
+  /// No description provided for @settingsBackupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Save all settings to a file, bring them back on another computer, or return to the defaults. The OBS password is never saved to the file.'**
+  String get settingsBackupDescription;
+
+  /// No description provided for @settingsExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get settingsExport;
+
+  /// No description provided for @settingsImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get settingsImport;
+
+  /// No description provided for @settingsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get settingsReset;
+
+  /// No description provided for @settingsExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings exported'**
+  String get settingsExported;
+
+  /// No description provided for @settingsExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The settings could not be saved to that file.'**
+  String get settingsExportFailed;
+
+  /// No description provided for @settingsImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings imported'**
+  String get settingsImported;
+
+  /// No description provided for @settingsImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not an Airstream settings file.'**
+  String get settingsImportFailed;
+
+  /// No description provided for @settingsResetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset settings?'**
+  String get settingsResetTitle;
+
+  /// No description provided for @settingsResetConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Style, voice reader, overlay, highlights and the rest go back to their defaults. Your channels, OBS connection, language and profiles stay.'**
+  String get settingsResetConfirmation;
+
+  /// No description provided for @settingsResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings reset'**
+  String get settingsResetDone;
 }
 
 class _AppLocalizationsDelegate

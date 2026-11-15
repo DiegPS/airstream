@@ -70,6 +70,7 @@ class SettingsModel {
   final List<String> highlightWords;
   final bool highlightSound;
   final bool highlightFirstMessages;
+  final Map<String, Map<String, dynamic>> profiles;
 
   // TTS
   final bool ttsEnabled;
@@ -202,6 +203,7 @@ class SettingsModel {
     this.highlightWords = const [],
     this.highlightSound = false,
     this.highlightFirstMessages = true,
+    this.profiles = const {},
     this.ttsEnabled = false,
     this.ttsMembersOnly = false,
     this.ttsCommandMode = false,
@@ -323,6 +325,7 @@ class SettingsModel {
     List<String>? highlightWords,
     bool? highlightSound,
     bool? highlightFirstMessages,
+    Map<String, Map<String, dynamic>>? profiles,
     bool? ttsEnabled,
     bool? ttsMembersOnly,
     bool? ttsCommandMode,
@@ -449,6 +452,7 @@ class SettingsModel {
         highlightSound: highlightSound ?? this.highlightSound,
         highlightFirstMessages:
             highlightFirstMessages ?? this.highlightFirstMessages,
+        profiles: profiles ?? this.profiles,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
         ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,
         ttsCommandMode: ttsCommandMode ?? this.ttsCommandMode,

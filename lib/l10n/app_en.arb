@@ -659,5 +659,32 @@
     "placeholders": { "name": { "type": "String" } }
   },
   "sessionSummaryCopy": "Copy summary",
-  "sessionSummaryCopied": "Summary copied"
+  "sessionSummaryCopied": "Summary copied",
+  "profilesTitle": "Profiles",
+  "profilesDescription": "Save your setup for each kind of stream and switch in one click. Profiles keep style, voice reader, overlay and highlights; your channels and OBS stay as they are.",
+  "profilesEmpty": "No profiles yet.",
+  "profileNameHint": "Profile name, for example Gaming",
+  "profileSave": "Save",
+  "profileApply": "Apply",
+  "profileDelete": "Delete profile",
+  "profileSaved": "Profile \"{name}\" saved",
+  "@profileSaved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "profileApplied": "Profile \"{name}\" applied",
+  "@profileApplied": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "settingsBackupTitle": "Backup",
+  "settingsBackupDescription": "Save all settings to a file, bring them back on another computer, or return to the defaults. The OBS password is never saved to the file.",
+  "settingsExport": "Export",
+  "settingsImport": "Import",
+  "settingsReset": "Reset",
+  "settingsExported": "Settings exported",
+  "settingsExportFailed": "The settings could not be saved to that file.",
+  "settingsImported": "Settings imported",
+  "settingsImportFailed": "That file is not an Airstream settings file.",
+  "settingsResetTitle": "Reset settings?",
+  "settingsResetConfirmation": "Style, voice reader, overlay, highlights and the rest go back to their defaults. Your channels, OBS connection, language and profiles stay.",
+  "settingsResetDone": "Settings reset"
 }

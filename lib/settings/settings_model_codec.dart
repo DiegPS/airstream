@@ -43,6 +43,7 @@ abstract final class SettingsModelCodec {
         'highlightWords': model.highlightWords,
         'highlightSound': model.highlightSound,
         'highlightFirstMessages': model.highlightFirstMessages,
+        'profiles': model.profiles,
         'ttsEnabled': model.ttsEnabled,
         'ttsMembersOnly': model.ttsMembersOnly,
         'ttsCommandMode': model.ttsCommandMode,
@@ -170,6 +171,11 @@ abstract final class SettingsModelCodec {
       highlightWords: List<String>.from(j['highlightWords'] as List? ?? []),
       highlightSound: j['highlightSound'] as bool? ?? false,
       highlightFirstMessages: j['highlightFirstMessages'] as bool? ?? true,
+      profiles: {
+        for (final e in ((j['profiles'] as Map?) ?? const {}).entries)
+          if (e.value is Map)
+            e.key.toString(): Map<String, dynamic>.from(e.value as Map),
+      },
       ttsEnabled: j['ttsEnabled'] as bool? ?? false,
       ttsMembersOnly: j['ttsMembersOnly'] as bool? ?? false,
       ttsCommandMode: j['ttsCommandMode'] as bool? ?? false,
@@ -293,6 +299,13 @@ abstract final class SettingsModelCodec {
         sanitized[entry.key] = value;
       } else if (expected is List && value is List) {
         sanitized[entry.key] = value.whereType<String>().toList();
+      } else if (expected is Map && value is Map) {
+        sanitized[entry.key] = {
+          for (final profile in value.entries)
+            if (profile.value is Map)
+              profile.key.toString():
+                  Map<String, dynamic>.from(profile.value as Map),
+        };
       }
     }
 
