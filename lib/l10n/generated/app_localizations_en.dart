@@ -1346,4 +1346,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ttsIgnoredUsersHint => 'One per line, for example nightbot';
+
+  @override
+  String get chatFilterTooltip =>
+      'Filter Airstream\'s chat (OBS still shows every message)';
+
+  @override
+  String get chatFilterPlatforms => 'Platforms';
+
+  @override
+  String get chatFilterShowOnly => 'Show';
+
+  @override
+  String get chatFilterAll => 'All messages';
+
+  @override
+  String get chatFilterMembers => 'Only members and subscribers';
+
+  @override
+  String get chatFilterModerators => 'Only moderators';
+
+  @override
+  String get chatFilterHighlighted => 'Only highlighted';
+
+  @override
+  String chatFilterActive(String filters) {
+    return 'Showing: $filters';
+  }
+
+  @override
+  String get chatFilterShowAll => 'Show all';
+
+  @override
+  String get chatFilterNoMatches => 'No messages match the filter yet.';
 }

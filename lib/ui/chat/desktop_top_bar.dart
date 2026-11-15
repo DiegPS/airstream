@@ -121,6 +121,11 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                           ),
                         ),
                       ],
+                      // A very narrow window has no room for it.
+                      if (MediaQuery.sizeOf(context).width >= 460) ...[
+                        const SizedBox(width: 6),
+                        const _ChatFilterButton(),
+                      ],
                       const SizedBox(width: 6),
                       _TopBarIconButton(
                         tooltip: sidebarVisible
@@ -373,4 +378,63 @@ class _DesktopResizeFrame extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Filters what Airstream's chat window shows.
+class _ChatFilterButton extends ConsumerWidget {
+  const _ChatFilterButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final filter = ref.watch(chatViewFilterProvider);
+    void update(ChatViewFilter next) =>
+        ref.read(chatViewFilterProvider.notifier).state = next;
+
+    return MenuAnchor(
+      style: const MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(Color(0xFF1E1E1E)),
+      ),
+      menuChildren: [
+        _menuHeader(l.chatFilterPlatforms),
+        for (final platform in Platform.values)
+          CheckboxMenuButton(
+            key: Key('chat-filter-${platform.name}'),
+            value: !filter.hiddenPlatforms.contains(platform),
+            closeOnActivate: false,
+            onChanged: (_) => update(filter.togglePlatform(platform)),
+            child: Text(chatFilterPlatformName(platform)),
+          ),
+        const Divider(height: 8),
+        _menuHeader(l.chatFilterShowOnly),
+        for (final role in ChatViewRole.values)
+          CheckboxMenuButton(
+            key: Key('chat-filter-${role.name}'),
+            value: filter.role == role,
+            closeOnActivate: false,
+            onChanged: (_) => update(filter.withRole(role)),
+            child: Text(chatFilterRoleName(l, role)),
+          ),
+      ],
+      builder: (context, controller, _) => _TopBarIconButton(
+        key: const Key('chat-filter-button'),
+        tooltip: l.chatFilterTooltip,
+        icon: Icons.filter_list_rounded,
+        active: filter.isActive,
+        onTap: () => controller.isOpen ? controller.close() : controller.open(),
+      ),
+    );
+  }
+
+  static Widget _menuHeader(String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
 }

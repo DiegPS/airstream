@@ -556,5 +556,18 @@
   "ttsUserCooldownHelp": "After reading a message, the next ones from the same viewer wait this long. 0 s turns it off.",
   "ttsMaxCharacters": "Longest message read",
   "ttsIgnoredUsers": "Users the voice reader skips",
-  "ttsIgnoredUsersHint": "One per line, for example nightbot"
+  "ttsIgnoredUsersHint": "One per line, for example nightbot",
+  "chatFilterTooltip": "Filter Airstream's chat (OBS still shows every message)",
+  "chatFilterPlatforms": "Platforms",
+  "chatFilterShowOnly": "Show",
+  "chatFilterAll": "All messages",
+  "chatFilterMembers": "Only members and subscribers",
+  "chatFilterModerators": "Only moderators",
+  "chatFilterHighlighted": "Only highlighted",
+  "chatFilterActive": "Showing: {filters}",
+  "@chatFilterActive": {
+    "placeholders": { "filters": { "type": "String" } }
+  },
+  "chatFilterShowAll": "Show all",
+  "chatFilterNoMatches": "No messages match the filter yet."
 }

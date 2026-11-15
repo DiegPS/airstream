@@ -5,6 +5,7 @@ import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/chat_session_state.dart';
+import 'package:airstream/models/chat_view_filter.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/chat_highlighter.dart';
 import 'package:airstream/services/kick_service.dart';
@@ -27,6 +28,11 @@ final chatHighlighterProvider = Provider<ChatHighlighter>((ref) {
       )));
   return ChatHighlighter.fromSettings(ref.read(settingsProvider));
 });
+
+/// What Airstream's chat window shows. Not saved: the chat always opens
+/// showing everything.
+final chatViewFilterProvider =
+    StateProvider<ChatViewFilter>((ref) => const ChatViewFilter());
 
 /// Whether the chat and the OBS overlay show sample messages.
 final chatPreviewProvider = StateProvider<bool>((ref) => false);

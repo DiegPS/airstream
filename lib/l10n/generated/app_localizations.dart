@@ -2516,6 +2516,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One per line, for example nightbot'**
   String get ttsIgnoredUsersHint;
+
+  /// No description provided for @chatFilterTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Airstream\'s chat (OBS still shows every message)'**
+  String get chatFilterTooltip;
+
+  /// No description provided for @chatFilterPlatforms.
+  ///
+  /// In en, this message translates to:
+  /// **'Platforms'**
+  String get chatFilterPlatforms;
+
+  /// No description provided for @chatFilterShowOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get chatFilterShowOnly;
+
+  /// No description provided for @chatFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All messages'**
+  String get chatFilterAll;
+
+  /// No description provided for @chatFilterMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Only members and subscribers'**
+  String get chatFilterMembers;
+
+  /// No description provided for @chatFilterModerators.
+  ///
+  /// In en, this message translates to:
+  /// **'Only moderators'**
+  String get chatFilterModerators;
+
+  /// No description provided for @chatFilterHighlighted.
+  ///
+  /// In en, this message translates to:
+  /// **'Only highlighted'**
+  String get chatFilterHighlighted;
+
+  /// No description provided for @chatFilterActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing: {filters}'**
+  String chatFilterActive(String filters);
+
+  /// No description provided for @chatFilterShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get chatFilterShowAll;
+
+  /// No description provided for @chatFilterNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages match the filter yet.'**
+  String get chatFilterNoMatches;
 }
 
 class _AppLocalizationsDelegate

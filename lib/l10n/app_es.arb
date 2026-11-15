@@ -408,5 +408,15 @@
   "ttsUserCooldownHelp": "Tras leer un mensaje, los siguientes de la misma persona esperan este tiempo. 0 s lo desactiva.",
   "ttsMaxCharacters": "Mensaje más largo que se lee",
   "ttsIgnoredUsers": "Usuarios que el lector de voz ignora",
-  "ttsIgnoredUsersHint": "Uno por línea, por ejemplo nightbot"
+  "ttsIgnoredUsersHint": "Uno por línea, por ejemplo nightbot",
+  "chatFilterTooltip": "Filtrar el chat de Airstream (OBS sigue mostrando todo)",
+  "chatFilterPlatforms": "Plataformas",
+  "chatFilterShowOnly": "Mostrar",
+  "chatFilterAll": "Todos los mensajes",
+  "chatFilterMembers": "Solo miembros y suscriptores",
+  "chatFilterModerators": "Solo moderadores",
+  "chatFilterHighlighted": "Solo resaltados",
+  "chatFilterActive": "Mostrando: {filters}",
+  "chatFilterShowAll": "Ver todo",
+  "chatFilterNoMatches": "Ningún mensaje coincide con el filtro todavía."
 }

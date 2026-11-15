@@ -676,6 +676,55 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('the chat filter hides platforms until the user shows all',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          chatProvider.overrideWith(
+            (ref) => Stream.value([
+              for (final platform in Platform.values)
+                ChatMessage(
+                  platform: platform,
+                  id: 'from-${platform.name}',
+                  author: ChatAuthor(
+                    name: 'viewer-${platform.name}',
+                    channelId: 'v-${platform.name}',
+                  ),
+                  items: [MessageItem.text('hola desde ${platform.name}')],
+                  timestamp: DateTime.utc(2026, 11, 15),
+                ),
+            ]),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ChatBubble), findsNWidgets(3));
+
+    await tester.tap(find.byKey(const Key('chat-filter-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('chat-filter-twitch')).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('chat-filter-kick')).first);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChatBubble), findsOneWidget);
+    expect(find.byKey(const Key('chat-filter-bar')), findsOneWidget);
+    expect(find.text('Showing: YouTube'), findsOneWidget);
+
+    await tester.tap(find.text('Show all'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatBubble), findsNWidgets(3));
+    expect(find.byKey(const Key('chat-filter-bar')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

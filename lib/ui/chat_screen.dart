@@ -14,6 +14,7 @@ import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/chat_view_filter.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
     show ChatMessage, Platform, YoutubeStreamOrientation;
@@ -470,10 +471,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
       data: (chatMessages) {
-        final liveMessages =
+        final allMessages =
             chatMessages.isEmpty && ref.watch(chatPreviewProvider)
                 ? sampleChatMessages(settings.appLanguageCode)
                 : chatMessages;
+        final viewFilter = ref.watch(chatViewFilterProvider);
+        final liveMessages = viewFilter.apply(
+          allMessages,
+          ref.watch(chatHighlighterProvider),
+        );
         final paused = _pausedSnapshot == null
             ? null
             : pausedChatView(_pausedSnapshot!, liveMessages);
@@ -482,6 +488,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final positions = <String, int>{
           for (var i = 0; i < messages.length; i++) messages[i].dedupeKey: i,
         };
+        if (liveMessages.isEmpty && allMessages.isNotEmpty) {
+          return buildPane(
+            Column(
+              children: [
+                _ChatFilterBar(filter: viewFilter),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      l.chatFilterNoMatches,
+                      textAlign: TextAlign.center,
+                      style:
+                          const TextStyle(color: Colors.white38, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
         if (liveMessages.isEmpty) {
           final sessionPhase = ref.watch(chatSessionPhaseProvider);
           final hasChannels = hasStartableChat(settings);
@@ -538,57 +563,127 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
 
-        return buildPane(
-          Stack(
-            children: [
-              ListView.builder(
-                controller: _scrollController,
-                reverse: true,
-                padding: EdgeInsets.fromLTRB(
-                  settings.chatHorizontalPadding,
-                  24,
-                  settings.chatHorizontalPadding,
-                  showObsCard ? obsReservedSpace : 20,
-                ),
-                itemCount: messages.length,
-                itemBuilder: (_, i) =>
-                    _bubbleFor(messages[messages.length - 1 - i]),
-                // New messages enter at index 0 and shift every other one.
-                // Finding bubbles by key lets each keep its element (and its
-                // loaded avatar) instead of being rebuilt from scratch.
-                findChildIndexCallback: (key) {
-                  if (key is! ValueKey<String>) return null;
-                  final position = positions[key.value];
-                  return position == null
-                      ? null
-                      : messages.length - 1 - position;
-                },
+        final list = Stack(
+          children: [
+            ListView.builder(
+              controller: _scrollController,
+              reverse: true,
+              padding: EdgeInsets.fromLTRB(
+                settings.chatHorizontalPadding,
+                24,
+                settings.chatHorizontalPadding,
+                showObsCard ? obsReservedSpace : 20,
               ),
-              if (!_autoScroll)
-                Positioned(
-                  bottom: 12,
-                  right: 12,
-                  child: (paused?.newCount ?? 0) > 0
-                      ? FloatingActionButton.extended(
-                          key: const Key('chat-resume-button'),
-                          backgroundColor: const Color(0xFF53FC18),
-                          foregroundColor: Colors.black,
-                          onPressed: _resumeChat,
-                          icon: const Icon(Icons.arrow_downward, size: 18),
-                          label: Text(l.newChatMessages(paused!.newCount)),
-                        )
-                      : FloatingActionButton.small(
-                          key: const Key('chat-resume-button'),
-                          backgroundColor: const Color(0xFF53FC18),
-                          foregroundColor: Colors.black,
-                          onPressed: _resumeChat,
-                          child: const Icon(Icons.arrow_downward),
-                        ),
-                ),
-            ],
-          ),
+              itemCount: messages.length,
+              itemBuilder: (_, i) =>
+                  _bubbleFor(messages[messages.length - 1 - i]),
+              // New messages enter at index 0 and shift every other one.
+              // Finding bubbles by key lets each keep its element (and its
+              // loaded avatar) instead of being rebuilt from scratch.
+              findChildIndexCallback: (key) {
+                if (key is! ValueKey<String>) return null;
+                final position = positions[key.value];
+                return position == null ? null : messages.length - 1 - position;
+              },
+            ),
+            if (!_autoScroll)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: (paused?.newCount ?? 0) > 0
+                    ? FloatingActionButton.extended(
+                        key: const Key('chat-resume-button'),
+                        backgroundColor: const Color(0xFF53FC18),
+                        foregroundColor: Colors.black,
+                        onPressed: _resumeChat,
+                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        label: Text(l.newChatMessages(paused!.newCount)),
+                      )
+                    : FloatingActionButton.small(
+                        key: const Key('chat-resume-button'),
+                        backgroundColor: const Color(0xFF53FC18),
+                        foregroundColor: Colors.black,
+                        onPressed: _resumeChat,
+                        child: const Icon(Icons.arrow_downward),
+                      ),
+              ),
+          ],
+        );
+        return buildPane(
+          viewFilter.isActive
+              ? Column(
+                  children: [
+                    _ChatFilterBar(filter: viewFilter),
+                    Expanded(child: list),
+                  ],
+                )
+              : list,
         );
       },
     );
   }
 }
+
+/// Says what the chat window is hiding, with a way back to everything.
+class _ChatFilterBar extends ConsumerWidget {
+  const _ChatFilterBar({required this.filter});
+
+  final ChatViewFilter filter;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final parts = [
+      if (filter.hiddenPlatforms.isNotEmpty)
+        [
+          for (final platform in Platform.values)
+            if (!filter.hiddenPlatforms.contains(platform))
+              chatFilterPlatformName(platform),
+        ].join(', '),
+      if (filter.role != ChatViewRole.all) chatFilterRoleName(l, filter.role),
+    ];
+    return Container(
+      key: const Key('chat-filter-bar'),
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2A14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF3B5A1F)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_list_rounded,
+              size: 16, color: Color(0xFF53FC18)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.chatFilterActive(parts.join(' · ')),
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+          TextButton(
+            onPressed: () => ref.read(chatViewFilterProvider.notifier).state =
+                const ChatViewFilter(),
+            child: Text(l.chatFilterShowAll),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String chatFilterPlatformName(Platform platform) => switch (platform) {
+      Platform.youtube => 'YouTube',
+      Platform.twitch => 'Twitch',
+      Platform.kick => 'Kick',
+    };
+
+String chatFilterRoleName(AppLocalizations l, ChatViewRole role) =>
+    switch (role) {
+      ChatViewRole.all => l.chatFilterAll,
+      ChatViewRole.members => l.chatFilterMembers,
+      ChatViewRole.moderators => l.chatFilterModerators,
+      ChatViewRole.highlighted => l.chatFilterHighlighted,
+    };
