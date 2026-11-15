@@ -296,6 +296,25 @@ function applySettings(next) {
   if (active) renderAlert(active);
 }
 
+const MAX_PENDING_ALERTS = 20;
+
+function enqueueAlert(alert) {
+  if (alert.kind === 'featured') {
+    queue.unshift(alert);
+    if (queue.length > MAX_PENDING_ALERTS) {
+      const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
+      if (oldest !== -1) queue.splice(oldest, 1);
+    }
+  } else {
+    if (queue.length >= MAX_PENDING_ALERTS) {
+      const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
+      if (oldest === -1) return;
+      queue.splice(oldest, 1);
+    }
+    queue.push(alert);
+  }
+}
+
 function showNext() {
   if (active || queue.length === 0) return;
   active = queue.shift();
@@ -313,11 +332,13 @@ function showNext() {
     }
   }));
   const seconds = Math.max(1, Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
+  const duration = active.kind !== 'featured' && queue.length >= 5
+    ? Math.max(2, seconds / 2) : seconds;
   hideTimer = window.setTimeout(() => {
     active = null;
     stage.replaceChildren();
     showNext();
-  }, seconds * 1000);
+  }, duration * 1000);
 }
 
 function connect() {
@@ -335,8 +356,7 @@ function connect() {
       else if (envelope.type === 'alert' && envelope.data) {
         envelope.data.deliverySocket = connection;
         // A message the streamer chose goes before waiting alerts.
-        if (envelope.data.kind === 'featured') queue.unshift(envelope.data);
-        else queue.push(envelope.data);
+        enqueueAlert(envelope.data);
         showNext();
       }
     } catch (error) {
