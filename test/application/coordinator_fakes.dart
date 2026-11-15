@@ -25,6 +25,9 @@ class FakeYouTubeChatClient implements YouTubeChatClient {
   int disconnectCount = 0;
   bool disposed = false;
   Object? connectError;
+
+  /// When set, connect waits for it, like a slow network lookup.
+  Completer<void>? connectGate;
   String resolvedId = 'resolved-id';
   YoutubeLiveMetadata? metadata;
 
@@ -44,6 +47,7 @@ class FakeYouTubeChatClient implements YouTubeChatClient {
   @override
   Future<void> connect({String handle = '', String liveId = ''}) async {
     connectCount++;
+    await connectGate?.future;
     if (connectError != null) throw connectError!;
   }
 

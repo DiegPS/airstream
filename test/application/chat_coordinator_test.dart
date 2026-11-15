@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -60,6 +62,60 @@ void main() {
     await settleCoordinatorTasks();
     expect(twitch.connectCount, 3);
     expect(twitch.lastChannel, 'second');
+  });
+
+  test('changing another platform keeps the in-flight YouTube result',
+      () async {
+    final gate = Completer<void>();
+    youtube.connectGate = gate;
+    final badges = <String?>[];
+    final sub = coordinator.youtubeBadgeValueStream.listen(badges.add);
+    addTearDown(sub.cancel);
+    const settings = SettingsModel(
+      youtubeEnabled: true,
+      youtubeHandle: '@creator',
+      kickEnabled: true,
+      kickSlug: 'kicker',
+    );
+    coordinator.applySettings(settings, connectChats: true);
+    await settleCoordinatorTasks();
+
+    // While YouTube is still looking up the stream, Twitch is added and Kick
+    // is retried.
+    coordinator.applySettings(
+      settings.copyWith(twitchEnabled: true, twitchChannel: 'twitcher'),
+      connectChats: true,
+    );
+    coordinator.retryPlatform('kick');
+    gate.complete();
+    await settleCoordinatorTasks();
+
+    expect(badges.last, 'resolved-id');
+  });
+
+  test('a YouTube failure is still shown after another platform changes',
+      () async {
+    final gate = Completer<void>();
+    youtube
+      ..connectGate = gate
+      ..connectError = Exception('stream offline');
+    const settings = SettingsModel(
+      youtubeEnabled: true,
+      youtubeHandle: '@creator',
+    );
+    coordinator.applySettings(settings, connectChats: true);
+    await settleCoordinatorTasks();
+
+    coordinator.applySettings(
+      settings.copyWith(kickEnabled: true, kickSlug: 'kicker'),
+      connectChats: true,
+    );
+    gate.complete();
+    await settleCoordinatorTasks();
+
+    final statuses = await coordinator.connectionStatusStream.first;
+    expect(statuses['youtube']?.$1, ServiceStatus.error);
+    expect(statuses['youtube']?.$2, contains('stream offline'));
   });
 
   test('publishes connection failures and deduplicates source messages',

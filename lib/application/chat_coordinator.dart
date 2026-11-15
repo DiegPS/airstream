@@ -285,7 +285,10 @@ class ChatCoordinator {
     'youtubeHorizontal': null,
     'youtubeVertical': null,
   };
-  int _attemptGeneration = 0;
+
+  /// One attempt counter per connection, so changing or retrying one
+  /// platform never discards the in-flight result of another.
+  final _attemptGenerations = <String, int>{};
   SettingsModel? _lastSettings;
   bool? _lastConnectChats;
   bool _disposed = false;
@@ -366,10 +369,6 @@ class ChatCoordinator {
     final kickChanged = connectionChanged ||
         previous.kickEnabled != settings.kickEnabled ||
         previous.kickSlug != settings.kickSlug;
-    final generation = youtubeChanged || twitchChanged || kickChanged
-        ? ++_attemptGeneration
-        : _attemptGeneration;
-
     final shouldClear = connectChats &&
         ((youtubeChanged && hasYoutubeTarget) ||
             (twitchChanged && hasTwitchTarget) ||
@@ -377,6 +376,9 @@ class ChatCoordinator {
     if (shouldClear || !connectChats) _clearMessages();
 
     if (youtubeChanged) {
+      final generation = _nextGeneration('youtube');
+      final horizontalGeneration = _nextGeneration('youtubeHorizontal');
+      final verticalGeneration = _nextGeneration('youtubeVertical');
       _clearYoutubeMetadata();
       unawaited(_youtube.disconnect());
       unawaited(_youtubeHorizontal.disconnect());
@@ -392,13 +394,13 @@ class ChatCoordinator {
             service: _youtubeHorizontal,
             statusKey: 'youtubeHorizontal',
             url: settings.youtubeHorizontalUrl,
-            generation: generation,
+            generation: horizontalGeneration,
           ));
           unawaited(_connectYoutubeStream(
             service: _youtubeVertical,
             statusKey: 'youtubeVertical',
             url: settings.youtubeVerticalUrl,
-            generation: generation,
+            generation: verticalGeneration,
           ));
         } else {
           unawaited(_connectYoutube(settings, generation));
@@ -411,6 +413,7 @@ class ChatCoordinator {
     }
 
     if (twitchChanged) {
+      final generation = _nextGeneration('twitch');
       if (connectChats && hasTwitchTarget) {
         unawaited(_connectChannel(
           service: _twitch,
@@ -425,6 +428,7 @@ class ChatCoordinator {
     }
 
     if (kickChanged) {
+      final generation = _nextGeneration('kick');
       if (connectChats && hasKickTarget) {
         unawaited(_connectChannel(
           service: _kick,
@@ -442,10 +446,9 @@ class ChatCoordinator {
   void retryConnections() {
     final settings = _lastSettings;
     if (settings == null || _lastConnectChats != true) return;
-    final generation = ++_attemptGeneration;
     if (_isPlatformConfigured('youtube') &&
         _platformStatus['youtube']?.$1 == ServiceStatus.error) {
-      unawaited(_connectYoutube(settings, generation));
+      unawaited(_connectYoutube(settings, _nextGeneration('youtube')));
     }
     for (final entry in [
       ('youtubeHorizontal', _youtubeHorizontal, settings.youtubeHorizontalUrl),
@@ -457,7 +460,7 @@ class ChatCoordinator {
           service: entry.$2,
           statusKey: entry.$1,
           url: entry.$3,
-          generation: generation,
+          generation: _nextGeneration(entry.$1),
         ));
       }
     }
@@ -471,7 +474,7 @@ class ChatCoordinator {
           service: entry.$2,
           statusKey: entry.$1,
           channel: entry.$3,
-          generation: generation,
+          generation: _nextGeneration(entry.$1),
         ));
       }
     }
@@ -484,7 +487,7 @@ class ChatCoordinator {
         !_isPlatformConfigured(platform)) {
       return;
     }
-    final generation = ++_attemptGeneration;
+    final generation = _nextGeneration(platform);
     switch (platform) {
       case 'youtube':
         unawaited(_connectYoutube(settings, generation));
@@ -527,7 +530,7 @@ class ChatCoordinator {
         handle: settings.youtubeHandle,
         liveId: settings.youtubeLiveId,
       );
-      if (!_isCurrent(generation)) return;
+      if (!_isCurrent('youtube', generation)) return;
       _youtubeBadgeValue = _youtube.resolvedLiveId.isNotEmpty
           ? _youtube.resolvedLiveId
           : settings.youtubeHandle.trim();
@@ -539,7 +542,7 @@ class ChatCoordinator {
         stackTrace: stack,
       );
       await _youtube.disconnect();
-      if (!_isCurrent(generation)) return;
+      if (!_isCurrent('youtube', generation)) return;
       _youtubeBadgeValue = null;
       _emitYoutubeBadgeValue();
       _updateStatus('youtube', (ServiceStatus.error, error.toString()));
@@ -569,7 +572,7 @@ class ChatCoordinator {
         stackTrace: stack,
       );
       await service.disconnect();
-      if (_isCurrent(generation)) {
+      if (_isCurrent(statusKey, generation)) {
         _updateStatus(statusKey, (ServiceStatus.error, error.toString()));
       }
     }
@@ -590,14 +593,19 @@ class ChatCoordinator {
         stackTrace: stack,
       );
       await service.disconnect();
-      if (_isCurrent(generation)) {
+      if (_isCurrent(statusKey, generation)) {
         _updateStatus(statusKey, (ServiceStatus.error, error.toString()));
       }
     }
   }
 
-  bool _isCurrent(int generation) =>
-      generation == _attemptGeneration && _lastConnectChats == true;
+  int _nextGeneration(String key) =>
+      _attemptGenerations[key] = (_attemptGenerations[key] ?? 0) + 1;
+
+  bool _isCurrent(String key, int generation) =>
+      !_disposed &&
+      generation == _attemptGenerations[key] &&
+      _lastConnectChats == true;
 
   void _handleServiceStatus(
     String platform,
@@ -692,7 +700,6 @@ class ChatCoordinator {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    ++_attemptGeneration;
     await _pipelineSub?.cancel();
     for (final subscription in _statusSubscriptions) {
       await subscription.cancel();
