@@ -221,9 +221,15 @@ class MessagePipeline {
     return normalized;
   }
 
+  /// Letters, combining marks and digits of every script count as word
+  /// characters, so blocked words in any language (and letters such as ç or ö)
+  /// are matched as whole words.
+  static final _nonWordCharacters =
+      RegExp(r'[^\p{L}\p{M}\p{N}]+', unicode: true);
+
   static String _normalizeWordPattern(String value) {
     final lowered = value.toLowerCase();
-    final sanitized = lowered.replaceAll(RegExp(r'[^a-z0-9áéíóúüñ]+'), ' ');
+    final sanitized = lowered.replaceAll(_nonWordCharacters, ' ');
     return sanitized.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }

@@ -355,6 +355,41 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('blocks words written in any script as whole words', () async {
+    final pipeline = MessagePipeline(const SettingsModel(
+      maxMessages: 20,
+      blockedWords: ['сука', 'バカ', 'garçon', 'Öl'],
+    ));
+    final source = StreamController<ChatMessage>();
+    final emitted = <ChatMessage>[];
+    final sub = pipeline.stream.listen(emitted.add);
+    pipeline.addSource(source.stream);
+
+    final baseTime = DateTime.utc(2026, 5, 9, 12, 0, 0);
+    final texts = {
+      'cyrillic': 'ты сука!',
+      'japanese': 'お前は バカ だ',
+      'cedilla': 'Hey GARÇON, ven',
+      'umlaut': 'kein öl mehr',
+      'split-cedilla': 'gar on es otra cosa',
+      'partial': 'garçonnière bonita',
+    };
+    var offset = 0;
+    for (final entry in texts.entries) {
+      source.add(_message(
+        id: entry.key,
+        text: entry.value,
+        timestamp: baseTime.add(Duration(seconds: offset++)),
+      ));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(emitted.map((m) => m.id), ['split-cedilla', 'partial']);
+    await sub.cancel();
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({
