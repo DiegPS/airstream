@@ -24,8 +24,44 @@ void main() {
     expect(restored.bgOpacity, 1);
     expect(restored.chatTextAlign, 'left');
     expect(restored.overlayAnimation, 'slide-up');
-    expect(restored.overlayScale, 3);
+    expect(restored.overlayScale, 2);
     expect(restored.blockedUsers, ['Nightbot']);
+  });
+
+  test('slider extremes survive a save and reload unchanged', () {
+    const extremes = SettingsModel(
+      overlayPerspective: 2500,
+      overlayScale: 0.5,
+      overlaySkewX: -45,
+      ttsSpeed: 1.6,
+      overlayMessageTtlSeconds: 120,
+      alertFontSize: 56,
+      chatHorizontalPadding: 64,
+    );
+
+    final reloaded = SettingsModel.fromJson(extremes.toJson());
+
+    expect(reloaded.overlayPerspective, 2500);
+    expect(reloaded.overlayScale, 0.5);
+    expect(reloaded.overlaySkewX, -45);
+    expect(reloaded.ttsSpeed, 1.6);
+    expect(reloaded.overlayMessageTtlSeconds, 120);
+    expect(reloaded.alertFontSize, 56);
+    expect(reloaded.chatHorizontalPadding, 64);
+  });
+
+  test('stored values outside a slider are brought into its range', () {
+    final restored = SettingsModel.fromJson({
+      'ttsSpeed': 2.0,
+      'overlayFontSize': 72,
+      'overlayMessageTtlSeconds': 3600,
+      'overlayPerspective': 100,
+    });
+
+    expect(restored.ttsSpeed, 1.6);
+    expect(restored.overlayFontSize, 32);
+    expect(restored.overlayMessageTtlSeconds, 120);
+    expect(restored.overlayPerspective, 500);
   });
 
   test('uses safe defaults for a non-object settings payload', () {
@@ -109,7 +145,7 @@ void main() {
     expect(restored.providerEventBannerKinds, ['raid', 'support']);
     expect(restored.providerEventBannerSeconds, 12);
     expect(corrupt.providerEventBannerKinds, ['poll']);
-    expect(corrupt.providerEventBannerSeconds, 60);
+    expect(corrupt.providerEventBannerSeconds, 20);
   });
 
   test('persists OBS recording HUD settings', () {

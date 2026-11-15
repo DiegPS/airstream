@@ -312,42 +312,44 @@ abstract final class SettingsModelCodec {
     allow('liveCaptionsSourceLanguage', const {'es', 'en'}, 'es');
     allow('liveCaptionsTargetLanguage', const {'es', 'en'}, 'es');
 
+    // Ranges match the settings sliders exactly, so a stored value always shows
+    // what the app applies and every value a slider can set survives restarts.
     clampInt('overlayPort', 1, 65535);
     clampInt('maxMessages', 1, 1000);
-    clampInt('providerEventBannerSeconds', 1, 60);
-    clampInt('overlayMaxMessages', 1, 500);
-    clampInt('overlayMessageTtlSeconds', 1, 3600);
+    clampInt('providerEventBannerSeconds', 1, 20);
+    clampInt('overlayMaxMessages', 10, 500);
+    clampInt('overlayMessageTtlSeconds', 5, 120);
     clampInt('ttsSteps', 1, 64);
-    clampInt('alertDisplaySeconds', 1, 60);
+    clampInt('alertDisplaySeconds', 3, 20);
 
     clampDouble('fontSize', 10, 28);
     clampDouble('bgOpacity', 0, 1);
     clampDouble('messageOpacity', 0, 1);
-    clampDouble('borderRadius', 0, 40);
-    clampDouble('messageGap', 0, 40);
+    clampDouble('borderRadius', 0, 24);
+    clampDouble('messageGap', 0, 16);
     clampDouble('chatMaxMessageWidth', 0.4, 1);
-    clampDouble('chatHorizontalPadding', 0, 80);
+    clampDouble('chatHorizontalPadding', 0, 64);
     clampDouble('chatLineHeight', 1, 2);
     clampDouble('chatFontWeight', 100, 900);
-    clampDouble('chatTextStroke', 0, 8);
-    clampDouble('ttsSpeed', 0.5, 2);
-    clampDouble('overlayFontSize', 10, 72);
+    clampDouble('chatTextStroke', 0, 4);
+    clampDouble('ttsSpeed', 0.6, 1.6);
+    clampDouble('overlayFontSize', 12, 32);
     clampDouble('overlayBgOpacity', 0, 1);
     clampDouble('overlayMessageOpacity', 0, 1);
-    clampDouble('overlayTextStroke', 0, 8);
+    clampDouble('overlayTextStroke', 0, 4);
     clampDouble('overlayLineHeight', 1, 2);
-    clampDouble('overlayMessageGap', 0, 80);
+    clampDouble('overlayMessageGap', 0, 30);
     clampDouble('overlayFontWeight', 100, 900);
-    clampDouble('overlayBorderRadius', 0, 80);
+    clampDouble('overlayBorderRadius', 0, 30);
     clampDouble('overlaySuperChatBarWidth', 1, 8);
     clampDouble('overlayAnimationDuration', 0.1, 2);
-    clampDouble('overlayPerspective', 100, 2000);
+    clampDouble('overlayPerspective', 500, 2500);
     clampDouble('overlayRotateX', -180, 180);
     clampDouble('overlayRotateY', -180, 180);
     clampDouble('overlayRotateZ', -180, 180);
-    clampDouble('overlaySkewX', -60, 60);
-    clampDouble('overlayScale', 0.25, 3);
-    clampDouble('alertFontSize', 12, 72);
+    clampDouble('overlaySkewX', -45, 45);
+    clampDouble('overlayScale', 0.5, 2);
+    clampDouble('alertFontSize', 18, 56);
 
     color('overlayChromaColor', '#00FF00');
     color('overlayTextStrokeColor', '#000000');
