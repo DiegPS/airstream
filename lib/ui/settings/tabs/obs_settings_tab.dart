@@ -404,6 +404,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
+              const OverlayStylePresetsCard(),
+              const SizedBox(height: 12),
               _section(l.styleSettings),
               StyledSliderRow(
                 label: l.fontSize,

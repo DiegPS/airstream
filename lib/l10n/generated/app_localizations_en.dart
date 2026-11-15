@@ -1769,4 +1769,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get testAlertKicks => 'Kicks';
+
+  @override
+  String get overlayStylePresetsTitle => 'Ready-made styles';
+
+  @override
+  String get overlayStylePresetsDescription =>
+      'One tap sets how the chat and alerts look in OBS. Your connections and other settings stay as they are.';
+
+  @override
+  String get overlayStyleCustom => 'Custom style';
+
+  @override
+  String overlayStyleApplied(String name) {
+    return 'Style “$name” applied';
+  }
+
+  @override
+  String get overlayStyleUndo => 'Undo';
+
+  @override
+  String get overlayStylePreviewHint =>
+      'Turn on the preview to see it with sample messages.';
+
+  @override
+  String get overlayStyleClassic => 'Classic';
+
+  @override
+  String get overlayStyleClassicDescription => 'Airstream\'s default look.';
+
+  @override
+  String get overlayStyleCompactGaming => 'Compact for gaming';
+
+  @override
+  String get overlayStyleCompactGamingDescription =>
+      'Small, tight messages that cover little of the game.';
+
+  @override
+  String get overlayStyleBigBubbles => 'Big bubbles';
+
+  @override
+  String get overlayStyleBigBubblesDescription =>
+      'Large text in rounded bubbles, easy to read.';
+
+  @override
+  String get overlayStyleCleanTransparent => 'Clean transparent';
+
+  @override
+  String get overlayStyleCleanTransparentDescription =>
+      'No bubbles: outlined text over your scene.';
+
+  @override
+  String get overlayStyleVertical => 'Vertical';
+
+  @override
+  String get overlayStyleVerticalDescription =>
+      'Made for vertical streams such as Shorts or TikTok.';
 }

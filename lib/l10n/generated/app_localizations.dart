@@ -3188,6 +3188,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kicks'**
   String get testAlertKicks;
+
+  /// No description provided for @overlayStylePresetsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready-made styles'**
+  String get overlayStylePresetsTitle;
+
+  /// No description provided for @overlayStylePresetsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'One tap sets how the chat and alerts look in OBS. Your connections and other settings stay as they are.'**
+  String get overlayStylePresetsDescription;
+
+  /// No description provided for @overlayStyleCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom style'**
+  String get overlayStyleCustom;
+
+  /// No description provided for @overlayStyleApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Style “{name}” applied'**
+  String overlayStyleApplied(String name);
+
+  /// No description provided for @overlayStyleUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get overlayStyleUndo;
+
+  /// No description provided for @overlayStylePreviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the preview to see it with sample messages.'**
+  String get overlayStylePreviewHint;
+
+  /// No description provided for @overlayStyleClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get overlayStyleClassic;
+
+  /// No description provided for @overlayStyleClassicDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Airstream\'s default look.'**
+  String get overlayStyleClassicDescription;
+
+  /// No description provided for @overlayStyleCompactGaming.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact for gaming'**
+  String get overlayStyleCompactGaming;
+
+  /// No description provided for @overlayStyleCompactGamingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Small, tight messages that cover little of the game.'**
+  String get overlayStyleCompactGamingDescription;
+
+  /// No description provided for @overlayStyleBigBubbles.
+  ///
+  /// In en, this message translates to:
+  /// **'Big bubbles'**
+  String get overlayStyleBigBubbles;
+
+  /// No description provided for @overlayStyleBigBubblesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Large text in rounded bubbles, easy to read.'**
+  String get overlayStyleBigBubblesDescription;
+
+  /// No description provided for @overlayStyleCleanTransparent.
+  ///
+  /// In en, this message translates to:
+  /// **'Clean transparent'**
+  String get overlayStyleCleanTransparent;
+
+  /// No description provided for @overlayStyleCleanTransparentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No bubbles: outlined text over your scene.'**
+  String get overlayStyleCleanTransparentDescription;
+
+  /// No description provided for @overlayStyleVertical.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical'**
+  String get overlayStyleVertical;
+
+  /// No description provided for @overlayStyleVerticalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Made for vertical streams such as Shorts or TikTok.'**
+  String get overlayStyleVerticalDescription;
 }
 
 class _AppLocalizationsDelegate

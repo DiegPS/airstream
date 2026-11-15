@@ -999,6 +999,46 @@ void main() {
     expect(settings.state.alertDisabledTypes, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('OBS style applies and undoes without enabling sample messages',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: true));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => settings),
+        overlayUrlProvider.overrideWith((ref) => null),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(AirstreamApp)));
+    expect(container.read(chatPreviewProvider), isFalse);
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final row = find.byKey(const Key('overlay-style-preset-bigBubbles'));
+    expect(
+        tester
+            .getSize(find.byKey(const Key('overlay-style-presets-card')))
+            .width,
+        lessThanOrEqualTo(360));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Big bubbles'));
+    await tester.pumpAndSettle();
+    expect(settings.state.overlayFontSize, 20);
+    expect(find.descendant(of: row, matching: find.byIcon(Icons.check)),
+        findsOneWidget);
+    expect(container.read(chatPreviewProvider), isFalse);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(settings.state.overlayFontSize, 14);
+    expect(container.read(chatPreviewProvider), isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

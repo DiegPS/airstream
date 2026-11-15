@@ -520,5 +520,28 @@
   "testAlertSubscription": "Suscripción",
   "testAlertGift": "Regalo",
   "testAlertRaid": "Raid",
-  "testAlertKicks": "Kicks"
+  "testAlertKicks": "Kicks",
+  "overlayStylePresetsTitle": "Estilos listos",
+  "overlayStylePresetsDescription": "Un toque cambia cómo se ven el chat y las alertas en OBS. Tus conexiones y demás ajustes no cambian.",
+  "overlayStyleCustom": "Estilo personalizado",
+  "overlayStyleApplied": "Estilo «{name}» aplicado",
+  "overlayStyleUndo": "Deshacer",
+  "overlayStylePreviewHint": "Activa la vista previa para verlo con mensajes de ejemplo.",
+  "overlayStyleClassic": "Clásico",
+  "overlayStyleClassicDescription": "El aspecto de siempre de Airstream.",
+  "overlayStyleCompactGaming": "Compacto para juegos",
+  "overlayStyleCompactGamingDescription": "Mensajes pequeños y juntos que tapan poco el juego.",
+  "overlayStyleBigBubbles": "Burbujas grandes",
+  "overlayStyleBigBubblesDescription": "Texto grande en burbujas redondeadas, fácil de leer.",
+  "overlayStyleCleanTransparent": "Transparente minimalista",
+  "overlayStyleCleanTransparentDescription": "Sin burbujas: texto con contorno sobre tu escena.",
+  "overlayStyleVertical": "Vertical",
+  "overlayStyleVerticalDescription": "Pensado para directos verticales como Shorts o TikTok.",
+  "@overlayStyleApplied": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }
