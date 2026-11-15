@@ -130,6 +130,16 @@ const UI_STRINGS = {
     becameMember: 'became a member',
     membership: 'Membership',
     fromChat: 'From chat',
+    bits: 'Twitch Bits',
+    subscription: 'Subscription',
+    subscribed: 'subscribed',
+    resubscribed: (months) => 'subscribed for ' + months + ' months',
+    gift: 'Gift',
+    gifted: 'gifted',
+    subscriptionOne: 'a subscription',
+    subscriptionMany: 'subscriptions',
+    membershipOne: 'a membership',
+    membershipMany: 'memberships',
   },
   es: {
     someone: 'Alguien',
@@ -138,6 +148,16 @@ const UI_STRINGS = {
     becameMember: 'se convirtió en miembro',
     membership: 'Membresía',
     fromChat: 'Del chat',
+    bits: 'Twitch Bits',
+    subscription: 'Suscripción',
+    subscribed: 'se suscribió',
+    resubscribed: (months) => 'cumple ' + months + ' meses de suscripción',
+    gift: 'Regalo',
+    gifted: 'regaló',
+    subscriptionOne: 'una suscripción',
+    subscriptionMany: 'suscripciones',
+    membershipOne: 'una membresía',
+    membershipMany: 'membresías',
   },
 };
 
@@ -165,16 +185,33 @@ function renderAlert(alert) {
   const author = String(alert.author || strings.someone);
   const message = String(alert.message || '').trim();
   const featured = alert.kind === 'featured';
-  const title = featured
+  let title = featured
     ? author
     : alert.kind === 'superchat'
       ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
       : author + ' ' + strings.becameMember;
-  const kicker = featured
+  let kicker = featured
     ? platformLabel(alert.platform) + ' · ' + strings.fromChat
     : alert.kind === 'superchat'
       ? platformLabel(alert.platform) + ' Super Chat'
       : platformLabel(alert.platform) + ' ' + strings.membership;
+  if (alert.kind === 'bits') {
+    title = author + ' ' + strings.sent + ' ' + (alert.amount || '');
+    kicker = strings.bits;
+  } else if (alert.kind === 'membership' && alert.membershipKind === 'gift') {
+    const youtube = alert.platform === 'youtube';
+    const count = Number(alert.giftCount) || 1;
+    const giftText = count > 1
+      ? count + ' ' + (youtube ? strings.membershipMany : strings.subscriptionMany)
+      : (youtube ? strings.membershipOne : strings.subscriptionOne);
+    title = author + ' ' + strings.gifted + ' ' + giftText;
+    kicker = platformLabel(alert.platform) + ' · ' + strings.gift;
+  } else if (alert.kind === 'membership' && alert.platform !== 'youtube' &&
+      (alert.membershipKind === 'subscription' || alert.membershipKind === 'resubscription')) {
+    title = author + ' ' + (alert.membershipKind === 'resubscription' && alert.months > 1
+      ? strings.resubscribed(alert.months) : strings.subscribed);
+    kicker = platformLabel(alert.platform) + ' · ' + strings.subscription;
+  }
   const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 

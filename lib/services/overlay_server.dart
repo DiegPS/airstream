@@ -17,6 +17,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class OverlayServer {
   OverlayServer({
     this.featuredAcknowledgementTimeout = const Duration(seconds: 30),
+    this.giftGroupingWindow = const Duration(seconds: 2),
   });
 
   static bool isValidPort(int port) => port >= 0 && port <= 65535;
@@ -26,6 +27,8 @@ class OverlayServer {
   final _views = <WebSocketChannel, String>{};
   final _featured = <String, _PendingFeaturedMessage>{};
   int _nextDelivery = 0;
+  final _giftGroups = <String, _PendingGiftGroup>{};
+  final Duration giftGroupingWindow;
 
   final Duration featuredAcknowledgementTimeout;
   final _clientCountController = StreamController<int>.broadcast();
@@ -198,6 +201,10 @@ class OverlayServer {
 
   Future<void> stop() async {
     _lifecycleGeneration++;
+    for (final group in _giftGroups.values) {
+      group.timer?.cancel();
+    }
+    _giftGroups.clear();
     await _msgSub?.cancel();
     _msgSub = null;
     final clients = List<WebSocketChannel>.from(_clients);
@@ -295,13 +302,39 @@ class OverlayServer {
   }
 
   void _broadcastAlert(ChatMessage msg) {
-    if (msg.platform != Platform.youtube) return;
     final kind = msg.superChat != null
-        ? 'superchat'
+        ? (msg.platform == Platform.twitch ? 'bits' : 'superchat')
         : msg.isMembershipEvent
             ? 'membership'
             : null;
     if (kind == null) return;
+    if (kind == 'membership' &&
+        msg.platform == Platform.twitch &&
+        msg.membershipEventKind == MembershipEventKind.gift) {
+      final key = msg.author.channelId.isNotEmpty
+          ? msg.author.channelId
+          : msg.author.name.toLowerCase();
+      final group = _giftGroups.putIfAbsent(key, () => _PendingGiftGroup(msg));
+      group.count++;
+      group.timer?.cancel();
+      final generation = _lifecycleGeneration;
+      group.timer = Timer(giftGroupingWindow, () {
+        if (generation != _lifecycleGeneration ||
+            !identical(_giftGroups[key], group)) {
+          return;
+        }
+        _giftGroups.remove(key);
+        _broadcastEnvelope({
+          'type': 'alert',
+          'data': {
+            ..._alertData(group.first, 'membership'),
+            'giftCount': group.count,
+            'message': '',
+          },
+        });
+      });
+      return;
+    }
 
     _broadcastEnvelope({
       'type': 'alert',
@@ -323,6 +356,9 @@ class OverlayServer {
         'color': msg.superChat?.color,
         'stickerUrl': msg.superChat?.stickerUrl,
         'timestamp': msg.timestamp.toIso8601String(),
+        'membershipKind': msg.membershipEventKind?.name,
+        'months': msg.membershipMonths,
+        'giftCount': msg.membershipGiftCount,
       };
 
   void _broadcastSettings() {
@@ -390,4 +426,12 @@ class _PendingFeaturedMessage {
     timer?.cancel();
     if (!completion.isCompleted) completion.complete(status);
   }
+}
+
+class _PendingGiftGroup {
+  _PendingGiftGroup(this.first);
+
+  final ChatMessage first;
+  int count = 0;
+  Timer? timer;
 }
