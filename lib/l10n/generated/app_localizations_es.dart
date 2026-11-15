@@ -362,7 +362,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertsObsUrlDescription =>
-      'Úsalo como una fuente de navegador separada para Super Chats y membresías.';
+      'Úsalo como una fuente de navegador separada para Super Chats, membresías y los mensajes del chat que muestres en el directo.';
 
   @override
   String get alertsOverlayUrlCopied =>
@@ -1391,4 +1391,20 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get chatFilterNoMatches =>
       'Ningún mensaje coincide con el filtro todavía.';
+
+  @override
+  String get messageShowOnStream => 'Mostrar en el directo';
+
+  @override
+  String get messageShowOnStreamNeedsOverlay =>
+      'Activa el servidor de superposición y añade la URL de alertas a OBS';
+
+  @override
+  String get messageShownOnStream => 'Mostrando en el directo';
+
+  @override
+  String get messageCopy => 'Copiar mensaje';
+
+  @override
+  String get messageCopied => 'Mensaje copiado';
 }

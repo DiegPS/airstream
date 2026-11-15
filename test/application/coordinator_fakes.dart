@@ -260,6 +260,14 @@ class FakeOverlayClient implements OverlayClient {
   bool reloadClients() => hasClients;
   @override
   bool broadcastTestAlert(String kind) => hasClients;
+  final featured = <ChatMessage>[];
+  @override
+  bool broadcastFeaturedMessage(ChatMessage message) {
+    if (!hasClients) return false;
+    featured.add(message);
+    return true;
+  }
+
   @override
   void broadcastCaption(String text) => captionCount++;
   @override

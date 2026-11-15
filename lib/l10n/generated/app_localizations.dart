@@ -761,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsObsUrlDescription.
   ///
   /// In en, this message translates to:
-  /// **'Use this as a separate Browser Source for Super Chats and memberships.'**
+  /// **'Use this as a separate Browser Source for Super Chats, memberships and the chat messages you show on stream.'**
   String get alertsObsUrlDescription;
 
   /// No description provided for @alertsOverlayUrlCopied.
@@ -2576,6 +2576,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No messages match the filter yet.'**
   String get chatFilterNoMatches;
+
+  /// No description provided for @messageShowOnStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on stream'**
+  String get messageShowOnStream;
+
+  /// No description provided for @messageShowOnStreamNeedsOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the overlay server and add the alerts URL to OBS'**
+  String get messageShowOnStreamNeedsOverlay;
+
+  /// No description provided for @messageShownOnStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing on stream'**
+  String get messageShownOnStream;
+
+  /// No description provided for @messageCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy message'**
+  String get messageCopy;
+
+  /// No description provided for @messageCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Message copied'**
+  String get messageCopied;
 }
 
 class _AppLocalizationsDelegate

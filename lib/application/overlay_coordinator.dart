@@ -20,6 +20,7 @@ abstract interface class OverlayClient {
   void setSettings(SettingsModel settings);
   bool reloadClients();
   bool broadcastTestAlert(String kind);
+  bool broadcastFeaturedMessage(ChatMessage message);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
   void broadcastProviderEvent(ChatProviderEvent event);
@@ -51,6 +52,9 @@ class OverlayServerAdapter implements OverlayClient {
   bool reloadClients() => server.reloadClients();
   @override
   bool broadcastTestAlert(String kind) => server.broadcastTestAlert(kind);
+  @override
+  bool broadcastFeaturedMessage(ChatMessage message) =>
+      server.broadcastFeaturedMessage(message);
   @override
   void broadcastCaption(String text) => server.broadcastCaption(text);
   @override
@@ -86,6 +90,11 @@ class OverlayCoordinator {
 
   bool reload() => _overlay.reloadClients();
   bool testAlert(String kind) => _overlay.broadcastTestAlert(kind);
+
+  /// Whether the message reached a connected overlay.
+  bool featureMessage(ChatMessage message) =>
+      _state.phase == OverlayServerPhase.ready &&
+      _overlay.broadcastFeaturedMessage(message);
   void broadcastCaption(String text) => _overlay.broadcastCaption(text);
   void broadcastModeration(ChatModerationEvent event) =>
       _overlay.broadcastModeration(event);

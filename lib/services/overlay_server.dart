@@ -208,6 +208,17 @@ class OverlayServer {
     _broadcastAlert(msg);
   }
 
+  /// Shows [msg] on stream through the alerts overlay, ahead of any queued
+  /// alert. Returns whether an overlay is connected to show it.
+  bool broadcastFeaturedMessage(ChatMessage msg) {
+    if (_clients.isEmpty) return false;
+    _broadcastEnvelope({
+      'type': 'alert',
+      'data': _alertData(msg, 'featured'),
+    });
+    return true;
+  }
+
   void _broadcastAlert(ChatMessage msg) {
     if (msg.platform != Platform.youtube) return;
     final kind = msg.superChat != null
@@ -219,7 +230,11 @@ class OverlayServer {
 
     _broadcastEnvelope({
       'type': 'alert',
-      'data': {
+      'data': _alertData(msg, kind),
+    });
+  }
+
+  static Map<String, Object?> _alertData(ChatMessage msg, String kind) => {
         'platform': msg.platform.name,
         'kind': kind,
         'id': msg.id,
@@ -233,9 +248,7 @@ class OverlayServer {
         'color': msg.superChat?.color,
         'stickerUrl': msg.superChat?.stickerUrl,
         'timestamp': msg.timestamp.toIso8601String(),
-      },
-    });
-  }
+      };
 
   void _broadcastSettings() {
     _broadcastEnvelope({

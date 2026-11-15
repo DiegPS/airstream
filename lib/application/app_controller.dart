@@ -131,6 +131,8 @@ class AppController {
   Future<void> disconnectObs() => _obs.disconnect();
   bool reloadOverlay() => _overlay.reload();
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
+  bool featureMessageOnStream(ChatMessage message) =>
+      _overlay.featureMessage(message);
 
   /// Shows [samples] in the overlay, replacing an earlier preview. They never
   /// reach TTS.

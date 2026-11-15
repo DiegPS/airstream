@@ -362,7 +362,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertsObsUrlDescription =>
-      'Use this as a separate Browser Source for Super Chats and memberships.';
+      'Use this as a separate Browser Source for Super Chats, memberships and the chat messages you show on stream.';
 
   @override
   String get alertsOverlayUrlCopied => 'Alerts overlay URL copied';
@@ -1379,4 +1379,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatFilterNoMatches => 'No messages match the filter yet.';
+
+  @override
+  String get messageShowOnStream => 'Show on stream';
+
+  @override
+  String get messageShowOnStreamNeedsOverlay =>
+      'Turn on the overlay server and add the alerts URL to OBS';
+
+  @override
+  String get messageShownOnStream => 'Showing on stream';
+
+  @override
+  String get messageCopy => 'Copy message';
+
+  @override
+  String get messageCopied => 'Message copied';
 }

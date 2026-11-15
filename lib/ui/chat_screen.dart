@@ -366,12 +366,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   /// Bubbles already built, reused while their message is unchanged so a new
   /// message only builds its own bubble.
-  final _bubbles = <String, ChatBubble>{};
+  final _bubbles = <String, _ChatMessageEntry>{};
 
   Widget _bubbleFor(ChatMessage message) {
     final cached = _bubbles[message.dedupeKey];
     if (cached != null && identical(cached.message, message)) return cached;
-    return _bubbles[message.dedupeKey] = ChatBubble(
+    return _bubbles[message.dedupeKey] = _ChatMessageEntry(
       key: ValueKey(message.dedupeKey),
       message: message,
     );
@@ -687,3 +687,89 @@ String chatFilterRoleName(AppLocalizations l, ChatViewRole role) =>
       ChatViewRole.moderators => l.chatFilterModerators,
       ChatViewRole.highlighted => l.chatFilterHighlighted,
     };
+
+/// A chat message that opens its actions on click: show it on stream or
+/// copy it.
+class _ChatMessageEntry extends ConsumerWidget {
+  const _ChatMessageEntry({super.key, required this.message});
+
+  final ChatMessage message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (details) => _showActions(context, ref, details.globalPosition),
+      onSecondaryTapUp: (details) =>
+          _showActions(context, ref, details.globalPosition),
+      child: ChatBubble(message: message),
+    );
+  }
+
+  Future<void> _showActions(
+    BuildContext context,
+    WidgetRef ref,
+    Offset position,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    final overlayReady =
+        ref.read(overlayServerStateProvider).valueOrNull?.phase ==
+            OverlayServerPhase.ready;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final action = await showMenu<String>(
+      context: context,
+      color: const Color(0xFF1E1E1E),
+      position: RelativeRect.fromRect(
+        position & const Size(1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          key: const Key('message-show-on-stream'),
+          value: 'stream',
+          enabled: overlayReady,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.cast_rounded, size: 18),
+            title: Text(l.messageShowOnStream),
+            subtitle:
+                overlayReady ? null : Text(l.messageShowOnStreamNeedsOverlay),
+          ),
+        ),
+        PopupMenuItem(
+          key: const Key('message-copy'),
+          value: 'copy',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.copy_rounded, size: 18),
+            title: Text(l.messageCopy),
+          ),
+        ),
+      ],
+    );
+    if (!context.mounted || action == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    void notify(String text) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(text),
+        duration: const Duration(milliseconds: 1600),
+      ));
+    switch (action) {
+      case 'stream':
+        final shown =
+            ref.read(appControllerProvider).featureMessageOnStream(message);
+        notify(shown ? l.messageShownOnStream : l.noOverlayClientConnected);
+      case 'copy':
+        final author = message.author.name.trim();
+        final text = message.plainText.trim();
+        await Clipboard.setData(
+          ClipboardData(text: author.isEmpty ? text : '$author: $text'),
+        );
+        notify(l.messageCopied);
+    }
+  }
+}

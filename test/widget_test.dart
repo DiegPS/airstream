@@ -725,6 +725,58 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a chat message opens its actions and can be copied',
+      (WidgetTester tester) async {
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          chatProvider.overrideWith(
+            (ref) => Stream.value([
+              ChatMessage(
+                platform: Platform.twitch,
+                id: 'q1',
+                author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+                items: const [MessageItem.text('¿Qué juego sigue?')],
+                timestamp: DateTime.utc(2026, 11, 15),
+              ),
+            ]),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(ChatBubble));
+    await tester.pumpAndSettle();
+    expect(find.text('Show on stream'), findsOneWidget);
+    final showOnStream = tester.widget<PopupMenuItem<String>>(
+      find.byKey(const Key('message-show-on-stream')),
+    );
+    expect(showOnStream.enabled, isFalse,
+        reason: 'the overlay server is off in this test');
+
+    await tester.tap(find.text('Copy message'));
+    await tester.pumpAndSettle();
+    expect(copied, 'Ana: ¿Qué juego sigue?');
+    expect(find.text('Message copied'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

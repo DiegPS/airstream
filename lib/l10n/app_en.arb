@@ -122,7 +122,7 @@
   "chatObsUrlDescription": "Use this link as a Browser Source for chat in OBS.",
   "chatOverlayUrlCopied": "Chat overlay URL copied",
   "alertsObsUrl": "Alerts OBS URL",
-  "alertsObsUrlDescription": "Use this as a separate Browser Source for Super Chats and memberships.",
+  "alertsObsUrlDescription": "Use this as a separate Browser Source for Super Chats, memberships and the chat messages you show on stream.",
   "alertsOverlayUrlCopied": "Alerts overlay URL copied",
   "oneOverlayClientConnected": "1 overlay client connected",
   "overlayClientsConnected": "{count} overlay clients connected",
@@ -569,5 +569,10 @@
     "placeholders": { "filters": { "type": "String" } }
   },
   "chatFilterShowAll": "Show all",
-  "chatFilterNoMatches": "No messages match the filter yet."
+  "chatFilterNoMatches": "No messages match the filter yet.",
+  "messageShowOnStream": "Show on stream",
+  "messageShowOnStreamNeedsOverlay": "Turn on the overlay server and add the alerts URL to OBS",
+  "messageShownOnStream": "Showing on stream",
+  "messageCopy": "Copy message",
+  "messageCopied": "Message copied"
 }

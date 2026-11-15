@@ -110,7 +110,7 @@
   "chatObsUrlDescription": "Usa este enlace como fuente de navegador para el chat en OBS.",
   "chatOverlayUrlCopied": "URL de la superposición del chat copiada",
   "alertsObsUrl": "URL de alertas para OBS",
-  "alertsObsUrlDescription": "Úsalo como una fuente de navegador separada para Super Chats y membresías.",
+  "alertsObsUrlDescription": "Úsalo como una fuente de navegador separada para Super Chats, membresías y los mensajes del chat que muestres en el directo.",
   "alertsOverlayUrlCopied": "URL de la superposición de alertas copiada",
   "oneOverlayClientConnected": "1 cliente de superposición conectado",
   "overlayClientsConnected": "{count} clientes de superposición conectados",
@@ -418,5 +418,10 @@
   "chatFilterHighlighted": "Solo resaltados",
   "chatFilterActive": "Mostrando: {filters}",
   "chatFilterShowAll": "Ver todo",
-  "chatFilterNoMatches": "Ningún mensaje coincide con el filtro todavía."
+  "chatFilterNoMatches": "Ningún mensaje coincide con el filtro todavía.",
+  "messageShowOnStream": "Mostrar en el directo",
+  "messageShowOnStreamNeedsOverlay": "Activa el servidor de superposición y añade la URL de alertas a OBS",
+  "messageShownOnStream": "Mostrando en el directo",
+  "messageCopy": "Copiar mensaje",
+  "messageCopied": "Mensaje copiado"
 }

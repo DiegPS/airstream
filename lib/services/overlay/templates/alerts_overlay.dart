@@ -116,6 +116,7 @@ function platformLabel(platform) {
 
 function alertAccent(alert) {
   if (alert.kind === 'superchat') return alert.color || '#FFD600';
+  if (alert.kind === 'featured') return '#FFC83D';
   if (alert.platform === 'kick') return '#53FC18';
   if (alert.platform === 'twitch') return '#9146FF';
   return '#FF4E45';
@@ -128,6 +129,7 @@ const UI_STRINGS = {
     superChat: 'a Super Chat',
     becameMember: 'became a member',
     membership: 'Membership',
+    fromChat: 'From chat',
   },
   es: {
     someone: 'Alguien',
@@ -135,6 +137,7 @@ const UI_STRINGS = {
     superChat: 'un Super Chat',
     becameMember: 'se convirtió en miembro',
     membership: 'Membresía',
+    fromChat: 'Del chat',
   },
 };
 
@@ -161,12 +164,17 @@ function renderAlert(alert) {
   const accent = alertAccent(alert);
   const author = String(alert.author || strings.someone);
   const message = String(alert.message || '').trim();
-  const title = alert.kind === 'superchat'
-    ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
-    : author + ' ' + strings.becameMember;
-  const kicker = alert.kind === 'superchat'
-    ? platformLabel(alert.platform) + ' Super Chat'
-    : platformLabel(alert.platform) + ' ' + strings.membership;
+  const featured = alert.kind === 'featured';
+  const title = featured
+    ? author
+    : alert.kind === 'superchat'
+      ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
+      : author + ' ' + strings.becameMember;
+  const kicker = featured
+    ? platformLabel(alert.platform) + ' · ' + strings.fromChat
+    : alert.kind === 'superchat'
+      ? platformLabel(alert.platform) + ' Super Chat'
+      : platformLabel(alert.platform) + ' ' + strings.membership;
   const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
@@ -251,7 +259,9 @@ function connect() {
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'alert' && envelope.data) {
-        queue.push(envelope.data);
+        // A message the streamer chose goes before waiting alerts.
+        if (envelope.data.kind === 'featured') queue.unshift(envelope.data);
+        else queue.push(envelope.data);
         showNext();
       }
     } catch (error) {

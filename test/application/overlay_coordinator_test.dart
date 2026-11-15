@@ -101,4 +101,31 @@ void main() {
     expect(state.port, 18080);
     expect(state.requestedPort, isNull);
   });
+
+  test('features a message only while the overlay runs', () async {
+    final message = ChatMessage(
+      platform: Platform.twitch,
+      id: 'm1',
+      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+      items: const [MessageItem.text('hola')],
+      timestamp: DateTime.utc(2026, 11, 15),
+    );
+    expect(coordinator.featureMessage(message), isFalse);
+
+    final ready = coordinator.stateStream.firstWhere(
+      (state) => state.phase == OverlayServerPhase.ready,
+    );
+    await settleCoordinatorTasks();
+    coordinator.applySettings(
+      const SettingsModel(overlayEnabled: true),
+      previous: null,
+      messages: messages,
+    );
+    await ready;
+
+    expect(coordinator.featureMessage(message), isTrue);
+    expect(overlay.featured.single.id, 'm1');
+    overlay.hasClients = false;
+    expect(coordinator.featureMessage(message), isFalse);
+  });
 }
