@@ -147,11 +147,16 @@ class LiveCaptionsService {
       await stop();
       return;
     }
-    if (changed) await stop(emitIdle: false);
+    // A language change restarts the worker but must not cancel a model
+    // download the user started; only disabling captions does that.
+    if (changed) await stop(emitIdle: false, cancelDownload: false);
     if (revision != _revision) return;
     final installation = await _modelCache.installed(model.package);
     if (revision != _revision) return;
     if (installation == null) {
+      // Settings change constantly while a large model downloads. Keep showing
+      // its progress; the download starts captions when it completes.
+      if (_downloadCancellation != null) return;
       _emit(LiveCaptionsState(
         phase: LiveCaptionsPhase.missingModel,
         message: 'Download the caption model to start.',
@@ -333,8 +338,8 @@ class LiveCaptionsService {
     ));
   }
 
-  Future<void> stop({bool emitIdle = true}) async {
-    _downloadCancellation?.cancel();
+  Future<void> stop({bool emitIdle = true, bool cancelDownload = true}) async {
+    if (cancelDownload) _downloadCancellation?.cancel();
     await _audioSubscription?.cancel();
     _audioSubscription = null;
     try {

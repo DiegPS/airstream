@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/speech_model_catalog.dart';
+import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/tts_model_cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -39,6 +41,54 @@ void main() {
     }
   });
 
+  test('settings changes during a model download keep it running and visible',
+      () async {
+    final cache = _PendingDownloadCache();
+    final service = LiveCaptionsService(modelCache: cache);
+    addTearDown(service.dispose);
+    await service.updateConfig(
+      enabled: true,
+      sourceLanguage: 'es',
+      targetLanguage: 'en',
+      denoise: true,
+    );
+    expect(service.currentState.phase, LiveCaptionsPhase.missingModel);
+
+    final download = service.prepareModel();
+    await cache.started.future;
+    expect(service.currentState.phase, LiveCaptionsPhase.downloading);
+
+    // An unrelated setting changed: the same caption configuration again.
+    await service.updateConfig(
+      enabled: true,
+      sourceLanguage: 'es',
+      targetLanguage: 'en',
+      denoise: true,
+    );
+    expect(service.currentState.phase, LiveCaptionsPhase.downloading);
+
+    // The caption language changed while downloading.
+    await service.updateConfig(
+      enabled: true,
+      sourceLanguage: 'en',
+      targetLanguage: 'es',
+      denoise: true,
+    );
+    expect(cache.cancellation!.isCancelled, isFalse);
+    expect(service.currentState.phase, LiveCaptionsPhase.downloading);
+
+    // Disabling captions does cancel it.
+    await service.updateConfig(
+      enabled: false,
+      sourceLanguage: 'en',
+      targetLanguage: 'es',
+      denoise: true,
+    );
+    expect(cache.cancellation!.isCancelled, isTrue);
+    cache.finish();
+    await expectLater(download, throwsA(anything));
+  });
+
   test('caption model package has verified ASR and VAD artifacts', () {
     final model = SpeechModelCatalog.canary;
 
@@ -52,4 +102,34 @@ void main() {
     expect(model.targetsFor('es').map((item) => item.code), ['es', 'en']);
     expect(model.supportsDirection('es', 'fr'), isFalse);
   });
+}
+
+/// A model cache whose download stays pending until [finish] is called.
+class _PendingDownloadCache extends TtsModelCache {
+  final started = Completer<void>();
+  final _done = Completer<TtsModelInstallation>();
+  TtsDownloadCancellation? cancellation;
+
+  @override
+  Future<TtsModelInstallation?> installed(TtsModelDefinition model) async =>
+      null;
+
+  @override
+  Future<TtsModelInstallation> ensureAvailable(
+    TtsModelDefinition model, {
+    void Function(TtsInstallProgress progress)? onProgress,
+    TtsDownloadCancellation? cancellation,
+  }) {
+    this.cancellation = cancellation;
+    onProgress?.call(const TtsInstallProgress(
+      phase: TtsInstallPhase.downloading,
+      message: 'Downloading',
+      receivedBytes: 10,
+      totalBytes: 100,
+    ));
+    if (!started.isCompleted) started.complete();
+    return _done.future;
+  }
+
+  void finish() => _done.completeError(StateError('download stopped'));
 }
