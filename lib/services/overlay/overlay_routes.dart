@@ -1,6 +1,7 @@
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
 import 'package:airstream/services/overlay/templates/captions_overlay.dart';
 import 'package:airstream/services/overlay/templates/chat_overlay.dart';
+import 'package:airstream/services/overlay/templates/poll_overlay.dart';
 import 'package:shelf/shelf.dart';
 
 Handler buildOverlayRoutes(Handler webSocketHandler) {
@@ -16,6 +17,9 @@ Handler buildOverlayRoutes(Handler webSocketHandler) {
     }
     if (request.url.path == 'captions') {
       return _htmlResponse(captionsOverlayHtml());
+    }
+    if (request.url.path == 'poll') {
+      return _htmlResponse(pollOverlayHtml());
     }
     return _htmlResponse(chatOverlayHtml());
   });

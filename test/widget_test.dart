@@ -777,6 +777,50 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a poll is created, runs and ends from its card',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+
+    final start = find.byKey(const Key('poll-start'));
+    await tester.ensureVisible(start);
+    expect(tester.widget<ElevatedButton>(start).onPressed, isNull);
+    await tester.enterText(
+        find.byKey(const Key('poll-question')), '¿Qué juego?');
+    await tester.enterText(find.byKey(const Key('poll-option-0')), 'Uno');
+    await tester.enterText(find.byKey(const Key('poll-option-1')), 'Dos');
+    await tester.pump();
+    await tester.tap(start);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('¿Qué juego?'), findsOneWidget);
+    expect(find.textContaining('0 votes'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('poll-end')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Final results'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('poll-new')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('poll-start')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

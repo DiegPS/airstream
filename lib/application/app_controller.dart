@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/coordinator_notice.dart';
@@ -72,6 +73,10 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     _subscriptions.addAll([
+      _chat.messages.listen(_poll.handleMessage),
+      _poll.states.listen(
+        (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
+      ),
       _chat.messages.listen(_overlayFeed.add),
       _chat.messages.listen(_audio.handleChatMessage),
       _chat.moderationEvents.listen(_audio.handleModeration),
@@ -91,6 +96,7 @@ class AppController {
   late final OverlayCoordinator _overlay;
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
+  final _poll = ChatPollController();
 
   /// Chat for the overlay: live messages plus any preview samples.
   final _overlayFeed = StreamController<ChatMessage>.broadcast();
@@ -133,6 +139,16 @@ class AppController {
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
   bool featureMessageOnStream(ChatMessage message) =>
       _overlay.featureMessage(message);
+
+  Stream<ChatPoll?> get pollStream => _poll.states;
+  void startPoll({
+    required String question,
+    required List<String> options,
+    Duration? duration,
+  }) =>
+      _poll.start(question: question, options: options, duration: duration);
+  void endPoll() => _poll.end();
+  void clearPoll() => _poll.clear();
 
   /// Shows [samples] in the overlay, replacing an earlier preview. They never
   /// reach TTS.
@@ -195,5 +211,6 @@ class AppController {
     await _obs.dispose();
     await _noticeController.close();
     await _overlayFeed.close();
+    await _poll.dispose();
   }
 }

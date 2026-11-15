@@ -261,6 +261,9 @@ class FakeOverlayClient implements OverlayClient {
   @override
   bool broadcastTestAlert(String kind) => hasClients;
   final featured = <ChatMessage>[];
+  final polls = <Map<String, Object?>?>[];
+  @override
+  void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
   @override
   bool broadcastFeaturedMessage(ChatMessage message) {
     if (!hasClients) return false;

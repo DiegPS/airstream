@@ -1395,4 +1395,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messageCopied => 'Message copied';
+
+  @override
+  String get pollTitle => 'Poll';
+
+  @override
+  String get pollDescription =>
+      'Ask your chat on every platform at once: viewers vote by typing !1, !2…';
+
+  @override
+  String get pollQuestionHint => 'Question';
+
+  @override
+  String pollOptionHint(int number) {
+    return 'Option $number';
+  }
+
+  @override
+  String get pollAddOption => 'Add option';
+
+  @override
+  String get pollRemoveOption => 'Remove option';
+
+  @override
+  String get pollNoTimeLimit => 'No time limit';
+
+  @override
+  String pollMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get pollStart => 'Start poll';
+
+  @override
+  String get pollEnd => 'End poll';
+
+  @override
+  String get pollNew => 'New poll';
+
+  @override
+  String get pollOpen => 'Voting open';
+
+  @override
+  String get pollClosed => 'Final results';
+
+  @override
+  String pollSecondsLeft(int seconds) {
+    return '$seconds s left';
+  }
+
+  @override
+  String pollVotes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count votes',
+      one: '1 vote',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pollOverlayOff =>
+      'Turn on the overlay server to show the poll in OBS.';
+
+  @override
+  String pollOverlayUrl(String url) {
+    return 'Add $url to OBS as a Browser Source to show it.';
+  }
+
+  @override
+  String get pollOverlayUrlCopied => 'Poll URL copied';
+
+  @override
+  String get copyUrl => 'Copy URL';
+
+  @override
+  String get pollDuration => 'Duration';
 }

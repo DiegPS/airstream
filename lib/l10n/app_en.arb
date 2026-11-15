@@ -574,5 +574,40 @@
   "messageShowOnStreamNeedsOverlay": "Turn on the overlay server and add the alerts URL to OBS",
   "messageShownOnStream": "Showing on stream",
   "messageCopy": "Copy message",
-  "messageCopied": "Message copied"
+  "messageCopied": "Message copied",
+  "pollTitle": "Poll",
+  "pollDescription": "Ask your chat on every platform at once: viewers vote by typing !1, !2…",
+  "pollQuestionHint": "Question",
+  "pollOptionHint": "Option {number}",
+  "@pollOptionHint": {
+    "placeholders": { "number": { "type": "int" } }
+  },
+  "pollAddOption": "Add option",
+  "pollRemoveOption": "Remove option",
+  "pollNoTimeLimit": "No time limit",
+  "pollMinutes": "{minutes} min",
+  "@pollMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "pollStart": "Start poll",
+  "pollEnd": "End poll",
+  "pollNew": "New poll",
+  "pollOpen": "Voting open",
+  "pollClosed": "Final results",
+  "pollSecondsLeft": "{seconds} s left",
+  "@pollSecondsLeft": {
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "pollVotes": "{count, plural, =1{1 vote} other{{count} votes}}",
+  "@pollVotes": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "pollOverlayOff": "Turn on the overlay server to show the poll in OBS.",
+  "pollOverlayUrl": "Add {url} to OBS as a Browser Source to show it.",
+  "@pollOverlayUrl": {
+    "placeholders": { "url": { "type": "String" } }
+  },
+  "pollOverlayUrlCopied": "Poll URL copied",
+  "copyUrl": "Copy URL",
+  "pollDuration": "Duration"
 }

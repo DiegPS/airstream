@@ -1407,4 +1407,82 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messageCopied => 'Mensaje copiado';
+
+  @override
+  String get pollTitle => 'Encuesta';
+
+  @override
+  String get pollDescription =>
+      'Pregunta a tu chat en todas las plataformas a la vez: se vota escribiendo !1, !2…';
+
+  @override
+  String get pollQuestionHint => 'Pregunta';
+
+  @override
+  String pollOptionHint(int number) {
+    return 'Opción $number';
+  }
+
+  @override
+  String get pollAddOption => 'Añadir opción';
+
+  @override
+  String get pollRemoveOption => 'Quitar opción';
+
+  @override
+  String get pollNoTimeLimit => 'Sin límite de tiempo';
+
+  @override
+  String pollMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get pollStart => 'Iniciar encuesta';
+
+  @override
+  String get pollEnd => 'Terminar encuesta';
+
+  @override
+  String get pollNew => 'Nueva encuesta';
+
+  @override
+  String get pollOpen => 'Votación abierta';
+
+  @override
+  String get pollClosed => 'Resultados finales';
+
+  @override
+  String pollSecondsLeft(int seconds) {
+    return 'Quedan $seconds s';
+  }
+
+  @override
+  String pollVotes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count votos',
+      one: '1 voto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pollOverlayOff =>
+      'Activa el servidor de superposición para mostrar la encuesta en OBS.';
+
+  @override
+  String pollOverlayUrl(String url) {
+    return 'Añade $url a OBS como fuente de navegador para mostrarla.';
+  }
+
+  @override
+  String get pollOverlayUrlCopied => 'URL de la encuesta copiada';
+
+  @override
+  String get copyUrl => 'Copiar URL';
+
+  @override
+  String get pollDuration => 'Duración';
 }

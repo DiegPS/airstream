@@ -640,6 +640,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
             ],
           ],
         ),
+        const PollCard(),
       ],
     );
   }

@@ -21,6 +21,7 @@ abstract interface class OverlayClient {
   bool reloadClients();
   bool broadcastTestAlert(String kind);
   bool broadcastFeaturedMessage(ChatMessage message);
+  void broadcastPoll(Map<String, Object?>? poll);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
   void broadcastProviderEvent(ChatProviderEvent event);
@@ -56,6 +57,8 @@ class OverlayServerAdapter implements OverlayClient {
   bool broadcastFeaturedMessage(ChatMessage message) =>
       server.broadcastFeaturedMessage(message);
   @override
+  void broadcastPoll(Map<String, Object?>? poll) => server.broadcastPoll(poll);
+  @override
   void broadcastCaption(String text) => server.broadcastCaption(text);
   @override
   void broadcastModeration(ChatModerationEvent event) =>
@@ -90,6 +93,9 @@ class OverlayCoordinator {
 
   bool reload() => _overlay.reloadClients();
   bool testAlert(String kind) => _overlay.broadcastTestAlert(kind);
+
+  void broadcastPoll(Map<String, Object?>? poll) =>
+      _overlay.broadcastPoll(poll);
 
   /// Whether the message reached a connected overlay.
   bool featureMessage(ChatMessage message) =>

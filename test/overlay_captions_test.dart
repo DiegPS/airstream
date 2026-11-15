@@ -292,4 +292,53 @@ void main() {
       await messages.close();
     }
   });
+
+  test('serves the poll overlay and replays the current poll', () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    final client = http.Client();
+    IOWebSocketChannel? socket;
+    StreamIterator<dynamic>? events;
+    try {
+      await server.start(
+        messages: messages.stream,
+        settings: const SettingsModel(),
+        port: 0,
+      );
+      final page = await client.get(
+        Uri.parse('http://127.0.0.1:${server.port}/poll'),
+      );
+      expect(page.statusCode, 200);
+      expect(page.body, contains('Airstream Poll'));
+
+      // A poll started before OBS connects is sent when it connects.
+      server.broadcastPoll({'question': '¿Qué juego?', 'total': 2});
+      socket = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+      await socket.ready;
+      events = StreamIterator(socket.stream);
+      expect(await events.moveNext(), isTrue);
+      expect(
+        (jsonDecode(events.current as String) as Map)['type'],
+        'settings',
+      );
+      expect(await events.moveNext(), isTrue);
+      final envelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(envelope['type'], 'poll');
+      expect((envelope['data'] as Map)['question'], '¿Qué juego?');
+
+      server.broadcastPoll(null);
+      expect(await events.moveNext(), isTrue);
+      expect(
+        (jsonDecode(events.current as String) as Map)['data'],
+        isNull,
+      );
+    } finally {
+      await events?.cancel();
+      await socket?.sink.close();
+      client.close();
+      await server.dispose();
+      await messages.close();
+    }
+  });
 }

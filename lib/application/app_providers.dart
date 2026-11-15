@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:airstream/application/app_controller.dart';
+import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -33,6 +34,11 @@ final chatHighlighterProvider = Provider<ChatHighlighter>((ref) {
 /// showing everything.
 final chatViewFilterProvider =
     StateProvider<ChatViewFilter>((ref) => const ChatViewFilter());
+
+/// The current chat poll, if any.
+final chatPollProvider = StreamProvider<ChatPoll?>((ref) {
+  return ref.watch(appControllerProvider).pollStream;
+});
 
 /// Whether the chat and the OBS overlay show sample messages.
 final chatPreviewProvider = StateProvider<bool>((ref) => false);

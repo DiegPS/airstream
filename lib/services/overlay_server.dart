@@ -170,6 +170,15 @@ class OverlayServer {
     });
   }
 
+  Map<String, Object?>? _poll;
+
+  /// Shows [poll] on the poll overlay; null hides it. Overlays that connect
+  /// later receive the current poll.
+  void broadcastPoll(Map<String, Object?>? poll) {
+    _poll = poll;
+    _broadcastEnvelope({'type': 'poll', 'data': poll});
+  }
+
   void broadcastProviderEvent(ChatProviderEvent event) {
     _broadcastEnvelope({
       'type': 'providerEvent',
@@ -263,6 +272,9 @@ class OverlayServer {
         'type': 'settings',
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
+      if (_poll != null) {
+        client.sink.add(jsonEncode({'type': 'poll', 'data': _poll}));
+      }
     } catch (_) {
       // A failed send means the browser disconnected before its close event.
       _removeClient(client);

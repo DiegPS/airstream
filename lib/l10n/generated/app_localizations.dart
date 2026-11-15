@@ -2606,6 +2606,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message copied'**
   String get messageCopied;
+
+  /// No description provided for @pollTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Poll'**
+  String get pollTitle;
+
+  /// No description provided for @pollDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask your chat on every platform at once: viewers vote by typing !1, !2…'**
+  String get pollDescription;
+
+  /// No description provided for @pollQuestionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Question'**
+  String get pollQuestionHint;
+
+  /// No description provided for @pollOptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Option {number}'**
+  String pollOptionHint(int number);
+
+  /// No description provided for @pollAddOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Add option'**
+  String get pollAddOption;
+
+  /// No description provided for @pollRemoveOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove option'**
+  String get pollRemoveOption;
+
+  /// No description provided for @pollNoTimeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No time limit'**
+  String get pollNoTimeLimit;
+
+  /// No description provided for @pollMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String pollMinutes(int minutes);
+
+  /// No description provided for @pollStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start poll'**
+  String get pollStart;
+
+  /// No description provided for @pollEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End poll'**
+  String get pollEnd;
+
+  /// No description provided for @pollNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New poll'**
+  String get pollNew;
+
+  /// No description provided for @pollOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting open'**
+  String get pollOpen;
+
+  /// No description provided for @pollClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Final results'**
+  String get pollClosed;
+
+  /// No description provided for @pollSecondsLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} s left'**
+  String pollSecondsLeft(int seconds);
+
+  /// No description provided for @pollVotes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 vote} other{{count} votes}}'**
+  String pollVotes(int count);
+
+  /// No description provided for @pollOverlayOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the overlay server to show the poll in OBS.'**
+  String get pollOverlayOff;
+
+  /// No description provided for @pollOverlayUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {url} to OBS as a Browser Source to show it.'**
+  String pollOverlayUrl(String url);
+
+  /// No description provided for @pollOverlayUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Poll URL copied'**
+  String get pollOverlayUrlCopied;
+
+  /// No description provided for @copyUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy URL'**
+  String get copyUrl;
+
+  /// No description provided for @pollDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get pollDuration;
 }
 
 class _AppLocalizationsDelegate
