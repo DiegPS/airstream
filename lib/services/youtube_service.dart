@@ -4,10 +4,15 @@ import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
 import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
+
+/// Whether [error] means the channel exists but is not live yet.
+bool isYoutubeNotLiveError(Object error) =>
+    error.toString().contains('Live stream was not found');
 
 /// Adapts a dart_youtube_chat live session to AirStream models.
 class YouTubeService {
@@ -204,6 +209,12 @@ class YouTubeService {
     } catch (e, stack) {
       if (generation == _generation && _chat == chat) {
         await _closeCurrent();
+        if (isYoutubeNotLiveError(e)) {
+          // Not a failure: the stream has not started yet.
+          AppLogger.debug('YouTube channel is not live yet');
+          _emit(ServiceStatus.connecting, youtubeWaitingForLiveStatus);
+          rethrow;
+        }
         AppLogger.error(
           'YouTube connection failed',
           error: e,

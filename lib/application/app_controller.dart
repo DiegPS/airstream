@@ -72,6 +72,7 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     _subscriptions.addAll([
+      _chat.messages.listen(_overlayFeed.add),
       _chat.messages.listen(_audio.handleChatMessage),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
@@ -90,6 +91,10 @@ class AppController {
   late final OverlayCoordinator _overlay;
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
+
+  /// Chat for the overlay: live messages plus any preview samples.
+  final _overlayFeed = StreamController<ChatMessage>.broadcast();
+  List<ChatMessage> _overlayPreview = const [];
   final _noticeController = StreamController<AppNotice>.broadcast();
   SettingsModel? _lastSettings;
   int _noticeId = 0;
@@ -126,6 +131,28 @@ class AppController {
   Future<void> disconnectObs() => _obs.disconnect();
   bool reloadOverlay() => _overlay.reload();
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
+
+  /// Shows [samples] in the overlay, replacing an earlier preview. They never
+  /// reach TTS.
+  void showOverlayPreview(List<ChatMessage> samples) {
+    hideOverlayPreview();
+    _overlayPreview = samples;
+    for (final message in samples) {
+      if (!_overlayFeed.isClosed) _overlayFeed.add(message);
+    }
+  }
+
+  /// Removes the preview samples from the overlay.
+  void hideOverlayPreview() {
+    for (final message in _overlayPreview) {
+      _overlay.broadcastModeration(ChatModerationEvent.message(
+        platform: message.platform,
+        messageId: message.id,
+      ));
+    }
+    _overlayPreview = const [];
+  }
+
   void retryChatConnections() => _chat.retryConnections();
   void retryChatPlatform(String platform) => _chat.retryPlatform(platform);
 
@@ -138,7 +165,7 @@ class AppController {
     _overlay.applySettings(
       settings,
       previous: previous,
-      messages: _chat.messages,
+      messages: _overlayFeed.stream,
     );
     _obs.applySettings(settings, previous: previous);
   }
@@ -165,5 +192,6 @@ class AppController {
     await _overlay.dispose();
     await _obs.dispose();
     await _noticeController.close();
+    await _overlayFeed.close();
   }
 }

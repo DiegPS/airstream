@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -30,6 +31,7 @@ void main() {
       youtubeVertical: vertical,
       kick: kick,
       twitch: twitch,
+      youtubeLiveRetryInterval: const Duration(milliseconds: 20),
     );
   });
 
@@ -303,5 +305,43 @@ void main() {
 
     expect((await eventFuture).kind, ChatProviderEventKind.raid);
     expect((await metadataFuture)[Platform.kick]?.viewerCount, 84);
+  });
+
+  test('waits for a YouTube channel that is not live yet', () async {
+    final statuses = <(ServiceStatus, String?)>[];
+    final subscription = coordinator.connectionStatusStream.listen(
+      (all) {
+        final youtubeStatus = all['youtube'];
+        if (youtubeStatus != null) statuses.add(youtubeStatus);
+      },
+    );
+    addTearDown(subscription.cancel);
+    youtube.connectError = Exception('Live stream was not found');
+
+    coordinator.applySettings(
+      const SettingsModel(youtubeHandle: '@creator'),
+      connectChats: true,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+
+    expect(
+        statuses.last, (ServiceStatus.connecting, youtubeWaitingForLiveStatus));
+    expect(statuses.map((status) => status.$1),
+        isNot(contains(ServiceStatus.error)));
+
+    // Keeps checking, and connects once the stream starts.
+    youtube.connectError = null;
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(youtube.connectCount, greaterThanOrEqualTo(2));
+    final retries = youtube.connectCount;
+
+    // Stopping the chat stops the checks.
+    youtube.connectError = Exception('Live stream was not found');
+    coordinator.applySettings(
+      const SettingsModel(youtubeHandle: '@creator'),
+      connectChats: false,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(youtube.connectCount, retries);
   });
 }

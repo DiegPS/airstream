@@ -54,7 +54,9 @@ class _ConnectionDots extends ConsumerWidget {
           return Tooltip(
             message: switch (serviceStatus) {
               ServiceStatus.connected => l.platformStatusConnected(p.$4),
-              ServiceStatus.connecting => l.platformStatusConnecting(p.$4),
+              ServiceStatus.connecting => s?.$2 == youtubeWaitingForLiveStatus
+                  ? l.youtubeWaitingForLive
+                  : l.platformStatusConnecting(p.$4),
               ServiceStatus.error => l.platformConnectionFailed(p.$4),
               ServiceStatus.idle => l.platformStatusIdle(p.$4),
             },

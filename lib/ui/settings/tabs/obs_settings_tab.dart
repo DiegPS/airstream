@@ -88,6 +88,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ),
               ),
+              _switchRow(
+                l.obsConnectOnLaunch,
+                s.obsConnectOnLaunch,
+                (v) => notifier.update(s.copyWith(obsConnectOnLaunch: v)),
+              ),
               const SizedBox(height: 10),
               _ObsStatusCard(
                 state: obsState,
@@ -182,6 +187,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               const SizedBox(height: 10),
+              _previewSwitch(l),
               if (overlayState.phase == OverlayServerPhase.starting)
                 _statusMessage(
                   l.overlayStarting,
@@ -196,6 +202,18 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   color: const Color(0xFFFF6B6B),
                   icon: Icons.error_outline_rounded,
                 ),
+              if (overlayState.phase == OverlayServerPhase.ready &&
+                  overlayState.requestedPort != null) ...[
+                _statusMessage(
+                  l.overlayPortFallback(
+                    overlayState.requestedPort!,
+                    overlayState.port ?? s.overlayPort,
+                  ),
+                  color: Colors.amber,
+                  icon: Icons.info_outline_rounded,
+                ),
+                const SizedBox(height: 8),
+              ],
               if (overlayState.phase == OverlayServerPhase.ready) ...[
                 _overlayUrlCard(
                   l: l,

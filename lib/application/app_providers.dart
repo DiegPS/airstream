@@ -15,6 +15,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final chatConnectionProvider = StateProvider<bool>((ref) => false);
 
+/// Whether the chat and the OBS overlay show sample messages.
+final chatPreviewProvider = StateProvider<bool>((ref) => false);
+
 final chatProvider = StreamProvider<List<ChatMessage>>((ref) {
   final app = ref.watch(appControllerProvider);
   return app.messageListStream;

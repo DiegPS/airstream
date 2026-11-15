@@ -141,12 +141,14 @@ class ChatCoordinator {
     required ChannelChatClient kick,
     required ChannelChatClient twitch,
     MessagePipeline? pipeline,
+    Duration youtubeLiveRetryInterval = const Duration(seconds: 30),
     String? Function(String value)? youtubeVideoIdFromUrl,
   })  : _youtube = youtube,
         _youtubeHorizontal = youtubeHorizontal,
         _youtubeVertical = youtubeVertical,
         _kick = kick,
         _twitch = twitch,
+        _youtubeLiveRetryInterval = youtubeLiveRetryInterval,
         _pipeline = pipeline ?? MessagePipeline(const SettingsModel()),
         _youtubeVideoIdFromUrl =
             youtubeVideoIdFromUrl ?? YouTubeService.videoIdFromUrl {
@@ -252,6 +254,8 @@ class ChatCoordinator {
   final MessagePipeline _pipeline;
   final String? Function(String value) _youtubeVideoIdFromUrl;
   final _listController = StreamController<List<ChatMessage>>.broadcast();
+  final Duration _youtubeLiveRetryInterval;
+  Timer? _youtubeLiveRetry;
   final _statusController =
       StreamController<Map<String, (ServiceStatus, String?)>>.broadcast();
   final _youtubeBadgeController = StreamController<String?>.broadcast();
@@ -447,7 +451,8 @@ class ChatCoordinator {
     final settings = _lastSettings;
     if (settings == null || _lastConnectChats != true) return;
     if (_isPlatformConfigured('youtube') &&
-        _platformStatus['youtube']?.$1 == ServiceStatus.error) {
+        (_platformStatus['youtube']?.$1 == ServiceStatus.error ||
+            _platformStatus['youtube']?.$2 == youtubeWaitingForLiveStatus)) {
       unawaited(_connectYoutube(settings, _nextGeneration('youtube')));
     }
     for (final entry in [
@@ -523,6 +528,7 @@ class ChatCoordinator {
   }
 
   Future<void> _connectYoutube(SettingsModel settings, int generation) async {
+    _youtubeLiveRetry?.cancel();
     _youtubeBadgeValue = null;
     _emitYoutubeBadgeValue();
     try {
@@ -536,15 +542,32 @@ class ChatCoordinator {
           : settings.youtubeHandle.trim();
       _emitYoutubeBadgeValue();
     } catch (error, stack) {
-      AppLogger.error(
-        'YouTube connection failed',
-        error: error,
-        stackTrace: stack,
-      );
+      final notLive = isYoutubeNotLiveError(error);
+      if (!notLive) {
+        AppLogger.error(
+          'YouTube connection failed',
+          error: error,
+          stackTrace: stack,
+        );
+      }
       await _youtube.disconnect();
       if (!_isCurrent('youtube', generation)) return;
       _youtubeBadgeValue = null;
       _emitYoutubeBadgeValue();
+      if (notLive) {
+        // Streamers open Airstream before going live: keep checking.
+        _updateStatus(
+          'youtube',
+          (ServiceStatus.connecting, youtubeWaitingForLiveStatus),
+        );
+        _youtubeLiveRetry = Timer(_youtubeLiveRetryInterval, () {
+          final latest = _lastSettings;
+          if (latest != null && _isCurrent('youtube', generation)) {
+            unawaited(_connectYoutube(latest, generation));
+          }
+        });
+        return;
+      }
       _updateStatus('youtube', (ServiceStatus.error, error.toString()));
     }
   }
@@ -700,6 +723,7 @@ class ChatCoordinator {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _youtubeLiveRetry?.cancel();
     await _pipelineSub?.cancel();
     for (final subscription in _statusSubscriptions) {
       await subscription.cancel();

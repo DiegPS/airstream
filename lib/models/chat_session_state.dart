@@ -80,3 +80,6 @@ bool hasStartableChat(SettingsModel settings) {
       (settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty) ||
       (settings.kickEnabled && settings.kickSlug.trim().isNotEmpty);
 }
+
+/// Status detail while YouTube waits for the channel to go live.
+const youtubeWaitingForLiveStatus = 'youtube-waiting-for-live';

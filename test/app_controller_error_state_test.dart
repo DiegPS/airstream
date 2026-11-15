@@ -6,7 +6,7 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('reports an overlay port conflict instead of publishing a false URL',
+  test('moves the overlay to the next free port when its port is busy',
       () async {
     final occupiedPort = await HttpServer.bind(InternetAddress.anyIPv4, 0);
     final controller = AppController();
@@ -15,8 +15,8 @@ void main() {
       await occupiedPort.close(force: true);
     });
 
-    final failed = controller.overlayStateStream.firstWhere(
-      (state) => state.phase == OverlayServerPhase.error,
+    final ready = controller.overlayStateStream.firstWhere(
+      (state) => state.phase == OverlayServerPhase.ready,
     );
     controller.applySettings(
       SettingsModel(
@@ -26,9 +26,9 @@ void main() {
       connectChats: false,
     );
 
-    final state = await failed.timeout(const Duration(seconds: 5));
-    expect(state.port, occupiedPort.port);
-    expect(state.error, isNotNull);
-    expect(controller.overlayUrl, isNull);
+    final state = await ready.timeout(const Duration(seconds: 5));
+    expect(state.requestedPort, occupiedPort.port);
+    expect(state.port, isNot(occupiedPort.port));
+    expect(controller.overlayUrl, 'http://localhost:${state.port}');
   });
 }

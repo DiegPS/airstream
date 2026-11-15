@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
@@ -33,13 +34,17 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   SettingsNotifier({
     SecureSettingsStore? secureStore,
     SettingsRepository? settingsRepository,
-  })  : _secureStore = secureStore ?? const FlutterSecureSettingsStore(),
+    String Function()? systemLanguageCode,
+  })  : _systemLanguageCode = systemLanguageCode ??
+            (() => PlatformDispatcher.instance.locale.languageCode),
+        _secureStore = secureStore ?? const FlutterSecureSettingsStore(),
         _settingsRepository =
             settingsRepository ?? SharedPreferencesSettingsRepository(),
         super(const SettingsModel()) {
     ready = _load();
   }
 
+  final String Function() _systemLanguageCode;
   final SecureSettingsStore _secureStore;
   final SettingsRepository _settingsRepository;
   late final Future<void> ready;
@@ -57,6 +62,15 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   Future<void> _loadPersisted() async {
     var source = await _settingsRepository.read();
+    if (source == null) {
+      // First run: speak the language Windows uses, when Airstream has it.
+      final language = _systemLanguageCode();
+      if (_supportedLanguages.contains(language)) {
+        state = _localizeBuiltInTtsDefaults(
+          state.copyWith(appLanguageCode: language, ttsLanguage: language),
+        );
+      }
+    }
     if (source != null) {
       try {
         DecodedSettingsDocument document;
@@ -178,6 +192,8 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
           : target.obsPassword,
     );
   }
+
+  static const _supportedLanguages = {'en', 'es'};
 
   static SettingsModel _localizeBuiltInTtsDefaults(SettingsModel settings) {
     final spanish = settings.appLanguageCode == 'es';

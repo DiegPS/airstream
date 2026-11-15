@@ -474,6 +474,83 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('the preview shows sample messages until the chat starts',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            (ref) => _WidgetTestSettings(
+              'en',
+              '',
+              const SettingsModel(overlayEnabled: false, twitchChannel: 'x'),
+            ),
+          ),
+          chatProvider.overrideWith((ref) => Stream.value(const [])),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Appearance'));
+    await tester.pump();
+
+    await tester.tap(find.descendant(
+      of: find
+          .ancestor(
+            of: find.text('Show sample messages'),
+            matching: find.byType(Row),
+          )
+          .first,
+      matching: find.byType(Switch),
+    ));
+    await tester.pump();
+    expect(find.textContaining('This is a long message', findRichText: true),
+        findsOneWidget);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AirstreamApp)),
+    );
+    container.read(chatConnectionProvider.notifier).state = true;
+    await tester.pump();
+    expect(container.read(chatPreviewProvider), isFalse);
+    expect(find.textContaining('This is a long message', findRichText: true),
+        findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the chat starts on launch when the user asked for it',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            (ref) => _LoadedSettings(
+              const SettingsModel(
+                overlayEnabled: false,
+                twitchChannel: 'creator',
+                connectChatOnLaunch: true,
+              ),
+            ),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AirstreamApp)),
+    );
+    expect(container.read(chatConnectionProvider), isTrue);
+
+    // Let the chat attempt wind down before the test ends.
+    container.read(chatConnectionProvider.notifier).state = false;
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 30));
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.
@@ -492,4 +569,12 @@ class _FakeWindow extends WindowStateNotifier {
   Future<void> toggleClickThrough() async {
     state = state.copyWith(clickThrough: !state.clickThrough);
   }
+}
+
+/// Settings that finished loading, as after a normal launch.
+class _LoadedSettings extends _WidgetTestSettings {
+  _LoadedSettings(SettingsModel model) : super('en', '', model);
+
+  @override
+  Future<void> get ready => Future<void>.value();
 }

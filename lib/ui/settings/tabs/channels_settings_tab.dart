@@ -55,6 +55,18 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ],
               ),
+              if (ref
+                      .watch(connectionStatusProvider)
+                      .valueOrNull?['youtube']
+                      ?.$2 ==
+                  youtubeWaitingForLiveStatus) ...[
+                const SizedBox(height: 8),
+                _statusMessage(
+                  l.youtubeWaitingForLiveDetail,
+                  color: Colors.amber,
+                  icon: Icons.schedule_rounded,
+                ),
+              ],
               if (youtubeError != null && youtubeError.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _inlineErrorMessage(
@@ -215,6 +227,11 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ),
               ),
+            _switchRow(
+              l.connectChatOnLaunch,
+              s.connectChatOnLaunch,
+              (v) => notifier.update(s.copyWith(connectChatOnLaunch: v)),
+            ),
             const SizedBox(height: 14),
             const Divider(height: 1, color: Color(0xFF2A2A2A)),
             const SizedBox(height: 14),

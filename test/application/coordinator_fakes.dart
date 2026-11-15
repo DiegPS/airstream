@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
@@ -229,6 +230,9 @@ class FakeOverlayClient implements OverlayClient {
   Object? startError;
   int activePort = 8080;
 
+  /// Ports another app already uses.
+  Set<int> busyPorts = {};
+
   @override
   int get port => activePort;
   @override
@@ -243,6 +247,9 @@ class FakeOverlayClient implements OverlayClient {
   }) async {
     startCount++;
     if (startError != null) throw startError!;
+    if (busyPorts.contains(port)) {
+      throw const SocketException('Only one usage of each socket address');
+    }
     activePort = port;
   }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -124,16 +125,15 @@ class OverlayCoordinator {
       ),
     );
     try {
-      await _overlay.start(
-        messages: messages,
-        settings: settings,
-        port: settings.overlayPort,
-      );
+      await _startOnFreePort(settings, messages, generation);
       if (generation != _generation || _disposed) return;
+      final port = _overlay.port;
       _emit(
         OverlayServerState(
           phase: OverlayServerPhase.ready,
-          port: _overlay.port,
+          port: port,
+          requestedPort:
+              port != settings.overlayPort ? settings.overlayPort : null,
         ),
       );
     } catch (error, stack) {
@@ -150,6 +150,31 @@ class OverlayCoordinator {
           error: error,
         ),
       );
+    }
+  }
+
+  /// Ports tried after the configured one when it is busy.
+  static const _fallbackPorts = 10;
+
+  Future<void> _startOnFreePort(
+    SettingsModel settings,
+    Stream<ChatMessage> messages,
+    int generation,
+  ) async {
+    for (var offset = 0;; offset++) {
+      final port = settings.overlayPort + offset;
+      try {
+        await _overlay.start(
+            messages: messages, settings: settings, port: port);
+        return;
+      } on SocketException catch (error) {
+        final canRetry = offset < _fallbackPorts &&
+            port < 65535 &&
+            generation == _generation &&
+            !_disposed;
+        if (!canRetry) rethrow;
+        AppLogger.debug('Overlay port $port is busy (${error.message})');
+      }
     }
   }
 

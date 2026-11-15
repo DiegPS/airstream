@@ -67,4 +67,38 @@ void main() {
     await coordinator.dispose();
     expect(overlay.disposed, isTrue);
   });
+
+  test('uses the next free port when the configured one is busy', () async {
+    overlay.busyPorts = {18080, 18081};
+    final ready = coordinator.stateStream.firstWhere(
+      (state) => state.phase == OverlayServerPhase.ready,
+    );
+    await settleCoordinatorTasks();
+    coordinator.applySettings(
+      const SettingsModel(overlayEnabled: true, overlayPort: 18080),
+      previous: null,
+      messages: messages,
+    );
+
+    final state = await ready;
+    expect(state.port, 18082);
+    expect(state.requestedPort, 18080);
+    expect(coordinator.url, 'http://localhost:18082');
+  });
+
+  test('reports the configured port when it is free', () async {
+    final ready = coordinator.stateStream.firstWhere(
+      (state) => state.phase == OverlayServerPhase.ready,
+    );
+    await settleCoordinatorTasks();
+    coordinator.applySettings(
+      const SettingsModel(overlayEnabled: true, overlayPort: 18080),
+      previous: null,
+      messages: messages,
+    );
+
+    final state = await ready;
+    expect(state.port, 18080);
+    expect(state.requestedPort, isNull);
+  });
 }

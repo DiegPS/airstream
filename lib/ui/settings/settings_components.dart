@@ -777,3 +777,21 @@ Widget _obsHudGroupLabel(String label) {
     ),
   );
 }
+
+extension _ChatPreviewControls on _SettingsSidebarState {
+  Widget _previewSwitch(AppLocalizations l) {
+    final enabled = ref.watch(chatPreviewProvider);
+    return _switchTileWithSubtitle(
+      l.chatPreviewSwitch,
+      l.chatPreviewDescription,
+      enabled,
+      (value) => ref.read(chatPreviewProvider.notifier).state = value,
+    );
+  }
+
+  Widget _previewCard(AppLocalizations l) => UiCard(
+        title: l.chatPreview,
+        icon: Icons.visibility_outlined,
+        children: [_previewSwitch(l)],
+      );
+}

@@ -28,6 +28,7 @@ import 'package:airstream/services/tts_service.dart'
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_input_normalizer.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/preview/sample_messages.dart';
 import 'package:airstream/ui/chat/paused_chat_view.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
@@ -90,6 +91,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     FocusManager.instance.addEarlyKeyEventHandler(_handleGlobalKeyEvent);
+    unawaited(_connectOnLaunch());
+  }
+
+  Future<void> _connectOnLaunch() async {
+    try {
+      await ref.read(settingsProvider.notifier).ready;
+    } catch (_) {
+      // Settings fall back to defaults; nothing is set to connect.
+    }
+    if (!mounted) return;
+    final settings = ref.read(settingsProvider);
+    if (settings.connectChatOnLaunch && hasStartableChat(settings)) {
+      ref.read(chatConnectionProvider.notifier).state = true;
+    }
+    if (settings.obsEnabled && settings.obsConnectOnLaunch) {
+      unawaited(ref.read(appControllerProvider).connectObs());
+    }
   }
 
   @override
@@ -211,6 +229,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    ref.listen<bool>(chatPreviewProvider, (previous, enabled) {
+      final app = ref.read(appControllerProvider);
+      if (enabled) {
+        app.showOverlayPreview(
+          sampleChatMessages(ref.read(settingsProvider).appLanguageCode),
+        );
+      } else {
+        app.hideOverlayPreview();
+      }
+    });
+    // Samples must not stay on screen (or in OBS) once the real chat starts.
+    ref.listen<bool>(chatConnectionProvider, (previous, connected) {
+      if (connected) ref.read(chatPreviewProvider.notifier).state = false;
+    });
     ref.listen<WindowState>(windowStateProvider, (previous, next) {
       final String message;
       if (next.clickThrough && previous?.clickThrough != true) {
@@ -411,7 +443,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
       ),
-      data: (liveMessages) {
+      data: (chatMessages) {
+        final liveMessages =
+            chatMessages.isEmpty && ref.watch(chatPreviewProvider)
+                ? sampleChatMessages(settings.appLanguageCode)
+                : chatMessages;
         final paused = _pausedSnapshot == null
             ? null
             : pausedChatView(_pausedSnapshot!, liveMessages);
@@ -445,8 +481,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             );
           }
+          final youtubeWaiting =
+              ref.watch(connectionStatusProvider).valueOrNull?['youtube']?.$2 ==
+                  youtubeWaitingForLiveStatus;
           final text = hasChannels
               ? switch (sessionPhase) {
+                  ChatSessionPhase.connecting when youtubeWaiting =>
+                    l.youtubeWaitingForLive,
                   ChatSessionPhase.connecting ||
                   ChatSessionPhase.connected =>
                     l.listeningForMessages,

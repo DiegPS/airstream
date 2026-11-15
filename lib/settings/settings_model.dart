@@ -136,8 +136,14 @@ class SettingsModel {
   final int alertDisplaySeconds;
   final bool alertShowAvatars;
 
+  /// Starts the chat when Airstream opens.
+  final bool connectChatOnLaunch;
+
   // OBS integration
   final bool obsEnabled;
+
+  /// Connects to OBS when Airstream opens.
+  final bool obsConnectOnLaunch;
   final String obsHost;
   final String obsPassword;
   final bool obsShowStreamState;
@@ -206,7 +212,7 @@ class SettingsModel {
     this.liveCaptionsDenoiseEnabled = true,
     this.voiceCommandsEnabled = false,
     this.voiceCommandsWakeWord = 'airstream',
-    this.overlayPort = 8080,
+    this.overlayPort = defaultOverlayPort,
     this.overlayEnabled = false,
     this.overlayChromaMode = false,
     this.overlayChromaColor = '#00FF00',
@@ -248,7 +254,9 @@ class SettingsModel {
     this.alertFontSize = 28.0,
     this.alertDisplaySeconds = 7,
     this.alertShowAvatars = true,
+    this.connectChatOnLaunch = false,
     this.obsEnabled = false,
+    this.obsConnectOnLaunch = false,
     this.obsHost = 'localhost:4455',
     this.obsPassword = '',
     this.obsShowStreamState = true,
@@ -360,7 +368,9 @@ class SettingsModel {
     double? alertFontSize,
     int? alertDisplaySeconds,
     bool? alertShowAvatars,
+    bool? connectChatOnLaunch,
     bool? obsEnabled,
+    bool? obsConnectOnLaunch,
     String? obsHost,
     String? obsPassword,
     bool? obsShowStreamState,
@@ -493,7 +503,9 @@ class SettingsModel {
         alertFontSize: alertFontSize ?? this.alertFontSize,
         alertDisplaySeconds: alertDisplaySeconds ?? this.alertDisplaySeconds,
         alertShowAvatars: alertShowAvatars ?? this.alertShowAvatars,
+        connectChatOnLaunch: connectChatOnLaunch ?? this.connectChatOnLaunch,
         obsEnabled: obsEnabled ?? this.obsEnabled,
+        obsConnectOnLaunch: obsConnectOnLaunch ?? this.obsConnectOnLaunch,
         obsHost: obsHost ?? this.obsHost,
         obsPassword: obsPassword ?? this.obsPassword,
         obsShowStreamState: obsShowStreamState ?? this.obsShowStreamState,
@@ -518,3 +530,6 @@ class SettingsModel {
 
   String toJsonString() => SettingsModelCodec.toJsonString(this);
 }
+
+/// Overlay port for new installs: 8080 is used by many other local servers.
+const defaultOverlayPort = 18080;

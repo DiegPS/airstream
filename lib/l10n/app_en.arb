@@ -528,5 +528,16 @@
   "@newChatMessages": {
     "placeholders": { "count": { "type": "int" } }
   },
-  "silenceTts": "Silence TTS (skip this message and the queue)"
+  "silenceTts": "Silence TTS (skip this message and the queue)",
+  "youtubeWaitingForLive": "Waiting for the YouTube live stream to start…",
+  "youtubeWaitingForLiveDetail": "The channel is not live yet. Airstream checks again every 30 seconds.",
+  "connectChatOnLaunch": "Start the chat when Airstream opens",
+  "obsConnectOnLaunch": "Connect to OBS when Airstream opens",
+  "chatPreview": "Preview",
+  "chatPreviewDescription": "Show sample messages in the chat and the OBS overlay to try styles. They disappear when the chat starts.",
+  "overlayPortFallback": "Port {requested} is in use by another app, so the overlay uses {port}. The OBS URLs below already include it.",
+  "@overlayPortFallback": {
+    "placeholders": { "requested": { "type": "int" }, "port": { "type": "int" } }
+  },
+  "chatPreviewSwitch": "Show sample messages"
 }

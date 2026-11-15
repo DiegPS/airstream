@@ -1260,4 +1260,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get silenceTts => 'Silence TTS (skip this message and the queue)';
+
+  @override
+  String get youtubeWaitingForLive =>
+      'Waiting for the YouTube live stream to start…';
+
+  @override
+  String get youtubeWaitingForLiveDetail =>
+      'The channel is not live yet. Airstream checks again every 30 seconds.';
+
+  @override
+  String get connectChatOnLaunch => 'Start the chat when Airstream opens';
+
+  @override
+  String get obsConnectOnLaunch => 'Connect to OBS when Airstream opens';
+
+  @override
+  String get chatPreview => 'Preview';
+
+  @override
+  String get chatPreviewDescription =>
+      'Show sample messages in the chat and the OBS overlay to try styles. They disappear when the chat starts.';
+
+  @override
+  String overlayPortFallback(int requested, int port) {
+    return 'Port $requested is in use by another app, so the overlay uses $port. The OBS URLs below already include it.';
+  }
+
+  @override
+  String get chatPreviewSwitch => 'Show sample messages';
 }

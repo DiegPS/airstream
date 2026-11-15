@@ -10,6 +10,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _previewCard(l),
         UiCard(
           title: l.appearance,
           icon: Icons.format_size_rounded,

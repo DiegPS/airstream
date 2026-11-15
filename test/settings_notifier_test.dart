@@ -229,6 +229,45 @@ void main() {
     expect(persisted.twitchChannel, 'saved-channel');
     expect(persisted.maxMessages, 321);
   });
+
+  test('the first run follows the system language', () async {
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: _MemorySettingsRepository(),
+      systemLanguageCode: () => 'es',
+    );
+    await notifier.ready;
+
+    expect(notifier.state.appLanguageCode, 'es');
+    expect(notifier.state.ttsLanguage, 'es');
+    expect(notifier.state.ttsSeparatorText, 'dice');
+  });
+
+  test('saved settings keep their language whatever the system uses', () async {
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: _MemorySettingsRepository(
+        SettingsDocumentCodec.encode(
+          const SettingsModel(appLanguageCode: 'en'),
+        ),
+      ),
+      systemLanguageCode: () => 'es',
+    );
+    await notifier.ready;
+
+    expect(notifier.state.appLanguageCode, 'en');
+  });
+
+  test('an unsupported system language keeps English', () async {
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: _MemorySettingsRepository(),
+      systemLanguageCode: () => 'fr',
+    );
+    await notifier.ready;
+
+    expect(notifier.state.appLanguageCode, 'en');
+  });
 }
 
 class _RecoverableMemorySettingsRepository

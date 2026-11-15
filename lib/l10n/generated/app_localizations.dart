@@ -2366,6 +2366,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Silence TTS (skip this message and the queue)'**
   String get silenceTts;
+
+  /// No description provided for @youtubeWaitingForLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the YouTube live stream to start…'**
+  String get youtubeWaitingForLive;
+
+  /// No description provided for @youtubeWaitingForLiveDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'The channel is not live yet. Airstream checks again every 30 seconds.'**
+  String get youtubeWaitingForLiveDetail;
+
+  /// No description provided for @connectChatOnLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the chat when Airstream opens'**
+  String get connectChatOnLaunch;
+
+  /// No description provided for @obsConnectOnLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to OBS when Airstream opens'**
+  String get obsConnectOnLaunch;
+
+  /// No description provided for @chatPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get chatPreview;
+
+  /// No description provided for @chatPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show sample messages in the chat and the OBS overlay to try styles. They disappear when the chat starts.'**
+  String get chatPreviewDescription;
+
+  /// No description provided for @overlayPortFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Port {requested} is in use by another app, so the overlay uses {port}. The OBS URLs below already include it.'**
+  String overlayPortFallback(int requested, int port);
+
+  /// No description provided for @chatPreviewSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Show sample messages'**
+  String get chatPreviewSwitch;
 }
 
 class _AppLocalizationsDelegate
