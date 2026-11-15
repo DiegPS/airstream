@@ -1415,7 +1415,7 @@ abstract class AppLocalizations {
   /// No description provided for @clickThroughDescription.
   ///
   /// In en, this message translates to:
-  /// **'Clicks pass through the window (WS_EX_TRANSPARENT)'**
+  /// **'Clicks go to the window behind Airstream. Press Ctrl+Shift+C to turn it off.'**
   String get clickThroughDescription;
 
   /// No description provided for @alwaysOnTop.
@@ -1469,7 +1469,7 @@ abstract class AppLocalizations {
   /// No description provided for @globalClickThroughShortcutUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The global Click-Through shortcut is unavailable on this system or is already in use by another app.'**
+  /// **'Click-Through needs Ctrl+Shift+C to turn it back off, and another app is using that shortcut. Close that app and try again.'**
   String get globalClickThroughShortcutUnavailable;
 
   /// No description provided for @alwaysOnTopActiveTooltip.
@@ -2348,6 +2348,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{platform}: not connected'**
   String platformStatusIdle(String platform);
+
+  /// No description provided for @clickThroughEnabledNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.'**
+  String get clickThroughEnabledNotice;
+
+  /// No description provided for @newChatMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 new message} other{{count} new messages}}'**
+  String newChatMessages(int count);
 }
 
 class _AppLocalizationsDelegate

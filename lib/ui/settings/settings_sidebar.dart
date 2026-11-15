@@ -72,6 +72,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     });
   }
 
+  void _channelEdited() {
+    _mutate(() {});
+    // A running chat reconnects on every saved change, so it only picks up
+    // the channel on Enter or when the field loses focus.
+    if (!ref.read(chatConnectionProvider)) _queueTextSettingsSave();
+  }
+
   Future<void> _saveTextSettings() async {
     _textSettingsDebounce?.cancel();
     final notifier = ref.read(settingsProvider.notifier);

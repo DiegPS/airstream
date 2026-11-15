@@ -722,7 +722,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clickThroughDescription =>
-      'Clicks pass through the window (WS_EX_TRANSPARENT)';
+      'Clicks go to the window behind Airstream. Press Ctrl+Shift+C to turn it off.';
 
   @override
   String get alwaysOnTop => 'Always on Top';
@@ -751,7 +751,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get globalClickThroughShortcutUnavailable =>
-      'The global Click-Through shortcut is unavailable on this system or is already in use by another app.';
+      'Click-Through needs Ctrl+Shift+C to turn it back off, and another app is using that shortcut. Close that app and try again.';
 
   @override
   String get alwaysOnTopActiveTooltip => 'Disable Always on Top (Ctrl+Shift+P)';
@@ -1241,5 +1241,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String platformStatusIdle(String platform) {
     return '$platform: not connected';
+  }
+
+  @override
+  String get clickThroughEnabledNotice =>
+      'Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.';
+
+  @override
+  String newChatMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new messages',
+      one: '1 new message',
+    );
+    return '$_temp0';
   }
 }

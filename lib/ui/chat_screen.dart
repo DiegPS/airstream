@@ -16,7 +16,7 @@ import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
-    show Platform, YoutubeStreamOrientation;
+    show ChatMessage, Platform, YoutubeStreamOrientation;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/services/obs_service.dart';
@@ -28,6 +28,7 @@ import 'package:airstream/services/tts_service.dart'
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_input_normalizer.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/chat/paused_chat_view.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
@@ -73,6 +74,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _scrollController = ScrollController();
   bool _autoScroll = true;
+
+  /// The chat as it was when the viewer scrolled up to read; null while the
+  /// chat follows new messages.
+  List<ChatMessage>? _pausedSnapshot;
   bool _sidebarVisible = true;
   bool _topBarVisible = true;
 
@@ -94,7 +99,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _onScroll() {
     final atBottom = _scrollController.position.pixels <= 40;
     if (_autoScroll != atBottom) {
-      setState(() => _autoScroll = atBottom);
+      setState(() {
+        _autoScroll = atBottom;
+        _pausedSnapshot = atBottom
+            ? null
+            : (ref.read(chatProvider).valueOrNull ?? const <ChatMessage>[]);
+      });
     }
   }
 
@@ -121,6 +131,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     setState(() => _sidebarVisible = !_sidebarVisible);
+  }
+
+  void _resumeChat() {
+    setState(() {
+      _autoScroll = true;
+      _pausedSnapshot = null;
+    });
+    _scrollToBottom();
   }
 
   void _toggleTopBarVisibility() {
@@ -169,12 +187,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return KeyEventResult.handled;
     }
 
+    // While click-through is on, Windows delivers this shortcut as a global
+    // hotkey instead; here it turns click-through on from the window.
+    final isToggleClickThroughShortcut =
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+            keyboard.isControlPressed &&
+            keyboard.isShiftPressed &&
+            !keyboard.isAltPressed &&
+            !keyboard.isMetaPressed;
+
+    if (isToggleClickThroughShortcut) {
+      unawaited(windowNotifier.toggleClickThrough());
+      return KeyEventResult.handled;
+    }
+
     return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    ref.listen<WindowState>(windowStateProvider, (previous, next) {
+      final String message;
+      if (next.clickThrough && previous?.clickThrough != true) {
+        message = l.clickThroughEnabledNotice;
+      } else if (next.globalClickThroughHotKeyRegistered == false &&
+          previous?.globalClickThroughHotKeyRegistered != false) {
+        message = l.globalClickThroughShortcutUnavailable;
+      } else {
+        return;
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    });
     ref.listen<AppNotice?>(
       appNoticeProvider.select((notice) => notice.valueOrNull),
       (previous, next) {
@@ -358,8 +404,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
       ),
-      data: (messages) {
-        if (messages.isEmpty) {
+      data: (liveMessages) {
+        final paused = _pausedSnapshot == null
+            ? null
+            : pausedChatView(_pausedSnapshot!, liveMessages);
+        final messages = paused?.messages ?? liveMessages;
+        if (liveMessages.isEmpty) {
           final sessionPhase = ref.watch(chatSessionPhaseProvider);
           final hasChannels = hasStartableChat(settings);
           final sidebarShown = _sidebarVisible &&
@@ -432,15 +482,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Positioned(
                   bottom: 12,
                   right: 12,
-                  child: FloatingActionButton.small(
-                    backgroundColor: const Color(0xFF53FC18),
-                    foregroundColor: Colors.black,
-                    onPressed: () {
-                      setState(() => _autoScroll = true);
-                      _scrollToBottom();
-                    },
-                    child: const Icon(Icons.arrow_downward),
-                  ),
+                  child: (paused?.newCount ?? 0) > 0
+                      ? FloatingActionButton.extended(
+                          key: const Key('chat-resume-button'),
+                          backgroundColor: const Color(0xFF53FC18),
+                          foregroundColor: Colors.black,
+                          onPressed: _resumeChat,
+                          icon: const Icon(Icons.arrow_downward, size: 18),
+                          label: Text(l.newChatMessages(paused!.newCount)),
+                        )
+                      : FloatingActionButton.small(
+                          key: const Key('chat-resume-button'),
+                          backgroundColor: const Color(0xFF53FC18),
+                          foregroundColor: Colors.black,
+                          onPressed: _resumeChat,
+                          child: const Icon(Icons.arrow_downward),
+                        ),
                 ),
             ],
           ),

@@ -5,6 +5,7 @@ Future<void> _removeSelectedTtsModel({
   required AppLocalizations l,
   required SettingsModel settings,
   required SettingsNotifier notifier,
+  required SettingsModel Function() currentSettings,
   required AppController appController,
 }) async {
   final model = TtsModelCatalog.byId(settings.ttsModelId);
@@ -27,7 +28,8 @@ Future<void> _removeSelectedTtsModel({
   );
   if (remove != true || !context.mounted) return;
   try {
-    await notifier.update(settings.copyWith(ttsEnabled: false));
+    // Settings may have changed while the dialog was open.
+    await notifier.update(currentSettings().copyWith(ttsEnabled: false));
     await appController.removeTtsModel(settings.ttsModelId);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

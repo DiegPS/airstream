@@ -30,7 +30,7 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  test('registers Ctrl+Shift+C and handles its native event', () async {
+  test('reserves Ctrl+Shift+C only while click-through is on', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       calls.add(call);
@@ -42,31 +42,37 @@ void main() {
     addTearDown(notifier.dispose);
     await Future<void>.delayed(Duration.zero);
 
+    // Other apps keep the shortcut while click-through is off.
+    expect(calls, isEmpty);
+
+    await notifier.toggleClickThrough();
+    expect(notifier.state.clickThrough, isTrue);
     expect(notifier.state.globalClickThroughHotKeyRegistered, isTrue);
-    expect(calls.first.method, 'registerGlobalHotKey');
+    expect(calls.map((call) => call.method),
+        ['registerGlobalHotKey', 'setClickThrough']);
     expect(calls.first.arguments, {
       'id': WindowStateNotifier.clickThroughHotKeyId,
       'key': 'C',
       'modifiers': containsAll(['control', 'shift']),
     });
 
+    calls.clear();
     await sendNativeEvent({
       'eventName': 'globalHotKeyPressed',
       'id': WindowStateNotifier.clickThroughHotKeyId,
     });
     await Future<void>.delayed(Duration.zero);
 
-    expect(notifier.state.clickThrough, isTrue);
-    expect(
-      calls.where((call) => call.method == 'setClickThrough').single.arguments,
-      {'enabled': true},
-    );
+    expect(notifier.state.clickThrough, isFalse);
+    expect(calls.map((call) => call.method),
+        ['setClickThrough', 'unregisterGlobalHotKey']);
+    expect(calls.first.arguments, {'enabled': false});
   });
 
-  test('reports a global shortcut conflict without changing window state',
-      () async {
+  test('keeps click-through off when another app owns the shortcut', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
       if (call.method == 'registerGlobalHotKey') {
         throw PlatformException(code: 'hot_key_unavailable');
       }
@@ -75,17 +81,16 @@ void main() {
 
     final notifier = WindowStateNotifier();
     addTearDown(notifier.dispose);
-    await Future<void>.delayed(Duration.zero);
 
+    await notifier.toggleClickThrough();
+
+    expect(notifier.state.clickThrough, isFalse);
     expect(notifier.state.globalClickThroughHotKeyRegistered, isFalse);
     expect(
       notifier.state.globalClickThroughHotKeyError,
       'hot_key_unavailable',
     );
-    expect(notifier.state.clickThrough, isFalse);
-
-    await notifier.toggleClickThrough();
-    expect(notifier.state.clickThrough, isFalse);
+    expect(calls.where((call) => call.method == 'setClickThrough'), isEmpty);
   });
 
   test('serializes rapid toggles instead of applying the same state twice',

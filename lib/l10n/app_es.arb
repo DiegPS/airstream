@@ -222,7 +222,7 @@
   "systemTab": "Sistema y ventana",
   "desktopWindow": "Ventana de escritorio",
   "clickThrough": "Ignorar clics",
-  "clickThroughDescription": "Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)",
+  "clickThroughDescription": "Los clics llegan a la ventana que está detrás de Airstream. Pulsa Ctrl+Shift+C para desactivarlo.",
   "alwaysOnTop": "Siempre visible",
   "alwaysOnTopDescription": "Mantener sobre todas las demás ventanas",
   "antiCapture": "Protección de captura / Privacidad",
@@ -231,7 +231,7 @@
   "toggleTopBarShortcut": "Mostrar / Ocultar barra superior",
   "toggleAlwaysOnTopShortcut": "Alternar Siempre visible",
   "toggleClickThroughShortcut": "Alternar ignorar clics",
-  "globalClickThroughShortcutUnavailable": "El atajo global para ignorar clics no está disponible en este sistema o ya lo utiliza otra aplicación.",
+  "globalClickThroughShortcutUnavailable": "Para desactivar Ignorar clics hace falta Ctrl+Shift+C, y otra aplicación usa ese atajo. Ciérrala e inténtalo de nuevo.",
   "alwaysOnTopActiveTooltip": "Desactivar Siempre visible (Ctrl+Shift+P)",
   "alwaysOnTopInactiveTooltip": "Siempre visible (Ctrl+Shift+P)",
   "clickThroughActiveTooltip": "Ignorar clics está activo. Desactivar (Ctrl+Shift+C)",
@@ -380,5 +380,7 @@
   "configureChannels": "Configurar canales",
   "platformStatusConnected": "{platform}: conectado",
   "platformStatusConnecting": "{platform}: conectando…",
-  "platformStatusIdle": "{platform}: sin conectar"
+  "platformStatusIdle": "{platform}: sin conectar",
+  "clickThroughEnabledNotice": "Ignorar clics activado: los clics llegan a la ventana de detrás. Pulsa Ctrl+Shift+C para desactivarlo.",
+  "newChatMessages": "{count, plural, =1{1 mensaje nuevo} other{{count} mensajes nuevos}}"
 }

@@ -176,10 +176,9 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 '8080',
                 focusNode: _form.portFocus,
                 errorText: _overlayPortError(l),
-                onChanged: (_) {
-                  _mutate(() {});
-                  _queueTextSettingsSave();
-                },
+                // Each saved port restarts the server, so partial numbers
+                // typed on the way are not applied.
+                onChanged: (_) => _mutate(() {}),
                 onSubmitted: (_) => _saveTextSettings(),
               ),
               const SizedBox(height: 10),

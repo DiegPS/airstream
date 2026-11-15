@@ -729,7 +729,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get clickThroughDescription =>
-      'Los clics pasan a través de la ventana (WS_EX_TRANSPARENT)';
+      'Los clics llegan a la ventana que está detrás de Airstream. Pulsa Ctrl+Shift+C para desactivarlo.';
 
   @override
   String get alwaysOnTop => 'Siempre visible';
@@ -759,7 +759,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get globalClickThroughShortcutUnavailable =>
-      'El atajo global para ignorar clics no está disponible en este sistema o ya lo utiliza otra aplicación.';
+      'Para desactivar Ignorar clics hace falta Ctrl+Shift+C, y otra aplicación usa ese atajo. Ciérrala e inténtalo de nuevo.';
 
   @override
   String get alwaysOnTopActiveTooltip =>
@@ -1252,5 +1252,20 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String platformStatusIdle(String platform) {
     return '$platform: sin conectar';
+  }
+
+  @override
+  String get clickThroughEnabledNotice =>
+      'Ignorar clics activado: los clics llegan a la ventana de detrás. Pulsa Ctrl+Shift+C para desactivarlo.';
+
+  @override
+  String newChatMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mensajes nuevos',
+      one: '1 mensaje nuevo',
+    );
+    return '$_temp0';
   }
 }

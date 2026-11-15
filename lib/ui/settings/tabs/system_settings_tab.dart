@@ -21,9 +21,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               l.clickThrough,
               l.clickThroughDescription,
               win.clickThrough,
-              win.globalClickThroughHotKeyRegistered == false
-                  ? null
-                  : (v) => winNotifier.setClickThrough(v),
+              (v) => winNotifier.setClickThrough(v),
               activeThumbColor: const Color(0xFFFFB15C),
             ),
             _switchTileWithSubtitle(

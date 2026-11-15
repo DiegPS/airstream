@@ -46,14 +46,18 @@ class WindowStateNotifier extends StateNotifier<WindowState>
 
   WindowStateNotifier() : super(const WindowState()) {
     airWindow.addListener(this);
-    _globalHotKeyRegistration = _registerGlobalClickThroughHotKey();
-    unawaited(_globalHotKeyRegistration);
   }
 
-  late final Future<void> _globalHotKeyRegistration;
   Future<void> _clickThroughQueue = Future.value();
+  bool _hotKeyRegistered = false;
 
-  Future<void> _registerGlobalClickThroughHotKey() async {
+  /// Reserves Ctrl+Shift+C system-wide.
+  ///
+  /// The shortcut is only reserved while click-through is on, where it is the
+  /// only way back to the window. The rest of the time other apps (terminals,
+  /// browser developer tools) keep using it.
+  Future<bool> _registerGlobalClickThroughHotKey() async {
+    if (_hotKeyRegistered) return true;
     try {
       final registered = await airWindow.registerGlobalHotKey(
         const AirGlobalHotKey(
@@ -65,11 +69,16 @@ class WindowStateNotifier extends StateNotifier<WindowState>
           },
         ),
       );
+      _hotKeyRegistered = registered;
       if (mounted) {
-        state = state.copyWith(
+        state = WindowState(
+          clickThrough: state.clickThrough,
+          alwaysOnTop: state.alwaysOnTop,
+          excludeFromCapture: state.excludeFromCapture,
           globalClickThroughHotKeyRegistered: registered,
         );
       }
+      return registered;
     } catch (error) {
       AppLogger.warning(
         'Global click-through hotkey registration failed',
@@ -82,6 +91,20 @@ class WindowStateNotifier extends StateNotifier<WindowState>
               error is PlatformException ? error.code : 'registration_failed',
         );
       }
+      return false;
+    }
+  }
+
+  Future<void> _unregisterGlobalClickThroughHotKey() async {
+    if (!_hotKeyRegistered) return;
+    _hotKeyRegistered = false;
+    try {
+      await airWindow.unregisterGlobalHotKey(clickThroughHotKeyId);
+    } catch (error) {
+      AppLogger.warning(
+        'Global click-through hotkey release failed',
+        error: error,
+      );
     }
   }
 
@@ -93,10 +116,18 @@ class WindowStateNotifier extends StateNotifier<WindowState>
     final operation = _clickThroughQueue.then((_) async {
       final value = nextValue(state.clickThrough);
       if (value) {
-        await _globalHotKeyRegistration;
-        if (state.globalClickThroughHotKeyRegistered != true) return;
+        // Without the shortcut there would be no way back to the window.
+        if (!await _registerGlobalClickThroughHotKey()) return;
+        try {
+          await airWindow.setClickThrough(true);
+        } catch (_) {
+          await _unregisterGlobalClickThroughHotKey();
+          rethrow;
+        }
+      } else {
+        await airWindow.setClickThrough(false);
+        await _unregisterGlobalClickThroughHotKey();
       }
-      await airWindow.setClickThrough(value);
       if (mounted) state = state.copyWith(clickThrough: value);
     });
     _clickThroughQueue = operation.then<void>(
@@ -144,11 +175,7 @@ class WindowStateNotifier extends StateNotifier<WindowState>
   @override
   void dispose() {
     airWindow.removeListener(this);
-    unawaited(
-      _globalHotKeyRegistration.whenComplete(
-        () => airWindow.unregisterGlobalHotKey(clickThroughHotKeyId),
-      ),
-    );
+    unawaited(_unregisterGlobalClickThroughHotKey());
     super.dispose();
   }
 }

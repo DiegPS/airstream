@@ -33,7 +33,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                       _form.ytHandle,
                       l.youtubeInputHint,
                       focusNode: _form.ytFocus,
-                      onChanged: (_) => _mutate(() {}),
+                      onChanged: (_) => _channelEdited(),
                       onSubmitted: (_) => _saveTextSettings(),
                       onClear: () {
                         _form.ytHandle.clear();
@@ -75,7 +75,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     _form.twitch,
                     l.channelNameHint,
                     focusNode: _form.twitchFocus,
-                    onChanged: (_) => _mutate(() {}),
+                    onChanged: (_) => _channelEdited(),
                     onSubmitted: (_) => _saveTextSettings(),
                     onClear: () {
                       _form.twitch.clear();
@@ -114,7 +114,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     _form.kick,
                     l.channelIdentifierHint,
                     focusNode: _form.kickFocus,
-                    onChanged: (_) => _mutate(() {}),
+                    onChanged: (_) => _channelEdited(),
                     onSubmitted: (_) => _saveTextSettings(),
                     onClear: () {
                       _form.kick.clear();

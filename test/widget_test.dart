@@ -11,6 +11,7 @@ import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/application/app_providers.dart';
+import 'package:airstream/window/window_state.dart';
 
 class _WidgetTestSettings extends SettingsNotifier {
   _WidgetTestSettings([
@@ -362,6 +363,89 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('a typed channel is ready for the top bar Start button',
+      (WidgetTester tester) async {
+    final settings = _RecordingSettings(
+      const SettingsModel(overlayEnabled: false),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'channel_name'),
+      'creator',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(settings.state.twitchChannel, 'creator');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the overlay port is applied when editing ends, not per key',
+      (WidgetTester tester) async {
+    final settings = _RecordingSettings(
+      const SettingsModel(overlayEnabled: true, overlayPort: 8080),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => settings),
+          overlayUrlProvider.overrideWith((ref) => null),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+
+    final port = find.widgetWithText(TextField, '8080');
+    await tester.enterText(port, '80');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(settings.state.overlayPort, 8080);
+
+    await tester.enterText(port, '8081');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(settings.state.overlayPort, 8081);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('turning click-through on explains how to turn it off',
+      (WidgetTester tester) async {
+    final window = _FakeWindow();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          windowStateProvider.overrideWith((ref) => window),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(window.state.clickThrough, isTrue);
+    expect(find.textContaining('Press Ctrl+Shift+C to turn it off'),
+        findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.
@@ -371,5 +455,13 @@ class _RecordingSettings extends _WidgetTestSettings {
   @override
   Future<void> update(SettingsModel settings) async {
     state = settings;
+  }
+}
+
+/// Window state without the native plugin.
+class _FakeWindow extends WindowStateNotifier {
+  @override
+  Future<void> toggleClickThrough() async {
+    state = state.copyWith(clickThrough: !state.clickThrough);
   }
 }

@@ -79,6 +79,8 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                             isRunning ? const Color(0xFFFF5252) : _accent,
                         onTap: hasChannels
                             ? () {
+                                // Commits a channel still being edited.
+                                FocusManager.instance.primaryFocus?.unfocus();
                                 if (isRunning) {
                                   ref
                                       .read(chatConnectionProvider.notifier)

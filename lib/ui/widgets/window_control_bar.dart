@@ -48,9 +48,7 @@ class WindowControlBar extends ConsumerWidget {
               : Icons.mouse_outlined,
           active: state.clickThrough,
           activeColor: const Color(0xFFFFB15C),
-          onTap: state.globalClickThroughHotKeyRegistered == false
-              ? null
-              : notifier.toggleClickThrough,
+          onTap: notifier.toggleClickThrough,
         ),
         _WindowToggleButton(
           tooltip: antiCaptureTooltip,

@@ -303,7 +303,7 @@
   "systemTab": "System & Window",
   "desktopWindow": "Desktop Window",
   "clickThrough": "Click-Through",
-  "clickThroughDescription": "Clicks pass through the window (WS_EX_TRANSPARENT)",
+  "clickThroughDescription": "Clicks go to the window behind Airstream. Press Ctrl+Shift+C to turn it off.",
   "alwaysOnTop": "Always on Top",
   "alwaysOnTopDescription": "Keep on top of all other windows",
   "antiCapture": "Anti-Capture / Privacy",
@@ -312,7 +312,7 @@
   "toggleTopBarShortcut": "Toggle top bar",
   "toggleAlwaysOnTopShortcut": "Toggle Always on Top",
   "toggleClickThroughShortcut": "Toggle Click-Through",
-  "globalClickThroughShortcutUnavailable": "The global Click-Through shortcut is unavailable on this system or is already in use by another app.",
+  "globalClickThroughShortcutUnavailable": "Click-Through needs Ctrl+Shift+C to turn it back off, and another app is using that shortcut. Close that app and try again.",
   "alwaysOnTopActiveTooltip": "Disable Always on Top (Ctrl+Shift+P)",
   "alwaysOnTopInactiveTooltip": "Always on Top (Ctrl+Shift+P)",
   "clickThroughActiveTooltip": "Click-Through active. Disable (Ctrl+Shift+C)",
@@ -522,5 +522,10 @@
   "platformStatusIdle": "{platform}: not connected",
   "@platformStatusIdle": {
     "placeholders": { "platform": { "type": "String" } }
+  },
+  "clickThroughEnabledNotice": "Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.",
+  "newChatMessages": "{count, plural, =1{1 new message} other{{count} new messages}}",
+  "@newChatMessages": {
+    "placeholders": { "count": { "type": "int" } }
   }
 }

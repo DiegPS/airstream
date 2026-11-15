@@ -123,6 +123,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                       l: l,
                       settings: s,
                       notifier: notifier,
+                      currentSettings: () => ref.read(settingsProvider),
                       appController: appController,
                     ),
                     icon: const Icon(Icons.delete_outline_rounded, size: 14),
