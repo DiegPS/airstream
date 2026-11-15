@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,6 +171,138 @@ void main() {
     connection.disposed = true;
     await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(connection.alerts, isEmpty);
+  });
+
+  ChatProviderEvent providerEvent(Platform platform, ChatProviderEventKind kind,
+          {String id = 'provider', int? count, String text = ''}) =>
+      ChatProviderEvent(
+        platform: platform,
+        kind: kind,
+        id: id,
+        timestamp: DateTime.utc(2026, 11, 15),
+        authorName: 'Ana',
+        count: count,
+        text: text,
+      );
+
+  Future<List<Map<String, dynamic>>> sendProviders(
+      List<ChatProviderEvent> events) async {
+    // WebSocket ordering makes the caption a barrier for all preceding events.
+    final received = connection.envelopes.stream
+        .takeWhile((e) => e['type'] != 'caption')
+        .toList();
+    for (final event in events) {
+      connection.server.broadcastProviderEvent(event);
+    }
+    connection.server.broadcastCaption('barrier');
+    return received.timeout(const Duration(seconds: 2));
+  }
+
+  test('Twitch raid preserves the provider event and adds a raid alert',
+      () async {
+    final received = await sendProviders([
+      providerEvent(Platform.twitch, ChatProviderEventKind.raid,
+          count: 42, text: 'System message'),
+    ]);
+    expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
+    expect(received.first['data'], containsPair('text', 'System message'));
+    expect(received.last['data'], {
+      'platform': 'twitch',
+      'kind': 'raid',
+      'id': 'provider',
+      'author': 'Ana',
+      'authorAvatarUrl': null,
+      'authorChannelId': '',
+      'badgeImageUrl': null,
+      'badgeLabel': null,
+      'message': '',
+      'amount': null,
+      'color': null,
+      'stickerUrl': null,
+      'timestamp': '2026-11-15T00:00:00.000Z',
+      'membershipKind': null,
+      'months': null,
+      'giftCount': null,
+      'count': 42,
+    });
+  });
+
+  test('Kick host allows a missing viewer count and hides the channel text',
+      () async {
+    final received = await sendProviders([
+      providerEvent(Platform.kick, ChatProviderEventKind.host, text: 'Channel'),
+    ]);
+    expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
+    expect(
+        received.last['data'],
+        allOf(
+          containsPair('kind', 'host'),
+          containsPair('count', null),
+          containsPair('message', ''),
+        ));
+  });
+
+  test('Kick support carries Kicks and the gift message', () async {
+    final received = await sendProviders([
+      providerEvent(Platform.kick, ChatProviderEventKind.support,
+          count: 100, text: 'Rocket · gg'),
+    ]);
+    expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
+    expect(
+        received.last['data'],
+        allOf(
+          containsPair('kind', 'kicks'),
+          containsPair('count', 100),
+          containsPair('message', 'Rocket · gg'),
+        ));
+  });
+
+  test('duplicate support keeps both provider events but only one alert',
+      () async {
+    final event = providerEvent(Platform.kick, ChatProviderEventKind.support);
+    final received = await sendProviders([event, event]);
+    expect(received.map((e) => e['type']),
+        ['providerEvent', 'alert', 'providerEvent']);
+    expect(connection.alerts, hasLength(1));
+  });
+
+  test('rewards, goals and Kick raids remain provider events only', () async {
+    final received = await sendProviders([
+      providerEvent(Platform.twitch, ChatProviderEventKind.reward),
+      providerEvent(Platform.kick, ChatProviderEventKind.goal),
+      providerEvent(Platform.kick, ChatProviderEventKind.raid),
+    ]);
+    expect(received.map((e) => e['type']),
+        ['providerEvent', 'providerEvent', 'providerEvent']);
+    expect(connection.alerts, isEmpty);
+  });
+
+  test('stop and start clear provider alert ids on the same server', () async {
+    final event = providerEvent(Platform.kick, ChatProviderEventKind.support);
+    await sendProviders([event]);
+    final server = connection.server;
+    await connection.subscription?.cancel();
+    await connection.socket?.sink.close();
+    await server.stop();
+    await connection.start();
+    expect(identical(connection.server, server), isTrue);
+    final received = await sendProviders([event]);
+    expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
+    expect(connection.alerts, hasLength(2));
+  });
+
+  test('provider alert ids retain only the last 200 per platform', () async {
+    await sendProviders([
+      for (var i = 0; i < 201; i++)
+        providerEvent(Platform.kick, ChatProviderEventKind.support, id: '$i'),
+    ]);
+    final received = await sendProviders([
+      providerEvent(Platform.kick, ChatProviderEventKind.support, id: '200'),
+      providerEvent(Platform.twitch, ChatProviderEventKind.raid, id: '200'),
+      providerEvent(Platform.kick, ChatProviderEventKind.support, id: '0'),
+    ]);
+    expect(received.map((e) => e['type']),
+        ['providerEvent', 'providerEvent', 'alert', 'providerEvent', 'alert']);
   });
 }
 

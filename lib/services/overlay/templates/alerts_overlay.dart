@@ -140,6 +140,12 @@ const UI_STRINGS = {
     subscriptionMany: 'subscriptions',
     membershipOne: 'a membership',
     membershipMany: 'memberships',
+    raid: 'Raid',
+    host: 'Host',
+    kicks: 'Kicks',
+    raiding: 'is raiding',
+    hosting: 'is hosting you',
+    withViewers: (count) => ' with ' + count + (count === 1 ? ' viewer' : ' viewers'),
   },
   es: {
     someone: 'Alguien',
@@ -158,6 +164,12 @@ const UI_STRINGS = {
     subscriptionMany: 'suscripciones',
     membershipOne: 'una membresía',
     membershipMany: 'membresías',
+    raid: 'Raid',
+    host: 'Host',
+    kicks: 'Kicks',
+    raiding: 'llega de raid',
+    hosting: 'comparte tu directo',
+    withViewers: (count) => ' con ' + count + (count === 1 ? ' espectador' : ' espectadores'),
   },
 };
 
@@ -198,6 +210,15 @@ function renderAlert(alert) {
   if (alert.kind === 'bits') {
     title = author + ' ' + strings.sent + ' ' + (alert.amount || '');
     kicker = strings.bits;
+  } else if (alert.kind === 'raid' || alert.kind === 'host') {
+    const raid = alert.kind === 'raid';
+    title = author + ' ' + (raid ? strings.raiding : strings.hosting) +
+      (alert.count == null ? '' : strings.withViewers(alert.count));
+    kicker = platformLabel(alert.platform) + ' · ' + (raid ? strings.raid : strings.host);
+  } else if (alert.kind === 'kicks') {
+    title = author + ' ' + strings.sent + ' ' +
+      (alert.count == null ? '' : alert.count + ' ') + strings.kicks;
+    kicker = platformLabel(alert.platform) + ' · ' + strings.kicks;
   } else if (alert.kind === 'membership' && alert.membershipKind === 'gift') {
     const youtube = alert.platform === 'youtube';
     const count = Number(alert.giftCount) || 1;

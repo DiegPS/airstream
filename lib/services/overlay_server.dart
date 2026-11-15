@@ -28,6 +28,7 @@ class OverlayServer {
   final _featured = <String, _PendingFeaturedMessage>{};
   int _nextDelivery = 0;
   final _giftGroups = <String, _PendingGiftGroup>{};
+  final _providerAlertIds = <Platform, Set<String>>{};
   final Duration giftGroupingWindow;
 
   final Duration featuredAcknowledgementTimeout;
@@ -197,10 +198,47 @@ class OverlayServer {
       'type': 'providerEvent',
       'data': OverlayPayloadEncoder.providerEvent(event),
     });
+    final kind = switch ((event.platform, event.kind)) {
+      (Platform.twitch, ChatProviderEventKind.raid) => 'raid',
+      (Platform.kick, ChatProviderEventKind.host) => 'host',
+      (Platform.kick, ChatProviderEventKind.support) => 'kicks',
+      _ => null,
+    };
+    if (kind == null) return;
+    final ids = _providerAlertIds.putIfAbsent(event.platform, () => <String>{});
+    if (!ids.add(event.id)) return;
+    if (ids.length > 200) ids.remove(ids.first);
+    _broadcastEnvelope({
+      'type': 'alert',
+      'data': _providerAlertData(event, kind),
+    });
   }
+
+  static Map<String, Object?> _providerAlertData(
+          ChatProviderEvent event, String kind) =>
+      {
+        'platform': event.platform.name,
+        'kind': kind,
+        'id': event.id,
+        'author': event.authorName,
+        'authorAvatarUrl': null,
+        'authorChannelId': '',
+        'badgeImageUrl': null,
+        'badgeLabel': null,
+        'message': kind == 'kicks' ? event.text : '',
+        'amount': null,
+        'color': null,
+        'stickerUrl': null,
+        'timestamp': event.timestamp.toIso8601String(),
+        'membershipKind': null,
+        'months': null,
+        'giftCount': null,
+        'count': event.count,
+      };
 
   Future<void> stop() async {
     _lifecycleGeneration++;
+    _providerAlertIds.clear();
     for (final group in _giftGroups.values) {
       group.timer?.cancel();
     }
