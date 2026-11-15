@@ -589,6 +589,8 @@ class _AuthorRow extends StatelessWidget {
   }
 
   static String _formatTime(DateTime timestamp) {
+    // Platforms send UTC; the viewer reads local time.
+    timestamp = timestamp.toLocal();
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');
     return '$hour:$minute';

@@ -68,6 +68,28 @@ void main() {
       await service.dispose();
     }
   });
+
+  test('withdraws queued speech whose message was moderated', () async {
+    final root = await Directory.systemTemp.createTemp('airstream-tts-cancel-');
+    final cache = TtsModelCache(
+      rootDirectory: root,
+      client: MockClient((request) async => http.Response('', 500)),
+    );
+    final service = TtsService(modelCache: cache);
+    try {
+      service.speak('troll says something', tag: 'troll');
+      service.speak('viewer says hi', tag: 'viewer');
+      service.speak('troll says more', tag: 'troll');
+
+      final cancelled = service.cancelWhere((tag) => tag == 'troll');
+
+      expect(cancelled, 2);
+      expect(service.queuedTexts, ['viewer says hi']);
+    } finally {
+      await service.dispose();
+      if (await root.exists()) await root.delete(recursive: true);
+    }
+  });
 }
 
 class _ControllableSherpaEngine extends SherpaTtsEngine {

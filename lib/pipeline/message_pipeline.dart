@@ -39,17 +39,7 @@ class MessagePipeline {
   /// Applies a provider moderation event to messages still visible locally.
   bool applyModeration(ChatModerationEvent event) {
     final previousLength = _buffer.length;
-    _buffer.removeWhere((message) {
-      if (message.platform != event.platform ||
-          message.youtubeStreamOrientation != event.youtubeStreamOrientation) {
-        return false;
-      }
-      return switch (event.scope) {
-        ChatModerationScope.message => message.id == event.messageId,
-        ChatModerationScope.author => event.matchesAuthor(message.author),
-        ChatModerationScope.platform => true,
-      };
-    });
+    _buffer.removeWhere(event.appliesTo);
     return _buffer.length != previousLength;
   }
 

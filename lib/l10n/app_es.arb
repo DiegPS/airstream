@@ -382,5 +382,6 @@
   "platformStatusConnecting": "{platform}: conectando…",
   "platformStatusIdle": "{platform}: sin conectar",
   "clickThroughEnabledNotice": "Ignorar clics activado: los clics llegan a la ventana de detrás. Pulsa Ctrl+Shift+C para desactivarlo.",
-  "newChatMessages": "{count, plural, =1{1 mensaje nuevo} other{{count} mensajes nuevos}}"
+  "newChatMessages": "{count, plural, =1{1 mensaje nuevo} other{{count} mensajes nuevos}}",
+  "silenceTts": "Silenciar TTS (salta este mensaje y la cola)"
 }

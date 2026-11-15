@@ -81,4 +81,41 @@ void main() {
     expect(tts.disposed, isTrue);
     expect(captions.disposed, isTrue);
   });
+
+  test('a moderated message is never read aloud', () async {
+    coordinator.applySettings(
+      const SettingsModel(
+        ttsEnabled: true,
+        twitchEnabled: true,
+        twitchChannel: 'channel',
+      ),
+      connectChats: true,
+    );
+    await settleCoordinatorTasks();
+    ChatMessage message(String id, String author) => ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: ChatAuthor(name: author, channelId: author),
+          items: const [MessageItem.text('hola')],
+          timestamp: DateTime.now().toUtc(),
+        );
+    coordinator.handleChatMessage(message('1', 'troll'));
+    coordinator.handleChatMessage(message('2', 'viewer'));
+    coordinator.handleChatMessage(message('3', 'troll'));
+
+    coordinator.handleModeration(const ChatModerationEvent.message(
+      platform: Platform.twitch,
+      messageId: '1',
+    ));
+    expect(tts.spoken, ['viewer says: hola', 'troll says: hola']);
+
+    coordinator.handleModeration(const ChatModerationEvent.author(
+      platform: Platform.twitch,
+      authorChannelId: 'troll',
+    ));
+    expect(tts.spoken, ['viewer says: hola']);
+
+    await coordinator.silenceTts();
+    expect(tts.silenceCount, 1);
+  });
 }

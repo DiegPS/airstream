@@ -45,6 +45,8 @@ dependencies:
 
   # Cross-platform window management (drag, resize, minimize, maximize, and frameless shell)
   window_manager: ^0.4.0
+  # Lists the screens so a saved window position is only restored if visible.
+  screen_retriever: ^0.2.0
 
   # Window visual effects: transparent, acrylic, mica, blur (Windows/macOS/Linux)
   flutter_acrylic: ^1.1.0

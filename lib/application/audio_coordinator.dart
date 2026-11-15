@@ -30,7 +30,9 @@ abstract interface class TtsClient {
   });
   Future<void> prepareModel();
   Future<void> removeModel(String modelId);
-  void speak(String text, {bool allowDownload});
+  void speak(String text, {Object? tag, bool allowDownload});
+  int cancelWhere(bool Function(Object tag) test);
+  Future<void> silence();
   Future<void> dispose();
 }
 
@@ -87,8 +89,12 @@ class TtsServiceAdapter implements TtsClient {
   @override
   Future<void> removeModel(String modelId) => service.removeModel(modelId);
   @override
-  void speak(String text, {bool allowDownload = false}) =>
-      service.speak(text, allowDownload: allowDownload);
+  void speak(String text, {Object? tag, bool allowDownload = false}) =>
+      service.speak(text, tag: tag, allowDownload: allowDownload);
+  @override
+  int cancelWhere(bool Function(Object tag) test) => service.cancelWhere(test);
+  @override
+  Future<void> silence() => service.silence();
   @override
   Future<void> dispose() => service.dispose();
 }
@@ -299,8 +305,16 @@ class AudioCoordinator {
         ? (settings.appLanguageCode == 'es' ? 'dice' : 'says')
         : settings.ttsSeparatorText;
     final spokenAuthor = authorName.isEmpty ? 'Chat' : authorName;
-    _tts.speak('$spokenAuthor $separator: $text');
+    _tts.speak('$spokenAuthor $separator: $text', tag: message);
   }
+
+  /// Never reads aloud a message moderators removed.
+  void handleModeration(ChatModerationEvent event) {
+    _tts.cancelWhere((tag) => tag is ChatMessage && event.appliesTo(tag));
+  }
+
+  /// Stops the message being read and everything waiting.
+  Future<void> silenceTts() => _tts.silence();
 
   void _handleCaptionsState(LiveCaptionsState state) {
     if (!state.captionFinal) return;

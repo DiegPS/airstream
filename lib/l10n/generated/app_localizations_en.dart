@@ -1257,4 +1257,7 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get silenceTts => 'Silence TTS (skip this message and the queue)';
 }

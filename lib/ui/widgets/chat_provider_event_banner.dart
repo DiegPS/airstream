@@ -24,29 +24,47 @@ class TransientChatProviderEventBanner extends StatefulWidget {
 
 class _TransientChatProviderEventBannerState
     extends State<TransientChatProviderEventBanner> {
+  /// Events waiting while another one is on screen.
+  static const _maxPending = 3;
+
   Timer? _hideTimer;
   ChatProviderEvent? _visibleEvent;
+  final _pending = <ChatProviderEvent>[];
 
   @override
   void initState() {
     super.initState();
-    _show(widget.event);
+    _enqueue(widget.event);
   }
 
   @override
   void didUpdateWidget(TransientChatProviderEventBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_eventKey(widget.event) != _eventKey(oldWidget.event)) {
-      _show(widget.event);
+      _enqueue(widget.event);
     }
   }
 
-  void _show(ChatProviderEvent? event) {
+  void _enqueue(ChatProviderEvent? event) {
+    if (event == null || event.data['duplicatesMessage'] == true) return;
+    if (_visibleEvent == null) {
+      _display(event);
+      return;
+    }
+    // A burst shows one event after another instead of replacing them.
+    _pending.add(event);
+    if (_pending.length > _maxPending) _pending.removeAt(0);
+  }
+
+  void _display(ChatProviderEvent event) {
     _hideTimer?.cancel();
-    _visibleEvent = event?.data['duplicatesMessage'] == true ? null : event;
-    if (_visibleEvent == null) return;
+    _visibleEvent = event;
     _hideTimer = Timer(widget.visibleDuration, () {
-      if (mounted) setState(() => _visibleEvent = null);
+      if (!mounted) return;
+      setState(() {
+        _visibleEvent = null;
+        if (_pending.isNotEmpty) _display(_pending.removeAt(0));
+      });
     });
   }
 

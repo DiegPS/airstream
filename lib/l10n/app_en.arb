@@ -527,5 +527,6 @@
   "newChatMessages": "{count, plural, =1{1 new message} other{{count} new messages}}",
   "@newChatMessages": {
     "placeholders": { "count": { "type": "int" } }
-  }
+  },
+  "silenceTts": "Silence TTS (skip this message and the queue)"
 }

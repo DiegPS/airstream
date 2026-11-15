@@ -76,6 +76,19 @@ class ChatModerationEvent {
   final String authorName;
   final YoutubeStreamOrientation? youtubeStreamOrientation;
 
+  /// Whether this event removes [message].
+  bool appliesTo(ChatMessage message) {
+    if (message.platform != platform ||
+        message.youtubeStreamOrientation != youtubeStreamOrientation) {
+      return false;
+    }
+    return switch (scope) {
+      ChatModerationScope.message => message.id == messageId,
+      ChatModerationScope.author => matchesAuthor(message.author),
+      ChatModerationScope.platform => true,
+    };
+  }
+
   /// Whether [author] is the author this event moderates.
   bool matchesAuthor(ChatAuthor author) {
     if (authorChannelId.isNotEmpty && author.channelId == authorChannelId) {

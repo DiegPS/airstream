@@ -53,12 +53,24 @@ class TtsLoadState {
       totalBytes > 0 ? (loadedBytes / totalBytes).clamp(0, 1) : null;
 }
 
+class _Utterance {
+  const _Utterance(this.text, this.tag);
+
+  final String text;
+
+  /// What the utterance reads, such as the chat message, so it can be
+  /// withdrawn when that message is moderated.
+  final Object? tag;
+}
+
 class TtsService {
   static const _maxQueuedUtterances = 8;
   static const _maxUtteranceRunes = 260;
   static const _playbackPadding = Duration(seconds: 5);
 
-  final Queue<String> _queue = Queue<String>();
+  final Queue<_Utterance> _queue = Queue<_Utterance>();
+  Object? _currentTag;
+  int _skipRevision = 0;
   final StreamController<TtsLoadState> _loadStateController =
       StreamController<TtsLoadState>.broadcast();
   final StreamController<bool> _busyController =
@@ -278,16 +290,47 @@ class TtsService {
     return ensureReady(allowDownload: true);
   }
 
-  void speak(String text, {bool allowDownload = false}) {
+  void speak(String text, {Object? tag, bool allowDownload = false}) {
     if (_disposed) return;
     final prepared = prepareTextForSpeech(text);
     if (prepared.isEmpty) return;
     while (_queue.length >= _maxQueuedUtterances) {
       _queue.removeFirst();
     }
-    _queue.add(prepared);
+    _queue.add(_Utterance(prepared, tag));
     _setBusy(true);
     unawaited(_processQueue(allowDownload: allowDownload));
+  }
+
+  /// Texts waiting to be read, oldest first.
+  @visibleForTesting
+  List<String> get queuedTexts => [for (final u in _queue) u.text];
+
+  /// Withdraws every utterance whose tag passes [test], including the one
+  /// being read. Returns how many were withdrawn.
+  int cancelWhere(bool Function(Object tag) test) {
+    final before = _queue.length;
+    _queue.removeWhere((u) => u.tag != null && test(u.tag!));
+    var cancelled = before - _queue.length;
+    final current = _currentTag;
+    if (current != null && test(current)) {
+      cancelled++;
+      unawaited(skipCurrent());
+    }
+    return cancelled;
+  }
+
+  /// Stops the utterance being read; the queue carries on.
+  Future<void> skipCurrent() async {
+    _skipRevision++;
+    _currentTag = null;
+    await _audioPlayback.stop();
+  }
+
+  /// Stops the utterance being read and drops everything queued.
+  Future<void> silence() async {
+    _queue.clear();
+    await skipCurrent();
   }
 
   @visibleForTesting
@@ -311,8 +354,13 @@ class TtsService {
         return;
       }
       while (!_disposed && _queue.isNotEmpty && _engine.isReady) {
-        final text = _queue.removeFirst();
-        await _generateAndPlay(text);
+        final utterance = _queue.removeFirst();
+        _currentTag = utterance.tag;
+        try {
+          await _generateAndPlay(utterance.text);
+        } finally {
+          _currentTag = null;
+        }
       }
     } catch (error, stack) {
       AppLogger.error('TTS queue stopped', error: error, stackTrace: stack);
@@ -325,6 +373,7 @@ class TtsService {
   Future<void> _generateAndPlay(String text) async {
     File? output;
     final generation = _generation;
+    final skipRevision = _skipRevision;
     try {
       final model = selectedModel;
       final voice = model.voice(_voice);
@@ -348,13 +397,17 @@ class TtsService {
           steps: _steps,
           referenceAudio: customReference,
           referenceText: customReferenceText);
-      if (_disposed || generation != _generation || audio.samples.isEmpty) {
+      if (_disposed ||
+          generation != _generation ||
+          skipRevision != _skipRevision ||
+          audio.samples.isEmpty) {
         return;
       }
       final temp = await getTemporaryDirectory();
       output = File(p.join(temp.path,
           'airstream_tts_${DateTime.now().microsecondsSinceEpoch}.wav'));
       await output.writeAsBytes(_wavBytes(audio), flush: true);
+      if (skipRevision != _skipRevision) return;
       final timeout = audio.duration + _playbackPadding;
       await _audioPlayback.playFile(output,
           timeout: timeout < const Duration(seconds: 8)

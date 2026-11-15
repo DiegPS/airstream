@@ -26,6 +26,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
         sessionPhase == ChatSessionPhase.connected ||
         sessionPhase == ChatSessionPhase.partiallyConnected;
     final hasChannels = hasStartableChat(settings);
+    final ttsSpeaking = ref.watch(ttsBusyProvider).valueOrNull ?? false;
 
     return Material(
       color: Colors.transparent,
@@ -106,6 +107,18 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                           onTap: () => ref
                               .read(chatConnectionProvider.notifier)
                               .state = false,
+                        ),
+                      ],
+                      if (ttsSpeaking) ...[
+                        const SizedBox(width: 6),
+                        _TopBarIconButton(
+                          key: const Key('silence-tts-button'),
+                          tooltip: l.silenceTts,
+                          icon: Icons.voice_over_off_rounded,
+                          active: false,
+                          onTap: () => unawaited(
+                            ref.read(appControllerProvider).silenceTts(),
+                          ),
                         ),
                       ],
                       const SizedBox(width: 6),
@@ -300,6 +313,7 @@ class _TopBarActionButton extends StatelessWidget {
 
 class _TopBarIconButton extends StatelessWidget {
   const _TopBarIconButton({
+    super.key,
     required this.tooltip,
     required this.icon,
     required this.active,

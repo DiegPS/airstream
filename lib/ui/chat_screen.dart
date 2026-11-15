@@ -78,6 +78,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// The chat as it was when the viewer scrolled up to read; null while the
   /// chat follows new messages.
   List<ChatMessage>? _pausedSnapshot;
+
+  /// Keeps the event banner (and what it queued) when resizing moves the
+  /// chat between the inline and drawer layouts.
+  final _providerEventBannerKey = GlobalKey();
   bool _sidebarVisible = true;
   bool _topBarVisible = true;
 
@@ -366,26 +370,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         );
       }
-      if (providerEvent == null) return pane;
+      // The pane keeps the same place in the tree whether or not a banner
+      // shows, so the chat keeps its scroll position when one appears.
       return Stack(
         children: [
           Positioned.fill(child: pane),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 12,
-            child: IgnorePointer(
-              child: Align(
-                alignment: chatHorizontalAlignment(settings.chatTextAlign),
-                child: TransientChatProviderEventBanner(
-                  event: providerEvent,
-                  visibleDuration: Duration(
-                    seconds: settings.providerEventBannerSeconds,
+          if (providerEvent != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: 12,
+              child: IgnorePointer(
+                child: Align(
+                  alignment: chatHorizontalAlignment(settings.chatTextAlign),
+                  child: TransientChatProviderEventBanner(
+                    key: _providerEventBannerKey,
+                    event: providerEvent,
+                    visibleDuration: Duration(
+                      seconds: settings.providerEventBannerSeconds,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       );
     }

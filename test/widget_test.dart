@@ -446,6 +446,34 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('the top bar offers to silence TTS only while it speaks',
+      (WidgetTester tester) async {
+    final speaking = StreamController<bool>();
+    addTearDown(speaking.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          ttsBusyProvider.overrideWith((ref) => speaking.stream),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('silence-tts-button')), findsNothing);
+
+    speaking.add(true);
+    await tester.pump();
+    expect(find.byKey(const Key('silence-tts-button')), findsOneWidget);
+
+    speaking.add(false);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('silence-tts-button')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

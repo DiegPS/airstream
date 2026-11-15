@@ -9,6 +9,7 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/chat_screen.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/legacy_image_cache_cleaner.dart';
+import 'package:airstream/window/window_bounds.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,6 +50,9 @@ void main() async {
       // AirStream always uses its own Flutter title bar on desktop.
       await windowManager.setAsFrameless();
       await windowManager.setHasShadow(false);
+      final bounds = WindowBoundsKeeper();
+      await bounds.restore();
+      bounds.startTracking();
     } catch (error, stack) {
       AppLogger.error(
         'Desktop window initialization failed',

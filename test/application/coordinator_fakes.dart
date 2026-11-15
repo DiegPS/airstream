@@ -157,7 +157,30 @@ class FakeTtsClient implements TtsClient {
   @override
   Future<void> removeModel(String modelId) async => removeCount++;
   @override
-  void speak(String text, {bool allowDownload = false}) => spoken.add(text);
+  void speak(String text, {Object? tag, bool allowDownload = false}) {
+    spoken.add(text);
+    tags.add(tag);
+  }
+
+  final tags = <Object?>[];
+  int silenceCount = 0;
+
+  @override
+  int cancelWhere(bool Function(Object tag) test) {
+    var cancelled = 0;
+    for (var i = tags.length - 1; i >= 0; i--) {
+      final tag = tags[i];
+      if (tag != null && test(tag)) {
+        tags.removeAt(i);
+        spoken.removeAt(i);
+        cancelled++;
+      }
+    }
+    return cancelled;
+  }
+
+  @override
+  Future<void> silence() async => silenceCount++;
   @override
   Future<void> dispose() async {
     disposed = true;

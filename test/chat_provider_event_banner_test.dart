@@ -158,6 +158,38 @@ void main() {
 
     expect(find.byType(ChatProviderEventBanner), findsNothing);
   });
+
+  testWidgets('a burst of events shows each one in turn', (tester) async {
+    ChatProviderEvent event(String id, String author) => ChatProviderEvent(
+          platform: Platform.twitch,
+          kind: ChatProviderEventKind.raid,
+          id: id,
+          timestamp: DateTime.utc(2026),
+          authorName: author,
+          count: 10,
+        );
+    Widget banner(ChatProviderEvent e) => _app(
+          TransientChatProviderEventBanner(
+            event: e,
+            visibleDuration: const Duration(seconds: 2),
+          ),
+        );
+
+    await tester.pumpWidget(banner(event('raid-1', 'FirstRaider')));
+    await tester.pumpWidget(banner(event('raid-2', 'SecondRaider')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('FirstRaider'), findsOneWidget);
+    expect(find.textContaining('SecondRaider'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('FirstRaider'), findsNothing);
+    expect(find.textContaining('SecondRaider'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+  });
 }
 
 Widget _app(Widget child) => MaterialApp(

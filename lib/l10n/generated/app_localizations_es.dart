@@ -1268,4 +1268,7 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get silenceTts => 'Silenciar TTS (salta este mensaje y la cola)';
 }

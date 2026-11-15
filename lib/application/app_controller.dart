@@ -73,6 +73,7 @@ class AppController {
 
     _subscriptions.addAll([
       _chat.messages.listen(_audio.handleChatMessage),
+      _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
       _chat.providerEvents.listen(_overlay.broadcastProviderEvent),
       _audio.finalizedCaptions.listen(_overlay.broadcastCaption),
@@ -116,6 +117,7 @@ class AppController {
   String? get overlayUrl => _overlay.url;
 
   bool testTts(String text) => _audio.testTts(text);
+  Future<void> silenceTts() => _audio.silenceTts();
   Future<void> downloadTtsModel() => _audio.downloadTtsModel();
   Future<void> removeTtsModel(String modelId) => _audio.removeTtsModel(modelId);
   Future<void> downloadLiveCaptionsModel() =>

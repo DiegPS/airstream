@@ -2360,6 +2360,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 new message} other{{count} new messages}}'**
   String newChatMessages(int count);
+
+  /// No description provided for @silenceTts.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence TTS (skip this message and the queue)'**
+  String get silenceTts;
 }
 
 class _AppLocalizationsDelegate

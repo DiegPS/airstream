@@ -394,6 +394,39 @@ void main() {
     expect(find.text('Hat'), findsOneWidget);
     expect(find.byKey(const Key('emoji-zero-width-Hat')), findsNothing);
   });
+
+  testWidgets('shows message time in the local time zone', (tester) async {
+    final notifier = _TestSettingsNotifier(
+      const SettingsModel(showTimestamp: true),
+    );
+    final utc = DateTime.utc(2026, 5, 9, 23, 7);
+    final local = utc.toLocal();
+    String two(int value) => value.toString().padLeft(2, '0');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ChatBubble(
+              message: ChatMessage(
+                platform: Platform.twitch,
+                id: 'time',
+                author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
+                items: const [MessageItem.text('hola')],
+                timestamp: utc,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+        find.text('${two(local.hour)}:${two(local.minute)}'), findsOneWidget);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {
