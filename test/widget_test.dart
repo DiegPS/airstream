@@ -883,6 +883,48 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('Ctrl+F searches the chat and Escape closes the search',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          chatProvider.overrideWith(
+            (ref) => Stream.value([
+              for (final (i, text) in ['hola a todos', 'buen juego'].indexed)
+                ChatMessage(
+                  platform: Platform.twitch,
+                  id: 'm$i',
+                  author: ChatAuthor(name: 'viewer$i', channelId: 'v$i'),
+                  items: [MessageItem.text(text)],
+                  timestamp: DateTime.utc(2026, 11, 15),
+                ),
+            ]),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(ChatBubble), findsNWidgets(2));
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('chat-search-field')), 'juego');
+    await tester.pump();
+    expect(find.byType(ChatBubble), findsOneWidget);
+    expect(find.textContaining('juego'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('chat-search-close')));
+    await tester.pump();
+    expect(find.byKey(const Key('chat-search-field')), findsNothing);
+    expect(find.byType(ChatBubble), findsNWidgets(2));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 /// Applies updates immediately, without the persisted settings load.

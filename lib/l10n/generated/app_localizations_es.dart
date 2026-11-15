@@ -1663,4 +1663,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsResetDone => 'Ajustes restablecidos';
+
+  @override
+  String get chatSearch => 'Buscar en el chat';
+
+  @override
+  String get chatSearchHint => 'Buscar mensajes o nombres';
+
+  @override
+  String get chatSearchClose => 'Cerrar búsqueda';
+
+  @override
+  String get chatLogTitle => 'Registro del chat';
+
+  @override
+  String get chatLogSave => 'Guardar el chat de cada sesión';
+
+  @override
+  String get chatLogDescription =>
+      'Escribe cada mensaje en un archivo de texto en Documentos\\Airstream\\Chat mientras el chat está activo.';
+
+  @override
+  String get chatLogOpenFolder => 'Abrir carpeta';
 }

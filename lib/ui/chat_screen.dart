@@ -222,6 +222,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             !keyboard.isAltPressed &&
             !keyboard.isMetaPressed;
 
+    final isSearchShortcut = event.logicalKey == LogicalKeyboardKey.keyF &&
+        keyboard.isControlPressed &&
+        !keyboard.isShiftPressed &&
+        !keyboard.isAltPressed &&
+        !keyboard.isMetaPressed;
+
+    if (isSearchShortcut) {
+      ref.read(chatSearchOpenProvider.notifier).state = true;
+      return KeyEventResult.handled;
+    }
+
     if (isToggleClickThroughShortcut) {
       unawaited(windowNotifier.toggleClickThrough());
       return KeyEventResult.handled;
@@ -491,11 +502,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final positions = <String, int>{
           for (var i = 0; i < messages.length; i++) messages[i].dedupeKey: i,
         };
+        final searchOpen = ref.watch(chatSearchOpenProvider);
+        final headers = [
+          if (searchOpen) const _ChatSearchField(),
+          if (viewFilter.isActive) _ChatFilterBar(filter: viewFilter),
+        ];
         if (liveMessages.isEmpty && allMessages.isNotEmpty) {
           return buildPane(
             Column(
               children: [
-                _ChatFilterBar(filter: viewFilter),
+                ...headers,
                 Expanded(
                   child: Center(
                     child: Text(
@@ -613,14 +629,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         );
         return buildPane(
-          viewFilter.isActive
-              ? Column(
-                  children: [
-                    _ChatFilterBar(filter: viewFilter),
-                    Expanded(child: list),
-                  ],
-                )
-              : list,
+          headers.isEmpty
+              ? list
+              : Column(children: [...headers, Expanded(child: list)]),
         );
       },
     );
@@ -644,6 +655,7 @@ class _ChatFilterBar extends ConsumerWidget {
               chatFilterPlatformName(platform),
         ].join(', '),
       if (filter.role != ChatViewRole.all) chatFilterRoleName(l, filter.role),
+      if (filter.query.trim().isNotEmpty) '"${filter.query.trim()}"',
     ];
     return Container(
       key: const Key('chat-filter-bar'),
@@ -667,8 +679,11 @@ class _ChatFilterBar extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () => ref.read(chatViewFilterProvider.notifier).state =
-                const ChatViewFilter(),
+            onPressed: () {
+              ref.read(chatViewFilterProvider.notifier).state =
+                  const ChatViewFilter();
+              ref.read(chatSearchOpenProvider.notifier).state = false;
+            },
             child: Text(l.chatFilterShowAll),
           ),
         ],
@@ -774,5 +789,76 @@ class _ChatMessageEntry extends ConsumerWidget {
         );
         notify(l.messageCopied);
     }
+  }
+}
+
+/// Searches the chat window: only messages containing the text stay.
+class _ChatSearchField extends ConsumerStatefulWidget {
+  const _ChatSearchField();
+
+  @override
+  ConsumerState<_ChatSearchField> createState() => _ChatSearchFieldState();
+}
+
+class _ChatSearchFieldState extends ConsumerState<_ChatSearchField> {
+  late final _controller = TextEditingController(
+    text: ref.read(chatViewFilterProvider).query,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _close() {
+    final filter = ref.read(chatViewFilterProvider.notifier);
+    filter.state = filter.state.withQuery('');
+    ref.read(chatSearchOpenProvider.notifier).state = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: CallbackShortcuts(
+        bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
+        child: TextField(
+          key: const Key('chat-search-field'),
+          controller: _controller,
+          autofocus: true,
+          onChanged: (value) {
+            final filter = ref.read(chatViewFilterProvider.notifier);
+            filter.state = filter.state.withQuery(value);
+          },
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: l.chatSearchHint,
+            hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+            prefixIcon: const Icon(Icons.search_rounded, size: 18),
+            suffixIcon: IconButton(
+              key: const Key('chat-search-close'),
+              tooltip: l.chatSearchClose,
+              icon: const Icon(Icons.close_rounded, size: 16),
+              onPressed: _close,
+            ),
+            filled: true,
+            fillColor: const Color(0xEE1A1A1A),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

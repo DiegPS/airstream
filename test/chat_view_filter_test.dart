@@ -59,4 +59,14 @@ void main() {
         .togglePlatform(Platform.twitch);
     expect(ids(filter), isEmpty);
   });
+
+  test('search keeps messages whose text or author contains it', () {
+    final filter = const ChatViewFilter().withQuery('  HOLA ');
+    expect(filter.isActive, isTrue);
+    expect(ids(filter), ['yt', 'tw', 'kk', 'owner']);
+    expect(ids(const ChatViewFilter().withQuery('xqc')), ['kk']);
+    expect(ids(const ChatViewFilter().withQuery('own')), ['owner']);
+    expect(ids(const ChatViewFilter().withQuery('nada')), isEmpty);
+    expect(const ChatViewFilter().withQuery('   ').isActive, isFalse);
+  });
 }

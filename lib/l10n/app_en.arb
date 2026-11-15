@@ -686,5 +686,12 @@
   "settingsImportFailed": "That file is not an Airstream settings file.",
   "settingsResetTitle": "Reset settings?",
   "settingsResetConfirmation": "Style, voice reader, overlay, highlights and the rest go back to their defaults. Your channels, OBS connection, language and profiles stay.",
-  "settingsResetDone": "Settings reset"
+  "settingsResetDone": "Settings reset",
+  "chatSearch": "Search the chat",
+  "chatSearchHint": "Search messages or names",
+  "chatSearchClose": "Close search",
+  "chatLogTitle": "Chat log",
+  "chatLogSave": "Save the chat of each session",
+  "chatLogDescription": "Writes every message to a text file in Documents\\Airstream\\Chat while the chat runs.",
+  "chatLogOpenFolder": "Open folder"
 }

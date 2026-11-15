@@ -40,6 +40,9 @@ final chatPollProvider = StreamProvider<ChatPoll?>((ref) {
   return ref.watch(appControllerProvider).pollStream;
 });
 
+/// Whether the search field above the chat is open.
+final chatSearchOpenProvider = StateProvider<bool>((ref) => false);
+
 /// Whether the chat and the OBS overlay show sample messages.
 final chatPreviewProvider = StateProvider<bool>((ref) => false);
 

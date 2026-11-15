@@ -406,6 +406,16 @@ class _ChatFilterButton extends ConsumerWidget {
             child: Text(chatFilterPlatformName(platform)),
           ),
         const Divider(height: 8),
+        MenuItemButton(
+          key: const Key('chat-search-open'),
+          leadingIcon: const Icon(Icons.search_rounded, size: 16),
+          shortcut:
+              const SingleActivator(LogicalKeyboardKey.keyF, control: true),
+          onPressed: () =>
+              ref.read(chatSearchOpenProvider.notifier).state = true,
+          child: Text(l.chatSearch),
+        ),
+        const Divider(height: 8),
         _menuHeader(l.chatFilterShowOnly),
         for (final role in ChatViewRole.values)
           CheckboxMenuButton(

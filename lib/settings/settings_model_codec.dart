@@ -43,6 +43,7 @@ abstract final class SettingsModelCodec {
         'highlightWords': model.highlightWords,
         'highlightSound': model.highlightSound,
         'highlightFirstMessages': model.highlightFirstMessages,
+        'saveChatLog': model.saveChatLog,
         'profiles': model.profiles,
         'ttsEnabled': model.ttsEnabled,
         'ttsMembersOnly': model.ttsMembersOnly,
@@ -171,6 +172,7 @@ abstract final class SettingsModelCodec {
       highlightWords: List<String>.from(j['highlightWords'] as List? ?? []),
       highlightSound: j['highlightSound'] as bool? ?? false,
       highlightFirstMessages: j['highlightFirstMessages'] as bool? ?? true,
+      saveChatLog: j['saveChatLog'] as bool? ?? false,
       profiles: {
         for (final e in ((j['profiles'] as Map?) ?? const {}).entries)
           if (e.value is Map)

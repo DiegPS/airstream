@@ -2972,6 +2972,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings reset'**
   String get settingsResetDone;
+
+  /// No description provided for @chatSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the chat'**
+  String get chatSearch;
+
+  /// No description provided for @chatSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages or names'**
+  String get chatSearchHint;
+
+  /// No description provided for @chatSearchClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get chatSearchClose;
+
+  /// No description provided for @chatLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat log'**
+  String get chatLogTitle;
+
+  /// No description provided for @chatLogSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the chat of each session'**
+  String get chatLogSave;
+
+  /// No description provided for @chatLogDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Writes every message to a text file in Documents\\Airstream\\Chat while the chat runs.'**
+  String get chatLogDescription;
+
+  /// No description provided for @chatLogOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get chatLogOpenFolder;
 }
 
 class _AppLocalizationsDelegate

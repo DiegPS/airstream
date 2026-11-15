@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 
 import 'package:airstream/application/session_summary.dart';
@@ -12,6 +13,7 @@ import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
+import 'package:airstream/services/chat_log_writer.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/overlay_server.dart';
@@ -74,6 +76,7 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     _subscriptions.addAll([
+      _chat.messages.listen(_chatLog.write),
       _chat.messages.listen(_sessionSummary.handleMessage),
       _chat.providerEvents.listen(_sessionSummary.handleProviderEvent),
       _chat.messages.listen(_poll.handleMessage),
@@ -101,6 +104,7 @@ class AppController {
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _poll = ChatPollController();
   final _sessionSummary = SessionSummaryCollector();
+  final _chatLog = ChatLogWriter();
   bool _chatRunning = false;
 
   /// Chat for the overlay: live messages plus any preview samples.
@@ -144,6 +148,9 @@ class AppController {
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
   bool featureMessageOnStream(ChatMessage message) =>
       _overlay.featureMessage(message);
+
+  /// Where session chat logs are saved.
+  Future<Directory> chatLogDirectory() => ChatLogWriter.defaultDirectory();
 
   /// What happened since the chat was last started.
   SessionSummary get sessionSummary => _sessionSummary.summary;
@@ -189,6 +196,11 @@ class AppController {
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       connectChats ? _sessionSummary.start() : _sessionSummary.stop();
+      unawaited(connectChats
+          ? _chatLog.startSession(enabled: settings.saveChatLog)
+          : _chatLog.endSession());
+    } else if (connectChats && previous?.saveChatLog != settings.saveChatLog) {
+      unawaited(_chatLog.setEnabled(settings.saveChatLog));
     }
     _chat.applySettings(settings, connectChats: connectChats);
     _audio.applySettings(settings, connectChats: connectChats);
@@ -224,5 +236,6 @@ class AppController {
     await _noticeController.close();
     await _overlayFeed.close();
     await _poll.dispose();
+    await _chatLog.endSession();
   }
 }

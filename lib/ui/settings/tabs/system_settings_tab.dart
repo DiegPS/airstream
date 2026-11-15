@@ -86,6 +86,33 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               ),
           ],
         ),
+        UiCard(
+          key: const Key('chat-log-card'),
+          title: l.chatLogTitle,
+          icon: Icons.description_outlined,
+          children: [
+            _switchTileWithSubtitle(
+              l.chatLogSave,
+              l.chatLogDescription,
+              s.saveChatLog,
+              (v) => notifier.update(s.copyWith(saveChatLog: v)),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('chat-log-open-folder'),
+                onPressed: () async {
+                  final directory =
+                      await ref.read(appControllerProvider).chatLogDirectory();
+                  await directory.create(recursive: true);
+                  await io.Process.start('explorer', [directory.path]);
+                },
+                icon: const Icon(Icons.folder_open_rounded, size: 16),
+                label: Text(l.chatLogOpenFolder),
+              ),
+            ),
+          ],
+        ),
         const SettingsProfilesCard(),
         const SettingsBackupCard(),
       ],

@@ -484,5 +484,12 @@
   "settingsImportFailed": "Ese archivo no es un archivo de ajustes de Airstream.",
   "settingsResetTitle": "¿Restablecer los ajustes?",
   "settingsResetConfirmation": "El estilo, el lector de voz, la superposición, los resaltados y lo demás vuelven a sus valores de fábrica. Tus canales, la conexión con OBS, el idioma y los perfiles se conservan.",
-  "settingsResetDone": "Ajustes restablecidos"
+  "settingsResetDone": "Ajustes restablecidos",
+  "chatSearch": "Buscar en el chat",
+  "chatSearchHint": "Buscar mensajes o nombres",
+  "chatSearchClose": "Cerrar búsqueda",
+  "chatLogTitle": "Registro del chat",
+  "chatLogSave": "Guardar el chat de cada sesión",
+  "chatLogDescription": "Escribe cada mensaje en un archivo de texto en Documentos\\Airstream\\Chat mientras el chat está activo.",
+  "chatLogOpenFolder": "Abrir carpeta"
 }
