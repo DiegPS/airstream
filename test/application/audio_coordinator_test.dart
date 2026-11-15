@@ -2,6 +2,7 @@ import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
+import 'package:airstream/services/speech/voice_command.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -73,6 +74,74 @@ void main() {
     expect((await notice).code, AppNoticeCode.ttsPlaybackFailed);
     expect(await caption, 'airstream inicia grabación');
     expect((await command).argument, isEmpty);
+  });
+
+  test('with translated captions, commands are read from the translated text',
+      () async {
+    coordinator.applySettings(
+      const SettingsModel(
+        liveCaptionsEnabled: true,
+        liveCaptionsOverlayEnabled: true,
+        voiceCommandsEnabled: true,
+        liveCaptionsSourceLanguage: 'es',
+        liveCaptionsTargetLanguage: 'en',
+      ),
+      connectChats: false,
+    );
+    final commands = <VoiceCommand>[];
+    final subscription = coordinator.voiceCommands.listen(commands.add);
+    addTearDown(subscription.cancel);
+
+    // "airstream inicia grabación", as the recognizer translates it.
+    captions.stateController.add(const LiveCaptionsState(
+      caption: 'Airstream, start recording.',
+      captionFinal: true,
+    ));
+    // "airstream cambia a escena juego": the scene name comes translated.
+    captions.stateController.add(const LiveCaptionsState(
+      caption: 'Airstream, switch to scene game.',
+      captionFinal: true,
+    ));
+    await settleCoordinatorTasks();
+
+    expect(commands.map((c) => c.type), [
+      VoiceCommandType.startRecording,
+      VoiceCommandType.switchScene,
+    ]);
+    expect(commands.last.argument, 'game');
+  });
+
+  test('speech without the wake word and chat text never become commands',
+      () async {
+    coordinator.applySettings(
+      const SettingsModel(
+        liveCaptionsEnabled: true,
+        voiceCommandsEnabled: true,
+      ),
+      connectChats: false,
+    );
+    final commands = <VoiceCommand>[];
+    final subscription = coordinator.voiceCommands.listen(commands.add);
+    addTearDown(subscription.cancel);
+
+    captions.stateController.add(const LiveCaptionsState(
+      caption: 'inicia grabación',
+      captionFinal: true,
+    ));
+    captions.stateController.add(const LiveCaptionsState(
+      caption: 'airstream inicia grabación',
+      captionFinal: false,
+    ));
+    coordinator.handleChatMessage(ChatMessage(
+      platform: Platform.twitch,
+      id: 'not-a-microphone',
+      author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
+      items: const [MessageItem.text('airstream inicia grabación')],
+      timestamp: DateTime.now(),
+    ));
+    await settleCoordinatorTasks();
+
+    expect(commands, isEmpty);
   });
 
   test('disposes TTS and captions only once', () async {

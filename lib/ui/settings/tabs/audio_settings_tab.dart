@@ -469,6 +469,18 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                   l.voiceCommandsExamples,
                   style: const TextStyle(color: Colors.white38, fontSize: 10),
                 ),
+                if (s.liveCaptionsSourceLanguage !=
+                    s.liveCaptionsTargetLanguage) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    l.voiceCommandsTranslationNote,
+                    key: const Key('voice-commands-translation-note'),
+                    style: const TextStyle(
+                      color: Color(0xFFFFB15C),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 8),
               Container(
