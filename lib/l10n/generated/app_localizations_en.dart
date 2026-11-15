@@ -1473,4 +1473,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pollDuration => 'Duration';
+
+  @override
+  String get sessionSummary => 'Session summary';
+
+  @override
+  String get sessionSummaryEmpty =>
+      'Start the chat: the summary collects messages, viewers and support until you stop it.';
+
+  @override
+  String sessionSummaryLine(String duration, int messages, int chatters) {
+    return '$duration · $messages messages · $chatters viewers wrote';
+  }
+
+  @override
+  String get sessionDuration => 'Duration';
+
+  @override
+  String sessionDurationHours(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String sessionDurationMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get sessionMessagesLabel => 'Messages';
+
+  @override
+  String sessionMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count messages',
+      one: '1 message',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionChatters => 'Viewers who wrote';
+
+  @override
+  String get sessionTopChatters => 'Most active';
+
+  @override
+  String get sessionSupporters => 'Support';
+
+  @override
+  String get sessionNoSupporters =>
+      'No Super Chats, members or raids this time.';
+
+  @override
+  String sessionSupportSuperChat(String name, String amount) {
+    return '$name sent a Super Chat of $amount';
+  }
+
+  @override
+  String sessionSupportMember(String name, int months) {
+    String _temp0 = intl.Intl.pluralLogic(
+      months,
+      locale: localeName,
+      other: '$name: $months months as a member',
+      one: '$name became a member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionSupportSubscription(String name, int months) {
+    String _temp0 = intl.Intl.pluralLogic(
+      months,
+      locale: localeName,
+      other: '$name: $months months subscribed',
+      one: '$name subscribed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionSupportGift(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name gifted $count subscriptions',
+      one: '$name gifted a subscription',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionSupportRaid(String name, int count) {
+    return '$name raided with $count viewers';
+  }
+
+  @override
+  String sessionSupportOther(String name) {
+    return '$name sent a gift';
+  }
+
+  @override
+  String get sessionSummaryCopy => 'Copy summary';
+
+  @override
+  String get sessionSummaryCopied => 'Summary copied';
 }

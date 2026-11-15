@@ -360,6 +360,8 @@ void main() {
           .first,
       matching: find.byType(Switch),
     );
+    await tester.ensureVisible(dualSwitch);
+    await tester.pump();
     await tester.tap(dualSwitch);
     await tester.pump();
 
@@ -818,6 +820,30 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const Key('poll-start')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the session summary opens from the connections tab',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+
+    final button = find.byKey(const Key('session-summary-button'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.text('Session summary'), findsWidgets);
+    expect(find.textContaining('the summary collects'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

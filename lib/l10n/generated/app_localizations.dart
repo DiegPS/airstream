@@ -2726,6 +2726,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Duration'**
   String get pollDuration;
+
+  /// No description provided for @sessionSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Session summary'**
+  String get sessionSummary;
+
+  /// No description provided for @sessionSummaryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the chat: the summary collects messages, viewers and support until you stop it.'**
+  String get sessionSummaryEmpty;
+
+  /// No description provided for @sessionSummaryLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} · {messages} messages · {chatters} viewers wrote'**
+  String sessionSummaryLine(String duration, int messages, int chatters);
+
+  /// No description provided for @sessionDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get sessionDuration;
+
+  /// No description provided for @sessionDurationHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String sessionDurationHours(int hours, int minutes);
+
+  /// No description provided for @sessionDurationMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String sessionDurationMinutes(int minutes);
+
+  /// No description provided for @sessionMessagesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get sessionMessagesLabel;
+
+  /// No description provided for @sessionMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 message} other{{count} messages}}'**
+  String sessionMessages(int count);
+
+  /// No description provided for @sessionChatters.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers who wrote'**
+  String get sessionChatters;
+
+  /// No description provided for @sessionTopChatters.
+  ///
+  /// In en, this message translates to:
+  /// **'Most active'**
+  String get sessionTopChatters;
+
+  /// No description provided for @sessionSupporters.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get sessionSupporters;
+
+  /// No description provided for @sessionNoSupporters.
+  ///
+  /// In en, this message translates to:
+  /// **'No Super Chats, members or raids this time.'**
+  String get sessionNoSupporters;
+
+  /// No description provided for @sessionSupportSuperChat.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} sent a Super Chat of {amount}'**
+  String sessionSupportSuperChat(String name, String amount);
+
+  /// No description provided for @sessionSupportMember.
+  ///
+  /// In en, this message translates to:
+  /// **'{months, plural, =1{{name} became a member} other{{name}: {months} months as a member}}'**
+  String sessionSupportMember(String name, int months);
+
+  /// No description provided for @sessionSupportSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'{months, plural, =1{{name} subscribed} other{{name}: {months} months subscribed}}'**
+  String sessionSupportSubscription(String name, int months);
+
+  /// No description provided for @sessionSupportGift.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{name} gifted a subscription} other{{name} gifted {count} subscriptions}}'**
+  String sessionSupportGift(String name, int count);
+
+  /// No description provided for @sessionSupportRaid.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} raided with {count} viewers'**
+  String sessionSupportRaid(String name, int count);
+
+  /// No description provided for @sessionSupportOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} sent a gift'**
+  String sessionSupportOther(String name);
+
+  /// No description provided for @sessionSummaryCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy summary'**
+  String get sessionSummaryCopy;
+
+  /// No description provided for @sessionSummaryCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary copied'**
+  String get sessionSummaryCopied;
 }
 
 class _AppLocalizationsDelegate

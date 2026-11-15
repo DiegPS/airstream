@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
@@ -73,6 +74,8 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     _subscriptions.addAll([
+      _chat.messages.listen(_sessionSummary.handleMessage),
+      _chat.providerEvents.listen(_sessionSummary.handleProviderEvent),
       _chat.messages.listen(_poll.handleMessage),
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
@@ -97,6 +100,8 @@ class AppController {
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _poll = ChatPollController();
+  final _sessionSummary = SessionSummaryCollector();
+  bool _chatRunning = false;
 
   /// Chat for the overlay: live messages plus any preview samples.
   final _overlayFeed = StreamController<ChatMessage>.broadcast();
@@ -140,6 +145,9 @@ class AppController {
   bool featureMessageOnStream(ChatMessage message) =>
       _overlay.featureMessage(message);
 
+  /// What happened since the chat was last started.
+  SessionSummary get sessionSummary => _sessionSummary.summary;
+
   Stream<ChatPoll?> get pollStream => _poll.states;
   void startPoll({
     required String question,
@@ -178,6 +186,10 @@ class AppController {
     if (_disposed) return;
     final previous = _lastSettings;
     _lastSettings = settings;
+    if (connectChats != _chatRunning) {
+      _chatRunning = connectChats;
+      connectChats ? _sessionSummary.start() : _sessionSummary.stop();
+    }
     _chat.applySettings(settings, connectChats: connectChats);
     _audio.applySettings(settings, connectChats: connectChats);
     _overlay.applySettings(

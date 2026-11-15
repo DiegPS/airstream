@@ -233,6 +233,15 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               s.connectChatOnLaunch,
               (v) => notifier.update(s.copyWith(connectChatOnLaunch: v)),
             ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('session-summary-button'),
+                onPressed: () => showSessionSummaryDialog(context, ref),
+                icon: const Icon(Icons.insights_rounded, size: 16),
+                label: Text(l.sessionSummary),
+              ),
+            ),
             const SizedBox(height: 14),
             const Divider(height: 1, color: Color(0xFF2A2A2A)),
             const SizedBox(height: 14),

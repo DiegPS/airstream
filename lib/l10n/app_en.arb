@@ -609,5 +609,55 @@
   },
   "pollOverlayUrlCopied": "Poll URL copied",
   "copyUrl": "Copy URL",
-  "pollDuration": "Duration"
+  "pollDuration": "Duration",
+  "sessionSummary": "Session summary",
+  "sessionSummaryEmpty": "Start the chat: the summary collects messages, viewers and support until you stop it.",
+  "sessionSummaryLine": "{duration} · {messages} messages · {chatters} viewers wrote",
+  "@sessionSummaryLine": {
+    "placeholders": { "duration": { "type": "String" }, "messages": { "type": "int" }, "chatters": { "type": "int" } }
+  },
+  "sessionDuration": "Duration",
+  "sessionDurationHours": "{hours} h {minutes} min",
+  "@sessionDurationHours": {
+    "placeholders": { "hours": { "type": "int" }, "minutes": { "type": "int" } }
+  },
+  "sessionDurationMinutes": "{minutes} min",
+  "@sessionDurationMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "sessionMessagesLabel": "Messages",
+  "sessionMessages": "{count, plural, =1{1 message} other{{count} messages}}",
+  "@sessionMessages": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "sessionChatters": "Viewers who wrote",
+  "sessionTopChatters": "Most active",
+  "sessionSupporters": "Support",
+  "sessionNoSupporters": "No Super Chats, members or raids this time.",
+  "sessionSupportSuperChat": "{name} sent a Super Chat of {amount}",
+  "@sessionSupportSuperChat": {
+    "placeholders": { "name": { "type": "String" }, "amount": { "type": "String" } }
+  },
+  "sessionSupportMember": "{months, plural, =1{{name} became a member} other{{name}: {months} months as a member}}",
+  "@sessionSupportMember": {
+    "placeholders": { "name": { "type": "String" }, "months": { "type": "int" } }
+  },
+  "sessionSupportSubscription": "{months, plural, =1{{name} subscribed} other{{name}: {months} months subscribed}}",
+  "@sessionSupportSubscription": {
+    "placeholders": { "name": { "type": "String" }, "months": { "type": "int" } }
+  },
+  "sessionSupportGift": "{count, plural, =1{{name} gifted a subscription} other{{name} gifted {count} subscriptions}}",
+  "@sessionSupportGift": {
+    "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "sessionSupportRaid": "{name} raided with {count} viewers",
+  "@sessionSupportRaid": {
+    "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "sessionSupportOther": "{name} sent a gift",
+  "@sessionSupportOther": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "sessionSummaryCopy": "Copy summary",
+  "sessionSummaryCopied": "Summary copied"
 }
