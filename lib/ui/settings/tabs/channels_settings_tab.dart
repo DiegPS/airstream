@@ -410,6 +410,12 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
             ),
             const SizedBox(height: 8),
             _switchTileWithSubtitle(
+              l.highlightFirstMessages,
+              l.highlightFirstMessagesDescription,
+              s.highlightFirstMessages,
+              (v) => notifier.update(s.copyWith(highlightFirstMessages: v)),
+            ),
+            _switchTileWithSubtitle(
               l.highlightSound,
               l.highlightSoundDescription,
               s.highlightSound,

@@ -548,5 +548,8 @@
   "highlightWordsHint": "One word or phrase per line",
   "highlightWordsHelp": "Whole words; uppercase and lowercase are the same.",
   "highlightSound": "Play a sound",
-  "highlightSoundDescription": "A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks."
+  "highlightSoundDescription": "A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.",
+  "badgeFirstInSession": "First message this stream",
+  "highlightFirstMessages": "First message of each viewer",
+  "highlightFirstMessagesDescription": "Mark the first message each viewer sends after you start the chat, to welcome them."
 }

@@ -1320,4 +1320,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get highlightSoundDescription =>
       'A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.';
+
+  @override
+  String get badgeFirstInSession => 'First message this stream';
+
+  @override
+  String get highlightFirstMessages => 'First message of each viewer';
+
+  @override
+  String get highlightFirstMessagesDescription =>
+      'Mark the first message each viewer sends after you start the chat, to welcome them.';
 }

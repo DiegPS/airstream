@@ -69,6 +69,7 @@ class SettingsModel {
   final bool highlightMentions;
   final List<String> highlightWords;
   final bool highlightSound;
+  final bool highlightFirstMessages;
 
   // TTS
   final bool ttsEnabled;
@@ -197,6 +198,7 @@ class SettingsModel {
     this.highlightMentions = true,
     this.highlightWords = const [],
     this.highlightSound = false,
+    this.highlightFirstMessages = true,
     this.ttsEnabled = false,
     this.ttsMembersOnly = false,
     this.ttsCommandMode = false,
@@ -314,6 +316,7 @@ class SettingsModel {
     bool? highlightMentions,
     List<String>? highlightWords,
     bool? highlightSound,
+    bool? highlightFirstMessages,
     bool? ttsEnabled,
     bool? ttsMembersOnly,
     bool? ttsCommandMode,
@@ -435,6 +438,8 @@ class SettingsModel {
         highlightMentions: highlightMentions ?? this.highlightMentions,
         highlightWords: highlightWords ?? this.highlightWords,
         highlightSound: highlightSound ?? this.highlightSound,
+        highlightFirstMessages:
+            highlightFirstMessages ?? this.highlightFirstMessages,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
         ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,
         ttsCommandMode: ttsCommandMode ?? this.ttsCommandMode,

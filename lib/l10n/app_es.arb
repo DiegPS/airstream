@@ -400,5 +400,8 @@
   "highlightWordsHint": "Una palabra o frase por línea",
   "highlightWordsHelp": "Palabras completas; da igual mayúsculas o minúsculas.",
   "highlightSound": "Reproducir un sonido",
-  "highlightSoundDescription": "Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz."
+  "highlightSoundDescription": "Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz.",
+  "badgeFirstInSession": "Primer mensaje en el directo",
+  "highlightFirstMessages": "Primer mensaje de cada persona",
+  "highlightFirstMessagesDescription": "Marca el primer mensaje que envía cada persona desde que inicias el chat, para darle la bienvenida."
 }

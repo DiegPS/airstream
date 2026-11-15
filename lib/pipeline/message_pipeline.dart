@@ -33,6 +33,7 @@ class MessagePipeline {
   List<ChatMessage> get buffer => List.unmodifiable(_buffer);
 
   void clear() {
+    _sessionAuthors.clear();
     _buffer.clear();
     _seenIdKeys.clear();
     _seenContentKeys.clear();
@@ -117,11 +118,12 @@ class MessagePipeline {
     _controller.close();
   }
 
-  void _handleMessage(ChatMessage msg) {
-    if (_shouldBlock(msg)) return;
-    if (_isDuplicate(msg)) return;
+  void _handleMessage(ChatMessage incoming) {
+    if (_shouldBlock(incoming)) return;
+    if (_isDuplicate(incoming)) return;
 
-    _rememberMessage(msg);
+    _rememberMessage(incoming);
+    final msg = _markFirstInSession(incoming);
 
     _buffer.add(msg);
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
@@ -130,6 +132,24 @@ class MessagePipeline {
     }
 
     if (!_controller.isClosed) _controller.add(msg);
+  }
+
+  /// Authors seen since the chat started, as platform-scoped keys.
+  final _sessionAuthors = <String>{};
+  static const _maxSessionAuthors = 100000;
+
+  ChatMessage _markFirstInSession(ChatMessage msg) {
+    if (msg.isOwner || msg.isMembershipEvent) return msg;
+    final identity = msg.author.channelId.trim().isNotEmpty
+        ? msg.author.channelId
+        : msg.author.name;
+    final author = _normalizeUserKey(identity);
+    if (author.isEmpty) return msg;
+    if (!_sessionAuthors.add('${msg.platform.name}:$author')) return msg;
+    if (_sessionAuthors.length > _maxSessionAuthors) {
+      _sessionAuthors.remove(_sessionAuthors.first);
+    }
+    return msg.copyWith(isFirstInSession: true);
   }
 
   bool _isDuplicate(ChatMessage msg) {

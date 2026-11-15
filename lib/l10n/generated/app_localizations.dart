@@ -2468,6 +2468,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.'**
   String get highlightSoundDescription;
+
+  /// No description provided for @badgeFirstInSession.
+  ///
+  /// In en, this message translates to:
+  /// **'First message this stream'**
+  String get badgeFirstInSession;
+
+  /// No description provided for @highlightFirstMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'First message of each viewer'**
+  String get highlightFirstMessages;
+
+  /// No description provided for @highlightFirstMessagesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark the first message each viewer sends after you start the chat, to welcome them.'**
+  String get highlightFirstMessagesDescription;
 }
 
 class _AppLocalizationsDelegate

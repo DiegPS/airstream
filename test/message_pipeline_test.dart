@@ -464,6 +464,48 @@ void main() {
     await source.close();
     pipeline.dispose();
   });
+
+  test('marks each viewer first message since the chat started', () async {
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 50));
+    final source = StreamController<ChatMessage>();
+    pipeline.addSource(source.stream);
+    var next = 0;
+    ChatMessage message(
+      String author, {
+      Platform platform = Platform.twitch,
+      bool owner = false,
+    }) =>
+        ChatMessage(
+          platform: platform,
+          id: 'm${next++}',
+          author: ChatAuthor(name: author, channelId: author),
+          items: const [MessageItem.text('hola')],
+          isOwner: owner,
+          timestamp: DateTime.utc(2026, 11, 15),
+        );
+
+    source
+      ..add(message('Ana'))
+      ..add(message('ana'))
+      ..add(message('Beto'))
+      ..add(message('Ana', platform: Platform.kick))
+      ..add(message('Streamer', owner: true));
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      pipeline.buffer.map((m) => m.isFirstInSession),
+      [true, false, true, true, false],
+      reason: 'per viewer and platform, never the streamer',
+    );
+
+    pipeline.clear();
+    source.add(message('Ana'));
+    await Future<void>.delayed(Duration.zero);
+    expect(pipeline.buffer.single.isFirstInSession, isTrue,
+        reason: 'a new chat session starts over');
+
+    await source.close();
+    pipeline.dispose();
+  });
 }
 
 ChatMessage _message({

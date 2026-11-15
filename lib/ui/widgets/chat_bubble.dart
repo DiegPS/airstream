@@ -14,6 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Outline of messages that mention the streamer or a highlight word.
 const chatHighlightColor = Color(0xFFFFC83D);
 
+/// Outline of a viewer's first message in the current stream.
+const chatFirstMessageColor = Color(0xFF2F7DE1);
+
 /// Chat text keeps soft hyphens (U+00AD) invisible, as before Flutter 3.50.
 ///
 /// Since 3.50 Flutter draws a hyphen where a line breaks at a soft hyphen,
@@ -31,6 +34,8 @@ class ChatBubble extends ConsumerWidget {
     final l = AppLocalizations.of(context)!;
     final s = ref.watch(settingsProvider);
     final highlighted = ref.watch(chatHighlighterProvider).matches(message);
+    final firstInSession =
+        !highlighted && s.highlightFirstMessages && message.isFirstInSession;
     final bubbleOpacity = s.messageOpacity.clamp(0.0, 1.0);
     final isSuperChat = message.superChat != null;
     final isMembershipEvent = message.isMembershipEvent;
@@ -58,10 +63,12 @@ class ChatBubble extends ConsumerWidget {
 
     final bubbleBorder = highlighted
         ? Border.all(color: chatHighlightColor, width: 2)
-        : _bubbleBorder(
-            showBubble: s.showBubble,
-            bubbleOpacity: bubbleOpacity,
-          );
+        : firstInSession
+            ? Border.all(color: chatFirstMessageColor, width: 2)
+            : _bubbleBorder(
+                showBubble: s.showBubble,
+                bubbleOpacity: bubbleOpacity,
+              );
 
     final shadow = s.showBubble && s.showBubbleShadow
         ? const [
@@ -108,7 +115,9 @@ class ChatBubble extends ConsumerWidget {
               child: Container(
                 key: highlighted
                     ? Key('chat-highlight-${message.dedupeKey}')
-                    : null,
+                    : firstInSession
+                        ? Key('chat-first-${message.dedupeKey}')
+                        : null,
                 decoration: BoxDecoration(
                   color: bubbleColor,
                   borderRadius: BorderRadius.circular(s.borderRadius),
@@ -161,6 +170,7 @@ class ChatBubble extends ConsumerWidget {
                                         s.showYoutubeStreamBadges,
                                     showAvatars: s.showAvatars,
                                     showTimestamp: s.showTimestamp,
+                                    showFirstInSession: firstInSession,
                                   ),
                                   if (message.reply != null &&
                                       (message.reply!.authorName.isNotEmpty ||
@@ -460,6 +470,7 @@ class _AuthorRow extends StatelessWidget {
     required this.showYoutubeStreamBadges,
     required this.showAvatars,
     required this.showTimestamp,
+    this.showFirstInSession = false,
   });
 
   final ChatMessage message;
@@ -474,6 +485,7 @@ class _AuthorRow extends StatelessWidget {
   final bool showYoutubeStreamBadges;
   final bool showAvatars;
   final bool showTimestamp;
+  final bool showFirstInSession;
 
   @override
   Widget build(BuildContext context) {
@@ -536,6 +548,11 @@ class _AuthorRow extends StatelessWidget {
           _LabelBadge(
             text: l.badgeVerified,
             backgroundColor: const Color(0xFF1D9BF0),
+          ),
+        if (showFirstInSession)
+          _LabelBadge(
+            text: l.badgeFirstInSession,
+            backgroundColor: chatFirstMessageColor,
           ),
         if (showBadges && message.isFirstMessage)
           _LabelBadge(

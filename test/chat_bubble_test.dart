@@ -510,6 +510,52 @@ void main() {
         find.byKey(Key('chat-highlight-${mention.dedupeKey}')), findsOneWidget);
     expect(find.byKey(Key('chat-highlight-${plain.dedupeKey}')), findsNothing);
   });
+
+  testWidgets('a viewer first message this stream is marked', (tester) async {
+    Future<void> pump(SettingsModel settings, ChatMessage message) async {
+      // A new scope for each case: overrides of a live scope do not change.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider
+                .overrideWith((ref) => _TestSettingsNotifier(settings)),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: ChatBubble(message: message)),
+          ),
+        ),
+      );
+    }
+
+    final first = ChatMessage(
+      platform: Platform.kick,
+      id: 'first',
+      author: const ChatAuthor(name: 'nuevo', channelId: 'nuevo'),
+      items: const [MessageItem.text('hola')],
+      isFirstInSession: true,
+      timestamp: DateTime.utc(2026, 11, 15),
+    );
+
+    await pump(const SettingsModel(), first);
+    expect(find.byKey(Key('chat-first-${first.dedupeKey}')), findsOneWidget);
+    expect(find.text('First message this stream'), findsOneWidget);
+
+    await pump(const SettingsModel(highlightFirstMessages: false), first);
+    expect(find.byKey(Key('chat-first-${first.dedupeKey}')), findsNothing);
+    expect(find.text('First message this stream'), findsNothing);
+
+    // A mention keeps its own highlight.
+    await pump(
+      const SettingsModel(highlightWords: ['hola']),
+      first,
+    );
+    expect(
+        find.byKey(Key('chat-highlight-${first.dedupeKey}')), findsOneWidget);
+    expect(find.byKey(Key('chat-first-${first.dedupeKey}')), findsNothing);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

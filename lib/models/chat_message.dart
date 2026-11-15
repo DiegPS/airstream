@@ -209,6 +209,11 @@ class ChatMessage {
   final bool isAction;
   final String providerRoomId;
   final bool isFirstMessage;
+
+  /// The author's first message since the chat started (any platform).
+  /// Unlike [isFirstMessage], which is Twitch's first message in the channel
+  /// ever, this is computed by Airstream for the current session.
+  final bool isFirstInSession;
   final bool isReturningChatter;
   final String? rewardId;
 
@@ -234,6 +239,7 @@ class ChatMessage {
     this.isAction = false,
     this.providerRoomId = '',
     this.isFirstMessage = false,
+    this.isFirstInSession = false,
     this.isReturningChatter = false,
     this.rewardId,
   });
@@ -265,7 +271,8 @@ class ChatMessage {
   String get dedupeKey =>
       dedupeIdKey.isNotEmpty ? dedupeIdKey : dedupeContentKey;
 
-  ChatMessage copyWith({ChatAuthor? author}) => ChatMessage(
+  ChatMessage copyWith({ChatAuthor? author, bool? isFirstInSession}) =>
+      ChatMessage(
         platform: platform,
         id: id,
         author: author ?? this.author,
@@ -287,6 +294,7 @@ class ChatMessage {
         isAction: isAction,
         providerRoomId: providerRoomId,
         isFirstMessage: isFirstMessage,
+        isFirstInSession: isFirstInSession ?? this.isFirstInSession,
         isReturningChatter: isReturningChatter,
         rewardId: rewardId,
       );
