@@ -46,6 +46,7 @@ abstract interface class ObsClient {
   Future<void> pauseRecording();
   Future<void> resumeRecording();
   Future<void> switchScene(String sceneName);
+  Future<List<String>> sceneNames();
   Future<void> close();
 }
 
@@ -123,6 +124,12 @@ class ObsWebSocketClient implements ObsClient {
   @override
   Future<void> switchScene(String sceneName) =>
       _socket.scenes.setCurrentProgramScene(sceneName);
+  @override
+  Future<List<String>> sceneNames() async {
+    final list = await _socket.scenes.getSceneList();
+    return [for (final scene in list.scenes) scene.sceneName];
+  }
+
   @override
   Future<void> close() => _socket.close();
 }

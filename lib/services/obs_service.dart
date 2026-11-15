@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/log_sanitizer.dart';
 import 'package:airstream/services/obs/obs_client.dart';
+import 'package:airstream/services/speech/voice_command.dart';
 import 'package:flutter/foundation.dart';
 
 enum ObsDropTrend { normal, steady, rising }
@@ -147,9 +148,17 @@ class ObsService {
         (obs) => obs.resumeRecording(),
       );
 
+  /// Switches to a scene by name. The name may come from speech, so it is
+  /// matched against OBS's scene list ignoring case, accents and punctuation.
   Future<void> switchScene(String sceneName) => _runControl(
         'switch scene',
-        (obs) => obs.switchScene(sceneName),
+        (obs) async {
+          final scene = resolveSceneName(sceneName, await obs.sceneNames());
+          if (scene == null) {
+            throw StateError('OBS has no scene named "$sceneName".');
+          }
+          await obs.switchScene(scene);
+        },
       );
 
   Future<void> _runControl(

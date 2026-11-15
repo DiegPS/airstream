@@ -106,6 +106,31 @@ void main() {
     expect(client.closeCount, 1);
   });
 
+  test('OBS switches to the scene a spoken name refers to', () async {
+    final client = _FakeObsClient();
+    final service = ObsService(
+      connector: ({
+        required String url,
+        required String? password,
+        required void Function() onDone,
+        required void Function(dynamic event) onEvent,
+      }) async =>
+          client,
+      statsPollInterval: const Duration(milliseconds: 2),
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+
+    await service.switchScene('escena juego');
+    await service.switchScene('charla final');
+    await expectLater(
+      service.switchScene('inexistente'),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(client.commands, ['scene:Escena-Juego', 'scene:Charla Final']);
+  });
+
   test('OBS exposes a client connection timeout as state', () async {
     final pending = Completer<ObsClient>();
     final service = ObsService(
@@ -169,6 +194,9 @@ class _FakeObsClient implements ObsClient {
   @override
   Future<void> switchScene(String sceneName) async =>
       commands.add('scene:$sceneName');
+  List<String> scenes = const ['Main', 'BRB', 'Escena-Juego', 'Charla Final'];
+  @override
+  Future<List<String>> sceneNames() async => scenes;
   @override
   Future<void> close() async => closeCount++;
 }
