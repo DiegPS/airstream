@@ -3,6 +3,7 @@ import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 
 import 'coordinator_fakes.dart';
 
@@ -110,7 +111,8 @@ void main() {
       items: const [MessageItem.text('hola')],
       timestamp: DateTime.utc(2026, 11, 15),
     );
-    expect(coordinator.featureMessage(message), isFalse);
+    expect(coordinator.featureMessage(message).status,
+        FeaturedMessageStatus.noReceiver);
 
     final ready = coordinator.stateStream.firstWhere(
       (state) => state.phase == OverlayServerPhase.ready,
@@ -123,9 +125,11 @@ void main() {
     );
     await ready;
 
-    expect(coordinator.featureMessage(message), isTrue);
+    expect(
+        coordinator.featureMessage(message).status, FeaturedMessageStatus.sent);
     expect(overlay.featured.single.id, 'm1');
     overlay.hasClients = false;
-    expect(coordinator.featureMessage(message), isFalse);
+    expect(coordinator.featureMessage(message).status,
+        FeaturedMessageStatus.noReceiver);
   });
 }

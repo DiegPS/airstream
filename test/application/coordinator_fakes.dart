@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'dart:io';
 
 import 'package:airstream/application/audio_coordinator.dart';
@@ -198,7 +200,6 @@ class FakeCaptionsClient implements CaptionsClient {
   int updateCount = 0;
   int prepareCount = 0;
   bool disposed = false;
-
   @override
   Stream<LiveCaptionsState> get states => stateController.stream;
   @override
@@ -207,8 +208,10 @@ class FakeCaptionsClient implements CaptionsClient {
     required String sourceLanguage,
     required String targetLanguage,
     required bool denoise,
-  }) async =>
-      updateCount++;
+  }) async {
+    updateCount++;
+  }
+
   @override
   Future<void> prepareModel() async => prepareCount++;
   @override
@@ -265,10 +268,14 @@ class FakeOverlayClient implements OverlayClient {
   @override
   void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
   @override
-  bool broadcastFeaturedMessage(ChatMessage message) {
-    if (!hasClients) return false;
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) {
+    if (!hasClients) return FeaturedMessageDelivery.noReceiver();
     featured.add(message);
-    return true;
+    return FeaturedMessageDelivery(
+      message.id,
+      FeaturedMessageStatus.sent,
+      Future.value(FeaturedMessageStatus.rendered),
+    );
   }
 
   @override
@@ -299,6 +306,7 @@ class FakeObsClient implements ObsClient {
   bool disposed = false;
   Object? commandError;
   String? lastHost;
+  String? lastScene;
 
   @override
   ObsState get currentState => state;
@@ -325,7 +333,11 @@ class FakeObsClient implements ObsClient {
   @override
   Future<void> resumeRecording() async => resumeRecordingCount++;
   @override
-  Future<void> switchScene(String sceneName) async => switchSceneCount++;
+  Future<void> switchScene(String sceneName) async {
+    switchSceneCount++;
+    lastScene = sceneName;
+  }
+
   @override
   Future<void> dispose() async {
     disposed = true;

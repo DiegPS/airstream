@@ -242,6 +242,18 @@ function showNext() {
   if (active || queue.length === 0) return;
   active = queue.shift();
   renderAlert(active);
+  const displayed = active;
+  const connection = displayed.deliverySocket;
+  // Confirm only after the queued card has reached a browser paint frame.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (active === displayed && displayed.deliveryId &&
+        connection === socket && connection.readyState === WebSocket.OPEN &&
+        stage.firstElementChild && stage.firstElementChild.isConnected) {
+      connection.send(JSON.stringify({
+        type: 'featuredRendered', deliveryId: displayed.deliveryId,
+      }));
+    }
+  }));
   const seconds = Math.max(1, Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
   hideTimer = window.setTimeout(() => {
     active = null;
@@ -253,12 +265,17 @@ function showNext() {
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   socket = new WebSocket(protocol + location.host + '/ws');
+  socket.addEventListener('open', () => {
+    socket.send(JSON.stringify({ type: 'register', view: 'alerts' }));
+  });
+  const connection = socket;
   socket.addEventListener('message', (event) => {
     try {
       const envelope = JSON.parse(event.data);
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'alert' && envelope.data) {
+        envelope.data.deliverySocket = connection;
         // A message the streamer chose goes before waiting alerts.
         if (envelope.data.kind === 'featured') queue.unshift(envelope.data);
         else queue.push(envelope.data);
@@ -269,6 +286,8 @@ function connect() {
     }
   });
   socket.addEventListener('close', () => {
+    // The app already reported these as not shown; ordinary alerts stay.
+    queue = queue.filter((alert) => alert.kind !== 'featured');
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
   });
   socket.addEventListener('error', () => socket.close());

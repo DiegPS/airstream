@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:async';
 
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
+
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/audio_coordinator.dart';
@@ -146,7 +148,7 @@ class AppController {
   Future<void> disconnectObs() => _obs.disconnect();
   bool reloadOverlay() => _overlay.reload();
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
-  bool featureMessageOnStream(ChatMessage message) =>
+  FeaturedMessageDelivery featureMessageOnStream(ChatMessage message) =>
       _overlay.featureMessage(message);
 
   /// Where session chat logs are saved.

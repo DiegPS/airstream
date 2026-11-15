@@ -808,6 +808,9 @@ function applyModeration(moderation) {
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   socket = new WebSocket(protocol + location.host + '/ws');
+  socket.addEventListener('open', () => {
+    socket.send(JSON.stringify({ type: 'register', view: 'chat' }));
+  });
   socket.addEventListener('message', (event) => {
     try {
       const envelope = JSON.parse(event.data);

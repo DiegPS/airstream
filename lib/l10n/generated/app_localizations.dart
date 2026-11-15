@@ -1316,6 +1316,12 @@ abstract class AppLocalizations {
   /// **'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.'**
   String get voiceCommandsExamples;
 
+  /// No description provided for @voiceCommandsTranslationNote.
+  ///
+  /// In en, this message translates to:
+  /// **'With caption translation on, commands are read from the translated text: recording commands work with Spanish or English captions, and a scene name may be translated.'**
+  String get voiceCommandsTranslationNote;
+
   /// No description provided for @captionModelManual.
   ///
   /// In en, this message translates to:
@@ -2589,10 +2595,34 @@ abstract class AppLocalizations {
   /// **'Turn on the overlay server and add the alerts URL to OBS'**
   String get messageShowOnStreamNeedsOverlay;
 
+  /// No description provided for @messageSentToOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to the alerts page in OBS'**
+  String get messageSentToOverlay;
+
+  /// No description provided for @messageOverlayDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS closed the alerts page before showing the message'**
+  String get messageOverlayDisconnected;
+
+  /// No description provided for @messageNoAlertsOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'The alerts page is not open in OBS. Add its URL as a browser source.'**
+  String get messageNoAlertsOverlay;
+
+  /// No description provided for @messageOverlayUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent, but OBS did not confirm it was shown'**
+  String get messageOverlayUnconfirmed;
+
   /// No description provided for @messageShownOnStream.
   ///
   /// In en, this message translates to:
-  /// **'Showing on stream'**
+  /// **'Shown on stream'**
   String get messageShownOnStream;
 
   /// No description provided for @messageCopy.

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io' as io;
 
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -780,9 +782,22 @@ class _ChatMessageEntry extends ConsumerWidget {
       ));
     switch (action) {
       case 'stream':
-        final shown =
+        final delivery =
             ref.read(appControllerProvider).featureMessageOnStream(message);
-        notify(shown ? l.messageShownOnStream : l.noOverlayClientConnected);
+        if (delivery.status == FeaturedMessageStatus.noReceiver) {
+          notify(l.messageNoAlertsOverlay);
+          return;
+        }
+        notify(l.messageSentToOverlay);
+        final status = await delivery.completed;
+        if (!context.mounted) return;
+        if (status == FeaturedMessageStatus.rendered) {
+          notify(l.messageShownOnStream);
+        } else if (status == FeaturedMessageStatus.disconnected) {
+          notify(l.messageOverlayDisconnected);
+        } else if (status == FeaturedMessageStatus.sent) {
+          notify(l.messageOverlayUnconfirmed);
+        }
       case 'copy':
         final author = message.author.name.trim();
         final text = message.plainText.trim();

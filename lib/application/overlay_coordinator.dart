@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
+
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -20,7 +22,7 @@ abstract interface class OverlayClient {
   void setSettings(SettingsModel settings);
   bool reloadClients();
   bool broadcastTestAlert(String kind);
-  bool broadcastFeaturedMessage(ChatMessage message);
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message);
   void broadcastPoll(Map<String, Object?>? poll);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
@@ -54,7 +56,7 @@ class OverlayServerAdapter implements OverlayClient {
   @override
   bool broadcastTestAlert(String kind) => server.broadcastTestAlert(kind);
   @override
-  bool broadcastFeaturedMessage(ChatMessage message) =>
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) =>
       server.broadcastFeaturedMessage(message);
   @override
   void broadcastPoll(Map<String, Object?>? poll) => server.broadcastPoll(poll);
@@ -97,10 +99,10 @@ class OverlayCoordinator {
   void broadcastPoll(Map<String, Object?>? poll) =>
       _overlay.broadcastPoll(poll);
 
-  /// Whether the message reached a connected overlay.
-  bool featureMessage(ChatMessage message) =>
-      _state.phase == OverlayServerPhase.ready &&
-      _overlay.broadcastFeaturedMessage(message);
+  FeaturedMessageDelivery featureMessage(ChatMessage message) =>
+      _state.phase == OverlayServerPhase.ready
+          ? _overlay.broadcastFeaturedMessage(message)
+          : FeaturedMessageDelivery.noReceiver();
   void broadcastCaption(String text) => _overlay.broadcastCaption(text);
   void broadcastModeration(ChatModerationEvent event) =>
       _overlay.broadcastModeration(event);

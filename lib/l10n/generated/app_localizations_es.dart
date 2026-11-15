@@ -674,6 +674,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ejemplos: “Airstream inicia grabación”, “Airstream pausa grabación” o “Airstream cambia a escena cámara”.';
 
   @override
+  String get voiceCommandsTranslationNote =>
+      'Con la traducción de subtítulos activa, los comandos se leen del texto traducido: los de grabación funcionan con subtítulos en español o inglés, y el nombre de una escena puede salir traducido.';
+
+  @override
   String get captionModelManual => 'Subtítulos sin conexión · descarga manual';
 
   @override
@@ -1400,7 +1404,22 @@ class AppLocalizationsEs extends AppLocalizations {
       'Activa el servidor de superposición y añade la URL de alertas a OBS';
 
   @override
-  String get messageShownOnStream => 'Mostrando en el directo';
+  String get messageSentToOverlay => 'Enviado a la página de alertas de OBS';
+
+  @override
+  String get messageOverlayDisconnected =>
+      'OBS cerró la página de alertas antes de mostrar el mensaje';
+
+  @override
+  String get messageNoAlertsOverlay =>
+      'La página de alertas no está abierta en OBS. Añade su URL como fuente de navegador.';
+
+  @override
+  String get messageOverlayUnconfirmed =>
+      'Enviado, pero OBS no confirmó que se mostrara';
+
+  @override
+  String get messageShownOnStream => 'Mostrado en el directo';
 
   @override
   String get messageCopy => 'Copiar mensaje';

@@ -248,51 +248,6 @@ void main() {
     }
   });
 
-  test('a featured chat message reaches the alerts overlay', () async {
-    final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
-    IOWebSocketChannel? socket;
-    StreamIterator<dynamic>? events;
-    final message = ChatMessage(
-      platform: Platform.kick,
-      id: 'featured-1',
-      author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
-      items: const [MessageItem.text('¿Qué juego sigue?')],
-      timestamp: DateTime.utc(2026, 11, 15),
-    );
-    try {
-      await server.start(
-        messages: messages.stream,
-        settings: const SettingsModel(),
-        port: 0,
-      );
-      expect(server.broadcastFeaturedMessage(message), isFalse,
-          reason: 'no overlay is connected yet');
-
-      socket = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
-      await socket.ready;
-      events = StreamIterator(socket.stream);
-      expect(await events.moveNext(), isTrue); // settings
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      expect(server.broadcastFeaturedMessage(message), isTrue);
-      expect(await events.moveNext(), isTrue);
-      final envelope =
-          jsonDecode(events.current as String) as Map<String, dynamic>;
-      expect(envelope['type'], 'alert');
-      final data = envelope['data'] as Map<String, dynamic>;
-      expect(data['kind'], 'featured');
-      expect(data['platform'], 'kick');
-      expect(data['author'], 'Ana');
-      expect(data['message'], '¿Qué juego sigue?');
-    } finally {
-      await events?.cancel();
-      await socket?.sink.close();
-      await server.dispose();
-      await messages.close();
-    }
-  });
-
   test('serves the poll overlay and replays the current poll', () async {
     final messages = StreamController<ChatMessage>.broadcast();
     final server = OverlayServer();

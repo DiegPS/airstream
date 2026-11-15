@@ -1,0 +1,170 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
+import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/settings/settings_model.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:web_socket_channel/io.dart';
+
+void main() {
+  late OverlayServer server;
+  late StreamController<ChatMessage> messages;
+  final connections = <_OverlayConnection>[];
+  final message = ChatMessage(
+    platform: Platform.kick,
+    id: 'featured-1',
+    author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+    items: const [MessageItem.text('Which game next?')],
+    timestamp: DateTime.utc(2026, 11, 15),
+  );
+
+  Future<_OverlayConnection> connect(String? view) async {
+    final socket = IOWebSocketChannel.connect(
+      'ws://127.0.0.1:${server.port}/ws',
+    );
+    await socket.ready;
+    final connection = _OverlayConnection(socket);
+    connections.add(connection);
+    expect((await connection.next())['type'], 'settings');
+    if (view != null) {
+      socket.sink.add(jsonEncode({'type': 'register', 'view': view}));
+      expect((await connection.next())['type'], 'registered');
+    }
+    return connection;
+  }
+
+  setUp(() async {
+    messages = StreamController<ChatMessage>.broadcast();
+    server = OverlayServer();
+    await server.start(
+      messages: messages.stream,
+      settings: const SettingsModel(),
+      port: 0,
+    );
+  });
+
+  tearDown(() async {
+    for (final connection in connections) {
+      await connection.close();
+    }
+    connections.clear();
+    await server.dispose();
+    await messages.close();
+  });
+
+  test('poll, captions, chat and legacy clients cannot receive highlights',
+      () async {
+    expect(server.broadcastFeaturedMessage(message).status,
+        FeaturedMessageStatus.noReceiver);
+    for (final view in ['poll', 'captions', 'chat', null]) {
+      await connect(view);
+      expect(server.broadcastFeaturedMessage(message).status,
+          FeaturedMessageStatus.noReceiver);
+    }
+  });
+
+  test('waits for the recipient to render, ignoring wrong and duplicate ACKs',
+      () async {
+    final poll = await connect('poll');
+    final alerts = await connect('alerts');
+    final delivery = server.broadcastFeaturedMessage(message);
+    expect(delivery.status, FeaturedMessageStatus.sent);
+    final envelope = await alerts.next();
+    expect(envelope['type'], 'alert');
+    final data = envelope['data'] as Map;
+    expect(data['kind'], 'featured');
+    expect(data['platform'], 'kick');
+    expect(data['message'], 'Which game next?');
+    expect(data['deliveryId'], delivery.id);
+    var completed = false;
+    unawaited(delivery.completed.then((_) => completed = true));
+    void acknowledge(_OverlayConnection client, Object? id) {
+      client.socket.sink.add(jsonEncode({
+        'type': 'featuredRendered',
+        'deliveryId': id,
+      }));
+    }
+
+    acknowledge(poll, delivery.id);
+    acknowledge(alerts, 'unknown');
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(completed, isFalse, reason: 'a queued card is only sent');
+    acknowledge(alerts, delivery.id);
+    expect(await delivery.completed, FeaturedMessageStatus.rendered);
+    acknowledge(alerts, delivery.id);
+
+    // Poll did not receive the featured alert.
+    server.broadcastCaption('marker');
+    expect((await poll.next())['type'], 'caption');
+  });
+
+  test('disconnect before rendering resolves without claiming display',
+      () async {
+    final alerts = await connect('alerts');
+    final delivery = server.broadcastFeaturedMessage(message);
+    await alerts.next();
+    await alerts.close();
+    expect(await delivery.completed, FeaturedMessageStatus.disconnected);
+    await connect('alerts');
+    expect(server.clientCount, 1);
+  });
+
+  test('missing render receipt expires as sent, never as rendered', () async {
+    await server.dispose();
+    server = OverlayServer(
+      featuredAcknowledgementTimeout: const Duration(milliseconds: 100),
+    );
+    await server.start(
+      messages: messages.stream,
+      settings: const SettingsModel(),
+      port: 0,
+    );
+    final alerts = await connect('alerts');
+    final delivery = server.broadcastFeaturedMessage(message);
+    await alerts.next();
+    expect(await delivery.completed, FeaturedMessageStatus.sent);
+  });
+
+  test('one of several recipients can confirm, with independent delivery IDs',
+      () async {
+    final first = await connect('alerts');
+    final second = await connect('alerts');
+    final a = server.broadcastFeaturedMessage(message);
+    final b = server.broadcastFeaturedMessage(message);
+    expect(a.id, isNot(b.id));
+    await first.next();
+    await first.next();
+    await second.next();
+    await second.next();
+    await first.close();
+    second.socket.sink.add(jsonEncode({
+      'type': 'featuredRendered',
+      'deliveryId': b.id,
+    }));
+    expect(await b.completed, FeaturedMessageStatus.rendered);
+    await server.stop();
+    expect(await a.completed, FeaturedMessageStatus.disconnected);
+  });
+}
+
+class _OverlayConnection {
+  _OverlayConnection(this.socket) : events = StreamIterator(socket.stream);
+
+  final IOWebSocketChannel socket;
+  final StreamIterator<dynamic> events;
+  bool closed = false;
+
+  Future<Map<String, dynamic>> next() async {
+    expect(await events.moveNext().timeout(const Duration(seconds: 3)), isTrue);
+    return jsonDecode(events.current as String) as Map<String, dynamic>;
+  }
+
+  Future<void> close() async {
+    if (closed) return;
+    closed = true;
+    await events.cancel();
+    await socket.sink.close();
+  }
+}

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -14,10 +15,19 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Serves the OBS overlay HTML page and broadcasts chat messages over WebSocket.
 class OverlayServer {
+  OverlayServer({
+    this.featuredAcknowledgementTimeout = const Duration(seconds: 30),
+  });
+
   static bool isValidPort(int port) => port >= 0 && port <= 65535;
 
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
+  final _views = <WebSocketChannel, String>{};
+  final _featured = <String, _PendingFeaturedMessage>{};
+  int _nextDelivery = 0;
+
+  final Duration featuredAcknowledgementTimeout;
   final _clientCountController = StreamController<int>.broadcast();
   StreamSubscription? _msgSub;
   SettingsModel _settings = const SettingsModel();
@@ -52,7 +62,7 @@ class OverlayServer {
       _emitClientCount();
       _sendSettingsToClient(ws);
       ws.stream.listen(
-        null,
+        (dynamic data) => _handleClientMessage(ws, data),
         onError: (Object _) => _removeClient(ws),
         onDone: () => _removeClient(ws),
       );
@@ -192,6 +202,11 @@ class OverlayServer {
     _msgSub = null;
     final clients = List<WebSocketChannel>.from(_clients);
     _clients.clear();
+    _views.clear();
+    for (final pending in _featured.values) {
+      pending.finish(FeaturedMessageStatus.disconnected);
+    }
+    _featured.clear();
     for (final client in clients) {
       try {
         await client.sink.close().timeout(const Duration(seconds: 1));
@@ -217,15 +232,66 @@ class OverlayServer {
     _broadcastAlert(msg);
   }
 
-  /// Shows [msg] on stream through the alerts overlay, ahead of any queued
-  /// alert. Returns whether an overlay is connected to show it.
-  bool broadcastFeaturedMessage(ChatMessage msg) {
-    if (_clients.isEmpty) return false;
-    _broadcastEnvelope({
-      'type': 'alert',
-      'data': _alertData(msg, 'featured'),
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
+    final recipients = _views.entries
+        .where((entry) => entry.value == 'alerts')
+        .map((entry) => entry.key)
+        .toSet();
+    if (recipients.isEmpty) return FeaturedMessageDelivery.noReceiver();
+    final id = '$_lifecycleGeneration-${++_nextDelivery}';
+    final pending =
+        _PendingFeaturedMessage(Set<WebSocketChannel>.from(recipients));
+    _featured[id] = pending;
+    pending.timer = Timer(featuredAcknowledgementTimeout, () {
+      _featured.remove(id)?.finish(FeaturedMessageStatus.sent);
     });
-    return true;
+    final envelope = jsonEncode({
+      'type': 'alert',
+      'data': {..._alertData(msg, 'featured'), 'deliveryId': id},
+    });
+    for (final client in recipients) {
+      try {
+        client.sink.add(envelope);
+      } catch (_) {
+        _removeClient(client);
+      }
+    }
+    return FeaturedMessageDelivery(
+      id,
+      pending.recipients.isEmpty
+          ? FeaturedMessageStatus.noReceiver
+          : FeaturedMessageStatus.sent,
+      pending.completion.future,
+    );
+  }
+
+  void _handleClientMessage(WebSocketChannel client, dynamic data) {
+    if (!_clients.contains(client) || data is! String || data.length > 1024) {
+      return;
+    }
+    try {
+      final envelope = jsonDecode(data);
+      if (envelope is! Map) return;
+      if (envelope['type'] == 'register') {
+        final view = envelope['view'];
+        if (view is String &&
+            const {'chat', 'alerts', 'poll', 'captions'}.contains(view) &&
+            !_views.containsKey(client)) {
+          _views[client] = view;
+          client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
+        }
+      } else if (envelope['type'] == 'featuredRendered' &&
+          _views[client] == 'alerts') {
+        final id = envelope['deliveryId'];
+        final pending = _featured[id];
+        if (pending != null && pending.recipients.contains(client)) {
+          _featured.remove(id);
+          pending.finish(FeaturedMessageStatus.rendered);
+        }
+      }
+    } catch (_) {
+      // Ignore malformed input and acknowledgements for expired deliveries.
+    }
   }
 
   void _broadcastAlert(ChatMessage msg) {
@@ -301,6 +367,27 @@ class OverlayServer {
   }
 
   void _removeClient(WebSocketChannel client) {
+    _views.remove(client);
+    for (final entry in _featured.entries.toList()) {
+      entry.value.recipients.remove(client);
+      if (entry.value.recipients.isEmpty) {
+        _featured.remove(entry.key);
+        entry.value.finish(FeaturedMessageStatus.disconnected);
+      }
+    }
     if (_clients.remove(client)) _emitClientCount();
+  }
+}
+
+class _PendingFeaturedMessage {
+  _PendingFeaturedMessage(this.recipients);
+
+  final Set<WebSocketChannel> recipients;
+  final completion = Completer<FeaturedMessageStatus>();
+  Timer? timer;
+
+  void finish(FeaturedMessageStatus status) {
+    timer?.cancel();
+    if (!completion.isCompleted) completion.complete(status);
   }
 }

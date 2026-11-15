@@ -33,6 +33,9 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
   const connect = () => {
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
     const ws = new WebSocket(protocol + location.host + '/ws');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'register', view: 'captions' }));
+    };
     ws.onmessage = (event) => {
       try {
         const envelope = JSON.parse(event.data);

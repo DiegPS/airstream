@@ -670,6 +670,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.';
 
   @override
+  String get voiceCommandsTranslationNote =>
+      'With caption translation on, commands are read from the translated text: recording commands work with Spanish or English captions, and a scene name may be translated.';
+
+  @override
   String get captionModelManual => 'Offline captions · manual download';
 
   @override
@@ -1388,7 +1392,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn on the overlay server and add the alerts URL to OBS';
 
   @override
-  String get messageShownOnStream => 'Showing on stream';
+  String get messageSentToOverlay => 'Sent to the alerts page in OBS';
+
+  @override
+  String get messageOverlayDisconnected =>
+      'OBS closed the alerts page before showing the message';
+
+  @override
+  String get messageNoAlertsOverlay =>
+      'The alerts page is not open in OBS. Add its URL as a browser source.';
+
+  @override
+  String get messageOverlayUnconfirmed =>
+      'Sent, but OBS did not confirm it was shown';
+
+  @override
+  String get messageShownOnStream => 'Shown on stream';
 
   @override
   String get messageCopy => 'Copy message';
