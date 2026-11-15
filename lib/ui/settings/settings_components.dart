@@ -393,10 +393,14 @@ Widget _sidebarHeader({
 
   if (badges.isEmpty) return const SizedBox.shrink();
 
-  return Wrap(
-    spacing: 6,
-    runSpacing: 6,
-    children: badges,
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Wrap(
+      key: const Key('sidebar-connection-badges'),
+      spacing: 6,
+      runSpacing: 6,
+      children: badges,
+    ),
   );
 }
 

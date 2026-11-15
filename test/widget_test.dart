@@ -15,6 +15,7 @@ import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
+import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'package:airstream/window/window_state.dart';
 
 class _WidgetTestSettings extends SettingsNotifier {
@@ -632,6 +633,47 @@ void main() {
     widgets.debugOnRebuildDirtyWidget = null;
 
     expect(bubbleBuilds, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('connection badges keep space above them like below the tabs',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith(
+            (ref) => _WidgetTestSettings(
+              'en',
+              '',
+              const SettingsModel(
+                overlayEnabled: false,
+                twitchChannel: 'creator',
+                kickSlug: 'creator',
+              ),
+            ),
+          ),
+          chatConnectionProvider.overrideWith((ref) => true),
+          connectionStatusProvider.overrideWith(
+            (ref) => Stream.value(const {
+              'twitch': (ServiceStatus.connected, null),
+              'kick': (ServiceStatus.connected, null),
+            }),
+          ),
+        ],
+        child: const AirstreamApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final badges = tester.getRect(
+      find.byKey(const Key('sidebar-connection-badges')),
+    );
+    final tabs = tester.getRect(find.byType(SidebarTabBar));
+    // 38 px title bar, then the same 12 px margin the block keeps below.
+    expect(badges.top, 38 + 12);
+    expect(tabs.top - badges.bottom, 10);
+
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

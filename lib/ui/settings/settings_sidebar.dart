@@ -674,15 +674,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         color: const Color(0xFF141414),
         child: Column(
           children: [
+            // Same space above and below, with or without the connection
+            // badges, so the block sits centered under the title bar.
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Consumer(
                     builder: (context, ref, _) => _header(context, ref),
                   ),
-                  const SizedBox(height: 12),
                   Consumer(
                     builder: (context, ref, _) => _tabBar(context, ref),
                   ),
