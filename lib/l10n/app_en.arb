@@ -539,5 +539,14 @@
   "@overlayPortFallback": {
     "placeholders": { "requested": { "type": "int" }, "port": { "type": "int" } }
   },
-  "chatPreviewSwitch": "Show sample messages"
+  "chatPreviewSwitch": "Show sample messages",
+  "highlights": "Highlights",
+  "highlightsDescription": "Make mentions of your channel and words you choose stand out in Airstream's chat.",
+  "highlightMentions": "Mentions of my channel",
+  "highlightMentionsDescription": "Messages that name your Twitch or Kick channel or your YouTube @name.",
+  "highlightWords": "Words to highlight",
+  "highlightWordsHint": "One word or phrase per line",
+  "highlightWordsHelp": "Whole words; uppercase and lowercase are the same.",
+  "highlightSound": "Play a sound",
+  "highlightSoundDescription": "A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks."
 }

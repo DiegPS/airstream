@@ -66,6 +66,9 @@ class SettingsModel {
   // Filtering
   final List<String> blockedUsers;
   final List<String> blockedWords;
+  final bool highlightMentions;
+  final List<String> highlightWords;
+  final bool highlightSound;
 
   // TTS
   final bool ttsEnabled;
@@ -191,6 +194,9 @@ class SettingsModel {
     this.providerEventBannerSeconds = 6,
     this.blockedUsers = const [],
     this.blockedWords = const [],
+    this.highlightMentions = true,
+    this.highlightWords = const [],
+    this.highlightSound = false,
     this.ttsEnabled = false,
     this.ttsMembersOnly = false,
     this.ttsCommandMode = false,
@@ -305,6 +311,9 @@ class SettingsModel {
     int? providerEventBannerSeconds,
     List<String>? blockedUsers,
     List<String>? blockedWords,
+    bool? highlightMentions,
+    List<String>? highlightWords,
+    bool? highlightSound,
     bool? ttsEnabled,
     bool? ttsMembersOnly,
     bool? ttsCommandMode,
@@ -423,6 +432,9 @@ class SettingsModel {
             providerEventBannerSeconds ?? this.providerEventBannerSeconds,
         blockedUsers: blockedUsers ?? this.blockedUsers,
         blockedWords: blockedWords ?? this.blockedWords,
+        highlightMentions: highlightMentions ?? this.highlightMentions,
+        highlightWords: highlightWords ?? this.highlightWords,
+        highlightSound: highlightSound ?? this.highlightSound,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
         ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,
         ttsCommandMode: ttsCommandMode ?? this.ttsCommandMode,

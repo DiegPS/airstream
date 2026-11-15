@@ -32,7 +32,9 @@ class _SettingsFormControllers {
         blockedUsers =
             TextEditingController(text: settings.blockedUsers.join('\n')),
         blockedWords =
-            TextEditingController(text: settings.blockedWords.join('\n'));
+            TextEditingController(text: settings.blockedWords.join('\n')),
+        highlightWords =
+            TextEditingController(text: settings.highlightWords.join('\n'));
 
   final TextEditingController ytHandle;
   final TextEditingController ytHorizontalUrl;
@@ -52,6 +54,7 @@ class _SettingsFormControllers {
   final TextEditingController voiceWakeWord;
   final TextEditingController blockedUsers;
   final TextEditingController blockedWords;
+  final TextEditingController highlightWords;
 
   final FocusNode ytFocus = FocusNode();
   final FocusNode ytHorizontalFocus = FocusNode();
@@ -70,6 +73,7 @@ class _SettingsFormControllers {
   final FocusNode voiceWakeWordFocus = FocusNode();
   final FocusNode blockedUsersFocus = FocusNode();
   final FocusNode blockedWordsFocus = FocusNode();
+  final FocusNode highlightWordsFocus = FocusNode();
 
   List<FocusNode> get focusNodes => [
         ytFocus,
@@ -89,6 +93,7 @@ class _SettingsFormControllers {
         voiceWakeWordFocus,
         blockedUsersFocus,
         blockedWordsFocus,
+        highlightWordsFocus,
       ];
 
   List<TextEditingController> get textControllers => [
@@ -110,6 +115,7 @@ class _SettingsFormControllers {
         voiceWakeWord,
         blockedUsers,
         blockedWords,
+        highlightWords,
       ];
 
   void dispose() {

@@ -60,25 +60,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   }
 
   void _handleFocusChange() {
-    final anyHasFocus = [
-      _form.ytFocus,
-      _form.ytHorizontalFocus,
-      _form.ytVerticalFocus,
-      _form.twitchFocus,
-      _form.kickFocus,
-      _form.portFocus,
-      _form.obsHostFocus,
-      _form.obsPasswordFocus,
-      _form.overlayChromaColorFocus,
-      _form.overlayTextStrokeColorFocus,
-      _form.overlaySuperChatBarColorFocus,
-      _form.ttsPrefixFocus,
-      _form.ttsSeparatorFocus,
-      _form.ttsReferenceTextFocus,
-      _form.voiceWakeWordFocus,
-      _form.blockedUsersFocus,
-      _form.blockedWordsFocus,
-    ].any((n) => n.hasFocus);
+    final anyHasFocus = _form.focusNodes.any((n) => n.hasFocus);
 
     if (!anyHasFocus) {
       _saveTextSettings();
@@ -117,6 +99,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final blockedWords = SettingsInputNormalizer.filterList(
       _form.blockedWords.text,
     );
+    final highlightWords =
+        SettingsInputNormalizer.filterList(_form.highlightWords.text);
     final next = current.copyWith(
       youtubeHandle: _form.ytHandle.text.trim(),
       youtubeLiveId: '',
@@ -126,6 +110,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       kickSlug: normalizedKick,
       blockedUsers: blockedUsers,
       blockedWords: blockedWords,
+      highlightWords: highlightWords,
       overlayPort: SettingsInputNormalizer.overlayPort(
         _form.port.text,
         fallback: current.overlayPort,
@@ -163,6 +148,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           current.blockedWords,
           next.blockedWords,
         ) &&
+        SettingsInputNormalizer.listsEqual(
+            current.highlightWords, next.highlightWords) &&
         current.overlayPort == next.overlayPort &&
         current.overlayChromaColor == next.overlayChromaColor &&
         current.overlayTextStrokeColor == next.overlayTextStrokeColor &&
@@ -447,6 +434,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _form.blockedWords,
       _form.blockedWordsFocus,
       SettingsInputNormalizer.formatFilterList(s.blockedWords),
+    );
+    _syncController(
+      _form.highlightWords,
+      _form.highlightWordsFocus,
+      SettingsInputNormalizer.formatFilterList(s.highlightWords),
     );
   }
 

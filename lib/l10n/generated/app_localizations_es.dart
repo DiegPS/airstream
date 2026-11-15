@@ -1300,4 +1300,35 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatPreviewSwitch => 'Mostrar mensajes de ejemplo';
+
+  @override
+  String get highlights => 'Resaltados';
+
+  @override
+  String get highlightsDescription =>
+      'Destaca en el chat de Airstream las menciones a tu canal y las palabras que elijas.';
+
+  @override
+  String get highlightMentions => 'Menciones a mi canal';
+
+  @override
+  String get highlightMentionsDescription =>
+      'Mensajes que nombran tu canal de Twitch o Kick o tu @nombre de YouTube.';
+
+  @override
+  String get highlightWords => 'Palabras a resaltar';
+
+  @override
+  String get highlightWordsHint => 'Una palabra o frase por línea';
+
+  @override
+  String get highlightWordsHelp =>
+      'Palabras completas; da igual mayúsculas o minúsculas.';
+
+  @override
+  String get highlightSound => 'Reproducir un sonido';
+
+  @override
+  String get highlightSoundDescription =>
+      'Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz.';
 }

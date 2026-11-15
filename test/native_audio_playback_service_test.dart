@@ -1,3 +1,4 @@
+import 'package:airstream/services/alert_sound_player.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -50,6 +51,18 @@ void main() {
     },
     skip: !Platform.isWindows,
   );
+
+  test('the highlight chime is a short valid WAV', () {
+    final wav = ChimeSoundPlayer.chimeWav();
+    expect(String.fromCharCodes(wav.sublist(0, 4)), 'RIFF');
+    expect(String.fromCharCodes(wav.sublist(8, 12)), 'WAVE');
+    final data = ByteData.sublistView(wav);
+    final sampleRate = data.getUint32(24, Endian.little);
+    final dataBytes = data.getUint32(40, Endian.little);
+    expect(wav.length, 44 + dataBytes);
+    final seconds = dataBytes / 2 / sampleRate;
+    expect(seconds, inInclusiveRange(0.1, 0.5));
+  });
 }
 
 Uint8List _silentWav(Duration duration) {

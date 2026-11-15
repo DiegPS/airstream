@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart' show listEquals;
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/word_matching.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_model.dart';
 
@@ -220,15 +221,6 @@ class MessagePipeline {
     return normalized;
   }
 
-  /// Letters, combining marks and digits of every script count as word
-  /// characters, so blocked words in any language (and letters such as ç or ö)
-  /// are matched as whole words.
-  static final _nonWordCharacters =
-      RegExp(r'[^\p{L}\p{M}\p{N}]+', unicode: true);
-
-  static String _normalizeWordPattern(String value) {
-    final lowered = value.toLowerCase();
-    final sanitized = lowered.replaceAll(_nonWordCharacters, ' ');
-    return sanitized.replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
+  static String _normalizeWordPattern(String value) =>
+      WordMatching.normalize(value);
 }

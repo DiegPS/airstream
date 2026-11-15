@@ -6,6 +6,7 @@ import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
+import 'package:airstream/pipeline/chat_highlighter.dart';
 import 'package:airstream/services/kick_service.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
@@ -14,6 +15,18 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final chatConnectionProvider = StateProvider<bool>((ref) => false);
+
+/// Which chat messages stand out: mentions and highlight words.
+final chatHighlighterProvider = Provider<ChatHighlighter>((ref) {
+  ref.watch(settingsProvider.select((s) => (
+        s.highlightMentions,
+        s.highlightWords,
+        s.twitchChannel,
+        s.kickSlug,
+        s.youtubeHandle,
+      )));
+  return ChatHighlighter.fromSettings(ref.read(settingsProvider));
+});
 
 /// Whether the chat and the OBS overlay show sample messages.
 final chatPreviewProvider = StateProvider<bool>((ref) => false);

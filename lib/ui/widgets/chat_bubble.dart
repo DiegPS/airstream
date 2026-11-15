@@ -1,3 +1,4 @@
+import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_media.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -9,6 +10,9 @@ import 'package:airstream/ui/widgets/platform_badge.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Outline of messages that mention the streamer or a highlight word.
+const chatHighlightColor = Color(0xFFFFC83D);
 
 /// Chat text keeps soft hyphens (U+00AD) invisible, as before Flutter 3.50.
 ///
@@ -26,10 +30,11 @@ class ChatBubble extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final s = ref.watch(settingsProvider);
+    final highlighted = ref.watch(chatHighlighterProvider).matches(message);
     final bubbleOpacity = s.messageOpacity.clamp(0.0, 1.0);
     final isSuperChat = message.superChat != null;
     final isMembershipEvent = message.isMembershipEvent;
-    final bubbleColor = _bubbleColor(
+    final baseBubbleColor = _bubbleColor(
       showBubble: s.showBubble,
       platform: message.platform,
       bubbleOpacity: bubbleOpacity,
@@ -37,6 +42,12 @@ class ChatBubble extends ConsumerWidget {
           isSuperChat ? _parseColor(message.superChat!.color) : null,
       isMembershipEvent: isMembershipEvent,
     );
+    final bubbleColor = highlighted && s.showBubble
+        ? Color.alphaBlend(
+            chatHighlightColor.withValues(alpha: 0.14 * bubbleOpacity),
+            baseBubbleColor,
+          )
+        : baseBubbleColor;
     final superChatAccentColor = isSuperChat
         ? _superChatAccentColor(
             showBubble: s.showBubble,
@@ -45,10 +56,12 @@ class ChatBubble extends ConsumerWidget {
           )
         : null;
 
-    final bubbleBorder = _bubbleBorder(
-      showBubble: s.showBubble,
-      bubbleOpacity: bubbleOpacity,
-    );
+    final bubbleBorder = highlighted
+        ? Border.all(color: chatHighlightColor, width: 2)
+        : _bubbleBorder(
+            showBubble: s.showBubble,
+            bubbleOpacity: bubbleOpacity,
+          );
 
     final shadow = s.showBubble && s.showBubbleShadow
         ? const [
@@ -93,6 +106,9 @@ class ChatBubble extends ConsumerWidget {
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxBubbleWidth),
               child: Container(
+                key: highlighted
+                    ? Key('chat-highlight-${message.dedupeKey}')
+                    : null,
                 decoration: BoxDecoration(
                   color: bubbleColor,
                   borderRadius: BorderRadius.circular(s.borderRadius),

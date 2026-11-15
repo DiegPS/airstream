@@ -391,5 +391,14 @@
   "chatPreview": "Vista previa",
   "chatPreviewDescription": "Muestra mensajes de ejemplo en el chat y en la superposición de OBS para probar estilos. Desaparecen al iniciar el chat.",
   "overlayPortFallback": "Otra aplicación usa el puerto {requested}, así que la superposición usa el {port}. Las URL de OBS de abajo ya lo incluyen.",
-  "chatPreviewSwitch": "Mostrar mensajes de ejemplo"
+  "chatPreviewSwitch": "Mostrar mensajes de ejemplo",
+  "highlights": "Resaltados",
+  "highlightsDescription": "Destaca en el chat de Airstream las menciones a tu canal y las palabras que elijas.",
+  "highlightMentions": "Menciones a mi canal",
+  "highlightMentionsDescription": "Mensajes que nombran tu canal de Twitch o Kick o tu @nombre de YouTube.",
+  "highlightWords": "Palabras a resaltar",
+  "highlightWordsHint": "Una palabra o frase por línea",
+  "highlightWordsHelp": "Palabras completas; da igual mayúsculas o minúsculas.",
+  "highlightSound": "Reproducir un sonido",
+  "highlightSoundDescription": "Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz."
 }

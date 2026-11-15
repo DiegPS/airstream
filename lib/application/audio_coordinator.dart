@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:airstream/pipeline/chat_highlighter.dart';
+import 'package:airstream/services/alert_sound_player.dart';
 import 'package:airstream/application/coordinator_notice.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -129,9 +131,13 @@ class AudioCoordinator {
   AudioCoordinator({
     required TtsClient tts,
     required CaptionsClient captions,
+    AlertSoundClient? alertSound,
+    DateTime Function()? clock,
     String? Function(String value)? youtubeVideoIdFromUrl,
   })  : _tts = tts,
         _captions = captions,
+        _alertSound = alertSound ?? ChimeSoundPlayer(),
+        _clock = clock ?? DateTime.now,
         _youtubeVideoIdFromUrl =
             youtubeVideoIdFromUrl ?? YouTubeService.videoIdFromUrl {
     _ttsErrorSubscription = _tts.playbackErrors.listen((_) {
@@ -147,6 +153,14 @@ class AudioCoordinator {
 
   final TtsClient _tts;
   final CaptionsClient _captions;
+  final AlertSoundClient _alertSound;
+  final DateTime Function() _clock;
+  ChatHighlighter _highlighter = ChatHighlighter(ownNames: [], words: []);
+  DateTime? _lastAlertAt;
+
+  /// At most one highlight sound in this window: a burst of matches (or the
+  /// chat history loaded on connect) must not turn into a string of chimes.
+  static const highlightSoundInterval = Duration(seconds: 3);
   final String? Function(String value) _youtubeVideoIdFromUrl;
   final _spokenMessageKeys = <String>{};
   final _spokenMessageOrder = Queue<String>();
@@ -195,6 +209,7 @@ class AudioCoordinator {
         _lastConnectChats != connectChats;
     _lastSettings = settings;
     _lastConnectChats = connectChats;
+    _highlighter = ChatHighlighter.fromSettings(settings);
 
     // Reconfiguring stops, reloads or checks models on disk, so it only
     // happens when a setting those services use changes, not on every
@@ -300,6 +315,7 @@ class AudioCoordinator {
   }
 
   void handleChatMessage(ChatMessage message) {
+    _maybePlayHighlightSound(message);
     final settings = _lastSettings;
     if (settings == null || !settings.ttsEnabled) return;
     if (settings.ttsMembersOnly && !message.isMembership) return;
@@ -329,6 +345,26 @@ class AudioCoordinator {
         : settings.ttsSeparatorText;
     final spokenAuthor = authorName.isEmpty ? 'Chat' : authorName;
     _tts.speak('$spokenAuthor $separator: $text', tag: message);
+  }
+
+  void _maybePlayHighlightSound(ChatMessage message) {
+    final settings = _lastSettings;
+    if (settings == null || !settings.highlightSound) return;
+    if (!isTtsMessageFresh(message, _ttsSessionStartedAt)) return;
+    // Windows plays one sound per app: the tone would cut the voice reader.
+    if (_tts.isBusy) return;
+    if (!_highlighter.matches(message)) return;
+    final now = _clock();
+    final last = _lastAlertAt;
+    if (last != null && now.difference(last) < highlightSoundInterval) return;
+    _lastAlertAt = now;
+    unawaited(_alertSound.play().catchError((Object error, StackTrace stack) {
+      AppLogger.warning(
+        'Highlight sound could not play',
+        error: error,
+        stackTrace: stack,
+      );
+    }));
   }
 
   /// Never reads aloud a message moderators removed.
@@ -390,6 +426,7 @@ class AudioCoordinator {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    await _alertSound.dispose();
     await _ttsErrorSubscription?.cancel();
     await _captionsSubscription?.cancel();
     await _tts.dispose();

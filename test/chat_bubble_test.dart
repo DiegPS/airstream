@@ -472,6 +472,44 @@ void main() {
     expect(withText, isNotEmpty);
     expect(withText.every((text) => text.hyphens == Hyphens.hidden), isTrue);
   });
+
+  testWidgets('mentions and highlight words outline the bubble',
+      (tester) async {
+    final notifier = _TestSettingsNotifier(const SettingsModel(
+      twitchChannel: 'xqc',
+      highlightWords: ['pregunta'],
+    ));
+    ChatMessage message(String id, String text) => ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.utc(2026, 11, 15),
+        );
+    final mention = message('mention', '@xqc hola');
+    final plain = message('plain', 'hola a todos');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => notifier)],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Column(
+              children: [
+                ChatBubble(message: mention),
+                ChatBubble(message: plain),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+        find.byKey(Key('chat-highlight-${mention.dedupeKey}')), findsOneWidget);
+    expect(find.byKey(Key('chat-highlight-${plain.dedupeKey}')), findsNothing);
+  });
 }
 
 class _TestSettingsNotifier extends SettingsNotifier {

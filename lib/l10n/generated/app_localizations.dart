@@ -2414,6 +2414,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show sample messages'**
   String get chatPreviewSwitch;
+
+  /// No description provided for @highlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get highlights;
+
+  /// No description provided for @highlightsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Make mentions of your channel and words you choose stand out in Airstream\'s chat.'**
+  String get highlightsDescription;
+
+  /// No description provided for @highlightMentions.
+  ///
+  /// In en, this message translates to:
+  /// **'Mentions of my channel'**
+  String get highlightMentions;
+
+  /// No description provided for @highlightMentionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages that name your Twitch or Kick channel or your YouTube @name.'**
+  String get highlightMentionsDescription;
+
+  /// No description provided for @highlightWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Words to highlight'**
+  String get highlightWords;
+
+  /// No description provided for @highlightWordsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One word or phrase per line'**
+  String get highlightWordsHint;
+
+  /// No description provided for @highlightWordsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole words; uppercase and lowercase are the same.'**
+  String get highlightWordsHelp;
+
+  /// No description provided for @highlightSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a sound'**
+  String get highlightSound;
+
+  /// No description provided for @highlightSoundDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.'**
+  String get highlightSoundDescription;
 }
 
 class _AppLocalizationsDelegate

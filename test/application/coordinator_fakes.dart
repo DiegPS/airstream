@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:airstream/application/audio_coordinator.dart';
+import 'package:airstream/services/alert_sound_player.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
@@ -322,3 +323,14 @@ class FakeObsClient implements ObsClient {
 }
 
 Future<void> settleCoordinatorTasks() => Future<void>.delayed(Duration.zero);
+
+class FakeAlertSound implements AlertSoundClient {
+  int plays = 0;
+  bool disposed = false;
+
+  @override
+  Future<void> play() async => plays++;
+
+  @override
+  Future<void> dispose() async => disposed = true;
+}

@@ -148,4 +148,55 @@ void main() {
     expect(tts.updateCount, 2);
     expect(captions.updateCount, 2);
   });
+
+  test('a highlighted message plays the alert tone, at most every 3 s',
+      () async {
+    final alert = FakeAlertSound();
+    var now = DateTime.utc(2026, 11, 15, 12);
+    final audio = AudioCoordinator(
+      tts: tts,
+      captions: captions,
+      alertSound: alert,
+      clock: () => now,
+    );
+    addTearDown(audio.dispose);
+    audio.applySettings(
+      const SettingsModel(
+        twitchChannel: 'xqc',
+        highlightSound: true,
+        highlightWords: ['pregunta'],
+      ),
+      connectChats: false,
+    );
+    ChatMessage message(String id, String text) => ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.now().toUtc(),
+        );
+
+    audio.handleChatMessage(message('1', 'hola a todos'));
+    expect(alert.plays, 0);
+    audio.handleChatMessage(message('2', '@xqc una pregunta'));
+    expect(alert.plays, 1);
+    now = now.add(const Duration(seconds: 1));
+    audio.handleChatMessage(message('3', 'otra pregunta'));
+    expect(alert.plays, 1, reason: 'too soon after the last tone');
+    now = now.add(const Duration(seconds: 3));
+    tts.busy = true;
+    audio.handleChatMessage(message('4', 'pregunta mientras habla'));
+    expect(alert.plays, 1, reason: 'the tone would cut the voice reader');
+    tts.busy = false;
+    audio.handleChatMessage(message('5', 'última pregunta'));
+    expect(alert.plays, 2);
+
+    audio.applySettings(
+      const SettingsModel(highlightWords: ['pregunta']),
+      connectChats: false,
+    );
+    now = now.add(const Duration(seconds: 10));
+    audio.handleChatMessage(message('6', 'pregunta sin sonido'));
+    expect(alert.plays, 2, reason: 'the sound is off');
+  });
 }

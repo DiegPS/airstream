@@ -374,6 +374,50 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          key: const Key('highlights-card'),
+          title: l.highlights,
+          icon: Icons.auto_awesome_outlined,
+          description: l.highlightsDescription,
+          isCollapsible: true,
+          initiallyExpanded: false,
+          children: [
+            _switchTileWithSubtitle(
+              l.highlightMentions,
+              l.highlightMentionsDescription,
+              s.highlightMentions,
+              (v) => notifier.update(s.copyWith(highlightMentions: v)),
+            ),
+            const SizedBox(height: 8),
+            _label(l.highlightWords),
+            _field(
+              _form.highlightWords,
+              l.highlightWordsHint,
+              focusNode: _form.highlightWordsFocus,
+              onChanged: (_) => _queueTextSettingsSave(),
+              onSubmitted: (_) => _saveTextSettings(),
+              onClear: () {
+                _form.highlightWords.clear();
+                _mutate(() {});
+                _queueTextSettingsSave();
+              },
+              minLines: 2,
+              maxLines: 4,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l.highlightWordsHelp,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            _switchTileWithSubtitle(
+              l.highlightSound,
+              l.highlightSoundDescription,
+              s.highlightSound,
+              (v) => notifier.update(s.copyWith(highlightSound: v)),
+            ),
+          ],
+        ),
+        UiCard(
           title: l.eventBanners,
           icon: Icons.campaign_outlined,
           description: l.eventBannersDescription,
