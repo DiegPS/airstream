@@ -222,6 +222,27 @@ class FakeCaptionsClient implements CaptionsClient {
 }
 
 class FakeOverlayClient implements OverlayClient {
+  final recent = <Map<String, Object?>>[];
+  final replayed = <String>[];
+  int clearRecentCount = 0;
+  @override
+  List<Map<String, Object?>> get recentAlertsSnapshot =>
+      List.unmodifiable(recent);
+  @override
+  Stream<List<Map<String, Object?>>> get recentAlerts =>
+      Stream.value(recentAlertsSnapshot);
+  @override
+  bool replayRecentAlert(String id) {
+    replayed.add(id);
+    return hasClients && recent.any((alert) => alert['id'] == id);
+  }
+
+  @override
+  void clearRecentAlerts() {
+    clearRecentCount++;
+    recent.clear();
+  }
+
   final clientsController = StreamController<int>.broadcast(sync: true);
   int startCount = 0;
   int stopCount = 0;

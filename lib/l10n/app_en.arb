@@ -774,5 +774,54 @@
   "alertSoundInvalid": "Use a WAV, MP3 or OGG file of up to 5 MB.",
   "alertSoundVolume": "Alert sound volume",
   "alertSoundObsHint": "Sounds play from the alerts page. In OBS, turn on “Control audio via OBS” for that browser source so your viewers hear them.",
-  "alertTypeTest": "Test"
+  "alertTypeTest": "Test",
+  "recentAlertsTitle": "Recent alerts",
+  "recentAlertsDescription": "Support events from this session that appeared on stream. Show any of them again.",
+  "recentAlertsEmpty": "Alerts from this session will appear here.",
+  "recentAlertsReplay": "Show on stream again",
+  "recentAlertsReplayed": "Shown on stream again",
+  "recentAlertsMember": "New member",
+  "recentAlertsSubscription": "Subscription",
+  "recentAlertsMonths": "{count} months",
+  "@recentAlertsMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentAlertsGifted": "{count} gifted",
+  "@recentAlertsGifted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentAlertsRaid": "Raid",
+  "recentAlertsHost": "Host",
+  "recentAlertsRaidViewers": "Raid · {count} viewers",
+  "@recentAlertsRaidViewers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentAlertsHostViewers": "Host · {count} viewers",
+  "@recentAlertsHostViewers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentAlertsKicks": "{count} Kicks",
+  "@recentAlertsKicks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

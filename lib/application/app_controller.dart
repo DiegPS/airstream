@@ -157,6 +157,9 @@ class AppController {
   /// What happened since the chat was last started.
   SessionSummary get sessionSummary => _sessionSummary.summary;
 
+  Stream<List<Map<String, Object?>>> get recentAlerts => _overlay.recentAlerts;
+  bool replayRecentAlert(String id) => _overlay.replayRecentAlert(id);
+
   Stream<ChatPoll?> get pollStream => _poll.states;
   void startPoll({
     required String question,
@@ -197,7 +200,12 @@ class AppController {
     _lastSettings = settings;
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
-      connectChats ? _sessionSummary.start() : _sessionSummary.stop();
+      if (connectChats) {
+        _sessionSummary.start();
+        _overlay.clearRecentAlerts();
+      } else {
+        _sessionSummary.stop();
+      }
       unawaited(connectChats
           ? _chatLog.startSession(enabled: settings.saveChatLog)
           : _chatLog.endSession());

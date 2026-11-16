@@ -11,6 +11,10 @@ import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 abstract interface class OverlayClient {
+  Stream<List<Map<String, Object?>>> get recentAlerts;
+  List<Map<String, Object?>> get recentAlertsSnapshot;
+  bool replayRecentAlert(String id);
+  void clearRecentAlerts();
   int get port;
   String get overlayUrl;
   Stream<int> get clientCountStream;
@@ -36,6 +40,15 @@ class OverlayServerAdapter implements OverlayClient {
 
   final OverlayServer server;
 
+  @override
+  Stream<List<Map<String, Object?>>> get recentAlerts => server.recentAlerts;
+  @override
+  List<Map<String, Object?>> get recentAlertsSnapshot =>
+      server.recentAlertsSnapshot;
+  @override
+  bool replayRecentAlert(String id) => server.replayRecentAlert(id);
+  @override
+  void clearRecentAlerts() => server.clearRecentAlerts();
   @override
   int get port => server.port;
   @override
@@ -92,6 +105,12 @@ class OverlayCoordinator {
 
   String? get url =>
       _state.phase == OverlayServerPhase.ready ? _overlay.overlayUrl : null;
+
+  Stream<List<Map<String, Object?>>> get recentAlerts => _overlay.recentAlerts;
+  List<Map<String, Object?>> get recentAlertsSnapshot =>
+      _overlay.recentAlertsSnapshot;
+  bool replayRecentAlert(String id) => _overlay.replayRecentAlert(id);
+  void clearRecentAlerts() => _overlay.clearRecentAlerts();
 
   bool reload() => _overlay.reloadClients();
   bool testAlert(String kind) => _overlay.broadcastTestAlert(kind);

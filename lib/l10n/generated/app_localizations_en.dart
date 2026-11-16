@@ -1913,4 +1913,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertTypeTest => 'Test';
+
+  @override
+  String get recentAlertsTitle => 'Recent alerts';
+
+  @override
+  String get recentAlertsDescription =>
+      'Support events from this session that appeared on stream. Show any of them again.';
+
+  @override
+  String get recentAlertsEmpty => 'Alerts from this session will appear here.';
+
+  @override
+  String get recentAlertsReplay => 'Show on stream again';
+
+  @override
+  String get recentAlertsReplayed => 'Shown on stream again';
+
+  @override
+  String get recentAlertsMember => 'New member';
+
+  @override
+  String get recentAlertsSubscription => 'Subscription';
+
+  @override
+  String recentAlertsMonths(int count) {
+    return '$count months';
+  }
+
+  @override
+  String recentAlertsGifted(int count) {
+    return '$count gifted';
+  }
+
+  @override
+  String get recentAlertsRaid => 'Raid';
+
+  @override
+  String get recentAlertsHost => 'Host';
+
+  @override
+  String recentAlertsRaidViewers(int count) {
+    return 'Raid · $count viewers';
+  }
+
+  @override
+  String recentAlertsHostViewers(int count) {
+    return 'Host · $count viewers';
+  }
+
+  @override
+  String recentAlertsKicks(int count) {
+    return '$count Kicks';
+  }
 }

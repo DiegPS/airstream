@@ -49,6 +49,45 @@ class OverlayServer {
     yield* _clientCountController.stream;
   }
 
+  final _recentAlerts = <Map<String, Object?>>[];
+  final _recentAlertsController =
+      StreamController<List<Map<String, Object?>>>.broadcast(sync: true);
+
+  List<Map<String, Object?>> get recentAlertsSnapshot =>
+      List.unmodifiable(_recentAlerts);
+
+  Stream<List<Map<String, Object?>>> get recentAlerts =>
+      Stream.multi((listener) {
+        final subscription = _recentAlertsController.stream.listen(
+          listener.addSync,
+          onDone: listener.closeSync,
+        );
+        listener.addSync(recentAlertsSnapshot);
+        listener.onCancel = subscription.cancel;
+      }, isBroadcast: true);
+
+  void clearRecentAlerts() {
+    _recentAlerts.clear();
+    _recentAlertsController.add(recentAlertsSnapshot);
+  }
+
+  bool replayRecentAlert(String id) {
+    for (final alert in _recentAlerts) {
+      if (alert['id'] == id) {
+        return _broadcastEnvelope({'type': 'alert', 'data': alert});
+      }
+    }
+    return false;
+  }
+
+  void _sendAutomaticAlert(Map<String, Object?> data) {
+    final sent = _broadcastEnvelope({'type': 'alert', 'data': data});
+    if (!sent) return;
+    _recentAlerts.insert(0, Map.unmodifiable(data));
+    if (_recentAlerts.length > 30) _recentAlerts.removeLast();
+    _recentAlertsController.add(recentAlertsSnapshot);
+  }
+
   String get overlayUrl => 'http://localhost:$_port';
 
   Future<void> start({
@@ -260,10 +299,7 @@ class OverlayServer {
     final ids = _providerAlertIds.putIfAbsent(event.platform, () => <String>{});
     if (!ids.add(event.id)) return;
     if (ids.length > 200) ids.remove(ids.first);
-    _broadcastEnvelope({
-      'type': 'alert',
-      'data': _providerAlertData(event, kind),
-    });
+    _sendAutomaticAlert(_providerAlertData(event, kind));
   }
 
   static Map<String, Object?> _providerAlertData(
@@ -290,6 +326,7 @@ class OverlayServer {
       };
 
   Future<void> stop() async {
+    clearRecentAlerts();
     _lifecycleGeneration++;
     _providerAlertIds.clear();
     for (final group in _giftGroups.values) {
@@ -320,6 +357,7 @@ class OverlayServer {
   Future<void> dispose() async {
     await stop();
     await _clientCountController.close();
+    await _recentAlertsController.close();
   }
 
   void _broadcastMessage(ChatMessage msg) {
@@ -436,22 +474,16 @@ class OverlayServer {
           return;
         }
         _giftGroups.remove(key);
-        _broadcastEnvelope({
-          'type': 'alert',
-          'data': {
-            ..._alertData(group.first, 'membership'),
-            'giftCount': group.count,
-            'message': '',
-          },
+        _sendAutomaticAlert({
+          ..._alertData(group.first, 'membership'),
+          'giftCount': group.count,
+          'message': '',
         });
       });
       return;
     }
 
-    _broadcastEnvelope({
-      'type': 'alert',
-      'data': _alertData(msg, kind),
-    });
+    _sendAutomaticAlert(_alertData(msg, kind));
   }
 
   static Map<String, Object?> _alertData(ChatMessage msg, String kind) => {
@@ -496,17 +528,20 @@ class OverlayServer {
     }
   }
 
-  void _broadcastEnvelope(Map<String, dynamic> envelope) {
-    if (_clients.isEmpty) return;
+  bool _broadcastEnvelope(Map<String, dynamic> envelope) {
+    if (_clients.isEmpty) return false;
+    var sent = false;
     final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
       try {
         client.sink.add(json);
+        sent = true;
       } catch (_) {
         // A failed send means the browser disconnected before its close event.
         _removeClient(client);
       }
     }
+    return sent;
   }
 
   void _emitClientCount() {

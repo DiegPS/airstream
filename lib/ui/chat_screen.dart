@@ -39,6 +39,7 @@ import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
 import 'package:airstream/ui/widgets/global_shortcuts_card.dart';
+import 'package:airstream/ui/widgets/recent_alerts_card.dart';
 import 'package:airstream/ui/widgets/overlay_style_presets_card.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
 import 'package:airstream/ui/widgets/session_summary_dialog.dart';

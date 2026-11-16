@@ -41,6 +41,10 @@ final chatPollProvider = StreamProvider<ChatPoll?>((ref) {
   return ref.watch(appControllerProvider).pollStream;
 });
 
+final recentAlertsProvider = StreamProvider<List<Map<String, Object?>>>((ref) {
+  return ref.watch(appControllerProvider).recentAlerts;
+});
+
 /// Whether the search field above the chat is open.
 final chatSearchOpenProvider = StateProvider<bool>((ref) => false);
 

@@ -1,3 +1,8 @@
+import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/ui/widgets/recent_alerts_card.dart';
+import 'package:airstream/application/app_controller.dart';
+import 'package:airstream/application/overlay_coordinator.dart';
+import 'application/coordinator_fakes.dart';
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -34,6 +39,79 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  testWidgets('Connections shows recent support and replays the selected alert',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final overlay = FakeOverlayClient();
+    final alerts = <Map<String, Object?>>[
+      {
+        'id': 'one',
+        'author': 'Ana',
+        'platform': 'twitch',
+        'alertType': 'subscription',
+        'months': 6,
+        'timestamp': '2026-11-15T12:30:00Z'
+      },
+      {
+        'id': 'two',
+        'author': 'Ben',
+        'platform': 'kick',
+        'alertType': 'gift',
+        'giftCount': 5,
+        'timestamp': '2026-11-15T12:20:00Z'
+      },
+    ];
+    overlay.recent.addAll(alerts);
+    final app =
+        AppController(overlayCoordinator: OverlayCoordinator(overlay: overlay));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+      appControllerProvider.overrideWithValue(app),
+      recentAlertsProvider.overrideWith((ref) => Stream.value(alerts)),
+    ], child: const AirstreamApp()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Connections').first);
+    await tester.pumpAndSettle();
+    final replay = find.byKey(const Key('recent-alert-replay-one'));
+    await tester.ensureVisible(replay);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('recent-alerts-card')), findsOneWidget);
+    expect(find.text('Ana'), findsOneWidget);
+    expect(find.text('Ben'), findsOneWidget);
+    expect(find.text('6 months'), findsOneWidget);
+    expect(find.text('5 gifted'), findsOneWidget);
+    await tester.tap(replay);
+    await tester.pumpAndSettle();
+    expect(overlay.replayed, ['one']);
+    expect(find.text('Shown on stream again'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(ProviderScope(
+        overrides: [
+          appControllerProvider.overrideWithValue(app),
+          recentAlertsProvider.overrideWith((ref) => Stream.value(alerts)),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+              body: Center(
+                  child: SizedBox(width: 360, child: RecentAlertsCard()))),
+        )));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    overlay.hasClients = false;
+    await tester.tap(find.byKey(const Key('recent-alert-replay-two')));
+    await tester.pumpAndSettle();
+    expect(find.text('Open the alerts overlay in OBS/browser first'),
+        findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(app.dispose());
+  });
+
   testWidgets('renders the app shell before settings initialization completes',
       (WidgetTester tester) async {
     final initialization = Completer<void>();

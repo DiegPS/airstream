@@ -3458,6 +3458,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Test'**
   String get alertTypeTest;
+
+  /// No description provided for @recentAlertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent alerts'**
+  String get recentAlertsTitle;
+
+  /// No description provided for @recentAlertsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Support events from this session that appeared on stream. Show any of them again.'**
+  String get recentAlertsDescription;
+
+  /// No description provided for @recentAlertsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts from this session will appear here.'**
+  String get recentAlertsEmpty;
+
+  /// No description provided for @recentAlertsReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on stream again'**
+  String get recentAlertsReplay;
+
+  /// No description provided for @recentAlertsReplayed.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on stream again'**
+  String get recentAlertsReplayed;
+
+  /// No description provided for @recentAlertsMember.
+  ///
+  /// In en, this message translates to:
+  /// **'New member'**
+  String get recentAlertsMember;
+
+  /// No description provided for @recentAlertsSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription'**
+  String get recentAlertsSubscription;
+
+  /// No description provided for @recentAlertsMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} months'**
+  String recentAlertsMonths(int count);
+
+  /// No description provided for @recentAlertsGifted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} gifted'**
+  String recentAlertsGifted(int count);
+
+  /// No description provided for @recentAlertsRaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Raid'**
+  String get recentAlertsRaid;
+
+  /// No description provided for @recentAlertsHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get recentAlertsHost;
+
+  /// No description provided for @recentAlertsRaidViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'Raid · {count} viewers'**
+  String recentAlertsRaidViewers(int count);
+
+  /// No description provided for @recentAlertsHostViewers.
+  ///
+  /// In en, this message translates to:
+  /// **'Host · {count} viewers'**
+  String recentAlertsHostViewers(int count);
+
+  /// No description provided for @recentAlertsKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Kicks'**
+  String recentAlertsKicks(int count);
 }
 
 class _AppLocalizationsDelegate
