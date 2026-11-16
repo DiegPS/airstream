@@ -53,26 +53,45 @@ class VoiceCommand {
   final VoiceCommandType type;
   final String argument;
 
-  static const _commands = {
-    'inicia grabacion': VoiceCommandType.startRecording,
-    'iniciar grabacion': VoiceCommandType.startRecording,
-    'start recording': VoiceCommandType.startRecording,
-    'deten grabacion': VoiceCommandType.stopRecording,
-    'detener grabacion': VoiceCommandType.stopRecording,
-    'para grabacion': VoiceCommandType.stopRecording,
-    'stop recording': VoiceCommandType.stopRecording,
-    'pausa grabacion': VoiceCommandType.pauseRecording,
-    'pausar grabacion': VoiceCommandType.pauseRecording,
-    'pause recording': VoiceCommandType.pauseRecording,
-    'continua grabacion': VoiceCommandType.resumeRecording,
-    'continuar grabacion': VoiceCommandType.resumeRecording,
-    'reanuda grabacion': VoiceCommandType.resumeRecording,
-    'resume recording': VoiceCommandType.resumeRecording,
+  // Patterns run only after an exact, leading wake word has been removed.
+  // Keep recording commands anchored so ordinary trailing speech is rejected.
+  static final _recordingCommands = <RegExp, VoiceCommandType>{
+    RegExp(
+      r'^(?:(?:inicia|iniciar|empieza|comienza) (?:la )?grabacion|'
+      r'(?:start|begin) (?:the )?recording|'
+      r'(?:starte|starten|beginne) (?:die )?aufnahme|aufnahme starten|'
+      r'(?:demarre|demarrer|lance|lancer|commence) (?:l |le )?enregistrement)$',
+    ): VoiceCommandType.startRecording,
+    RegExp(
+      r'^(?:(?:deten|detener|para|parar|termina) (?:la )?grabacion|'
+      r'(?:stop|end) (?:the )?recording|'
+      r'(?:stoppe|stopp|beende) (?:die )?aufnahme|aufnahme (?:stoppen|beenden)|'
+      r'(?:arrete|arreter|stoppe|termine) (?:l |le )?enregistrement)$',
+    ): VoiceCommandType.stopRecording,
+    RegExp(
+      r'^(?:(?:pausa|pausar) (?:la )?grabacion|pause (?:the )?recording|'
+      r'pausiere (?:die )?aufnahme|aufnahme pausieren|'
+      r'(?:mets en pause|mettre en pause|pause) (?:l |le )?enregistrement|'
+      r'mets (?:l |le )?enregistrement en pause)$',
+    ): VoiceCommandType.pauseRecording,
+    RegExp(
+      r'^(?:(?:continua|continuar|reanuda|reanudar) (?:la )?grabacion|'
+      r'(?:resume|continue) (?:the )?recording|'
+      r'setze (?:die )?aufnahme fort|aufnahme fortsetzen|'
+      r'(?:reprends|reprendre) (?:l |le )?enregistrement)$',
+    ): VoiceCommandType.resumeRecording,
   };
 
-  static final _spanishScene =
-      RegExp(r'^(?:cambia|cambiar) (?:a )?(?:la )?escena (.+)$');
-  static final _englishScene = RegExp(r'^switch (?:to )?(?:the )?scene (.+)$');
+  static final _politeEnding = RegExp(
+    r' (?:por favor|please|bitte|s il te plait|s il vous plait)$',
+  );
+  static final _sceneCommands = [
+    RegExp(r'^(?:cambia|cambiar) (?:a )?(?:la )?escena (.+)$'),
+    RegExp(
+        r'^(?:switch (?:to )?(?:the )?|(?:change|go) to (?:the )?)scene (.+)$'),
+    RegExp(r'^wechsle (?:(?:zu|zur) )?(?:die )?szene (.+)$'),
+    RegExp(r'^(?:(?:passe|passer|va) a|change de) (?:la )?scene (.+)$'),
+  ];
 
   static VoiceCommand? parse(
     String transcript, {
@@ -82,16 +101,24 @@ class VoiceCommand {
     final prefix = normalizeVoiceText(wakeWord);
     if (prefix.isEmpty || !normalized.startsWith('$prefix ')) return null;
     final command = normalized.substring(prefix.length).trim();
+    final withoutPoliteEnding = command.replaceFirst(_politeEnding, '');
 
-    final type = _commands[command];
-    if (type != null) return VoiceCommand(type);
+    for (final entry in _recordingCommands.entries) {
+      if (entry.key.hasMatch(withoutPoliteEnding)) {
+        return VoiceCommand(entry.value);
+      }
+    }
 
-    final scene =
-        (_spanishScene.firstMatch(command) ?? _englishScene.firstMatch(command))
-            ?.group(1)
-            ?.trim();
-    if (scene != null && scene.isNotEmpty) {
-      return VoiceCommand(VoiceCommandType.switchScene, argument: scene);
+    for (final pattern in _sceneCommands) {
+      // The entire remainder is the scene name, including words that could
+      // also be polite endings. Preserve existing scene-name behavior.
+      final scene = pattern.firstMatch(command)?.group(1)?.trim();
+      if (scene != null && scene.isNotEmpty) {
+        return VoiceCommand(
+          VoiceCommandType.switchScene,
+          argument: scene,
+        );
+      }
     }
     return null;
   }

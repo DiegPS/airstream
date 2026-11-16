@@ -671,11 +671,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get voiceCommandsExamples =>
-      'Ejemplos: “Airstream inicia grabación”, “Airstream pausa grabación” o “Airstream cambia a escena cámara”.';
+      'Ejemplos: “Airstream inicia grabación”, “Airstream pausa grabación” o “Airstream cambia a escena cámara”. También en alemán y francés, por ejemplo «Airstream démarre l\'enregistrement».';
 
   @override
   String get voiceCommandsTranslationNote =>
-      'Con la traducción de subtítulos activa, los comandos se leen del texto traducido: los de grabación funcionan con subtítulos en español o inglés, y el nombre de una escena puede salir traducido.';
+      'Con la traducción de subtítulos activa, los comandos se leen del texto traducido. Los de grabación funcionan en español, inglés, alemán y francés; el nombre de una escena puede salir traducido.';
 
   @override
   String get captionModelManual => 'Subtítulos sin conexión · descarga manual';

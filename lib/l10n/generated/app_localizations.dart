@@ -1313,13 +1313,13 @@ abstract class AppLocalizations {
   /// No description provided for @voiceCommandsExamples.
   ///
   /// In en, this message translates to:
-  /// **'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.'**
+  /// **'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”. German and French work too, for example “Airstream starte die Aufnahme”.'**
   String get voiceCommandsExamples;
 
   /// No description provided for @voiceCommandsTranslationNote.
   ///
   /// In en, this message translates to:
-  /// **'With caption translation on, commands are read from the translated text: recording commands work with Spanish or English captions, and a scene name may be translated.'**
+  /// **'With caption translation on, commands are read from the translated text. Recording commands work in English, Spanish, German and French; a scene name may come out translated.'**
   String get voiceCommandsTranslationNote;
 
   /// No description provided for @captionModelManual.

@@ -667,11 +667,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceCommandsExamples =>
-      'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”.';
+      'Examples: “Airstream start recording”, “Airstream pause recording”, or “Airstream switch to scene camera”. German and French work too, for example “Airstream starte die Aufnahme”.';
 
   @override
   String get voiceCommandsTranslationNote =>
-      'With caption translation on, commands are read from the translated text: recording commands work with Spanish or English captions, and a scene name may be translated.';
+      'With caption translation on, commands are read from the translated text. Recording commands work in English, Spanish, German and French; a scene name may come out translated.';
 
   @override
   String get captionModelManual => 'Offline captions · manual download';
