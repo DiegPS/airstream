@@ -2013,7 +2013,8 @@ class AppLocalizationsEn extends AppLocalizations {
         'listeningPort': 'Listening on port $value',
         'starting': 'Starting',
         'noAlerts': 'No alerts page connected in OBS',
-        'pages': 'Pages: chat / alerts / poll / captions / giveaway: $value',
+        'pages':
+            'Pages: chat / alerts / poll / captions / giveaway / goals: $value',
         'loading': 'Loading $value',
         'ready': 'Ready: $value',
         'listening': 'Listening',
@@ -2110,4 +2111,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get giveawayUrlCopied => 'Giveaway page URL copied';
+
+  @override
+  String get goalsTitle => 'Goals';
+
+  @override
+  String get goalsDescription =>
+      'Track support and adjust progress during your stream.';
+
+  @override
+  String get goalsAdd => 'Add goal';
+
+  @override
+  String get goalsEdit => 'Edit';
+
+  @override
+  String get goalsDelete => 'Delete';
+
+  @override
+  String get goalsReset => 'Reset to 0';
+
+  @override
+  String get goalsSave => 'Save';
+
+  @override
+  String get goalsName => 'Title';
+
+  @override
+  String get goalsType => 'Type';
+
+  @override
+  String get goalsTarget => 'Target';
+
+  @override
+  String get goalsSubs => 'Subscriptions';
+
+  @override
+  String get goalsBits => 'Bits';
+
+  @override
+  String get goalsKicks => 'Kicks';
+
+  @override
+  String get goalsManual => 'Manual';
+
+  @override
+  String get goalsReached => 'Goal reached!';
+
+  @override
+  String get goalsPageTitle => 'Airstream Goals';
+
+  @override
+  String get goalsInvalid => 'Enter a title and a target from 1 to 1,000,000.';
+
+  @override
+  String get goalsPageOff => 'Enable the browser server to use /goals in OBS.';
+
+  @override
+  String goalsPageUrl(String url) {
+    return 'OBS page: $url';
+  }
+
+  @override
+  String get goalsUrlCopied => 'Goals page URL copied';
 }

@@ -926,6 +926,44 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('adds a goal in OBS adjusts by ten and deletes it',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) =>
+          _RecordingSettings(const SettingsModel(overlayEnabled: false)))
+    ], child: const AirstreamApp()));
+    final container =
+        ProviderScope.containerOf(tester.element(find.byType(AirstreamApp)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pumpAndSettle();
+    final add = find.byKey(const Key('goals-add'));
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('goal-title')), 'Community');
+    await tester.tap(find.byKey(const Key('goal-save')));
+    await tester.pumpAndSettle();
+    final id = container.read(settingsProvider).goals.keys.single;
+    final plus = find.byKey(Key('goal-$id-plus10'));
+    await tester.ensureVisible(plus);
+    await tester.tap(plus);
+    await tester.pumpAndSettle();
+    expect(find.text('10 / 100'), findsOneWidget);
+    expect(container.read(settingsProvider).goals[id]!['current'], 10);
+    final delete = find.byKey(Key('goal-$id-delete'));
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    expect(container.read(settingsProvider).goals, isEmpty);
+    expect(find.text('Community'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('a giveaway starts in OBS counts chat and draws a winner',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1600);

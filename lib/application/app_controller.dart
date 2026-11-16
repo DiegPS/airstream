@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:airstream/settings/goals.dart';
+import 'package:airstream/application/goal_tracker.dart';
 
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 
@@ -79,6 +81,10 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     _subscriptions.addAll([
+      _chat.messages
+          .listen((m) => _emitGoalIncrements(_goalTracker.message(m))),
+      _chat.providerEvents
+          .listen((e) => _emitGoalIncrements(_goalTracker.event(e))),
       _chat.messages.listen(_chatLog.write),
       _chat.messages.listen(_sessionSummary.handleMessage),
       _chat.providerEvents.listen(_sessionSummary.handleProviderEvent),
@@ -108,6 +114,13 @@ class AppController {
   late final OverlayCoordinator _overlay;
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
+  final _goalTracker = GoalTracker();
+  final _goalIncrements = StreamController<Map<String, int>>.broadcast();
+  Stream<Map<String, int>> get goalIncrements => _goalIncrements.stream;
+  void _emitGoalIncrements(Map<String, int> increments) {
+    if (increments.values.any((n) => n > 0)) _goalIncrements.add(increments);
+  }
+
   final _poll = ChatPollController();
   final _giveaway = ChatGiveawayController();
   final _sessionSummary = SessionSummaryCollector();
@@ -229,6 +242,7 @@ class AppController {
     }
     _chat.applySettings(settings, connectChats: connectChats);
     _audio.applySettings(settings, connectChats: connectChats);
+    _overlay.broadcastGoals(Goals.payload(settings.goals));
     _overlay.applySettings(
       settings,
       previous: previous,
@@ -262,6 +276,7 @@ class AppController {
     await _overlayFeed.close();
     await _poll.dispose();
     await _giveaway.dispose();
+    await _goalIncrements.close();
     await _chatLog.endSession();
   }
 }

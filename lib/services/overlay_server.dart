@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:airstream/settings/goals.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -49,7 +50,8 @@ class OverlayServer {
           'alerts',
           'poll',
           'captions',
-          'giveaway'
+          'giveaway',
+          'goals'
         ])
           view: _views.values.where((value) => value == view).length,
       });
@@ -119,6 +121,7 @@ class OverlayServer {
     await stop();
     final lifecycleGeneration = ++_lifecycleGeneration;
     _settings = settings;
+    _updateGoals(settings);
     _port = port;
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
@@ -160,6 +163,7 @@ class OverlayServer {
 
   void setSettings(SettingsModel settings) {
     _settings = settings;
+    _updateGoals(settings);
     _broadcastSettings();
   }
 
@@ -289,6 +293,24 @@ class OverlayServer {
     });
   }
 
+  List<Map<String, Object?>> _goals = const [];
+  Timer? _goalsTimer;
+  void _updateGoals(SettingsModel settings) {
+    broadcastGoals(Goals.payload(settings.goals));
+  }
+
+  void broadcastGoals(List<Map<String, Object?>> goals) {
+    final next = [
+      for (final goal in goals) Map<String, Object?>.unmodifiable(goal)
+    ];
+    if (jsonEncode(next) == jsonEncode(_goals)) return;
+    _goals = next;
+    _goalsTimer ??= Timer(const Duration(milliseconds: 250), () {
+      _goalsTimer = null;
+      _broadcastEnvelope({'type': 'goals', 'data': _goals});
+    });
+  }
+
   Map<String, Object?>? _giveaway;
   void broadcastGiveaway(Map<String, Object?>? giveaway) {
     _giveaway = giveaway;
@@ -380,6 +402,7 @@ class OverlayServer {
 
   Future<void> dispose() async {
     await stop();
+    _goalsTimer?.cancel();
     await _clientCountController.close();
     await _viewCountsController.close();
     await _recentAlertsController.close();
@@ -436,7 +459,7 @@ class OverlayServer {
       if (envelope['type'] == 'register') {
         final view = envelope['view'];
         if (view is String &&
-            const {'chat', 'alerts', 'poll', 'captions', 'giveaway'}
+            const {'chat', 'alerts', 'poll', 'captions', 'giveaway', 'goals'}
                 .contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
@@ -546,6 +569,10 @@ class OverlayServer {
         'type': 'settings',
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
+      if (_goals.isNotEmpty) {
+        client.sink
+            .add(jsonEncode({'type': 'goals', 'data': _goals, 'replay': true}));
+      }
       if (_giveaway != null) {
         client.sink.add(jsonEncode(
             {'type': 'giveaway', 'data': _giveaway, 'replay': true}));

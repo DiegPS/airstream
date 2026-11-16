@@ -18,6 +18,7 @@ abstract final class SettingsProfiles {
     'overlayEnabled',
     'overlayPort',
     'profiles',
+    'goals',
   };
 
   static bool _isConnectionKey(String key) =>

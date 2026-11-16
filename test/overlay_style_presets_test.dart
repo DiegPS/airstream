@@ -45,6 +45,9 @@ Map<String, dynamic> _other(SettingsModel s) =>
 SettingsModel _different() {
   const d = SettingsModel();
   return d.copyWith(
+    goals: {
+      'g': {'title': 'Test', 'type': 'manual', 'target': 100, 'current': 10}
+    },
     appLanguageCode: '${d.appLanguageCode}-custom',
     youtubeHandle: '${d.youtubeHandle}-custom',
     youtubeLiveId: '${d.youtubeLiveId}-custom',

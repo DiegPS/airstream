@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'settings_model.dart';
 import 'alert_type_options.dart';
+import 'goals.dart';
 
 abstract final class SettingsModelCodec {
   static Map<String, dynamic> toJson(SettingsModel model) => {
@@ -118,6 +119,7 @@ abstract final class SettingsModelCodec {
         'alertPosition': model.alertPosition,
         'alertLayout': model.alertLayout,
         'alertAnimation': model.alertAnimation,
+        'goals': Goals.sanitize(model.goals),
         'alertTypeOptions': model.alertTypeOptions,
         'alertSoundVolume': model.alertSoundVolume,
         'connectChatOnLaunch': model.connectChatOnLaunch,
@@ -137,6 +139,7 @@ abstract final class SettingsModelCodec {
   static SettingsModel fromJson(Map<String, dynamic> source) {
     final j = _sanitizeJson(source);
     return SettingsModel(
+      goals: Goals.sanitize(j['goals']),
       appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
       youtubeHandle: j['youtubeHandle'] as String? ?? '',
       youtubeLiveId: j['youtubeLiveId'] as String? ?? '',
@@ -312,6 +315,10 @@ abstract final class SettingsModelCodec {
     for (final entry in source.entries) {
       final expected = schema[entry.key];
       final value = entry.value;
+      if (entry.key == 'goals') {
+        sanitized[entry.key] = Goals.sanitize(value);
+        continue;
+      }
       if (entry.key == 'alertTypeOptions') {
         sanitized[entry.key] = AlertTypeOptions.sanitize(value);
         continue;

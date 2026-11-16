@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:airstream/settings/goals.dart';
 
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/chat_poll.dart';
@@ -197,3 +198,18 @@ final overlayViewCountsProvider = StreamProvider<Map<String, int>>((ref) {
 
 final chatGiveawayProvider = StreamProvider<ChatGiveaway?>(
     (ref) => ref.watch(appControllerProvider).giveawayStream);
+
+final goalTrackingProvider = Provider<void>((ref) {
+  final sub =
+      ref.watch(appControllerProvider).goalIncrements.listen((increments) {
+    final settings = ref.read(settingsProvider);
+    if (!settings.goals.values.any((g) => (increments[g['type']] ?? 0) > 0)) {
+      return;
+    }
+    unawaited(ref.read(settingsProvider.notifier).update(
+        settings.copyWith(goals: Goals.advance(settings.goals, increments))));
+  });
+  ref.onDispose(() {
+    unawaited(sub.cancel());
+  });
+});

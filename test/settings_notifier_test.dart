@@ -16,6 +16,21 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('goals survive a settings save and reload', () async {
+    final store = _MemorySecureSettingsStore();
+    final first = SettingsNotifier(secureStore: store);
+    await first.ready;
+    final goals = {
+      'g': {'title': 'Support', 'type': 'subs', 'target': 100, 'current': 12}
+    };
+    await first.update(first.state.copyWith(goals: goals));
+    final second = SettingsNotifier(secureStore: store);
+    await second.ready;
+    expect(second.state.goals, goals);
+    first.dispose();
+    second.dispose();
+  });
+
   test('migrates the legacy OBS password and removes its plaintext copy',
       () async {
     SharedPreferences.setMockInitialValues({

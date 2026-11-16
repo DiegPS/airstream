@@ -6,6 +6,7 @@ import 'package:airstream/services/overlay/templates/captions_overlay.dart';
 import 'package:airstream/services/overlay/templates/chat_overlay.dart';
 import 'package:airstream/services/overlay/templates/poll_overlay.dart';
 import 'package:airstream/services/overlay/templates/giveaway_overlay.dart';
+import 'package:airstream/services/overlay/templates/goals_overlay.dart';
 import 'package:shelf/shelf.dart';
 
 Handler buildOverlayRoutes(Handler webSocketHandler,
@@ -59,6 +60,7 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
     if (request.url.path == 'captions') {
       return _htmlResponse(captionsOverlayHtml());
     }
+    if (request.url.path == 'goals') return _htmlResponse(goalsOverlayHtml());
     if (request.url.path == 'giveaway') {
       return _htmlResponse(giveawayOverlayHtml());
     }

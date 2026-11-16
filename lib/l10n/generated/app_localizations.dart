@@ -3582,7 +3582,7 @@ abstract class AppLocalizations {
   /// No description provided for @diagnosticsMessage.
   ///
   /// In en, this message translates to:
-  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
+  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway / goals: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
   String diagnosticsMessage(String kind, String value);
 
   /// No description provided for @diagnosticsArea.
@@ -3692,6 +3692,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Giveaway page URL copied'**
   String get giveawayUrlCopied;
+
+  /// No description provided for @goalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals'**
+  String get goalsTitle;
+
+  /// No description provided for @goalsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Track support and adjust progress during your stream.'**
+  String get goalsDescription;
+
+  /// No description provided for @goalsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add goal'**
+  String get goalsAdd;
+
+  /// No description provided for @goalsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get goalsEdit;
+
+  /// No description provided for @goalsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get goalsDelete;
+
+  /// No description provided for @goalsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to 0'**
+  String get goalsReset;
+
+  /// No description provided for @goalsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get goalsSave;
+
+  /// No description provided for @goalsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get goalsName;
+
+  /// No description provided for @goalsType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get goalsType;
+
+  /// No description provided for @goalsTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get goalsTarget;
+
+  /// No description provided for @goalsSubs.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscriptions'**
+  String get goalsSubs;
+
+  /// No description provided for @goalsBits.
+  ///
+  /// In en, this message translates to:
+  /// **'Bits'**
+  String get goalsBits;
+
+  /// No description provided for @goalsKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'Kicks'**
+  String get goalsKicks;
+
+  /// No description provided for @goalsManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get goalsManual;
+
+  /// No description provided for @goalsReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached!'**
+  String get goalsReached;
+
+  /// No description provided for @goalsPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Airstream Goals'**
+  String get goalsPageTitle;
+
+  /// No description provided for @goalsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a title and a target from 1 to 1,000,000.'**
+  String get goalsInvalid;
+
+  /// No description provided for @goalsPageOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the browser server to use /goals in OBS.'**
+  String get goalsPageOff;
+
+  /// No description provided for @goalsPageUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS page: {url}'**
+  String goalsPageUrl(String url);
+
+  /// No description provided for @goalsUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals page URL copied'**
+  String get goalsUrlCopied;
 }
 
 class _AppLocalizationsDelegate

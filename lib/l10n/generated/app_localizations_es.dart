@@ -2028,7 +2028,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'starting': 'Iniciando',
         'noAlerts': 'No hay página de alertas conectada en OBS',
         'pages':
-            'Páginas: chat / alertas / encuesta / subtítulos / sorteo: $value',
+            'Páginas: chat / alertas / encuesta / subtítulos / sorteo / metas: $value',
         'loading': 'Cargando $value',
         'ready': 'Listo: $value',
         'listening': 'Escuchando',
@@ -2125,4 +2125,69 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get giveawayUrlCopied => 'URL de la página del sorteo copiada';
+
+  @override
+  String get goalsTitle => 'Metas';
+
+  @override
+  String get goalsDescription =>
+      'Sigue los apoyos y ajusta el progreso durante tu directo.';
+
+  @override
+  String get goalsAdd => 'Añadir meta';
+
+  @override
+  String get goalsEdit => 'Editar';
+
+  @override
+  String get goalsDelete => 'Eliminar';
+
+  @override
+  String get goalsReset => 'Reiniciar a 0';
+
+  @override
+  String get goalsSave => 'Guardar';
+
+  @override
+  String get goalsName => 'Título';
+
+  @override
+  String get goalsType => 'Tipo';
+
+  @override
+  String get goalsTarget => 'Objetivo';
+
+  @override
+  String get goalsSubs => 'Suscripciones';
+
+  @override
+  String get goalsBits => 'Bits';
+
+  @override
+  String get goalsKicks => 'Kicks';
+
+  @override
+  String get goalsManual => 'Manual';
+
+  @override
+  String get goalsReached => '¡Meta cumplida!';
+
+  @override
+  String get goalsPageTitle => 'Metas Airstream';
+
+  @override
+  String get goalsInvalid =>
+      'Escribe un título y un objetivo entre 1 y 1 000 000.';
+
+  @override
+  String get goalsPageOff =>
+      'Activa el servidor de páginas para usar /goals en OBS.';
+
+  @override
+  String goalsPageUrl(String url) {
+    return 'Página para OBS: $url';
+  }
+
+  @override
+  String get goalsUrlCopied => 'URL de la página de metas copiada';
 }

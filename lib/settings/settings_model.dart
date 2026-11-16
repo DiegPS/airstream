@@ -150,6 +150,7 @@ class SettingsModel {
   final String alertPosition;
   final String alertLayout;
   final String alertAnimation;
+  final Map<String, Map<String, dynamic>> goals;
   final Map<String, Map<String, dynamic>> alertTypeOptions;
   final int alertSoundVolume;
 
@@ -286,6 +287,7 @@ class SettingsModel {
     this.alertPosition = 'center',
     this.alertLayout = 'row',
     this.alertAnimation = 'pop',
+    this.goals = const {},
     this.alertTypeOptions = const {},
     this.alertSoundVolume = 70,
     this.connectChatOnLaunch = false,
@@ -417,6 +419,7 @@ class SettingsModel {
     String? alertPosition,
     String? alertLayout,
     String? alertAnimation,
+    Map<String, Map<String, dynamic>>? goals,
     Map<String, Map<String, dynamic>>? alertTypeOptions,
     int? alertSoundVolume,
     bool? connectChatOnLaunch,
@@ -571,6 +574,7 @@ class SettingsModel {
         alertPosition: alertPosition ?? this.alertPosition,
         alertLayout: alertLayout ?? this.alertLayout,
         alertAnimation: alertAnimation ?? this.alertAnimation,
+        goals: goals ?? this.goals,
         alertTypeOptions: alertTypeOptions ?? this.alertTypeOptions,
         alertSoundVolume: alertSoundVolume ?? this.alertSoundVolume,
         connectChatOnLaunch: connectChatOnLaunch ?? this.connectChatOnLaunch,

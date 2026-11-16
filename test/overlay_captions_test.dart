@@ -18,8 +18,14 @@ void main() {
         messages: messages.stream, settings: const SettingsModel(), port: 0);
     final counts = StreamIterator(server.viewCountsStream);
     expect(await counts.moveNext(), isTrue);
-    expect(counts.current,
-        {'chat': 0, 'alerts': 0, 'poll': 0, 'captions': 0, 'giveaway': 0});
+    expect(counts.current, {
+      'chat': 0,
+      'alerts': 0,
+      'poll': 0,
+      'captions': 0,
+      'giveaway': 0,
+      'goals': 0
+    });
     Future<void> until(bool Function(Map<String, int>) matches) async {
       while (await counts.moveNext().timeout(const Duration(seconds: 5))) {
         if (matches(counts.current)) return;
@@ -37,8 +43,14 @@ void main() {
       alerts.sink.add(jsonEncode({'type': 'register', 'view': 'alerts'}));
       poll.sink.add(jsonEncode({'type': 'register', 'view': 'poll'}));
       await until((v) => v['alerts'] == 1 && v['poll'] == 1);
-      expect(server.viewCounts,
-          {'chat': 0, 'alerts': 1, 'poll': 1, 'captions': 0, 'giveaway': 0});
+      expect(server.viewCounts, {
+        'chat': 0,
+        'alerts': 1,
+        'poll': 1,
+        'captions': 0,
+        'giveaway': 0,
+        'goals': 0
+      });
       await alerts.sink.close();
       await until((v) => v['alerts'] == 0 && v['poll'] == 1);
       await poll.sink.close();
@@ -337,6 +349,53 @@ void main() {
       await messages.close();
     }
   });
+  test('goals page replays current progress to a late connection', () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    final client = http.Client();
+    IOWebSocketChannel? socket;
+    StreamIterator<dynamic>? events;
+    try {
+      const settings = SettingsModel(goals: {
+        'g': {'title': 'Support', 'type': 'subs', 'target': 10, 'current': 12}
+      });
+      await server.start(
+          messages: messages.stream, settings: settings, port: 0);
+      final page =
+          await client.get(Uri.parse('http://127.0.0.1:${server.port}/goals'));
+      expect(page.statusCode, 200);
+      expect(page.body, contains('Airstream Goals'));
+      socket = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+      await socket.ready;
+      events = StreamIterator(socket.stream);
+      await events.moveNext();
+      expect((jsonDecode(events.current as String) as Map)['type'], 'settings');
+      await events.moveNext();
+      final replay = jsonDecode(events.current as String) as Map;
+      expect(replay['type'], 'goals');
+      expect(replay['replay'], true);
+      expect(replay['data'], [
+        {
+          'id': 'g',
+          'title': 'Support',
+          'type': 'subs',
+          'target': 10,
+          'current': 12,
+          'percent': 100,
+          'reached': true
+        }
+      ]);
+      socket.sink.add(jsonEncode({'type': 'register', 'view': 'goals'}));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    } finally {
+      await events?.cancel();
+      await socket?.sink.close();
+      client.close();
+      await server.dispose();
+      await messages.close();
+    }
+  });
+
   test('serves the giveaway overlay and replays the current giveaway',
       () async {
     final messages = StreamController<ChatMessage>.broadcast();
