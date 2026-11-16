@@ -18,6 +18,7 @@ abstract interface class OverlayClient {
   int get port;
   String get overlayUrl;
   Stream<int> get clientCountStream;
+  Stream<Map<String, int>> get viewCountsStream;
   Future<void> start({
     required Stream<ChatMessage> messages,
     required SettingsModel settings,
@@ -55,6 +56,8 @@ class OverlayServerAdapter implements OverlayClient {
   String get overlayUrl => server.overlayUrl;
   @override
   Stream<int> get clientCountStream => server.clientCountStream;
+  @override
+  Stream<Map<String, int>> get viewCountsStream => server.viewCountsStream;
   @override
   Future<void> start({
     required Stream<ChatMessage> messages,
@@ -97,6 +100,7 @@ class OverlayCoordinator {
   bool _disposed = false;
 
   Stream<int> get clientCountStream => _overlay.clientCountStream;
+  Stream<Map<String, int>> get viewCountsStream => _overlay.viewCountsStream;
 
   Stream<OverlayServerState> get stateStream async* {
     yield _state;

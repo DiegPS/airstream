@@ -189,3 +189,7 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
   ref.onDispose(() => unawaited(c.dispose()));
   return c;
 });
+
+final overlayViewCountsProvider = StreamProvider<Map<String, int>>((ref) {
+  return ref.watch(appControllerProvider).overlayViewCountsStream;
+});

@@ -263,6 +263,8 @@ class FakeOverlayClient implements OverlayClient {
   @override
   String get overlayUrl => 'http://localhost:$activePort';
   @override
+  Stream<Map<String, int>> get viewCountsStream => Stream.value(const {});
+  @override
   Stream<int> get clientCountStream => clientsController.stream;
   @override
   Future<void> start({

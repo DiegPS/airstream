@@ -14,6 +14,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const DiagnosticsCard(),
         UiCard(
           title: l.desktopWindow,
           icon: Icons.window_rounded,

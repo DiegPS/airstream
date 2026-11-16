@@ -133,6 +133,9 @@ class AppController {
   Stream<LiveCaptionsState> get liveCaptionsStateStream =>
       _audio.liveCaptionsStateStream;
   Stream<ObsState> get obsStateStream => _obs.stateStream;
+  Stream<Map<String, int>> get overlayViewCountsStream =>
+      _overlay.viewCountsStream;
+
   Stream<int> get overlayClientCountStream => _overlay.clientCountStream;
   Stream<AppNotice> get noticeStream => _noticeController.stream;
   Stream<OverlayServerState> get overlayStateStream => _overlay.stateStream;

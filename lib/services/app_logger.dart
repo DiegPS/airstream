@@ -37,6 +37,10 @@ abstract final class AppLogger {
   static void registerSecret(String value) =>
       LogSanitizer.registerSecret(value);
 
+  static Future<Directory> get directory async =>
+      _fileWriter?.directory ??
+      Directory(p.join((await getApplicationSupportDirectory()).path, 'logs'));
+
   static Future<void> flush() => _fileWriter?.flush() ?? Future<void>.value();
 
   static void debug(String message) => _write('DEBUG', message);

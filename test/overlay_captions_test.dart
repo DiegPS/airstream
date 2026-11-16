@@ -11,6 +11,46 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/io.dart';
 
 void main() {
+  test('registered view counts follow registration and disconnect', () async {
+    final server = OverlayServer();
+    final messages = StreamController<ChatMessage>.broadcast();
+    await server.start(
+        messages: messages.stream, settings: const SettingsModel(), port: 0);
+    final counts = StreamIterator(server.viewCountsStream);
+    expect(await counts.moveNext(), isTrue);
+    expect(counts.current, {'chat': 0, 'alerts': 0, 'poll': 0, 'captions': 0});
+    Future<void> until(bool Function(Map<String, int>) matches) async {
+      while (await counts.moveNext().timeout(const Duration(seconds: 5))) {
+        if (matches(counts.current)) return;
+      }
+      fail('View counts stream closed');
+    }
+
+    final alerts =
+        IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+    final poll = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+    final aSub = alerts.stream.listen((_) {});
+    final pSub = poll.stream.listen((_) {});
+    try {
+      await Future.wait([alerts.ready, poll.ready]);
+      alerts.sink.add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+      poll.sink.add(jsonEncode({'type': 'register', 'view': 'poll'}));
+      await until((v) => v['alerts'] == 1 && v['poll'] == 1);
+      expect(server.viewCounts,
+          {'chat': 0, 'alerts': 1, 'poll': 1, 'captions': 0});
+      await alerts.sink.close();
+      await until((v) => v['alerts'] == 0 && v['poll'] == 1);
+      await poll.sink.close();
+      await until((v) => v.values.every((n) => n == 0));
+    } finally {
+      await aSub.cancel();
+      await pSub.cancel();
+      await counts.cancel();
+      await server.dispose();
+      await messages.close();
+    }
+  });
+
   test('publishes the operating-system assigned overlay port', () async {
     final messages = StreamController<ChatMessage>.broadcast();
     final server = OverlayServer();

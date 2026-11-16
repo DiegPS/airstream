@@ -1979,4 +1979,92 @@ class AppLocalizationsEs extends AppLocalizations {
   String recentAlertsKicks(int count) {
     return '$count Kicks';
   }
+
+  @override
+  String get diagnosticsTitle => 'Diagnóstico';
+
+  @override
+  String get diagnosticsCopy => 'Copiar informe';
+
+  @override
+  String get diagnosticsCopied => 'Informe copiado';
+
+  @override
+  String get diagnosticsLogs => 'Abrir carpeta de registros';
+
+  @override
+  String get diagnosticsLogsFailed =>
+      'No se pudo abrir la carpeta de registros';
+
+  @override
+  String diagnosticsHeader(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cosas necesitan atención',
+      one: '1 cosa necesita atención',
+      zero: 'Todo funciona bien',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diagnosticsMessage(String kind, String value) {
+    String _temp0 = intl.Intl.selectLogic(
+      kind,
+      {
+        'set': 'configurada',
+        'off': 'Apagado',
+        'idle': 'Sin conexión',
+        'connected': 'Conectado',
+        'connecting': 'Conectando / reconectando',
+        'waiting': 'Esperando la transmisión en vivo',
+        'failed': 'Error (detalles privados omitidos)',
+        'portBusy': 'El puerto ya está en uso',
+        'authentication': 'Error de autenticación',
+        'refused': 'Conexión rechazada',
+        'timeout': 'Tiempo de conexión agotado',
+        'listeningPort': 'Escuchando en el puerto $value',
+        'starting': 'Iniciando',
+        'noAlerts': 'No hay página de alertas conectada en OBS',
+        'pages': 'Páginas: chat / alertas / encuesta / subtítulos: $value',
+        'loading': 'Cargando $value',
+        'ready': 'Listo: $value',
+        'listening': 'Escuchando',
+        'downloading': 'Descargando $value',
+        'missingModel': 'Se requiere descargar el modelo',
+        'commandsOn': 'Comandos de voz activados',
+        'commandsOff': 'Comandos de voz desactivados',
+        'shortcutsOk': 'Sin asignar o todos registrados',
+        'shortcutTaken': 'Atajo usado por otra aplicación: $value',
+        'silenceTts': 'Silenciar lector de voz',
+        'toggleTts': 'Alternar lector de voz',
+        'channelSet': 'Canal configurado',
+        'channelUnset': 'Canal sin configurar',
+        'scene': 'Escena: $value',
+        'metrics': '$value kbps / fotogramas perdidos',
+        'other': '',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diagnosticsArea(String area) {
+    String _temp0 = intl.Intl.selectLogic(
+      area,
+      {
+        'youtube': 'YouTube',
+        'twitch': 'Twitch',
+        'kick': 'Kick',
+        'obs': 'OBS',
+        'server': 'Servidor de superposición',
+        'tts': 'Lector de voz (TTS)',
+        'captions': 'Subtítulos y comandos de voz',
+        'shortcuts': 'Atajos globales',
+        'other': '',
+      },
+    );
+    return '$_temp0';
+  }
 }

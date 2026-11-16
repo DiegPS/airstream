@@ -43,6 +43,18 @@ class OverlayServer {
   int get port => _port;
   InternetAddress? get boundAddress => _server?.address;
 
+  Map<String, int> get viewCounts => Map.unmodifiable({
+        for (final view in const ['chat', 'alerts', 'poll', 'captions'])
+          view: _views.values.where((value) => value == view).length,
+      });
+  final _viewCountsController = StreamController<Map<String, int>>.broadcast();
+  Stream<Map<String, int>> get viewCountsStream => Stream.multi((listener) {
+        final subscription = _viewCountsController.stream
+            .listen(listener.addSync, onDone: listener.closeSync);
+        listener.addSync(viewCounts);
+        listener.onCancel = subscription.cancel;
+      }, isBroadcast: true);
+
   int get clientCount => _clients.length;
   Stream<int> get clientCountStream async* {
     yield _clients.length;
@@ -357,6 +369,7 @@ class OverlayServer {
   Future<void> dispose() async {
     await stop();
     await _clientCountController.close();
+    await _viewCountsController.close();
     await _recentAlertsController.close();
   }
 
@@ -414,6 +427,7 @@ class OverlayServer {
             const {'chat', 'alerts', 'poll', 'captions'}.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
+          _emitViewCounts();
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
         }
       } else if (envelope['type'] == 'featuredRendered' &&
@@ -544,7 +558,12 @@ class OverlayServer {
     return sent;
   }
 
+  void _emitViewCounts() {
+    if (!_viewCountsController.isClosed) _viewCountsController.add(viewCounts);
+  }
+
   void _emitClientCount() {
+    _emitViewCounts();
     if (!_clientCountController.isClosed) {
       _clientCountController.add(_clients.length);
     }

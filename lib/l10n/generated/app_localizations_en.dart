@@ -1966,4 +1966,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String recentAlertsKicks(int count) {
     return '$count Kicks';
   }
+
+  @override
+  String get diagnosticsTitle => 'Diagnostics';
+
+  @override
+  String get diagnosticsCopy => 'Copy report';
+
+  @override
+  String get diagnosticsCopied => 'Report copied';
+
+  @override
+  String get diagnosticsLogs => 'Open logs folder';
+
+  @override
+  String get diagnosticsLogsFailed => 'Could not open logs folder';
+
+  @override
+  String diagnosticsHeader(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count things need attention',
+      one: '1 thing needs attention',
+      zero: 'Everything looks fine',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diagnosticsMessage(String kind, String value) {
+    String _temp0 = intl.Intl.selectLogic(
+      kind,
+      {
+        'set': 'set',
+        'off': 'Off',
+        'idle': 'Not connected',
+        'connected': 'Connected',
+        'connecting': 'Connecting / reconnecting',
+        'waiting': 'Waiting for live stream',
+        'failed': 'Failed (private details omitted)',
+        'portBusy': 'Port is already in use',
+        'authentication': 'Authentication failed',
+        'refused': 'Connection refused',
+        'timeout': 'Connection timed out',
+        'listeningPort': 'Listening on port $value',
+        'starting': 'Starting',
+        'noAlerts': 'No alerts page connected in OBS',
+        'pages': 'Pages: chat / alerts / poll / captions: $value',
+        'loading': 'Loading $value',
+        'ready': 'Ready: $value',
+        'listening': 'Listening',
+        'downloading': 'Downloading $value',
+        'missingModel': 'Model download required',
+        'commandsOn': 'Voice commands on',
+        'commandsOff': 'Voice commands off',
+        'shortcutsOk': 'None assigned or all registered',
+        'shortcutTaken': 'Shortcut taken by another app: $value',
+        'silenceTts': 'Silence voice reader',
+        'toggleTts': 'Toggle voice reader',
+        'channelSet': 'Channel set',
+        'channelUnset': 'Channel not set',
+        'scene': 'Scene: $value',
+        'metrics': '$value kbps / dropped frames',
+        'other': '',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diagnosticsArea(String area) {
+    String _temp0 = intl.Intl.selectLogic(
+      area,
+      {
+        'youtube': 'YouTube',
+        'twitch': 'Twitch',
+        'kick': 'Kick',
+        'obs': 'OBS',
+        'server': 'Overlay server',
+        'tts': 'Voice reader (TTS)',
+        'captions': 'Captions and voice commands',
+        'shortcuts': 'Global shortcuts',
+        'other': '',
+      },
+    );
+    return '$_temp0';
+  }
 }

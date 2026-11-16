@@ -1,3 +1,5 @@
+import 'package:airstream/l10n/app_localization_delegates.dart';
+import 'package:airstream/ui/widgets/diagnostics_card.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/ui/widgets/recent_alerts_card.dart';
 import 'package:airstream/application/app_controller.dart';
@@ -39,6 +41,71 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  testWidgets('System diagnostics is first, shows OBS error and copies report',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    String? copied;
+    tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String;
+      }
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) =>
+          _WidgetTestSettings('en', '', const SettingsModel(obsEnabled: true))),
+      obsStateProvider.overrideWith((ref) => Stream.value(const ObsState(
+          error: 'Connection refused', statusMessage: 'Connection refused'))),
+    ], child: const AirstreamApp()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('System & Window'));
+    await tester.pumpAndSettle();
+    final card = find.byKey(const Key('diagnostics-card'));
+    expect(card, findsOneWidget);
+    expect(tester.getTopLeft(card).dy,
+        lessThan(tester.getTopLeft(find.text('Desktop Window')).dy));
+    final obs = find.byKey(const Key('diagnostics-obs'));
+    expect(find.descendant(of: obs, matching: find.text('Connection refused')),
+        findsOneWidget);
+    final dot = tester
+        .widgetList<Container>(
+            find.descendant(of: obs, matching: find.byType(Container)))
+        .where((w) => w.decoration is BoxDecoration)
+        .first;
+    expect((dot.decoration! as BoxDecoration).color, const Color(0xFFFF4E45));
+    await tester.ensureVisible(find.byKey(const Key('diagnostics-copy')));
+    await tester.tap(find.byKey(const Key('diagnostics-copy')));
+    await tester.pumpAndSettle();
+    expect(copied, contains('obs: ERROR - Connection refused'));
+    expect(find.text('Report copied'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        ],
+        child: const MaterialApp(
+          locale: Locale('es'),
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+              body: SingleChildScrollView(
+                  child: SizedBox(width: 360, child: DiagnosticsCard()))),
+        )));
+    await tester.pumpAndSettle();
+    expect(find.text('Todo funciona bien'), findsOneWidget);
+    expect(find.text('Copiar informe'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Connections shows recent support and replays the selected alert',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 1100);

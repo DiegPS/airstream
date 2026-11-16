@@ -3542,6 +3542,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} Kicks'**
   String recentAlertsKicks(int count);
+
+  /// No description provided for @diagnosticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get diagnosticsTitle;
+
+  /// No description provided for @diagnosticsCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy report'**
+  String get diagnosticsCopy;
+
+  /// No description provided for @diagnosticsCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Report copied'**
+  String get diagnosticsCopied;
+
+  /// No description provided for @diagnosticsLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Open logs folder'**
+  String get diagnosticsLogs;
+
+  /// No description provided for @diagnosticsLogsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open logs folder'**
+  String get diagnosticsLogsFailed;
+
+  /// No description provided for @diagnosticsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Everything looks fine} one{1 thing needs attention} other{{count} things need attention}}'**
+  String diagnosticsHeader(int count);
+
+  /// No description provided for @diagnosticsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
+  String diagnosticsMessage(String kind, String value);
+
+  /// No description provided for @diagnosticsArea.
+  ///
+  /// In en, this message translates to:
+  /// **'{area, select, youtube{YouTube} twitch{Twitch} kick{Kick} obs{OBS} server{Overlay server} tts{Voice reader (TTS)} captions{Captions and voice commands} shortcuts{Global shortcuts} other{}}'**
+  String diagnosticsArea(String area);
 }
 
 class _AppLocalizationsDelegate
