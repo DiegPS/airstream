@@ -290,6 +290,10 @@ class FakeOverlayClient implements OverlayClient {
   final polls = <Map<String, Object?>?>[];
   @override
   void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
+  final giveaways = <Map<String, Object?>?>[];
+  @override
+  void broadcastGiveaway(Map<String, Object?>? giveaway) =>
+      giveaways.add(giveaway);
   @override
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) {
     if (!hasClients) return FeaturedMessageDelivery.noReceiver();

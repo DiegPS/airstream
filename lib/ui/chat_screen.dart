@@ -43,6 +43,7 @@ import 'package:airstream/ui/widgets/diagnostics_card.dart';
 import 'package:airstream/ui/widgets/recent_alerts_card.dart';
 import 'package:airstream/ui/widgets/overlay_style_presets_card.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
+import 'package:airstream/ui/widgets/giveaway_card.dart';
 import 'package:airstream/ui/widgets/session_summary_dialog.dart';
 import 'package:airstream/ui/widgets/settings_profiles_card.dart';
 import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';

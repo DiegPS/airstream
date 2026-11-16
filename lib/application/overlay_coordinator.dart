@@ -29,6 +29,7 @@ abstract interface class OverlayClient {
   bool broadcastTestAlert(String kind);
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message);
   void broadcastPoll(Map<String, Object?>? poll);
+  void broadcastGiveaway(Map<String, Object?>? giveaway);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
   void broadcastProviderEvent(ChatProviderEvent event);
@@ -77,6 +78,9 @@ class OverlayServerAdapter implements OverlayClient {
   @override
   void broadcastPoll(Map<String, Object?>? poll) => server.broadcastPoll(poll);
   @override
+  void broadcastGiveaway(Map<String, Object?>? giveaway) =>
+      server.broadcastGiveaway(giveaway);
+  @override
   void broadcastCaption(String text) => server.broadcastCaption(text);
   @override
   void broadcastModeration(ChatModerationEvent event) =>
@@ -121,6 +125,8 @@ class OverlayCoordinator {
 
   void broadcastPoll(Map<String, Object?>? poll) =>
       _overlay.broadcastPoll(poll);
+  void broadcastGiveaway(Map<String, Object?>? giveaway) =>
+      _overlay.broadcastGiveaway(giveaway);
 
   FeaturedMessageDelivery featureMessage(ChatMessage message) =>
       _state.phase == OverlayServerPhase.ready

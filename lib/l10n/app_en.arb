@@ -838,7 +838,7 @@
       }
     }
   },
-  "diagnosticsMessage": "{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}",
+  "diagnosticsMessage": "{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}",
   "@diagnosticsMessage": {
     "placeholders": {
       "kind": {
@@ -856,5 +856,36 @@
         "type": "String"
       }
     }
-  }
+  },
+  "giveawayTitle": "Keyword giveaway",
+  "giveawayDescription": "Viewers enter once by typing the keyword in chat.",
+  "giveawayKeyword": "Keyword",
+  "giveawayMembersOnly": "Members / subscribers only",
+  "giveawayStart": "Start",
+  "giveawayClose": "Close entries",
+  "giveawayDraw": "Draw",
+  "giveawayRedraw": "Draw again",
+  "giveawayClear": "Clear",
+  "giveawayClosed": "Entries closed",
+  "giveawayWinner": "Winner",
+  "giveawayDrawing": "Drawing…",
+  "giveawayPageTitle": "Airstream Giveaway",
+  "giveawayParticipants": "{count} participants",
+  "@giveawayParticipants": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "giveawayPageOff": "Enable the browser server to use /giveaway in OBS.",
+  "giveawayPageUrl": "OBS page: {url}",
+  "@giveawayPageUrl": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "giveawayUrlCopied": "Giveaway page URL copied"
 }

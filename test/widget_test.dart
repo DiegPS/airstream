@@ -1,3 +1,4 @@
+import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/ui/widgets/diagnostics_card.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -923,6 +924,57 @@ void main() {
     expect(find.text('Message copied'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a giveaway starts in OBS counts chat and draws a winner',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final youtube = FakeYouTubeChatClient();
+    final controller = AppController(
+        chatCoordinator: ChatCoordinator(
+            youtube: youtube,
+            youtubeHorizontal: FakeYouTubeChatClient(),
+            youtubeVertical: FakeYouTubeChatClient(),
+            twitch: FakeChannelChatClient(),
+            kick: FakeChannelChatClient()),
+        overlayCoordinator: OverlayCoordinator(overlay: FakeOverlayClient()));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+      appControllerProvider.overrideWithValue(controller),
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final start = find.byKey(const Key('giveaway-start'));
+    await tester.ensureVisible(start);
+    await tester.enterText(
+        find.byKey(const Key('giveaway-keyword')), '!sorteo');
+    await tester.pump();
+    await tester.tap(start);
+    await tester.pump();
+    youtube.messageController.add(ChatMessage(
+        platform: Platform.youtube,
+        id: 'giveaway-entry',
+        author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+        items: const [MessageItem.text('!SORTEO')],
+        timestamp: DateTime.utc(2026)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    expect(find.text('1 participants'), findsOneWidget);
+    final draw = find.byKey(const Key('giveaway-draw'));
+    await tester.ensureVisible(draw);
+    await tester.tap(draw);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('giveaway-winner')), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const Key('giveaway-winner'))).data,
+        'Ana');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    unawaited(controller.dispose());
   });
 
   testWidgets('a poll is created, runs and ends from its card',

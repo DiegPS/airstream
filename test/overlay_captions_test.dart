@@ -18,7 +18,8 @@ void main() {
         messages: messages.stream, settings: const SettingsModel(), port: 0);
     final counts = StreamIterator(server.viewCountsStream);
     expect(await counts.moveNext(), isTrue);
-    expect(counts.current, {'chat': 0, 'alerts': 0, 'poll': 0, 'captions': 0});
+    expect(counts.current,
+        {'chat': 0, 'alerts': 0, 'poll': 0, 'captions': 0, 'giveaway': 0});
     Future<void> until(bool Function(Map<String, int>) matches) async {
       while (await counts.moveNext().timeout(const Duration(seconds: 5))) {
         if (matches(counts.current)) return;
@@ -37,7 +38,7 @@ void main() {
       poll.sink.add(jsonEncode({'type': 'register', 'view': 'poll'}));
       await until((v) => v['alerts'] == 1 && v['poll'] == 1);
       expect(server.viewCounts,
-          {'chat': 0, 'alerts': 1, 'poll': 1, 'captions': 0});
+          {'chat': 0, 'alerts': 1, 'poll': 1, 'captions': 0, 'giveaway': 0});
       await alerts.sink.close();
       await until((v) => v['alerts'] == 0 && v['poll'] == 1);
       await poll.sink.close();
@@ -323,6 +324,63 @@ void main() {
       expect((envelope['data'] as Map)['question'], '¿Qué juego?');
 
       server.broadcastPoll(null);
+      expect(await events.moveNext(), isTrue);
+      expect(
+        (jsonDecode(events.current as String) as Map)['data'],
+        isNull,
+      );
+    } finally {
+      await events?.cancel();
+      await socket?.sink.close();
+      client.close();
+      await server.dispose();
+      await messages.close();
+    }
+  });
+  test('serves the giveaway overlay and replays the current giveaway',
+      () async {
+    final messages = StreamController<ChatMessage>.broadcast();
+    final server = OverlayServer();
+    final client = http.Client();
+    IOWebSocketChannel? socket;
+    StreamIterator<dynamic>? events;
+    try {
+      await server.start(
+        messages: messages.stream,
+        settings: const SettingsModel(),
+        port: 0,
+      );
+      final page = await client.get(
+        Uri.parse('http://127.0.0.1:${server.port}/giveaway'),
+      );
+      expect(page.statusCode, 200);
+      expect(page.body, contains('Airstream Giveaway'));
+
+      // A giveaway started before OBS connects is sent when it connects.
+      final data = <String, Object?>{
+        'keyword': '!sorteo',
+        'phase': 'drawn',
+        'entrantCount': 2,
+        'winner': {'name': 'Ana', 'platform': 'twitch'},
+        'drawId': 1
+      };
+      server.broadcastGiveaway(data);
+      socket = IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+      await socket.ready;
+      events = StreamIterator(socket.stream);
+      expect(await events.moveNext(), isTrue);
+      expect(
+        (jsonDecode(events.current as String) as Map)['type'],
+        'settings',
+      );
+      expect(await events.moveNext(), isTrue);
+      final envelope =
+          jsonDecode(events.current as String) as Map<String, dynamic>;
+      expect(envelope['type'], 'giveaway');
+      expect(envelope['replay'], isTrue);
+      expect(envelope['data'], data);
+
+      server.broadcastGiveaway(null);
       expect(await events.moveNext(), isTrue);
       expect(
         (jsonDecode(events.current as String) as Map)['data'],

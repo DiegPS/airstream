@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -193,3 +194,6 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
 final overlayViewCountsProvider = StreamProvider<Map<String, int>>((ref) {
   return ref.watch(appControllerProvider).overlayViewCountsStream;
 });
+
+final chatGiveawayProvider = StreamProvider<ChatGiveaway?>(
+    (ref) => ref.watch(appControllerProvider).giveawayStream);

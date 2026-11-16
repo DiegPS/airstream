@@ -3582,7 +3582,7 @@ abstract class AppLocalizations {
   /// No description provided for @diagnosticsMessage.
   ///
   /// In en, this message translates to:
-  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
+  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
   String diagnosticsMessage(String kind, String value);
 
   /// No description provided for @diagnosticsArea.
@@ -3590,6 +3590,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{area, select, youtube{YouTube} twitch{Twitch} kick{Kick} obs{OBS} server{Overlay server} tts{Voice reader (TTS)} captions{Captions and voice commands} shortcuts{Global shortcuts} other{}}'**
   String diagnosticsArea(String area);
+
+  /// No description provided for @giveawayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyword giveaway'**
+  String get giveawayTitle;
+
+  /// No description provided for @giveawayDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewers enter once by typing the keyword in chat.'**
+  String get giveawayDescription;
+
+  /// No description provided for @giveawayKeyword.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyword'**
+  String get giveawayKeyword;
+
+  /// No description provided for @giveawayMembersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Members / subscribers only'**
+  String get giveawayMembersOnly;
+
+  /// No description provided for @giveawayStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get giveawayStart;
+
+  /// No description provided for @giveawayClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close entries'**
+  String get giveawayClose;
+
+  /// No description provided for @giveawayDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get giveawayDraw;
+
+  /// No description provided for @giveawayRedraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw again'**
+  String get giveawayRedraw;
+
+  /// No description provided for @giveawayClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get giveawayClear;
+
+  /// No description provided for @giveawayClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries closed'**
+  String get giveawayClosed;
+
+  /// No description provided for @giveawayWinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Winner'**
+  String get giveawayWinner;
+
+  /// No description provided for @giveawayDrawing.
+  ///
+  /// In en, this message translates to:
+  /// **'Drawing…'**
+  String get giveawayDrawing;
+
+  /// No description provided for @giveawayPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Airstream Giveaway'**
+  String get giveawayPageTitle;
+
+  /// No description provided for @giveawayParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} participants'**
+  String giveawayParticipants(int count);
+
+  /// No description provided for @giveawayPageOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the browser server to use /giveaway in OBS.'**
+  String get giveawayPageOff;
+
+  /// No description provided for @giveawayPageUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS page: {url}'**
+  String giveawayPageUrl(String url);
+
+  /// No description provided for @giveawayUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Giveaway page URL copied'**
+  String get giveawayUrlCopied;
 }
 
 class _AppLocalizationsDelegate

@@ -5,6 +5,7 @@ import 'package:airstream/services/overlay/featured_message_delivery.dart';
 
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/coordinator_notice.dart';
@@ -81,6 +82,9 @@ class AppController {
       _chat.messages.listen(_chatLog.write),
       _chat.messages.listen(_sessionSummary.handleMessage),
       _chat.providerEvents.listen(_sessionSummary.handleProviderEvent),
+      _chat.messages.listen(_giveaway.handleMessage),
+      _giveaway.states.listen(
+          (state) => _overlay.broadcastGiveaway(state?.toOverlayJson())),
       _chat.messages.listen(_poll.handleMessage),
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
@@ -105,6 +109,7 @@ class AppController {
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _poll = ChatPollController();
+  final _giveaway = ChatGiveawayController();
   final _sessionSummary = SessionSummaryCollector();
   final _chatLog = ChatLogWriter();
   bool _chatRunning = false;
@@ -162,6 +167,13 @@ class AppController {
 
   Stream<List<Map<String, Object?>>> get recentAlerts => _overlay.recentAlerts;
   bool replayRecentAlert(String id) => _overlay.replayRecentAlert(id);
+
+  Stream<ChatGiveaway?> get giveawayStream => _giveaway.states;
+  void startGiveaway({required String keyword, required bool membersOnly}) =>
+      _giveaway.start(keyword: keyword, membersOnly: membersOnly);
+  void closeGiveaway() => _giveaway.close();
+  GiveawayEntrant? drawGiveaway() => _giveaway.draw();
+  void clearGiveaway() => _giveaway.clear();
 
   Stream<ChatPoll?> get pollStream => _poll.states;
   void startPoll({
@@ -249,6 +261,7 @@ class AppController {
     await _noticeController.close();
     await _overlayFeed.close();
     await _poll.dispose();
+    await _giveaway.dispose();
     await _chatLog.endSession();
   }
 }

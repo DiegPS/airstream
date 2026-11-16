@@ -636,7 +636,7 @@
       }
     }
   },
-  "diagnosticsMessage": "{kind, select, set{configurada} off{Apagado} idle{Sin conexión} connected{Conectado} connecting{Conectando / reconectando} waiting{Esperando la transmisión en vivo} failed{Error (detalles privados omitidos)} portBusy{El puerto ya está en uso} authentication{Error de autenticación} refused{Conexión rechazada} timeout{Tiempo de conexión agotado} listeningPort{Escuchando en el puerto {value}} starting{Iniciando} noAlerts{No hay página de alertas conectada en OBS} pages{Páginas: chat / alertas / encuesta / subtítulos: {value}} loading{Cargando {value}} ready{Listo: {value}} listening{Escuchando} downloading{Descargando {value}} missingModel{Se requiere descargar el modelo} commandsOn{Comandos de voz activados} commandsOff{Comandos de voz desactivados} shortcutsOk{Sin asignar o todos registrados} shortcutTaken{Atajo usado por otra aplicación: {value}} silenceTts{Silenciar lector de voz} toggleTts{Alternar lector de voz} channelSet{Canal configurado} channelUnset{Canal sin configurar} scene{Escena: {value}} metrics{{value} kbps / fotogramas perdidos} other{}}",
+  "diagnosticsMessage": "{kind, select, set{configurada} off{Apagado} idle{Sin conexión} connected{Conectado} connecting{Conectando / reconectando} waiting{Esperando la transmisión en vivo} failed{Error (detalles privados omitidos)} portBusy{El puerto ya está en uso} authentication{Error de autenticación} refused{Conexión rechazada} timeout{Tiempo de conexión agotado} listeningPort{Escuchando en el puerto {value}} starting{Iniciando} noAlerts{No hay página de alertas conectada en OBS} pages{Páginas: chat / alertas / encuesta / subtítulos / sorteo: {value}} loading{Cargando {value}} ready{Listo: {value}} listening{Escuchando} downloading{Descargando {value}} missingModel{Se requiere descargar el modelo} commandsOn{Comandos de voz activados} commandsOff{Comandos de voz desactivados} shortcutsOk{Sin asignar o todos registrados} shortcutTaken{Atajo usado por otra aplicación: {value}} silenceTts{Silenciar lector de voz} toggleTts{Alternar lector de voz} channelSet{Canal configurado} channelUnset{Canal sin configurar} scene{Escena: {value}} metrics{{value} kbps / fotogramas perdidos} other{}}",
   "@diagnosticsMessage": {
     "placeholders": {
       "kind": {
@@ -654,5 +654,36 @@
         "type": "String"
       }
     }
-  }
+  },
+  "giveawayTitle": "Sorteo por palabra clave",
+  "giveawayDescription": "Cada persona participa una vez escribiendo la palabra clave en el chat.",
+  "giveawayKeyword": "Palabra clave",
+  "giveawayMembersOnly": "Solo miembros o suscriptores",
+  "giveawayStart": "Iniciar",
+  "giveawayClose": "Cerrar participación",
+  "giveawayDraw": "Sortear",
+  "giveawayRedraw": "Volver a sortear",
+  "giveawayClear": "Borrar",
+  "giveawayClosed": "Participación cerrada",
+  "giveawayWinner": "Ganador",
+  "giveawayDrawing": "Sorteando…",
+  "giveawayPageTitle": "Sorteo Airstream",
+  "giveawayParticipants": "{count} participantes",
+  "@giveawayParticipants": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "giveawayPageOff": "Activa el servidor de páginas para usar /giveaway en OBS.",
+  "giveawayPageUrl": "Página para OBS: {url}",
+  "@giveawayPageUrl": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "giveawayUrlCopied": "URL de la página del sorteo copiada"
 }

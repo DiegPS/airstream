@@ -2013,7 +2013,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'listeningPort': 'Listening on port $value',
         'starting': 'Starting',
         'noAlerts': 'No alerts page connected in OBS',
-        'pages': 'Pages: chat / alerts / poll / captions: $value',
+        'pages': 'Pages: chat / alerts / poll / captions / giveaway: $value',
         'loading': 'Loading $value',
         'ready': 'Ready: $value',
         'listening': 'Listening',
@@ -2053,4 +2053,61 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get giveawayTitle => 'Keyword giveaway';
+
+  @override
+  String get giveawayDescription =>
+      'Viewers enter once by typing the keyword in chat.';
+
+  @override
+  String get giveawayKeyword => 'Keyword';
+
+  @override
+  String get giveawayMembersOnly => 'Members / subscribers only';
+
+  @override
+  String get giveawayStart => 'Start';
+
+  @override
+  String get giveawayClose => 'Close entries';
+
+  @override
+  String get giveawayDraw => 'Draw';
+
+  @override
+  String get giveawayRedraw => 'Draw again';
+
+  @override
+  String get giveawayClear => 'Clear';
+
+  @override
+  String get giveawayClosed => 'Entries closed';
+
+  @override
+  String get giveawayWinner => 'Winner';
+
+  @override
+  String get giveawayDrawing => 'Drawing…';
+
+  @override
+  String get giveawayPageTitle => 'Airstream Giveaway';
+
+  @override
+  String giveawayParticipants(int count) {
+    return '$count participants';
+  }
+
+  @override
+  String get giveawayPageOff =>
+      'Enable the browser server to use /giveaway in OBS.';
+
+  @override
+  String giveawayPageUrl(String url) {
+    return 'OBS page: $url';
+  }
+
+  @override
+  String get giveawayUrlCopied => 'Giveaway page URL copied';
 }

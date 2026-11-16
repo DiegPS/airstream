@@ -250,6 +250,20 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     );
                   },
                 ),
+                const SizedBox(height: 8),
+                _overlayUrlCard(
+                  l: l,
+                  title: l.giveawayTitle,
+                  overlayUrl: '$overlayCopyUrl/giveaway',
+                  description: l.giveawayDescription,
+                  onCopy: () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: '$overlayCopyUrl/giveaway'));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.giveawayUrlCopied)));
+                  },
+                ),
                 const SizedBox(height: 6),
                 Text(
                   overlayClientCount == 1
@@ -711,6 +725,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         const PollCard(),
+        const GiveawayCard(),
       ],
     );
   }

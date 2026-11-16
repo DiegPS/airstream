@@ -2027,7 +2027,8 @@ class AppLocalizationsEs extends AppLocalizations {
         'listeningPort': 'Escuchando en el puerto $value',
         'starting': 'Iniciando',
         'noAlerts': 'No hay página de alertas conectada en OBS',
-        'pages': 'Páginas: chat / alertas / encuesta / subtítulos: $value',
+        'pages':
+            'Páginas: chat / alertas / encuesta / subtítulos / sorteo: $value',
         'loading': 'Cargando $value',
         'ready': 'Listo: $value',
         'listening': 'Escuchando',
@@ -2067,4 +2068,61 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get giveawayTitle => 'Sorteo por palabra clave';
+
+  @override
+  String get giveawayDescription =>
+      'Cada persona participa una vez escribiendo la palabra clave en el chat.';
+
+  @override
+  String get giveawayKeyword => 'Palabra clave';
+
+  @override
+  String get giveawayMembersOnly => 'Solo miembros o suscriptores';
+
+  @override
+  String get giveawayStart => 'Iniciar';
+
+  @override
+  String get giveawayClose => 'Cerrar participación';
+
+  @override
+  String get giveawayDraw => 'Sortear';
+
+  @override
+  String get giveawayRedraw => 'Volver a sortear';
+
+  @override
+  String get giveawayClear => 'Borrar';
+
+  @override
+  String get giveawayClosed => 'Participación cerrada';
+
+  @override
+  String get giveawayWinner => 'Ganador';
+
+  @override
+  String get giveawayDrawing => 'Sorteando…';
+
+  @override
+  String get giveawayPageTitle => 'Sorteo Airstream';
+
+  @override
+  String giveawayParticipants(int count) {
+    return '$count participantes';
+  }
+
+  @override
+  String get giveawayPageOff =>
+      'Activa el servidor de páginas para usar /giveaway en OBS.';
+
+  @override
+  String giveawayPageUrl(String url) {
+    return 'Página para OBS: $url';
+  }
+
+  @override
+  String get giveawayUrlCopied => 'URL de la página del sorteo copiada';
 }

@@ -44,7 +44,13 @@ class OverlayServer {
   InternetAddress? get boundAddress => _server?.address;
 
   Map<String, int> get viewCounts => Map.unmodifiable({
-        for (final view in const ['chat', 'alerts', 'poll', 'captions'])
+        for (final view in const [
+          'chat',
+          'alerts',
+          'poll',
+          'captions',
+          'giveaway'
+        ])
           view: _views.values.where((value) => value == view).length,
       });
   final _viewCountsController = StreamController<Map<String, int>>.broadcast();
@@ -283,6 +289,12 @@ class OverlayServer {
     });
   }
 
+  Map<String, Object?>? _giveaway;
+  void broadcastGiveaway(Map<String, Object?>? giveaway) {
+    _giveaway = giveaway;
+    _broadcastEnvelope({'type': 'giveaway', 'data': giveaway});
+  }
+
   Map<String, Object?>? _poll;
 
   /// Shows [poll] on the poll overlay; null hides it. Overlays that connect
@@ -424,7 +436,8 @@ class OverlayServer {
       if (envelope['type'] == 'register') {
         final view = envelope['view'];
         if (view is String &&
-            const {'chat', 'alerts', 'poll', 'captions'}.contains(view) &&
+            const {'chat', 'alerts', 'poll', 'captions', 'giveaway'}
+                .contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
           _emitViewCounts();
@@ -533,6 +546,10 @@ class OverlayServer {
         'type': 'settings',
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
+      if (_giveaway != null) {
+        client.sink.add(jsonEncode(
+            {'type': 'giveaway', 'data': _giveaway, 'replay': true}));
+      }
       if (_poll != null) {
         client.sink.add(jsonEncode({'type': 'poll', 'data': _poll}));
       }
