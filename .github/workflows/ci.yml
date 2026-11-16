@@ -3,10 +3,13 @@ name: CI
 # Builds from a clean checkout, without the local pubspec_overrides.yaml, so a
 # commit that only compiles against unpublished local packages fails here.
 
+# Paused to save GitHub Actions minutes while 1.0 is prepared: the same
+# checks run locally before every push. Uncomment push and pull_request
+# to turn it back on; it can still be started by hand from the Actions tab.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  # push:
+  #   branches: [main]
+  # pull_request:
   workflow_dispatch:
 
 concurrency:
