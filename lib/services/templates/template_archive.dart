@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'gallery/gallery_catalog.dart';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
@@ -40,6 +41,18 @@ class TemplateArchive {
     await library.ensureRoot();
     final root = library.rootPath;
     return Isolate.run(() => _install(root, archive._files, archive.baseId));
+  }
+
+  Future<String> installGallery(
+      TemplateLibrary library, GalleryItem item, String language) async {
+    final files = {
+      for (final entry in item.buildFiles(language).entries)
+        entry.key: Uint8List.fromList(utf8.encode(entry.value)),
+    };
+    await library.ensureRoot();
+    final root = library.rootPath;
+    final id = item.id;
+    return Isolate.run(() => _install(root, files, id));
   }
 
   Future<void> export(
@@ -313,13 +326,24 @@ String _install(String root, Map<String, Uint8List> files, String base) {
       file.writeAsBytesSync(e.value, flush: true);
     }
     var id = base, suffix = 2;
-    while (FileSystemEntity.typeSync(p.join(root, id), followLinks: false) !=
-        FileSystemEntityType.notFound) {
+    while (true) {
+      final path = p.join(root, id);
+      if (FileSystemEntity.typeSync(path, followLinks: false) ==
+          FileSystemEntityType.notFound) {
+        try {
+          temp.renameSync(path);
+          return id;
+        } on FileSystemException {
+          // Another install may have claimed this ID between lookup and rename.
+          if (FileSystemEntity.typeSync(path, followLinks: false) ==
+              FileSystemEntityType.notFound) {
+            rethrow;
+          }
+        }
+      }
       final end = '-${suffix++}';
       id = '${base.substring(0, min(base.length, 40 - end.length))}$end';
     }
-    temp.renameSync(p.join(root, id));
-    return id;
   } finally {
     if (temp.existsSync()) temp.deleteSync(recursive: true);
   }

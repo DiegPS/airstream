@@ -47,6 +47,54 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+  test('gallery routes serve memory only, with template security headers',
+      () async {
+    final docs = await Directory.systemTemp.createTemp('gallery-documents-');
+    addTearDown(() => docs.delete(recursive: true));
+    final templates = Directory('${docs.path}/Airstream/Templates');
+    var diskLookups = 0;
+    final handler = buildOverlayRoutes(
+      (_) => Response.notFound(''),
+      galleryLanguage: () => 'es',
+      templates: () async {
+        diskLookups++;
+        throw StateError('Gallery must never request the disk library');
+      },
+    );
+    Future<Response> fetch(String path, {String method = 'GET'}) =>
+        Future.sync(() =>
+            handler(Request(method, Uri.parse('http://localhost:8080$path'))));
+    final response = await fetch('/gallery/recent-support/?demo=1');
+    expect(response.statusCode, 200);
+    expect(response.headers['content-security-policy'], templateCsp(8080));
+    expect(response.headers['x-content-type-options'], 'nosniff');
+    final html = await response.readAsString();
+    expect(RegExp('/sdk/v1.js').allMatches(html), hasLength(1));
+    expect(html.indexOf('/sdk/v1.js'), lessThan(html.indexOf('script.js')));
+    final manifest = await fetch('/gallery/recent-support/template.json');
+    final data = jsonDecode(await manifest.readAsString()) as Map;
+    expect(data['name'], 'Apoyos recientes');
+    expect(data['fields'], contains(containsPair('default', 'es')));
+    expect(
+        (await fetch('/gallery/recent-support/script.js'))
+            .headers['content-type'],
+        'application/javascript; charset=utf-8');
+    expect((await fetch('/gallery/recent-support/style.css')).statusCode, 200);
+    expect((await fetch('/gallery/recent-support/', method: 'HEAD')).statusCode,
+        200);
+    for (final path in [
+      '/gallery/unknown/',
+      '/gallery/recent-support/unknown.js',
+      '/gallery/recent-support/sub/script.js'
+    ]) {
+      final missing = await fetch(path);
+      expect(missing.statusCode, 404);
+      expect(await missing.readAsString(), isEmpty);
+    }
+    expect(diskLookups, 0);
+    expect(await templates.exists(), false);
+  });
+
   test('server startup generates guides for existing root', () async {
     for (final name in ['AGENTS.md', 'CLAUDE.md', 'airstream.d.ts']) {
       expect(await File('${root.path}/$name').exists(), isTrue);

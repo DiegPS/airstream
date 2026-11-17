@@ -47,6 +47,18 @@ class TemplateField {
   }
 }
 
+typedef TemplateGalleryVersion = ({String id, int version});
+
+TemplateGalleryVersion? _galleryVersion(Object? raw) {
+  if (raw case {'id': final String id, 'version': final int version}
+      when RegExp(r'^[a-z0-9-]{1,40}$').hasMatch(id) &&
+          version >= 1 &&
+          version <= 1000) {
+    return (id: id, version: version);
+  }
+  return null;
+}
+
 class TemplateManifest {
   TemplateManifest(String id, Map raw)
       : name = _text(raw['name'], 60, id),
@@ -58,7 +70,8 @@ class TemplateManifest {
         height = raw['height'] is int
             ? (raw['height'] as int).clamp(100, 2160)
             : 600,
-        network = raw['network'] == true {
+        network = raw['network'] == true,
+        gallery = _galleryVersion(raw['gallery']) {
     final entries = raw['fields'];
     if (entries is! List) return;
     final keys = <String>{};
@@ -113,6 +126,7 @@ class TemplateManifest {
   final String name, description, author;
   final int sdk, width, height;
   final bool network;
+  final TemplateGalleryVersion? gallery;
   final fields = <TemplateField>[];
   Map<String, Object?> values(Map raw) => {
         for (final f in fields)

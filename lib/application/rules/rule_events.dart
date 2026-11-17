@@ -63,6 +63,11 @@ class RuleEvent {
   return (amount: num.tryParse(n), currency: '${m[1]!.trim()}${m[3]!.trim()}');
 }
 
+int? parseRuleBits(String amount) {
+  final digits = RegExp(r'^(\d+) Bits$').firstMatch(amount)?[1];
+  return digits == null ? null : int.tryParse(digits) ?? 0;
+}
+
 /// Session-local first-author tracking; event dedupe belongs to the engine.
 class RuleEventAdapter {
   final _authors = <String>{};
@@ -99,9 +104,9 @@ class RuleEventAdapter {
       yield event('chat.firstMessage');
     }
     if (m.superChat != null) {
-      final bits = RegExp(r'^(\d+) Bits$').firstMatch(m.superChat!.amount);
+      final bits = parseRuleBits(m.superChat!.amount);
       if (m.platform == Platform.twitch && bits != null) {
-        yield event('support.bits', count: int.tryParse(bits[1]!) ?? 0);
+        yield event('support.bits', count: bits);
       } else if (m.platform == Platform.youtube) {
         yield event('support.superchat');
       }

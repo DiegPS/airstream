@@ -96,6 +96,18 @@ interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; rema
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; }
 interface Poll { question:string; options:{label:string; votes:number; percent:number}[]; total:number; closed:boolean; endsAt:number|null; }
 interface Caption { text:string; }
+interface SessionSupporter {
+ id:string; platform:Platform; name:string; type:AlertType;
+ amount:string|null; currency:string|null; value:number|null;
+ months:number|null; count:number|null; at:string;
+}
+interface SessionRank { platform:Platform; name:string; value:number; }
+interface Session {
+ startedAt:string|null; live:boolean; messages:number; chatters:number;
+ supporters:SessionSupporter[]; latest:Record<AlertType,SessionSupporter|null>;
+ top:{gift:SessionRank[]; bits:SessionRank[]; kicks:SessionRank[]; superchat:Partial<Record<string,SessionRank[]>>};
+ topChatters:{platform:Platform; name:string; messages:number}[];
+}
 type Fields = Record<string,string|number|boolean>;
 interface AlertOptions { seconds?:number; animation?:string; sound?:string; media?:string; mediaKind?:string; mediaAudio?:boolean; soundMediaId?:string; soundKey?:string; }
 interface Settings {
@@ -148,12 +160,12 @@ interface Settings {
 }
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
- giveaway:Giveaway|null; poll:Poll|null; caption:Caption; event:ProviderEvent;
+ giveaway:Giveaway|null; poll:Poll|null; session:Session; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null;
 }
 interface AirstreamAPI {
  readonly version:1; readonly template:string; readonly demo:boolean;
- readonly state:Partial<Pick<Events,'goals'|'timer'|'giveaway'|'poll'|'settings'|'fields'>>;
+ readonly state:Partial<Pick<Events,'goals'|'timer'|'giveaway'|'poll'|'settings'|'fields'|'session'>>;
  readonly fields:Fields;
  on<K extends keyof Events>(name:K, handler:(data:Events[K],meta:Meta)=>void):()=>boolean;
  renderMessage(message:Pick<Chat,'text'> & Partial<Pick<Chat,'items'>>,options?:{emoteClass?:string}):DocumentFragment;
@@ -205,7 +217,7 @@ The server injects /sdk/v1.js automatically at /custom/<id>/; DO NOT add a scrip
 window.Airstream members (read only in intent; do not mutate state):
 - version: 1; template: folder id string (empty outside a valid custom path); demo: boolean, true for ?demo=1 or ?demo.
 - on(name, handler): registers handler(data, meta), returns unsubscribe(): boolean (Set.delete result). Unknown names or a non-function throw. Handler exceptions are reported. Stored state is replayed asynchronously to a new subscriber; unsubscribe cancels that queued callback.
-- state: latest goals, timer, giveaway, poll, settings, fields; keys absent until received. giveaway and poll can be null (cleared). No chat, alert or caption history.
+- state: latest goals, timer, giveaway, poll, settings, fields, session; keys absent until received. giveaway and poll can be null (cleared). No chat, alert or caption history.
 - fields: latest fields object, or {} before receipt.
 - renderMessage(message, options = {}): safe DocumentFragment of text and emote img nodes. options.emoteClass defaults to airstream-emote. Append/replaceChildren the result. Fallback to text when items are absent/empty. Set emote dimensions in CSS; the helper does not implement layout for zero-width emotes.
 - timerRemaining(): milliseconds left using timer.serverNowMs clock offset; running uses endsAtMs, paused uses remainingMs, otherwise 0. It does not emit ticks.
@@ -226,6 +238,7 @@ Events and WHEN they fire:
 - timer: snapshot on connection or timer change/addition, Timer below. Millisecond epoch endsAtMs/serverNowMs; remainingMs and addedMs are durations. addedMs is 0 on restoration; avoid duplicate time-added celebrations. Draw your own lightweight tick with timerRemaining().
 - giveaway: state on connection/change, Giveaway or null. No id/title/membersOnly/entrant list is exposed. drawId changes on draw, winner is name/platform only; phase drawn plus replay:false can animate a new draw.
 - poll: state on connection/change, Poll or null. No id is exposed. options have label/votes/rounded integer percent; endsAt is epoch milliseconds or null for untimed.
+- session: state on registration (replay) and on change, coalesced to at most once per second. Available once chat has been started and retained after it stops until the next start. live means a chat provider is connected. The 50 newest supporters use stable ids; latest covers all seven alert types even when older than that list. top ranks five per category by total, breaking ties by earliest support. Super Chats are grouped by the currency notation in amount, with no conversion; unknown currency has no ranking. Gifts rank by count; bits, kicks and raids expose bits, kicks and viewers as value. topChatters contains up to ten and excludes the channel owner. Render names and amounts with textContent. Use id and meta.replay to avoid animating rows already shown.
 - caption: new nonempty caption text, Caption below. Not stored/replayed.
 - settings: visual/app preferences on connection or update, Settings below. Values are preferences, not commands. alertTypeOptions has per-type optional overrides (seconds, animation, sound; optional media/mediaKind/mediaAudio; soundMediaId for library sound; soundKey for custom sound). No local file paths are exposed.
 - fields: full resolved field values on connection/update; object keyed by manifest field key, sanitized string/number/boolean values, defaults included. React to updates without reloading.
@@ -268,6 +281,18 @@ interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; rema
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; }
 interface Poll { question:string; options:{label:string; votes:number; percent:number}[]; total:number; closed:boolean; endsAt:number|null; }
 interface Caption { text:string; }
+interface SessionSupporter {
+ id:string; platform:Platform; name:string; type:AlertType;
+ amount:string|null; currency:string|null; value:number|null;
+ months:number|null; count:number|null; at:string;
+}
+interface SessionRank { platform:Platform; name:string; value:number; }
+interface Session {
+ startedAt:string|null; live:boolean; messages:number; chatters:number;
+ supporters:SessionSupporter[]; latest:Record<AlertType,SessionSupporter|null>;
+ top:{gift:SessionRank[]; bits:SessionRank[]; kicks:SessionRank[]; superchat:Partial<Record<string,SessionRank[]>>};
+ topChatters:{platform:Platform; name:string; messages:number}[];
+}
 type Fields = Record<string,string|number|boolean>;
 interface AlertOptions { seconds?:number; animation?:string; sound?:string; media?:string; mediaKind?:string; mediaAudio?:boolean; soundMediaId?:string; soundKey?:string; }
 interface Settings {
@@ -320,12 +345,12 @@ interface Settings {
 }
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
- giveaway:Giveaway|null; poll:Poll|null; caption:Caption; event:ProviderEvent;
+ giveaway:Giveaway|null; poll:Poll|null; session:Session; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null;
 }
 interface AirstreamAPI {
  readonly version:1; readonly template:string; readonly demo:boolean;
- readonly state:Partial<Pick<Events,'goals'|'timer'|'giveaway'|'poll'|'settings'|'fields'>>;
+ readonly state:Partial<Pick<Events,'goals'|'timer'|'giveaway'|'poll'|'settings'|'fields'|'session'>>;
  readonly fields:Fields;
  on<K extends keyof Events>(name:K, handler:(data:Events[K],meta:Meta)=>void):()=>boolean;
  renderMessage(message:Pick<Chat,'text'> & Partial<Pick<Chat,'items'>>,options?:{emoteClass?:string}):DocumentFragment;
@@ -381,7 +406,7 @@ Airstream.on('alert', (data, meta) => {
 
 Open http://localhost:<PORT>/custom/<id>/?demo=1 in a browser. PORT is shown in Airstream's Templates tab/URLs, default 8080; use the real port in the user's instruction. Airstream must already be serving; if unavailable, explain that the user must enable it. Do not launch another server.
 
-Demo: initial settings/goals/timer, fields loaded asynchronously; chat every 1.5s; caption every 6s; alert every 7s cycling superchat,membership,bits,subscription,gift,raid,kicks; goals and time additions with membership/bits/subscription/gift; delete every 20s; featured every 25s; poll opens at 3s, closes at 45s; giveaway opens at 5s, draws at 50s. Provider event accompanies demo raid/kicks. No real chat or socket is used. Wait at least 50s to see all types. Demo is a sample, not every possible nullable payload or transition.
+Demo: initial settings/goals/timer/session, fields loaded asynchronously; the seeded session grows with fake chat and supporters of every type, including two Super Chat currencies; chat every 1.5s; caption every 6s; alert every 7s cycling superchat,membership,bits,subscription,gift,raid,kicks; goals and time additions with membership/bits/subscription/gift; delete every 20s; featured every 25s; poll opens at 3s, closes at 45s; giveaway opens at 5s, draws at 50s. Provider event accompanies demo raid/kicks. No real chat or socket is used. Wait at least 50s to see all types. Demo is a sample, not every possible nullable payload or transition.
 
 Check browser console and fix errors. Add the live URL http://localhost:<PORT>/custom/<id>/ to OBS as a Browser source with manifest width and height (without ?demo=1). Saving files reloads that template's connected pages automatically; values.json changes deliver fields without reload. Root guide files do not reload templates. JavaScript errors also appear in Airstream's Templates tab when live and connected.
 

@@ -2760,4 +2760,51 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return 'When $trigger → $_temp0';
   }
+
+  @override
+  String get templatesGallery => 'Gallery';
+
+  @override
+  String get galleryAdd => 'Add';
+
+  @override
+  String get galleryAddAgain => 'Add again';
+
+  @override
+  String get galleryNewVersion => 'A new version is available';
+
+  @override
+  String get galleryPreviewUnavailable =>
+      'Start the server to preview gallery items.';
+
+  @override
+  String get galleryRecentSupport => 'Recent support';
+
+  @override
+  String get galleryRecentSupportDescription =>
+      'Show the latest support from YouTube, Twitch, and Kick.';
+
+  @override
+  String get galleryTheme => 'Theme';
+
+  @override
+  String get galleryFont => 'Font';
+
+  @override
+  String get galleryAccent => 'Accent color';
+
+  @override
+  String get galleryLogo => 'Logo';
+
+  @override
+  String get galleryLanguage => 'Language';
+
+  @override
+  String get galleryHeading => 'Custom heading';
+
+  @override
+  String get gallerySupportCount => 'Maximum entries';
+
+  @override
+  String get galleryShowEmpty => 'Show the empty message';
 }

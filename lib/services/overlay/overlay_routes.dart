@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:airstream/services/templates/template_library.dart';
+import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/overlay/templates/timer_overlay.dart';
 import 'dart:io';
@@ -20,6 +21,7 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
     {File? Function(String alertType)? customSound,
     Future<MediaLibrary> Function()? mediaLibrary,
     Future<TemplateLibrary> Function()? templates,
+    String Function()? galleryLanguage,
     Handler? rulesApi}) {
   return const Pipeline().addHandler((Request request) async {
     final path = request.url.path;
@@ -38,6 +40,9 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
     }
     if (path == 'custom' || path.startsWith('custom/')) {
       return serveTemplate(request, templates);
+    }
+    if (path == 'gallery' || path.startsWith('gallery/')) {
+      return _serveGallery(request, galleryLanguage?.call() ?? 'en');
     }
     if (path == 'media' || path.startsWith('media/')) {
       return serveLibraryMedia(request, mediaLibrary);
@@ -186,6 +191,61 @@ String templateCsp(int port, {bool network = false}) {
   return "default-src 'none'; script-src 'self' 'unsafe-inline' $cdn${network ? ' https:' : ''}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com $cdn; font-src 'self' data: https://fonts.gstatic.com $cdn; img-src 'self' data: blob: http: https:; media-src 'self' data: blob:${network ? ' https:' : ''}; connect-src 'self' ws://localhost:$port ws://127.0.0.1:$port${network ? ' https: wss:' : ''}; worker-src 'self' blob:; object-src 'none'; frame-src ${network ? 'https:' : "'none'"}; base-uri 'self'; form-action 'none'";
 }
 
+const _templateSdk = '<script src="/sdk/v1.js"></script>';
+
+String _stripTemplateSdk(String html) => html.replaceAll(
+    RegExp(
+        r'<script\b[^>]*\bsrc\s*=\s*["\x27]/sdk/v1\.js["\x27][^>]*>\s*</script\s*>',
+        caseSensitive: false),
+    '');
+
+RegExpMatch? _templateHead(String html) =>
+    RegExp(r'<head\b[^>]*>', caseSensitive: false).firstMatch(html) ??
+    RegExp(r'<html\b[^>]*>', caseSensitive: false).firstMatch(html);
+
+String _injectTemplateSdk(String html) {
+  final body = _stripTemplateSdk(html);
+  final head = _templateHead(body);
+  return head == null
+      ? '$_templateSdk$body'
+      : body.replaceRange(head.end, head.end, _templateSdk);
+}
+
+Map<String, String> _templateHeaders(int port) => {
+      'content-security-policy': templateCsp(port),
+      'referrer-policy': 'no-referrer',
+      'x-content-type-options': 'nosniff',
+      'cache-control': 'no-store',
+    };
+
+Response _serveGallery(Request request, String language) {
+  final headers = _templateHeaders(request.requestedUri.port);
+  final segments = request.url.path.split('/');
+  final item = segments.length >= 2 ? galleryCatalog[segments[1]] : null;
+  if (item == null ||
+      segments.length > 3 ||
+      !['GET', 'HEAD'].contains(request.method)) {
+    return Response.notFound('', headers: headers);
+  }
+  if (segments.length == 2) {
+    return Response(302, headers: {
+      ...headers,
+      'location':
+          '/gallery/${item.id}/${request.url.hasQuery ? '?${request.url.query}' : ''}',
+    });
+  }
+  final name = segments.last.isEmpty ? 'index.html' : segments.last;
+  final file = item.buildFiles(language)[name];
+  if (file == null) return Response.notFound('', headers: headers);
+  final contents = name == 'index.html' ? _injectTemplateSdk(file) : file;
+  final bytes = utf8.encode(contents);
+  return Response.ok(request.method == 'HEAD' ? null : bytes, headers: {
+    ...headers,
+    'content-type': templateContentTypes[p.extension(name).substring(1)]!,
+    'content-length': '${bytes.length}',
+  });
+}
+
 const templateContentTypes = {
   'html': 'text/html; charset=utf-8',
   'css': 'text/css; charset=utf-8',
@@ -213,12 +273,9 @@ const templateContentTypes = {
 };
 Future<Response> serveTemplate(
     Request request, Future<TemplateLibrary> Function()? library) async {
-  var headers = <String, String>{
-    'content-security-policy': templateCsp(request.requestedUri.port),
-    'referrer-policy': 'no-referrer',
-    'x-content-type-options': 'nosniff',
-    'cache-control': 'no-store',
-    'accept-ranges': 'bytes'
+  var headers = {
+    ..._templateHeaders(request.requestedUri.port),
+    'accept-ranges': 'bytes',
   };
   Response missing() => Response.notFound('', headers: headers);
   if (!['GET', 'HEAD'].contains(request.method) || library == null) {
@@ -282,21 +339,10 @@ Future<Response> serveTemplate(
     };
     List<int>? bytes;
     if (index) {
-      var html = await file.readAsString();
-      const sdk = '<script src="/sdk/v1.js"></script>';
-      // An explicitly included SDK is moved to the head so it appears once.
-      html = html.replaceAll(
-          RegExp(
-              r'<script\b[^>]*\bsrc\s*=\s*["\x27]/sdk/v1\.js["\x27][^>]*>\s*</script\s*>',
-              caseSensitive: false),
-          '');
-      final head =
-          RegExp(r'<head\b[^>]*>', caseSensitive: false).firstMatch(html);
-      final root =
-          RegExp(r'<html\b[^>]*>', caseSensitive: false).firstMatch(html);
-      final tag = head ?? root;
+      var html = _stripTemplateSdk(await file.readAsString());
+      final tag = _templateHead(html);
       if (tag != null) {
-        html = html.replaceRange(tag.end, tag.end, sdk);
+        html = html.replaceRange(tag.end, tag.end, _templateSdk);
       } else {
         final style = await service.safeFile(id, 'style.css') != null
             ? '<link rel="stylesheet" href="style.css">'
@@ -305,7 +351,7 @@ Future<Response> serveTemplate(
             ? '<script src="script.js"></script>'
             : '';
         html =
-            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">$sdk$style</head><body>$html$script</body></html>';
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">$_templateSdk$style</head><body>$html$script</body></html>';
       }
       bytes = utf8.encode(html);
     }

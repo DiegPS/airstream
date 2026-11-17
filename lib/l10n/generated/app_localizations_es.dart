@@ -2784,4 +2784,51 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return 'Cuando $trigger → $_temp0';
   }
+
+  @override
+  String get templatesGallery => 'Galería';
+
+  @override
+  String get galleryAdd => 'Añadir';
+
+  @override
+  String get galleryAddAgain => 'Añadir de nuevo';
+
+  @override
+  String get galleryNewVersion => 'Hay una versión nueva';
+
+  @override
+  String get galleryPreviewUnavailable =>
+      'Inicia el servidor para ver las vistas previas.';
+
+  @override
+  String get galleryRecentSupport => 'Apoyos recientes';
+
+  @override
+  String get galleryRecentSupportDescription =>
+      'Muestra los últimos apoyos de YouTube, Twitch y Kick.';
+
+  @override
+  String get galleryTheme => 'Tema';
+
+  @override
+  String get galleryFont => 'Fuente';
+
+  @override
+  String get galleryAccent => 'Color de acento';
+
+  @override
+  String get galleryLogo => 'Logotipo';
+
+  @override
+  String get galleryLanguage => 'Idioma';
+
+  @override
+  String get galleryHeading => 'Título personalizado';
+
+  @override
+  String get gallerySupportCount => 'Máximo de apoyos';
+
+  @override
+  String get galleryShowEmpty => 'Mostrar el aviso cuando no hay apoyos';
 }

@@ -1,6 +1,7 @@
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/services/overlay/rules_api_route.dart';
 import 'package:airstream/services/templates/template_library.dart';
+import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
@@ -12,6 +13,7 @@ import 'package:airstream/services/media_library.dart';
 
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/support_alert.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
@@ -65,6 +67,49 @@ class OverlayServer {
   }
 
   final _templates = <WebSocketChannel, String>{};
+  final _galleryViews = <WebSocketChannel>{};
+  final _sessionClients = <WebSocketChannel, String?>{};
+  Timer? _sessionTimer;
+  String? _sessionJson;
+  bool _sessionDirty = true;
+
+  /// Reads the current session only when a template is registered.
+  Map<String, Object?>? Function()? sessionState;
+
+  void sessionChanged() {
+    if (_sessionClients.isEmpty) return;
+    _sessionDirty = true;
+    _sessionTimer ??= Timer(const Duration(seconds: 1), () {
+      _sessionTimer = null;
+      for (final client in _sessionClients.keys.toList()) {
+        _sendSession(client, replay: false);
+      }
+    });
+  }
+
+  void _sendSession(WebSocketChannel client, {required bool replay}) {
+    if (_sessionDirty) {
+      final data = sessionState?.call();
+      _sessionJson = data == null ? null : jsonEncode(data);
+      _sessionDirty = false;
+    }
+    final json = _sessionJson;
+    if (json == null || (!replay && _sessionClients[client] == json)) return;
+    try {
+      client.sink.add('{"type":"session","replay":$replay,"data":$json}');
+      _sessionClients[client] = json;
+    } catch (_) {
+      _removeClient(client);
+    }
+  }
+
+  void _clearSessionDelivery() {
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
+    _sessionJson = null;
+    _sessionDirty = true;
+  }
+
   StreamSubscription<TemplateChange>? _templateSub;
   final _templateCounts = StreamController<Map<String, int>>.broadcast();
   final _errorsController =
@@ -100,13 +145,19 @@ class OverlayServer {
 
   bool _sendCustom(Map<String, Object?> envelope, [String? id]) {
     var sent = false;
-    for (final entry in _templates.entries.toList()) {
-      if (id != null && entry.value != id) continue;
+    final recipients = [
+      for (final entry in _templates.entries)
+        if (id == null || entry.value == id) entry.key,
+      if (id == null) ..._galleryViews,
+    ];
+    if (recipients.isEmpty) return false;
+    final json = jsonEncode(envelope);
+    for (final client in recipients) {
       try {
-        entry.key.sink.add(jsonEncode(envelope));
+        client.sink.add(json);
         sent = true;
       } catch (_) {
-        _removeClient(entry.key);
+        _removeClient(client);
       }
     }
     return sent;
@@ -334,6 +385,7 @@ class OverlayServer {
     final handler = buildOverlayRoutes(wsHandler,
         rulesApi: _rulesApi.call,
         templates: () => templateLibrary,
+        galleryLanguage: () => _settings.appLanguageCode,
         mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
         customSound: (type) {
           final option = AlertTypeOptions.of(_settings, type);
@@ -559,15 +611,10 @@ class OverlayServer {
       'type': 'providerEvent',
       'data': OverlayPayloadEncoder.providerEvent(event),
     });
-    final kind = switch ((event.platform, event.kind)) {
-      (Platform.twitch, ChatProviderEventKind.raid) => 'raid',
-      (Platform.kick, ChatProviderEventKind.host) => 'host',
-      (Platform.kick, ChatProviderEventKind.support) => 'kicks',
-      _ => null,
-    };
+    final kind = providerAlertKind(event);
     if (kind == null ||
         _settings.alertDisabledTypes
-            .contains(_alertType(kind, event.platform, null))) {
+            .contains(supportAlertType(kind, event.platform, null))) {
       return;
     }
     final ids = _providerAlertIds.putIfAbsent(event.platform, () => <String>{});
@@ -581,7 +628,7 @@ class OverlayServer {
       {
         'platform': event.platform.name,
         'kind': kind,
-        'alertType': _alertType(kind, event.platform, null),
+        'alertType': supportAlertType(kind, event.platform, null),
         'id': event.id,
         'author': event.authorName,
         'authorAvatarUrl': null,
@@ -605,6 +652,9 @@ class OverlayServer {
     // The Templates tab shares this watcher while the HTTP server is stopped.
     // Library disposal owns watcher shutdown.
     _templates.clear();
+    _galleryViews.clear();
+    _sessionClients.clear();
+    _clearSessionDelivery();
     clearRecentAlerts();
     _lifecycleGeneration++;
     _providerAlertIds.clear();
@@ -695,14 +745,32 @@ class OverlayServer {
       if (envelope is! Map) return;
       if (envelope['type'] == 'register') {
         final view = envelope['view'];
-        if (view == 'custom' && !_views.containsKey(client)) {
+        if ((view == 'custom' || view == 'gallery') &&
+            !_views.containsKey(client)) {
           final id = envelope['template'];
           if (id is! String || !TemplateLibrary.validId(id)) return;
+          final gallery = view == 'gallery';
+          final item = gallery ? galleryCatalog[id] : null;
+          if (gallery && item == null) return;
           _views[client] = 'custom';
-          _templates[client] = id;
+          if (item != null) {
+            _galleryViews.add(client);
+          } else {
+            _templates[client] = id;
+          }
           _emitViewCounts();
-          client.sink.add(jsonEncode({'type': 'registered', 'view': 'custom'}));
-          unawaited(_sendFields(client, id));
+          client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
+          _sessionClients[client] = null;
+          _sendSession(client, replay: true);
+          if (item == null) {
+            unawaited(_sendFields(client, id));
+          } else {
+            client.sink.add(jsonEncode({
+              'type': 'fields',
+              'data': item.defaults(_settings.appLanguageCode),
+              'replay': true,
+            }));
+          }
           return;
         }
         if (view is String &&
@@ -760,32 +828,11 @@ class OverlayServer {
     }
   }
 
-  static String? _alertType(
-    String kind,
-    Platform platform,
-    MembershipEventKind? membershipKind,
-  ) =>
-      switch (kind) {
-        'superchat' || 'bits' || 'kicks' => kind,
-        'raid' || 'host' => 'raid',
-        'membership' when membershipKind == MembershipEventKind.gift => 'gift',
-        'membership' when platform == Platform.youtube => 'membership',
-        'membership'
-            when membershipKind == MembershipEventKind.subscription ||
-                membershipKind == MembershipEventKind.resubscription =>
-          'subscription',
-        _ => null,
-      };
-
   void _broadcastAlert(ChatMessage msg) {
-    final kind = msg.superChat != null
-        ? (msg.platform == Platform.twitch ? 'bits' : 'superchat')
-        : msg.isMembershipEvent
-            ? 'membership'
-            : null;
+    final kind = messageAlertKind(msg);
     if (kind == null ||
         _settings.alertDisabledTypes.contains(
-            _alertType(kind, msg.platform, msg.membershipEventKind))) {
+            supportAlertType(kind, msg.platform, msg.membershipEventKind))) {
       return;
     }
     if (kind == 'membership' &&
@@ -819,7 +866,8 @@ class OverlayServer {
   static Map<String, Object?> _alertData(ChatMessage msg, String kind) => {
         'platform': msg.platform.name,
         'kind': kind,
-        'alertType': _alertType(kind, msg.platform, msg.membershipEventKind),
+        'alertType':
+            supportAlertType(kind, msg.platform, msg.membershipEventKind),
         'id': msg.id,
         'author': msg.author.name,
         'authorAvatarUrl': msg.author.avatarUrl,
@@ -912,6 +960,11 @@ class OverlayServer {
   void _removeClient(WebSocketChannel client) {
     _views.remove(client);
     _templates.remove(client);
+    _galleryViews.remove(client);
+    if (_sessionClients.containsKey(client)) {
+      _sessionClients.remove(client);
+      if (_sessionClients.isEmpty) _clearSessionDelivery();
+    }
     for (final entry in _featured.entries.toList()) {
       entry.value.recipients.remove(client);
       if (entry.value.recipients.isEmpty) {

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:airstream/services/templates/agent_guide.dart';
+import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
@@ -40,6 +41,137 @@ console.log('SDK trigger check: PASS (name, data, rule; plain text preserved)');
       await temp.delete(recursive: true);
     }
   });
+  test('Recent support safely reconciles rows through SDK v1', () async {
+    final temp = await Directory.systemTemp.createTemp('gallery-sdk-');
+    try {
+      final file = File('${temp.path}/recent-support.cjs');
+      final sdk = jsonEncode(sdkV1());
+      final item = galleryCatalog['recent-support']!;
+      final script = jsonEncode(item.buildFiles('en')['script.js']);
+      final fields = jsonEncode(item.defaults('en'));
+      await file.writeAsString(
+          "const sdk = $sdk, widget = $script, fields = $fields;\n"
+          r"""
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+let socket, enters = 0;
+class WebSocket {
+  constructor() { socket = this; }
+  addEventListener(name, listener) { this[name] = listener; }
+  send(payload) { this.registration = JSON.parse(payload); }
+}
+class Element {
+  children = [];
+  classes = new Set();
+  classList = {
+    add: name => { this.classes.add(name); if (name === 'enter') enters++; },
+    remove: name => this.classes.delete(name),
+  };
+  dataset = {};
+  style = {setProperty() {}, removeProperty() {}};
+  set innerHTML(_) { assert.fail('Unexpected HTML assignment'); }
+  set textContent(text) { this.text = text; }
+  get textContent() { return this.text || ''; }
+  getAttribute(name) { return this[name]; }
+  setAttribute(name, value) { this[name] = value; }
+  removeAttribute(name) { delete this[name]; }
+  addEventListener(name, fn) { this[name] = fn; }
+  append(...nodes) { for (const node of nodes) this.insertBefore(node, null); }
+  appendChild(node) { this.append(node); }
+  insertBefore(node, before) {
+    node.remove();
+    node.parent = this;
+    const index = before ? this.children.indexOf(before) : this.children.length;
+    this.children.splice(index, 0, node);
+  }
+  remove() {
+    if (!this.parent) return;
+    this.parent.children.splice(this.parent.children.indexOf(this), 1);
+    this.parent = null;
+  }
+}
+const selectors = Object.fromEntries(
+  ['.gallery-logo', '.support', '#heading', '#entries', '#empty']
+    .map(key => [key, new Element()]));
+const document = {
+  documentElement: new Element(), head: new Element(),
+  querySelector: key => selectors[key], createElement: () => new Element(),
+};
+const location = {pathname:'/gallery/recent-support/', search:'', protocol:'http:', host:'localhost:8080'};
+const context = {WebSocket, location, URLSearchParams, console,
+  queueMicrotask: fn => fn(), addEventListener() {}, document};
+context.window = context;
+vm.createContext(context);
+vm.runInContext(sdk, context, {filename:'sdk/v1.js'});
+vm.runInContext(widget, context, {filename:'script.js'});
+socket.open();
+assert.deepEqual(socket.registration, {type:'register', view:'gallery', template:'recent-support'});
+const send = (type, data, replay = false) =>
+  socket.message({data:JSON.stringify({type,data,replay})});
+const name = '<img src=x onerror=alert(1)> 🌙';
+const first = {id:'first', platform:'twitch', name, type:'gift', count:5};
+const second = {id:'second', platform:'kick', name:'<b>Viewer</b>', type:'raid', count:120};
+const initial = {supporters:[first, second]};
+send('session', initial, true);
+send('fields', fields, true);
+const rows = selectors['#entries'].children;
+const [firstRow, secondRow] = rows;
+const renderedName = row => row.children[1].children[0].textContent;
+assert.equal(renderedName(firstRow), name);
+assert.equal(renderedName(secondRow), second.name);
+console.log('PASS: HTML-looking names and emoji reached the DOM through textContent');
+send('session', structuredClone(initial), true);
+assert.equal(rows[0], firstRow);
+assert.equal(rows[1], secondRow);
+assert.equal(enters, 0);
+console.log('PASS: replay preserved existing row nodes and added no enter classes');
+send('session', {supporters:[{...second,id:'new',name:'New Viewer'}, first, second]});
+assert.equal(rows.length, 3);
+assert.equal(rows[1], firstRow);
+assert.equal(rows[2], secondRow);
+assert.equal(enters, 1);
+assert.equal(rows.filter(row => row.classes.has('enter')).length, 1);
+assert.equal(context.Airstream.state.session.supporters[0].id, 'new');
+console.log('PASS: live session added exactly one animated row');
+send('fields', {...fields, language:'es', theme:'warm'});
+assert.equal(selectors['#heading'].textContent, 'Apoyos recientes');
+assert.equal(document.documentElement.dataset.theme, 'warm');
+send('session', {supporters:[]}, true);
+assert.equal(selectors['#empty'].textContent, 'Todavía no hay apoyos');
+send('fields', {...fields, showEmpty:false});
+assert.equal(selectors['.support'].hidden, true);
+console.log('PASS: language, theme, and empty-state changes applied live');
+
+const schedule = new Map();
+const demo = {
+  URLSearchParams, console, document, navigator:{language:'en'}, Date,
+  location:{...location,search:'?demo=1'},
+  WebSocket: class { constructor() { assert.fail('Demo opened a socket'); } },
+  fetch: async () => ({ok:false}),
+  addEventListener() {}, queueMicrotask: fn => fn(),
+  setTimeout() {}, setInterval: (fn, period) => schedule.set(period, fn),
+};
+demo.window = demo;
+vm.createContext(demo);
+vm.runInContext(sdk, demo);
+const seed = demo.Airstream.state.session;
+for (const type of ['superchat','membership','bits','subscription','gift','raid','kicks']) {
+  assert.ok(seed.supporters.filter(support => support.type === type).length >= 2);
+}
+assert.equal(Object.keys(seed.top.superchat).length, 2);
+schedule.get(7000)();
+schedule.get(1000)();
+assert.equal(demo.Airstream.state.session.supporters.length, seed.supporters.length + 1);
+console.log('PASS: demo seeded every support type and two currencies, then evolved without a socket');
+""");
+      final result = await Process.run('node', [file.path]);
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+      stdout.write(result.stdout);
+    } finally {
+      await temp.delete(recursive: true);
+    }
+  });
+
   test(
       'guide and declarations cover SDK names, members, manifest and exact CSP',
       () {

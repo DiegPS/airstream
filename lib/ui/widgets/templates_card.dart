@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:airstream/services/templates/template_archive.dart';
+import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'template_fields.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -74,6 +75,93 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
     await _library!
         .createTemplate(choice.$1, templateStarterFiles(choice.$2, choice.$1));
     await _refresh();
+  }
+
+  Future<void> _addGallery(GalleryItem item, String language) async {
+    await const TemplateArchive().installGallery(_library!, item, language);
+    await _refresh();
+  }
+
+  Widget _gallery(AppLocalizations l, String? url, bool enabled) => Column(
+        key: const Key('template-gallery'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 28),
+          settingsLabel(l.templatesGallery),
+          for (final item in galleryCatalog.values)
+            Container(
+              key: Key('gallery-item-${item.id}'),
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF222222),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(item.name(l),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 3),
+                  Text(item.description(l),
+                      style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 4),
+                  Text('${item.width}×${item.height}',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      TextButton(
+                        key: Key('gallery-preview-${item.id}'),
+                        onPressed: url == null || _busy
+                            ? null
+                            : () => _action(() =>
+                                _explore('$url/gallery/${item.id}/?demo=1')),
+                        child: Text(l.templatesPreview),
+                      ),
+                      TextButton(
+                        key: Key('gallery-add-${item.id}'),
+                        onPressed: enabled
+                            ? () =>
+                                _action(() => _addGallery(item, l.localeName))
+                            : null,
+                        child: Text(l.galleryAdd),
+                      ),
+                    ],
+                  ),
+                  if (url == null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(l.galleryPreviewUnavailable,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12)),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      );
+
+  Widget? _galleryUpdate(TemplateInfo info, AppLocalizations l, bool enabled) {
+    final source = info.manifest.gallery;
+    if (source == null) return null;
+    final item = galleryCatalog[source.id];
+    if (item == null || source.version >= item.version) return null;
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(l.galleryNewVersion),
+        TextButton(
+          key: Key('gallery-add-again-${info.id}'),
+          onPressed: enabled
+              ? () => _action(() => _addGallery(item, l.localeName))
+              : null,
+          child: Text(l.galleryAddAgain),
+        ),
+      ],
+    );
   }
 
   String _reason(String reason) {
@@ -211,6 +299,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
     final counts = ref.watch(templateCountsProvider).valueOrNull ?? {};
     final errors = ref.watch(templateErrorsProvider).valueOrNull ?? {};
     final enabled = _library != null && !_busy;
+    final overlayUrl = ref.watch(overlayUrlProvider);
     return UiCard(
         title: l.templatesTitle,
         icon: Icons.dashboard_customize_outlined,
@@ -288,6 +377,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                 child: Text(l.templatesEmptyGuide,
                     style: const TextStyle(
                         color: Colors.white54, fontSize: 12, height: 1.6))),
+          _gallery(l, overlayUrl, enabled),
           for (final info in _items)
             Padding(
                 key: Key('template-${info.id}'),
@@ -329,6 +419,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       Text(
                           '${info.id} · ${info.manifest.width}×${info.manifest.height}',
                           style: const TextStyle(color: Colors.white70)),
+                      if (_galleryUpdate(info, l, enabled) case final update?)
+                        update,
                       if (info.manifest.network)
                         Chip(
                             label: Text(l.templatesInternet),

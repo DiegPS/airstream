@@ -1101,5 +1101,21 @@
         "type": "int"
       }
     }
-  }
+  },
+
+  "templatesGallery": "Gallery",
+  "galleryAdd": "Add",
+  "galleryAddAgain": "Add again",
+  "galleryNewVersion": "A new version is available",
+  "galleryPreviewUnavailable": "Start the server to preview gallery items.",
+  "galleryRecentSupport": "Recent support",
+  "galleryRecentSupportDescription": "Show the latest support from YouTube, Twitch, and Kick.",
+  "galleryTheme": "Theme",
+  "galleryFont": "Font",
+  "galleryAccent": "Accent color",
+  "galleryLogo": "Logo",
+  "galleryLanguage": "Language",
+  "galleryHeading": "Custom heading",
+  "gallerySupportCount": "Maximum entries",
+  "galleryShowEmpty": "Show the empty message"
 }

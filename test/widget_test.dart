@@ -2091,6 +2091,96 @@ void main() {
       });
     }
   }
+  for (final language in ['en', 'es']) {
+    final spanish = language == 'es';
+    testWidgets('Gallery can add a copy at 360px ($language)', (tester) async {
+      final documents = (await tester.runAsync(() =>
+          io.Directory.systemTemp.createTemp('gallery-widget-documents-')))!;
+      final library = TemplateLibrary(
+          io.Directory('${documents.path}/Airstream/Templates'));
+      addTearDown(() async {
+        await tester.runAsync(() async {
+          await library.dispose();
+          await documents.delete(recursive: true);
+        });
+      });
+      const id = 'recent-support';
+      const originalManifest =
+          '{"name":"My edited widget","gallery":{"id":"recent-support","version":1}}';
+      const originalHtml = '<h1>Edited copy</h1>';
+      final existing = io.File('${library.rootPath}/$id/template.json');
+      if (spanish) {
+        await tester.runAsync(() async {
+          await existing.parent.create(recursive: true);
+          await existing.writeAsString(originalManifest);
+          await io.File('${existing.parent.path}/index.html')
+              .writeAsString(originalHtml);
+        });
+      }
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings(language)),
+          overlayUrlProvider.overrideWithValue(null),
+          templateLibraryProvider.overrideWith((ref) async => library),
+          templateCountsProvider.overrideWith((ref) => Stream.value({})),
+          templateErrorsProvider.overrideWith((ref) => Stream.value({})),
+        ],
+        child: MaterialApp(
+          locale: Locale(language),
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(
+            body: SizedBox(
+                width: 360,
+                child: SingleChildScrollView(child: TemplatesCard())),
+          ),
+        ),
+      ));
+      await _flushTemplateIO(tester);
+      expect(find.byKey(const Key('template-gallery')), findsOneWidget);
+      final card = find.byKey(const Key('gallery-item-$id'));
+      expect(
+          find.descendant(
+              of: card,
+              matching:
+                  find.text(spanish ? 'Apoyos recientes' : 'Recent support')),
+          findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('480×640')),
+          findsOneWidget);
+      final preview = tester
+          .widget<TextButton>(find.byKey(const Key('gallery-preview-$id')));
+      expect(preview.onPressed, isNull);
+      if (spanish) {
+        expect(find.text('Hay una versión nueva'), findsOneWidget);
+      } else {
+        expect(await tester.runAsync(library.exists), false);
+      }
+      expect(tester.takeException(), isNull);
+      final add = find
+          .byKey(Key(spanish ? 'gallery-add-again-$id' : 'gallery-add-$id'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await _flushTemplateIO(tester);
+      final installed = spanish ? '$id-2' : id;
+      expect(find.byKey(Key('template-$installed')), findsOneWidget);
+      await tester.runAsync(() async {
+        final info = (await library.get(installed))!;
+        expect(info.manifest.gallery, (id: id, version: 2));
+        expect((await library.resolvedValues(installed))['language'], language);
+        expect(await library.list(), hasLength(spanish ? 2 : 1));
+        if (spanish) {
+          expect(await existing.readAsString(), originalManifest);
+          expect(
+              await io.File('${existing.parent.path}/index.html')
+                  .readAsString(),
+              originalHtml);
+        }
+      });
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('Templates test events appear only for an open template page',
       (tester) async {
     final counts = StreamController<Map<String, int>>();

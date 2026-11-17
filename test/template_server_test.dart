@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
@@ -76,6 +77,75 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+  test('session is lazy, replayed only to templates, and coalesced', () async {
+    final collector = SessionSummaryCollector()..start();
+    var snapshots = 0;
+    server.sessionState = () {
+      snapshots++;
+      return collector.templateState(live: true);
+    };
+    void chat(int id, {bool owner = false}) {
+      final changed = collector.handleMessage(ChatMessage(
+        platform: Platform.twitch,
+        id: '$id',
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('Hi')],
+        timestamp: DateTime.now(),
+        isOwner: owner,
+      ));
+      if (changed) server.sessionChanged();
+    }
+
+    final plain = await connect('chat');
+    chat(0);
+    await Future<void>.delayed(const Duration(milliseconds: 1050));
+    expect(snapshots, 0);
+    expect(plain.frames.where((f) => f['type'] == 'session'), isEmpty);
+
+    final custom = await connect('custom', 'one');
+    final first = await custom.next('session');
+    expect(first['replay'], true);
+    expect(first['data']['messages'], 1);
+    expect(snapshots, 1);
+
+    final gallery = await connect('gallery', 'recent-support');
+    expect(await gallery.next('session'), first);
+    expect((await gallery.next('fields'))['data']['count'], 8);
+    expect(snapshots, 1);
+
+    for (var i = 1; i <= 60; i++) {
+      chat(i);
+    }
+    expect(snapshots, 1);
+    final update = await custom.next('session');
+    expect(update['replay'], false);
+    expect(update['data']['messages'], 61);
+    expect(await gallery.next('session'), update);
+    expect(snapshots, 2);
+    chat(61, owner: true);
+    server.sessionChanged();
+    await Future<void>.delayed(const Duration(milliseconds: 1050));
+    for (final c in [plain, custom, gallery]) {
+      expect(c.frames.where((f) => f['type'] == 'session'), isEmpty);
+    }
+
+    await custom.close();
+    await gallery.close();
+    clients.remove(custom);
+    clients.remove(gallery);
+    for (var i = 0; i < 100 && server.viewCounts['custom'] != 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(server.viewCounts['custom'], 0);
+    chat(62);
+    final afterDisconnect = snapshots;
+    final reopened = await connect('custom', 'one');
+    final replay = await reopened.next('session');
+    expect(replay['replay'], true);
+    expect(replay['data']['messages'], 62);
+    expect(snapshots, afterDisconnect + 1);
+  });
+
   test('rule trigger envelope reaches only custom templates', () async {
     final custom = await connect('custom', 'one');
     final alerts = await connect('alerts');

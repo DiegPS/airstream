@@ -3,11 +3,12 @@ String sdkV1() => r"""
 (() => {
   'use strict';
   if (window.Airstream) return;
-  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','connected','disconnected'];
-  const states = new Set(['goals','timer','giveaway','poll','settings','fields']);
+  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','connected','disconnected'];
+  const states = new Set(['goals','timer','giveaway','poll','settings','fields','session']);
   const handlers = new Map(names.map(n => [n,new Set()]));
   const state = {};
   const template = (location.pathname.match(/^\/custom\/([a-z0-9][a-z0-9-]{0,39})(?:\/|$)/) || [,''])[1];
+  const gallery = (location.pathname.match(/^\/gallery\/([a-z0-9][a-z0-9-]{0,39})(?:\/|$)/) || [,''])[1];
   const query = new URLSearchParams(location.search);
   const demo = query.has('demo') && ['', '1'].includes(query.get('demo'));
   let socket = null, retry = null, closing = false, lastError = -Infinity, offset = 0;
@@ -66,11 +67,11 @@ String sdkV1() => r"""
   window.Airstream=api;
   window.addEventListener('error',e => report(e.message,e.filename,e.lineno));
   window.addEventListener('unhandledrejection',e => report(e.reason));
-  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields'};
+  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session'};
   function connect() {
     if (closing || socket) return;
     const ws=new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')+location.host+'/ws'); socket=ws;
-    ws.addEventListener('open',() => { if (socket !== ws) return; ws.send(JSON.stringify({type:'register',view:'custom',template})); emit('connected',null); });
+    ws.addEventListener('open',() => { if (socket !== ws) return; ws.send(JSON.stringify({type:'register',view:gallery?'gallery':'custom',template:gallery||template})); emit('connected',null); });
     ws.addEventListener('message',e => {
       if (socket !== ws) return;
       let envelope; try { envelope=JSON.parse(e.data); } catch (_) { return; }
@@ -120,12 +121,76 @@ String sdkV1() => r"""
     const n=chatIndex++, platform=['youtube','twitch','kick'][n%3];
     return {platform,id:'demo-chat-'+n,author:people[n%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+n%8,badgeImageUrl:null,badgeLabel:n%4===0?'Moderator':null,badges:[],color:api.platformColor(platform),text:'Demo message '+(n+1)+' ★',items:[{kind:'text',text:'Demo message '+(n+1)+' '},{kind:'emoji',url:emote,alt:'★',isAnimated:false,isCustom:false,isZeroWidth:false}],isSuperChat:false,superChatAmount:null,superChatColor:null,superChatStickerUrl:null,isMembership:n%3===0,isMembershipEvent:false,membershipEventKind:null,membershipMonths:null,membershipGiftCount:null,isOwner:n%8===0,isModerator:n%4===0,isVip:n%5===0,isVerified:false,youtubeStreamOrientation:null,timestamp:new Date().toISOString(),reply:null,sharedSource:null,isAction:false,providerRoomId:'',isFirstMessage:false,isReturningChatter:false,rewardId:null};
   }
-  setInterval(() => { earlier=chat(); emit('chat',earlier); },1500);
+  const supportTypes=['superchat','membership','bits','subscription','gift','raid','kicks'];
+  const sessionPeople=['PixelFern','LunaBuilds','CaptainOfTheLongestStarshipNameEver',
+    'Mar 🌙','Solstice','RenPlays','AriNova','MaxHorizon'];
+  const sessionStarted=Date.now()-18*60*1000;
+  const sessionSupporters=[];
+  const latestSupport=Object.fromEntries(supportTypes.map(type => [type,null]));
+  const sessionChatters=new Map([
+    ['twitch:PixelFern',{platform:'twitch',name:sessionPeople[0],messages:29}],
+    ['youtube:LunaBuilds',{platform:'youtube',name:sessionPeople[1],messages:18}],
+    ['kick:Mar 🌙',{platform:'kick',name:sessionPeople[3],messages:11}]
+  ]);
+  const supportTotals={gift:new Map(),bits:new Map(),kicks:new Map()};
+  const moneyTotals={'$':new Map(),'MX$':new Map()};
+  let sessionMessages=58, sessionSupportIndex=0;
+  function sampleSupport(at) {
+    const i=sessionSupportIndex++, type=supportTypes[i%7], round=Math.floor(i/7);
+    const platform=['superchat','membership'].includes(type)?'youtube':
+      type==='kicks'?'kick':'twitch';
+    const name=sessionPeople[(i+2)%sessionPeople.length];
+    const currency=type==='superchat'?(round%2?'MX$':'$'):null;
+    const value=type==='superchat'?(currency==='MX$'?100:5):type==='bits'?250:
+      type==='raid'?120:type==='kicks'?300:null;
+    const count=type==='gift'?5:type==='superchat'?null:value;
+    const amount=type==='superchat'?(currency==='MX$'?'MX$100.00':'$5.00'):
+      type==='bits'?'250 Bits':null;
+    const months=type==='membership'?12:type==='subscription'?3:null;
+    const support={id:'demo-support-'+i,platform,name,type,amount,currency,value,months,count,at:new Date(at).toISOString()};
+    sessionSupporters.unshift(support);
+    if (sessionSupporters.length>50) sessionSupporters.pop();
+    latestSupport[type]=support;
+    const totals=currency?moneyTotals[currency]:supportTotals[type];
+    if (totals) {
+      const key=platform+':'+name;
+      const previous=totals.get(key)?.value || 0;
+      totals.set(key,{platform,name,value:previous+(type==='gift'?count:value)});
+    }
+  }
+  function sendSession(meta) {
+    const rank=totals => [...totals.values()].sort((a,b) => b.value-a.value).slice(0,5);
+    emit('session',{startedAt:new Date(sessionStarted).toISOString(),live:true,
+      messages:sessionMessages,chatters:sessionChatters.size,supporters:[...sessionSupporters],
+      latest:{...latestSupport},
+      top:{gift:rank(supportTotals.gift),bits:rank(supportTotals.bits),kicks:rank(supportTotals.kicks),
+        superchat:Object.fromEntries(Object.entries(moneyTotals).map(([currency, totals]) => [currency,rank(totals)]))},
+      topChatters:[...sessionChatters.values()].sort((a,b) => b.messages-a.messages).slice(0,10)},meta);
+  }
+  for (let i=0;i<16;i++) sampleSupport(sessionStarted+(i+1)*60000);
+  sendSession(replay);
+  let sessionDirty=false;
+  setInterval(() => {
+    if (!sessionDirty) return;
+    sessionDirty=false;
+    sendSession();
+  },1000);
+  setInterval(() => {
+    earlier=chat(); emit('chat',earlier);
+    if (earlier.isOwner) return;
+    const {platform,author}=earlier, key=platform+':'+author;
+    const messages=(sessionChatters.get(key)?.messages || 0)+1;
+    sessionChatters.set(key,{platform,name:author,messages});
+    sessionMessages++;
+    sessionDirty=true;
+  },1500);
   setInterval(() => {
     const type=['superchat','membership','bits','subscription','gift','raid','kicks'][alertIndex++%7];
     const platform=['superchat','membership'].includes(type)?'youtube':type==='kicks'?'kick':'twitch';
     const data={platform,kind:['subscription','gift'].includes(type)?'membership':type,alertType:type,id:'demo-alert-'+alertIndex,author:people[alertIndex%8],authorAvatarUrl:null,authorChannelId:['raid','kicks'].includes(type)?'':'demo-user-'+alertIndex%8,badgeImageUrl:null,badgeLabel:null,message:type==='raid'?'':'Clearly fake demo alert',amount:type==='superchat'?'$5.00':type==='bits'?'100 Bits':null,color:['superchat','bits'].includes(type)?api.platformColor(platform):null,stickerUrl:null,timestamp:new Date().toISOString(),membershipKind:type==='gift'?'gift':type==='subscription'?'subscription':null,months:type==='subscription'?3:null,giftCount:type==='gift'?5:null,...(['raid','kicks'].includes(type)?{count:type==='raid'?42:100}:{})};
     emit('alert',data);
+    sampleSupport(Date.now());
+    sessionDirty=true;
     if (['raid','kicks'].includes(type)) emit('event',{platform,kind:type==='raid'?'raid':'support',id:data.id,timestamp:data.timestamp,authorName:data.author,text:data.message,count:data.count,data:{}});
     if (['membership','bits','subscription','gift'].includes(type)) { goals[type==='bits'?1:0].current+=type==='bits'?100:type==='gift'?5:1; sendGoals(); endsAtMs+=60000; sendTimer(60000); }
   },7000);

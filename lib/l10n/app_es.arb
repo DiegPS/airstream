@@ -899,5 +899,21 @@
         "type": "int"
       }
     }
-  }
+  },
+
+  "templatesGallery": "Galería",
+  "galleryAdd": "Añadir",
+  "galleryAddAgain": "Añadir de nuevo",
+  "galleryNewVersion": "Hay una versión nueva",
+  "galleryPreviewUnavailable": "Inicia el servidor para ver las vistas previas.",
+  "galleryRecentSupport": "Apoyos recientes",
+  "galleryRecentSupportDescription": "Muestra los últimos apoyos de YouTube, Twitch y Kick.",
+  "galleryTheme": "Tema",
+  "galleryFont": "Fuente",
+  "galleryAccent": "Color de acento",
+  "galleryLogo": "Logotipo",
+  "galleryLanguage": "Idioma",
+  "galleryHeading": "Título personalizado",
+  "gallerySupportCount": "Máximo de apoyos",
+  "galleryShowEmpty": "Mostrar el aviso cuando no hay apoyos"
 }

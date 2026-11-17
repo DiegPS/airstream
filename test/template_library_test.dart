@@ -35,6 +35,37 @@ void main() {
     await library.ensureRoot();
     expect(await library.exists(), true);
   });
+  test('retains valid gallery versions and ignores malformed metadata',
+      () async {
+    final variants = <Object?, bool>{
+      {'id': 'recent-support', 'version': 1}: true,
+      {'id': '-' * 40, 'version': 1000}: true,
+      {'id': 'recent-support', 'version': 0}: false,
+      {'id': 'recent-support', 'version': 1001}: false,
+      {'id': 'recent-support', 'version': 1.0}: false,
+      {'id': 'recent-support', 'version': '1'}: false,
+      {'id': 'recent-support'}: false,
+      {'id': 'Recent-Support', 'version': 1}: false,
+      {'id': 'a' * 41, 'version': 1}: false,
+      {'id': '../recent-support', 'version': 1}: false,
+      ['recent-support', 1]: false,
+      null: false,
+    };
+    for (final (i, entry) in variants.entries.indexed) {
+      await put('item-$i/index.html', '<h1>Widget</h1>');
+      await put('item-$i/template.json', jsonEncode({'gallery': entry.key}));
+      final info = (await library.get('item-$i'))!;
+      expect(info.usable, true);
+      expect(info.problems, isEmpty);
+      final raw = entry.key;
+      expect(
+          info.manifest.gallery,
+          entry.value && raw is Map
+              ? (id: raw['id'], version: raw['version'])
+              : null);
+    }
+  });
+
   test('lists incomplete templates and ignores invalid folders', () async {
     await put('good/style.css', '');
     await put('.hidden/index.html', '');

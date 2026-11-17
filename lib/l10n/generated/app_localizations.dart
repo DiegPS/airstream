@@ -4448,6 +4448,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When {trigger} → {count, plural, =1{1 action} other{{count} actions}}'**
   String ruleSummary(String trigger, int count);
+
+  /// No description provided for @templatesGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get templatesGallery;
+
+  /// No description provided for @galleryAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get galleryAdd;
+
+  /// No description provided for @galleryAddAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Add again'**
+  String get galleryAddAgain;
+
+  /// No description provided for @galleryNewVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version is available'**
+  String get galleryNewVersion;
+
+  /// No description provided for @galleryPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the server to preview gallery items.'**
+  String get galleryPreviewUnavailable;
+
+  /// No description provided for @galleryRecentSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent support'**
+  String get galleryRecentSupport;
+
+  /// No description provided for @galleryRecentSupportDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the latest support from YouTube, Twitch, and Kick.'**
+  String get galleryRecentSupportDescription;
+
+  /// No description provided for @galleryTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get galleryTheme;
+
+  /// No description provided for @galleryFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get galleryFont;
+
+  /// No description provided for @galleryAccent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent color'**
+  String get galleryAccent;
+
+  /// No description provided for @galleryLogo.
+  ///
+  /// In en, this message translates to:
+  /// **'Logo'**
+  String get galleryLogo;
+
+  /// No description provided for @galleryLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get galleryLanguage;
+
+  /// No description provided for @galleryHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom heading'**
+  String get galleryHeading;
+
+  /// No description provided for @gallerySupportCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum entries'**
+  String get gallerySupportCount;
+
+  /// No description provided for @galleryShowEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the empty message'**
+  String get galleryShowEmpty;
 }
 
 class _AppLocalizationsDelegate

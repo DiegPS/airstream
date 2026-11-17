@@ -107,14 +107,24 @@ class AppController {
               final winner = _giveaway.draw();
               if (winner != null) _winnerEvent(depth);
             }));
+    templateServer?.sessionState = () =>
+        _sessionSummary.templateState(live: _chatRunning && _chatConnected);
     _subscriptions.addAll([
       _chat.messages
           .listen((m) => _emitGoalIncrements(_goalTracker.message(m))),
       _chat.providerEvents
           .listen((e) => _emitGoalIncrements(_goalTracker.event(e))),
       _chat.messages.listen(_chatLog.write),
-      _chat.messages.listen(_sessionSummary.handleMessage),
-      _chat.providerEvents.listen(_sessionSummary.handleProviderEvent),
+      _chat.messages.listen((message) {
+        if (_sessionSummary.handleMessage(message)) {
+          templateServer?.sessionChanged();
+        }
+      }),
+      _chat.providerEvents.listen((event) {
+        if (_sessionSummary.handleProviderEvent(event)) {
+          templateServer?.sessionChanged();
+        }
+      }),
       _chat.messages.listen(_giveaway.handleMessage),
       _giveaway.states.listen(
           (state) => _overlay.broadcastGiveaway(state?.toOverlayJson())),
@@ -170,9 +180,15 @@ class AppController {
           }
         }
       }),
-      _chat.connectionStatusStream.listen((states) => rules.updateEnvironment(
-          chatConnected:
-              states.values.any((s) => s.$1 == ServiceStatus.connected))),
+      _chat.connectionStatusStream.listen((states) {
+        final connected =
+            states.values.any((s) => s.$1 == ServiceStatus.connected);
+        rules.updateEnvironment(chatConnected: connected);
+        if (_chatConnected != connected) {
+          _chatConnected = connected;
+          if (_chatRunning) templateServer?.sessionChanged();
+        }
+      }),
     ]);
   }
 
@@ -215,6 +231,7 @@ class AppController {
   final _sessionSummary = SessionSummaryCollector();
   final _chatLog = ChatLogWriter();
   bool _chatRunning = false;
+  bool _chatConnected = false;
 
   /// Chat for the overlay: live messages plus any preview samples.
   final _overlayFeed = StreamController<ChatMessage>.broadcast();
@@ -366,7 +383,9 @@ class AppController {
         _overlay.clearRecentAlerts();
       } else {
         _sessionSummary.stop();
+        _chatConnected = false;
       }
+      templateServer?.sessionChanged();
       unawaited(connectChats
           ? _chatLog.startSession(enabled: settings.saveChatLog)
           : _chatLog.endSession());
