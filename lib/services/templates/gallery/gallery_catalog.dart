@@ -7,9 +7,12 @@ import '../template_library.dart';
 import 'be_right_back.dart';
 import 'credits.dart';
 import 'gallery_base.dart';
+import 'latest_support.dart';
 import 'recent_support.dart';
 import 'starting_soon.dart';
 import 'stream_ending.dart';
+import 'ticker.dart';
+import 'top_supporters.dart';
 
 enum GalleryKind { screen, widget }
 
@@ -103,5 +106,38 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
     description: (l) => l.galleryCreditsDescription,
     files: creditsFiles,
     fields: creditsFields,
+  ),
+  'ticker': GalleryItem(
+    id: 'ticker',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: tickerWidth,
+    height: tickerHeight,
+    name: (l) => l.galleryTicker,
+    description: (l) => l.galleryTickerDescription,
+    files: tickerFiles,
+    fields: tickerFields,
+  ),
+  'latest-support': GalleryItem(
+    id: 'latest-support',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: latestSupportWidth,
+    height: latestSupportHeight,
+    name: (l) => l.galleryLatestSupport,
+    description: (l) => l.galleryLatestSupportDescription,
+    files: latestSupportFiles,
+    fields: latestSupportFields,
+  ),
+  'top-supporters': GalleryItem(
+    id: 'top-supporters',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: topSupportersWidth,
+    height: topSupportersHeight,
+    name: (l) => l.galleryTopSupporters,
+    description: (l) => l.galleryTopSupportersDescription,
+    files: topSupportersFiles,
+    fields: topSupportersFields,
   ),
 });

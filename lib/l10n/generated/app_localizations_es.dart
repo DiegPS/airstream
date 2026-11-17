@@ -2917,4 +2917,58 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get galleryCreditsLoop => 'Repetir los créditos';
+
+  @override
+  String get galleryTicker => 'Barra informativa';
+
+  @override
+  String get galleryTickerDescription =>
+      'Desplaza mensajes, apoyos recientes, metas y el tiempo de subatón durante el directo.';
+
+  @override
+  String get galleryLatestSupport => 'Último apoyo';
+
+  @override
+  String get galleryLatestSupportDescription =>
+      'Destaca el apoyo más reciente o alterna entre los tipos de apoyo.';
+
+  @override
+  String get galleryTopSupporters => 'Top del directo';
+
+  @override
+  String get galleryTopSupportersDescription =>
+      'Muestra los cinco primeros puestos por apoyos o mensajes del directo.';
+
+  @override
+  String get galleryTickerMessages => 'Mensajes de la barra (separados con |)';
+
+  @override
+  String get galleryTickerSpeed =>
+      'Velocidad de desplazamiento (píxeles por segundo)';
+
+  @override
+  String get galleryTickerShowCustom => 'Mostrar mensajes personalizados';
+
+  @override
+  String get galleryTickerShowLatest => 'Mostrar el último apoyo de cada tipo';
+
+  @override
+  String get galleryTickerShowGoals => 'Mostrar el progreso de las metas';
+
+  @override
+  String get galleryTickerShowTimer =>
+      'Mostrar el temporizador de subatón en marcha';
+
+  @override
+  String get galleryTickerShowEmpty =>
+      'Mostrar el título de la barra cuando esté vacía';
+
+  @override
+  String get galleryLatestSupportMode => 'Modo de visualización de apoyos';
+
+  @override
+  String get galleryRotationSeconds => 'Segundos entre cambios';
+
+  @override
+  String get galleryRankingType => 'Tipo de clasificación';
 }

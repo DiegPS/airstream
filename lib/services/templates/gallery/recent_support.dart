@@ -30,7 +30,8 @@ List<Map<String, Object?>> recentSupportFields(AppLocalizations l) => [
 Map<String, String> recentSupportFiles() => {
       'index.html': _html,
       'style.css': '$galleryCss\n$_css',
-      'script.js': '(() => {\n"use strict";\n$galleryScript\n$_script\n})();',
+      'script.js':
+          '(() => {\n"use strict";\n$galleryScript\n$gallerySupportDescriptions\n$_script\n})();',
     };
 
 const _html = r'''
@@ -105,26 +106,8 @@ header::after {
 
 const _script = r'''
 const copy = {
-  en: {
-    heading: 'Recent support', empty: 'No support yet',
-    superchat: s => ['Super Chat', s.amount].filter(Boolean).join(' '),
-    membership: s => s.months ? n(s.months) + '-month member' : 'New member',
-    bits: s => s.amount || (s.value == null ? 'Bits' : n(s.value) + ' Bits'),
-    subscription: s => s.months ? n(s.months) + (s.months === 1 ? ' month' : ' months') + ' subscribed' : 'New subscription',
-    gift: s => 'Gifted ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' sub' : ' subs'),
-    raid: s => s.count == null ? 'Raid' : 'Raid with ' + n(s.count) + (s.count === 1 ? ' viewer' : ' viewers'),
-    kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' Kicks'
-  },
-  es: {
-    heading: 'Apoyos recientes', empty: 'Todavía no hay apoyos',
-    superchat: s => ['Super Chat', s.amount].filter(Boolean).join(' '),
-    membership: s => s.months ? 'Membresía de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva membresía',
-    bits: s => s.value == null ? (s.amount || 'Bits') : n(s.value) + ' bits',
-    subscription: s => s.months ? 'Suscripción de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva suscripción',
-    gift: s => 'Regaló ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' suscripción' : ' suscripciones'),
-    raid: s => s.count == null ? 'Raid' : 'Raid con ' + n(s.count) + (s.count === 1 ? ' espectador' : ' espectadores'),
-    kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' kicks'
-  }
+  en: {heading: 'Recent support', empty: 'No support yet'},
+  es: {heading: 'Apoyos recientes', empty: 'Todavía no hay apoyos'}
 };
 const panel = document.querySelector('.support');
 const heading = document.querySelector('#heading');
@@ -185,7 +168,7 @@ function render(animate) {
     }
     if (!animate) row.element.classList.remove('enter');
     if (row.name.textContent !== support.name) row.name.textContent = support.name;
-    const description = text[support.type]?.(support) || '';
+    const description = supportDescriptions[language][support.type]?.(support) || '';
     if (row.description.textContent !== description) row.description.textContent = description;
     const position = entries.children[index];
     if (position !== row.element) entries.insertBefore(row.element, position || null);

@@ -1144,5 +1144,22 @@
   "galleryCurrency": "Super Chat currency (blank for automatic)",
   "galleryFinalText": "Final message",
   "galleryCreditsSpeed": "Roll speed (pixels per second)",
-  "galleryCreditsLoop": "Repeat credits"
+  "galleryCreditsLoop": "Repeat credits",
+
+  "galleryTicker": "Ticker",
+  "galleryTickerDescription": "Scroll messages, recent support, goals, and subathon time across the stream.",
+  "galleryLatestSupport": "Latest support",
+  "galleryLatestSupportDescription": "Spotlight the newest supporter or rotate through support types.",
+  "galleryTopSupporters": "Top of the stream",
+  "galleryTopSupportersDescription": "Show the five leading supporters or chatters in a session.",
+  "galleryTickerMessages": "Ticker messages (separate with |)",
+  "galleryTickerSpeed": "Scroll speed (pixels per second)",
+  "galleryTickerShowCustom": "Show custom messages",
+  "galleryTickerShowLatest": "Show the latest support by type",
+  "galleryTickerShowGoals": "Show goal progress",
+  "galleryTickerShowTimer": "Show the running subathon timer",
+  "galleryTickerShowEmpty": "Show the ticker title when empty",
+  "galleryLatestSupportMode": "Support display mode",
+  "galleryRotationSeconds": "Seconds between entries",
+  "galleryRankingType": "Leaderboard type"
 }

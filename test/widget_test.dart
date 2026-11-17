@@ -27,6 +27,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart' as widgets;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airstream/main.dart';
 import 'package:airstream/models/chat_session_state.dart';
@@ -45,7 +46,7 @@ class _WidgetTestSettings extends SettingsNotifier {
     String languageCode = 'en',
     String youtubeHandle = '',
     SettingsModel? model,
-  ]) {
+  ]) : super(systemLanguageCode: () => '') {
     state = model ??
         SettingsModel(
           appLanguageCode: languageCode,
@@ -56,6 +57,8 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('Chat fields debounce, validate colors, refresh disk and reset',
       (tester) async {
     final temp = (await tester
@@ -1180,6 +1183,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          settingsInitializationProvider.overrideWith(
+            (ref) => Completer<void>().future,
+          ),
           settingsProvider.overrideWith(
             (ref) => _WidgetTestSettings(
               'en',
@@ -1336,6 +1342,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          settingsInitializationProvider.overrideWith(
+            (ref) => Completer<void>().future,
+          ),
           settingsProvider.overrideWith(
             (ref) => _WidgetTestSettings(
               'en',
@@ -1479,6 +1488,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(overrides: [
+      settingsInitializationProvider.overrideWith(
+        (ref) => Completer<void>().future,
+      ),
       settingsProvider.overrideWith((ref) =>
           _RecordingSettings(const SettingsModel(overlayEnabled: false)))
     ], child: const AirstreamApp()));
@@ -2092,6 +2104,16 @@ void main() {
             .tap(find.byTooltip(language == 'en' ? 'Templates' : 'Plantillas'));
         await tester.pump();
         expect(find.byKey(const Key('templates-test')), findsNothing);
+        final gallery = find.byKey(const Key('template-gallery'));
+        expect(
+            find.descendant(
+                of: gallery,
+                matching: find.byWidgetPredicate((widget) =>
+                    widget.key is ValueKey<String> &&
+                    (widget.key! as ValueKey<String>)
+                        .value
+                        .startsWith('gallery-item-'))),
+            findsNWidgets(8));
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       });
@@ -2160,6 +2182,9 @@ void main() {
         'be-right-back': spanish ? 'Vuelvo enseguida' : 'Be right back',
         'stream-ending': spanish ? 'Fin del directo' : 'Stream ending',
         'credits': spanish ? 'Créditos' : 'Credits',
+        'ticker': spanish ? 'Barra informativa' : 'Ticker',
+        'latest-support': spanish ? 'Último apoyo' : 'Latest support',
+        'top-supporters': spanish ? 'Top del directo' : 'Top of the stream',
       };
       for (final entry in names.entries) {
         final item = find.byKey(Key('gallery-item-${entry.key}'));

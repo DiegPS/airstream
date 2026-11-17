@@ -13,14 +13,26 @@ void main() {
     'be-right-back': ['Be right back', 'Vuelvo enseguida'],
     'stream-ending': ['Stream ending', 'Fin del directo'],
     'credits': ['Credits', 'Créditos'],
+    'ticker': ['Ticker', 'Barra informativa'],
+    'latest-support': ['Latest support', 'Último apoyo'],
+    'top-supporters': ['Top of the stream', 'Top del directo'],
+  };
+  const widgets = {
+    'recent-support': (480, 640),
+    'ticker': (1920, 64),
+    'latest-support': (640, 160),
+    'top-supporters': (560, 480),
   };
 
-  test('all five gallery items build valid localized manifests and files', () {
+  test('all eight gallery items build valid localized manifests and files', () {
     expect(galleryCatalog.keys, orderedEquals(names.keys));
+    expect(galleryCatalog.values.map((i) => i.id), orderedEquals(names.keys));
     for (final (i, language) in ['en', 'es'].indexed) {
       for (final item in galleryCatalog.values) {
         final recent = item.id == 'recent-support';
-        expect(item.kind, recent ? GalleryKind.widget : GalleryKind.screen);
+        final widgetSize = widgets[item.id];
+        expect(item.kind,
+            widgetSize == null ? GalleryKind.screen : GalleryKind.widget);
         final files = item.buildFiles(language);
         expect(
             files.keys,
@@ -33,8 +45,8 @@ void main() {
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
         expect(manifest.gallery, (id: item.id, version: recent ? 3 : 1));
-        expect((manifest.width, manifest.height),
-            recent ? (480, 640) : (1920, 1080));
+        expect((item.width, item.height), widgetSize ?? (1920, 1080));
+        expect((manifest.width, manifest.height), (item.width, item.height));
         final fields = (raw['fields'] as List).cast<Map>();
         final defaults = {
           for (final field in fields) field['key']: field['default']
@@ -44,15 +56,24 @@ void main() {
         expect(manifest.values({}), defaults);
         expect(manifest.values(defaults), defaults);
         expect(item.defaults(language), defaults);
-        if (!recent) {
+        expect(defaults.keys, containsAll(['theme', 'font', 'accent', 'logo']));
+        if (widgetSize == null || item.id == 'ticker') {
           expect(
               manifest.fields.singleWhere((f) => f.key == 'messages').options,
               containsPair('maxLength', 500));
+        }
+        if (widgetSize == null) {
           expect(
               manifest.fields
                   .singleWhere((f) => f.key == 'backgroundMedia')
                   .options,
               containsPair('kind', 'visual'));
+        }
+        if (item.id == 'ticker') {
+          final speed = manifest.fields.singleWhere((f) => f.key == 'speed');
+          expect(speed.defaultValue, 80);
+          expect(speed.sanitize(0), 30);
+          expect(speed.sanitize(300), 200);
         }
         if (language == 'es') {
           final forbidden =
@@ -61,9 +82,11 @@ void main() {
         }
       }
     }
+    expect(TemplateManifest('custom', {'height': 64}).height, 64);
+    expect(TemplateManifest('custom', {'height': 10}).height, 32);
   });
 
-  test('gallery screens work with SDK v1 in Node', () async {
+  test('gallery screens and widgets work with SDK v1 in Node', () async {
     final temp = await Directory.systemTemp.createTemp('gallery-screens-');
     try {
       final script = File('${temp.path}/screens.cjs');
@@ -76,8 +99,17 @@ void main() {
               'fields': item.defaults('en'),
             },
       };
+      final widgets = {
+        for (final id in ['ticker', 'latest-support', 'top-supporters'])
+          id: {
+            'en': galleryCatalog[id]!.buildFiles('en'),
+            'es': galleryCatalog[id]!.buildFiles('es'),
+            'fields': galleryCatalog[id]!.defaults('en'),
+          },
+      };
       await script.writeAsString('const sdk = ${jsonEncode(sdkV1())};\n'
           'const screens = ${jsonEncode(screens)};\n'
+          'const widgets = ${jsonEncode(widgets)};\n'
           '$_nodeChecks');
       final result =
           await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
@@ -106,20 +138,45 @@ class Element extends EventTarget {
     this.hidden = false;
     this.offsetHeight = 900;
     this.clientHeight = 700;
+    this.clientWidth = 1920;
+    this.animations = [];
   }
   set innerHTML(value) { throw Error('Unexpected HTML: ' + value); }
   insertAdjacentHTML() { throw Error('Unexpected HTML insertion'); }
   set textContent(value) { this.replaceChildren(); this.text = String(value); }
   get textContent() { return (this.text || '') + this.children.map(child => child.textContent).join(''); }
+  get offsetWidth() {
+    if (this.style.width) return parseInt(this.style.width, 10);
+    if (this.className === 'ticker-group') return this.children.reduce((width, child) => width + child.offsetWidth, 0);
+    return 92 + this.textContent.length * 9;
+  }
+  get offsetTop() { return (this.parent?.children.indexOf(this) ?? 0) * 66; }
   append(...children) {
-    for (const child of children) {
-      child.parent = this;
-      this.children.push(child);
-    }
+    for (const child of children) this.insertBefore(child, null);
+  }
+  prepend(child) { this.insertBefore(child, this.children[0] || null); }
+  insertBefore(child, reference) {
+    if (child.parent) child.parent.children.splice(child.parent.children.indexOf(child), 1);
+    child.parent = this;
+    const index = reference ? this.children.indexOf(reference) : this.children.length;
+    this.children.splice(index, 0, child);
   }
   appendChild(child) { this.append(child); return child; }
-  replaceChildren(...children) { for (const child of [...this.children]) child.remove(); this.append(...children); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); }
+  replaceChildren(...children) {
+    for (const child of this.children) child.parent = null;
+    this.children = [];
+    this.text = '';
+    this.append(...children);
+  }
+  remove() {
+    if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this);
+    this.parent = null;
+  }
+  animate(frames, options) {
+    const animation = {frames, options, cancel() { this.cancelled = true; }};
+    this.animations.push(animation);
+    return animation;
+  }
   setAttribute(k, v) { this.attrs[k] = v; }
   getAttribute(k) { return this.attrs[k] ?? null; }
   removeAttribute(k) { delete this.attrs[k]; if (k === 'src') delete this.src; }
@@ -128,11 +185,17 @@ class Element extends EventTarget {
   load() {}
 }
 
-function page(id, lang = 'en', {demo = false, reduced = false} = {}) {
-  const files = screens[id][lang];
-  const nodes = Object.fromEntries([...files['index.html'].matchAll(/id="([^"]+)"/g)]
-    .map(([, key]) => [key, new Element()]));
-  nodes.messages.append(new Element('p'), new Element('p'));
+function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
+  const item = (screens[id] || widgets[id]);
+  const files = item[lang];
+  const nodes = Object.fromEntries([...files['index.html'].matchAll(/<([a-z0-9]+)\b[^>]*\bid="([^"]+)"([^>]*)>/g)]
+    .map(([, tag, key, attributes]) => {
+      const node = new Element(tag);
+      node.hidden = /\bhidden\b/.test(attributes);
+      return [key, node];
+    }));
+  nodes.messages?.append(new Element('p'), new Element('p'));
+  if (id === 'ticker') nodes.stage.clientWidth = 1920;
   const logo = new Element('span');
   let now = new Date('2026-11-17T12:00:00Z').getTime(), nextTimer = 0;
   const timers = new Map();
@@ -159,6 +222,7 @@ function page(id, lang = 'en', {demo = false, reduced = false} = {}) {
     navigator: {language: lang}, URLSearchParams, AbortController,
     fetch: async url => {
       if (url === './template.json') return {ok: true, json: async () => JSON.parse(files['template.json'])};
+      if (url === './values.json') return {ok: true, json: async () => values};
       return {ok: url.startsWith('/media/'), headers: {get: () => url.endsWith('a') ? 'video/mp4' : 'image/png'}};
     },
     console: {...console, error: error => errors.push(error)},
@@ -197,8 +261,8 @@ function page(id, lang = 'en', {demo = false, reduced = false} = {}) {
     now = end;
     assert.deepEqual(errors, []);
   }
-  return {nodes, win, errors, advance, send, logo,
-    fields: values => send('fields', {...screens[id].fields, language: lang, ...values})};
+  return {nodes, win, errors, advance, send, logo, root: context.document.documentElement,
+    fields: values => send('fields', {...item.fields, language: lang, ...values})};
 }
 
 const literal = '<img src=x onerror=evil()> 🌙';
@@ -213,6 +277,202 @@ const payload = {
   top: {gift: [{name: literal, platform: 'twitch', value: 5}]},
   topChatters: [{name: literal, platform: 'kick', messages: 38}]
 };
+
+function checkTicker() {
+  const ticker = page('ticker');
+  const track = ticker.nodes['ticker-track'];
+  const superchat = {...support('superchat', literal, 17), amount: '$5.00'};
+  ticker.send('session', {...payload, latest: {superchat, gift}}, true);
+  ticker.send('goals', [{title: 'Subs goal ' + literal, current: 31, target: 50}], true);
+  const now = Date.parse('2026-11-17T12:00:00Z');
+  ticker.send('timer', {phase: 'running', endsAtMs: now + 65000, serverNowMs: now}, true);
+  ticker.fields({messages: 'First | | ' + literal, speed: 100});
+  assert.equal(ticker.nodes.stage.hidden, false);
+  assert.equal(track.classList.contains('rolling'), true);
+  const first = track.children[0];
+  const labels = group => group.children.map(item => item.children[0].textContent);
+  assert.deepEqual(labels(first), ['First', literal, 'Latest Super Chat: ' + literal + ' $5.00',
+    'Latest gift: ' + literal + ' · Gifted 1 sub', 'Subs goal ' + literal + ' 31/50', 'Subathon · 1:05']);
+  assert.deepEqual(labels(track.children[1]), labels(first));
+  const duration = first.offsetWidth / 100 + 's';
+  assert.equal(track.style['--ticker-duration'], duration);
+  assert.equal(track.style['--ticker-distance'], -first.offsetWidth + 'px');
+  const timerNode = first.children[5].children[0].children[0];
+  ticker.advance(1000);
+  assert.equal(timerNode.textContent, '1:04');
+  assert.equal(track.children[1].children[5].children[0].children[0].textContent, '1:04');
+  assert.equal(track.children[0], first);
+  assert.equal(track.style['--ticker-duration'], duration);
+
+  const boundary = () => track.dispatchEvent(Object.assign(new Event('animationiteration'), {animationName: 'ticker-scroll'}));
+  ticker.fields({messages: 'Updated', speed: 100, showLatest: false, showGoals: false, showTimer: false});
+  assert.equal(track.children[0], first);
+  assert.equal(track.style['--ticker-duration'], duration);
+  boundary();
+  const replacement = track.children[0];
+  const tickerSpeed = () => track.style['--ticker-duration'];
+  assert.deepEqual(labels(replacement), ['Updated']);
+  assert.equal(tickerSpeed(), replacement.offsetWidth / 100 + 's');
+  assert.ok(track.children.length * replacement.offsetWidth >= 1920 + replacement.offsetWidth);
+  ticker.fields({messages: 'Updated', speed: 200, showLatest: false, showGoals: false, showTimer: false});
+  assert.equal(tickerSpeed(), replacement.offsetWidth / 100 + 's');
+  boundary();
+  assert.equal(track.children[0], replacement);
+  assert.equal(tickerSpeed(), replacement.offsetWidth / 200 + 's');
+  boundary();
+  assert.equal(track.children[0], replacement);
+  ticker.fields({showCustom: false, showLatest: false, showGoals: false, showTimer: false});
+  assert.equal(ticker.nodes.stage.hidden, false);
+  boundary();
+  assert.equal(ticker.nodes.stage.hidden, true);
+  ticker.fields({showCustom: false, showLatest: false, showGoals: false, showTimer: false, showEmpty: true});
+  assert.deepEqual(labels(track.children[0]), ['Ticker']);
+
+  const still = page('ticker', 'es', {reduced: true});
+  still.fields({messages: 'Hola | ' + literal});
+  const line = still.nodes['ticker-still'];
+  assert.equal(still.nodes['ticker-track'].hidden, true);
+  assert.equal(line.children.length, 1);
+  assert.equal(line.textContent, 'Hola');
+  still.advance(4999);
+  assert.equal(line.textContent, 'Hola');
+  still.advance(1);
+  assert.equal(line.children.length, 1);
+  assert.equal(line.textContent, literal);
+  still.advance(5000);
+  assert.equal(line.textContent, 'Hola');
+  console.log('PASS: ticker renders literal messages, support, goals and timer; measured speed, seamless copies, boundary updates, empty state and 5s reduced-motion rotation');
+}
+
+function checkLatestSupport() {
+  const latest = page('latest-support', 'es');
+  const display = latest.nodes['support-display'];
+  const layers = [latest.nodes['support-a'], latest.nodes['support-b']];
+  const active = () => layers.find(layer => layer.classList.contains('active'));
+  const animations = () => layers.reduce((count, layer) => count + layer.animations.length, 0);
+  latest.fields({showEmpty: false});
+  assert.equal(latest.nodes.stage.hidden, true);
+  latest.send('session', payload, true);
+  assert.equal(active().children[0].children[1].textContent, literal);
+  assert.equal(active().children[0].children[0].style['--platform'], '#9146ff');
+  assert.equal(active().children[1].textContent, 'Regaló 1 suscripción');
+  assert.equal(animations(), 0);
+  const raid = {...support('raid', 'Mar 🌙', 17), count: 42};
+  const next = {...payload, latest: {gift, bits: null, raid}, supporters: [raid, ...payload.supporters]};
+  latest.send('session', next);
+  assert.equal(active().textContent, 'Mar 🌙Raid con 42 espectadores');
+  assert.equal(animations(), 1);
+  latest.send('session', {...next, messages: 1000});
+  latest.send('session', next, true);
+  latest.fields({accent: '#123456', logo: 'C:\\private\\logo.png'});
+  assert.equal(animations(), 1);
+  assert.equal(latest.logo.hidden, true);
+  latest.fields({mode: 'rotate', seconds: 4, logo: '0123456789abcdef'});
+  assert.equal(latest.logo.children[0].src, '/media/0123456789abcdef');
+  assert.match(active().textContent, /Regaló/);
+  latest.advance(2500);
+  latest.send('session', {...next, chatters: 48});
+  latest.advance(1500);
+  assert.equal(active().textContent, 'Mar 🌙Raid con 42 espectadores');
+  assert.equal(display.classList.contains('fading'), true);
+  latest.advance(4000);
+  assert.match(active().textContent, /Regaló/);
+  assert.equal(animations(), 1);
+  latest.send('session', null, true);
+  assert.equal(latest.nodes.empty.hidden, false);
+  assert.equal(latest.nodes.empty.textContent, 'Todavía no hay apoyos');
+  console.log('PASS: latest support uses localized descriptions and literal names, animates only on new support, rotates present types and handles empty state and media IDs');
+}
+
+function checkTopSupporters() {
+  const top = page('top-supporters');
+  const ranks = top.nodes.ranks;
+  const entry = (name, value, platform = 'twitch') => ({name, value, platform});
+  const giftEntries = [entry(literal, 10), entry('Viewer Two', 5, 'kick'),
+    ...Array.from({length: 4}, (_, i) => entry('Viewer ' + (i + 3), 4 - i))];
+  const session = {...payload, superchatCounts: {'$': 2, 'MX$': 6}, top: {
+    superchat: {'$': [entry('Dollar', 11, 'youtube')], 'MX$': [entry(literal, 100.5, 'youtube')]},
+    bits: [entry('Cheerer', 1500)], gift: giftEntries, kicks: [entry('Kicker', 300, 'kick')]
+  }};
+  const rows = () => ranks.children.map(row => row.children.filter((_, index) => index !== 1).map(node => node.textContent));
+  top.send('session', session, true);
+  for (const [type, name, value, heading] of [
+    ['superchat', literal, 'MX$100.50', 'Top Super Chats · MX$'], ['bits', 'Cheerer', '1,500', 'Top bits'],
+    ['gift', literal, '10', 'Top gifted subs'], ['kicks', 'Kicker', '300', 'Top kicks'],
+    ['chatters', literal, '38', 'Top chatters']
+  ]) {
+    top.fields({type});
+    assert.deepEqual(rows()[0], ['1', name, value]);
+    assert.equal(top.nodes.category.textContent, heading);
+  }
+  top.fields({type: 'superchat', currency: '$'});
+  assert.deepEqual(rows()[0], ['1', 'Dollar', '$11']);
+  top.fields({type: 'gift'});
+  assert.equal(rows().length, 5);
+  assert.deepEqual(rows()[4], ['5', 'Viewer 5', '2']);
+  const [first, second] = ranks.children;
+  const updated = {...session, top: {...session.top, gift: [{...giftEntries[1], value: 12},
+    giftEntries[0], ...giftEntries.slice(2)]}};
+  top.send('session', updated);
+  assert.equal(ranks.children[0], second);
+  assert.equal(ranks.children[1], first);
+  assert.deepEqual(rows()[0], ['1', 'Viewer Two', '12']);
+  assert.equal(first.animations[0].frames[0].transform, 'translateY(-66px)');
+  assert.equal(second.animations[0].frames[0].transform, 'translateY(66px)');
+  top.send('session', session, true);
+  assert.equal(ranks.children[0], first);
+  assert.equal(first.animations.length, 1);
+  assert.equal(second.animations.length, 1);
+  assert.equal(first.animations[0].cancelled, true);
+  assert.equal(second.animations[0].cancelled, true);
+  top.send('session', session);
+  assert.equal(first.animations.length, 1);
+
+  const auto = page('top-supporters', 'es');
+  auto.fields({seconds: 4});
+  assert.equal(auto.nodes.empty.hidden, false);
+  auto.send('session', {...session, top: {gift: [], bits: session.top.bits}, topChatters: session.topChatters}, true);
+  assert.equal(auto.nodes.category.textContent, 'Más bits');
+  auto.advance(4000);
+  assert.equal(auto.nodes.category.textContent, 'Quienes más escribieron');
+  auto.advance(4000);
+  assert.equal(auto.nodes.category.textContent, 'Más bits');
+  console.log('PASS: top renders all five rankings, currencies, literal names, a five-row cap and live rank movement; replay stays still and auto skips empty types');
+}
+
+async function checkWidgetDemos() {
+  for (const lang of ['en', 'es']) {
+    for (const theme of ['neon', 'minimal', 'warm']) {
+      const branded = theme !== 'neon';
+      const options = {demo: true, values: {theme, logo: branded ? '0123456789abcdef' : ''}};
+      const ticker = page('ticker', lang, options);
+      const latest = page('latest-support', lang, options);
+      const top = page('top-supporters', lang, options);
+      await new Promise(setImmediate);
+      for (const demo of [ticker, latest, top]) {
+        assert.deepEqual(demo.errors, []);
+        assert.equal(demo.nodes.stage.hidden, false);
+        assert.equal(demo.root.dataset.theme, theme);
+        assert.equal(demo.root.lang, lang);
+        assert.equal(demo.logo.hidden, !branded);
+      }
+      const rolling = ticker.nodes['ticker-track'].children[0];
+      assert.match(rolling.textContent, lang === 'es' ? /Meta de suscripciones.*Subatón · 15:00/ : /Subs goal.*Subathon · 15:00/);
+      ticker.advance(1000);
+      assert.match(rolling.textContent, /14:59/);
+      const layer = latest.nodes['support-a'];
+      const supporter = layer.textContent;
+      latest.advance(8000);
+      assert.notEqual(layer.textContent, supporter);
+      assert.equal(layer.animations.length, 1);
+      const category = top.nodes.category.textContent;
+      assert.ok(top.nodes.ranks.children.length > 0);
+      top.advance(8000);
+      assert.notEqual(top.nodes.category.textContent, category);
+    }
+  }
+  console.log('PASS: SDK demo exercises all three widgets in English and Spanish with all themes and optional branding');
+}
 
 async function main() {
   const starting = page('starting-soon');
@@ -369,6 +629,10 @@ async function main() {
     }
   }
   console.log('PASS: SDK demo renders all four screens with seeded data in English and Spanish');
+  checkTicker();
+  checkLatestSupport();
+  checkTopSupporters();
+  await checkWidgetDemos();
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
 ''';

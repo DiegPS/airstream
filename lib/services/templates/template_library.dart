@@ -67,9 +67,9 @@ class TemplateManifest {
         sdk = raw['sdk'] is int ? raw['sdk'] as int : 1,
         width =
             raw['width'] is int ? (raw['width'] as int).clamp(100, 3840) : 800,
-        height = raw['height'] is int
-            ? (raw['height'] as int).clamp(100, 2160)
-            : 600,
+        // Low enough for bars such as the gallery ticker (64 px).
+        height =
+            raw['height'] is int ? (raw['height'] as int).clamp(32, 2160) : 600,
         network = raw['network'] == true,
         gallery = _galleryVersion(raw['gallery']) {
     final entries = raw['fields'];

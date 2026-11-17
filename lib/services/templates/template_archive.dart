@@ -330,16 +330,8 @@ String _install(String root, Map<String, Uint8List> files, String base) {
       final path = p.join(root, id);
       if (FileSystemEntity.typeSync(path, followLinks: false) ==
           FileSystemEntityType.notFound) {
-        try {
-          temp.renameSync(path);
-          return id;
-        } on FileSystemException {
-          // Another install may have claimed this ID between lookup and rename.
-          if (FileSystemEntity.typeSync(path, followLinks: false) ==
-              FileSystemEntityType.notFound) {
-            rethrow;
-          }
-        }
+        if (_renameWithRetry(temp, path)) return id;
+        // Another install claimed this ID between lookup and rename.
       }
       final end = '-${suffix++}';
       id = '${base.substring(0, min(base.length, 40 - end.length))}$end';
@@ -362,5 +354,24 @@ Uint8List _readBounded(File file, int limit, String reason) {
     return result.takeBytes();
   } finally {
     handle.closeSync();
+  }
+}
+
+/// Renames [from] to [to]. Windows can briefly lock a folder whose files were
+/// just written (antivirus, indexing), so a failed rename is retried while the
+/// target is still free. Returns false when another install took [to].
+bool _renameWithRetry(Directory from, String to) {
+  for (var attempt = 1;; attempt++) {
+    try {
+      from.renameSync(to);
+      return true;
+    } on FileSystemException {
+      if (FileSystemEntity.typeSync(to, followLinks: false) !=
+          FileSystemEntityType.notFound) {
+        return false;
+      }
+      if (attempt == 5) rethrow;
+      sleep(Duration(milliseconds: 40 * attempt));
+    }
   }
 }

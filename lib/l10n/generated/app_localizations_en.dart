@@ -2889,4 +2889,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryCreditsLoop => 'Repeat credits';
+
+  @override
+  String get galleryTicker => 'Ticker';
+
+  @override
+  String get galleryTickerDescription =>
+      'Scroll messages, recent support, goals, and subathon time across the stream.';
+
+  @override
+  String get galleryLatestSupport => 'Latest support';
+
+  @override
+  String get galleryLatestSupportDescription =>
+      'Spotlight the newest supporter or rotate through support types.';
+
+  @override
+  String get galleryTopSupporters => 'Top of the stream';
+
+  @override
+  String get galleryTopSupportersDescription =>
+      'Show the five leading supporters or chatters in a session.';
+
+  @override
+  String get galleryTickerMessages => 'Ticker messages (separate with |)';
+
+  @override
+  String get galleryTickerSpeed => 'Scroll speed (pixels per second)';
+
+  @override
+  String get galleryTickerShowCustom => 'Show custom messages';
+
+  @override
+  String get galleryTickerShowLatest => 'Show the latest support by type';
+
+  @override
+  String get galleryTickerShowGoals => 'Show goal progress';
+
+  @override
+  String get galleryTickerShowTimer => 'Show the running subathon timer';
+
+  @override
+  String get galleryTickerShowEmpty => 'Show the ticker title when empty';
+
+  @override
+  String get galleryLatestSupportMode => 'Support display mode';
+
+  @override
+  String get galleryRotationSeconds => 'Seconds between entries';
+
+  @override
+  String get galleryRankingType => 'Leaderboard type';
 }

@@ -4694,6 +4694,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repeat credits'**
   String get galleryCreditsLoop;
+
+  /// No description provided for @galleryTicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticker'**
+  String get galleryTicker;
+
+  /// No description provided for @galleryTickerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll messages, recent support, goals, and subathon time across the stream.'**
+  String get galleryTickerDescription;
+
+  /// No description provided for @galleryLatestSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest support'**
+  String get galleryLatestSupport;
+
+  /// No description provided for @galleryLatestSupportDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Spotlight the newest supporter or rotate through support types.'**
+  String get galleryLatestSupportDescription;
+
+  /// No description provided for @galleryTopSupporters.
+  ///
+  /// In en, this message translates to:
+  /// **'Top of the stream'**
+  String get galleryTopSupporters;
+
+  /// No description provided for @galleryTopSupportersDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the five leading supporters or chatters in a session.'**
+  String get galleryTopSupportersDescription;
+
+  /// No description provided for @galleryTickerMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticker messages (separate with |)'**
+  String get galleryTickerMessages;
+
+  /// No description provided for @galleryTickerSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll speed (pixels per second)'**
+  String get galleryTickerSpeed;
+
+  /// No description provided for @galleryTickerShowCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Show custom messages'**
+  String get galleryTickerShowCustom;
+
+  /// No description provided for @galleryTickerShowLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the latest support by type'**
+  String get galleryTickerShowLatest;
+
+  /// No description provided for @galleryTickerShowGoals.
+  ///
+  /// In en, this message translates to:
+  /// **'Show goal progress'**
+  String get galleryTickerShowGoals;
+
+  /// No description provided for @galleryTickerShowTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the running subathon timer'**
+  String get galleryTickerShowTimer;
+
+  /// No description provided for @galleryTickerShowEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the ticker title when empty'**
+  String get galleryTickerShowEmpty;
+
+  /// No description provided for @galleryLatestSupportMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Support display mode'**
+  String get galleryLatestSupportMode;
+
+  /// No description provided for @galleryRotationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds between entries'**
+  String get galleryRotationSeconds;
+
+  /// No description provided for @galleryRankingType.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard type'**
+  String get galleryRankingType;
 }
 
 class _AppLocalizationsDelegate

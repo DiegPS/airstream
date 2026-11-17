@@ -942,5 +942,22 @@
   "galleryCurrency": "Moneda de Super Chat (vacío para elegir automáticamente)",
   "galleryFinalText": "Mensaje final",
   "galleryCreditsSpeed": "Velocidad de los créditos (píxeles por segundo)",
-  "galleryCreditsLoop": "Repetir los créditos"
+  "galleryCreditsLoop": "Repetir los créditos",
+
+  "galleryTicker": "Barra informativa",
+  "galleryTickerDescription": "Desplaza mensajes, apoyos recientes, metas y el tiempo de subatón durante el directo.",
+  "galleryLatestSupport": "Último apoyo",
+  "galleryLatestSupportDescription": "Destaca el apoyo más reciente o alterna entre los tipos de apoyo.",
+  "galleryTopSupporters": "Top del directo",
+  "galleryTopSupportersDescription": "Muestra los cinco primeros puestos por apoyos o mensajes del directo.",
+  "galleryTickerMessages": "Mensajes de la barra (separados con |)",
+  "galleryTickerSpeed": "Velocidad de desplazamiento (píxeles por segundo)",
+  "galleryTickerShowCustom": "Mostrar mensajes personalizados",
+  "galleryTickerShowLatest": "Mostrar el último apoyo de cada tipo",
+  "galleryTickerShowGoals": "Mostrar el progreso de las metas",
+  "galleryTickerShowTimer": "Mostrar el temporizador de subatón en marcha",
+  "galleryTickerShowEmpty": "Mostrar el título de la barra cuando esté vacía",
+  "galleryLatestSupportMode": "Modo de visualización de apoyos",
+  "galleryRotationSeconds": "Segundos entre cambios",
+  "galleryRankingType": "Tipo de clasificación"
 }

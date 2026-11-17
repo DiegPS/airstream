@@ -179,8 +179,9 @@ Map<String, String> screenFiles(
 </html>
 ''',
       'style.css': '$galleryCss\n$_screenCss\n$css',
-      'script.js':
-          '(() => {\n"use strict";\n$galleryScript\n$_screenScript\n$script\n})();',
+      'script.js': '(() => {\n"use strict";\n$galleryScript\n'
+          '$gallerySupportTypes\n$galleryDomScript\n$galleryRankingScript\n'
+          '$_screenScript\n$script\n})();',
     };
 
 const _screenCss = r'''
@@ -303,39 +304,34 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 #messages p.active { opacity: 1; }
 ''';
 
-const _screenScript = r'''
-const byId = id => document.getElementById(id);
-const stage = byId('stage');
-const backgroundMedia = byId('background-media');
-const messages = byId('messages');
-const messageLines = [...messages.children];
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-const galleryDemo = Airstream.demo && location.pathname.startsWith('/gallery/');
+const gallerySupportTypes = r'''
 const supportTypes = ['superchat', 'membership', 'bits', 'subscription', 'gift', 'raid', 'kicks'];
-const screenCopy = {
+''';
+
+const gallerySupportDescriptions = r'''
+const supportDescriptions = {
   en: {
-    chat: 'Live chat', latest: 'Latest support', topChatters: 'Top chatters',
-    thanks: 'Thanks for watching', credits: 'Credits', farewell: 'See you at the next stream.',
-    rotating: 'Say hello in chat | Thanks for spending time with us',
-    types: {superchat: 'Super Chats', membership: 'Members', bits: 'Bits',
-      subscription: 'Subscribers', gift: 'Gifted subs', raid: 'Raids', kicks: 'Kicks'},
-    rankings: {superchat: 'Top Super Chats', bits: 'Top bits', gift: 'Top gifted subs', kicks: 'Top kicks'}
+    superchat: s => ['Super Chat', s.amount].filter(Boolean).join(' '),
+    membership: s => s.months ? n(s.months) + '-month member' : 'New member',
+    bits: s => s.amount || (s.value == null ? 'Bits' : n(s.value) + ' Bits'),
+    subscription: s => s.months ? n(s.months) + (s.months === 1 ? ' month' : ' months') + ' subscribed' : 'New subscription',
+    gift: s => 'Gifted ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' sub' : ' subs'),
+    raid: s => s.count == null ? 'Raid' : 'Raid with ' + n(s.count) + (s.count === 1 ? ' viewer' : ' viewers'),
+    kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' Kicks'
   },
   es: {
-    chat: 'Chat en vivo', latest: 'Apoyos recientes', topChatters: 'Quienes más escribieron',
-    thanks: 'Gracias por acompañarnos', credits: 'Créditos', farewell: 'Nos vemos en el próximo directo.',
-    rotating: 'Saluda en el chat | Gracias por pasar este rato aquí',
-    types: {superchat: 'Super Chats', membership: 'Miembros', bits: 'Bits',
-      subscription: 'Suscriptores', gift: 'Regalos', raid: 'Raids', kicks: 'Kicks'},
-    rankings: {superchat: 'Mayores Super Chats', bits: 'Más bits', gift: 'Más regalos', kicks: 'Más kicks'}
+    superchat: s => ['Super Chat', s.amount].filter(Boolean).join(' '),
+    membership: s => s.months ? 'Membresía de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva membresía',
+    bits: s => s.value == null ? (s.amount || 'Bits') : n(s.value) + ' bits',
+    subscription: s => s.months ? 'Suscripción de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva suscripción',
+    gift: s => 'Regaló ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' suscripción' : ' suscripciones'),
+    raid: s => s.count == null ? 'Raid' : 'Raid con ' + n(s.count) + (s.count === 1 ? ' espectador' : ' espectadores'),
+    kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' kicks'
   }
 };
-let fields = {};
-let session = null;
-let language = 'en';
-let numberFormat = new Intl.NumberFormat(language);
-const copy = () => screenCopy[language];
-const number = value => numberFormat.format(value);
+''';
+
+const galleryDomScript = r'''
 function textElement(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -352,12 +348,75 @@ function namedEntry(tag, platform, name) {
   node.append(dot, label);
   return {node, label};
 }
+''';
 
-function fitStage() {
-  stage.style.setProperty('--stage-scale', Math.min(window.innerWidth / 1920, window.innerHeight / 1080));
+const galleryRankingScript = r'''
+const rankingLabels = {
+  en: {superchat: 'Top Super Chats', bits: 'Top bits', gift: 'Top gifted subs',
+    kicks: 'Top kicks', chatters: 'Top chatters'},
+  es: {superchat: 'Mayores Super Chats', bits: 'Más bits', gift: 'Más regalos',
+    kicks: 'Más kicks', chatters: 'Quienes más escribieron'}
+};
+
+function rankedSupport(data, currencyPreference) {
+  const rankings = data?.top;
+  if (!rankings) return [];
+  const currencies = Object.keys(rankings.superchat || {}).filter(key => rankings.superchat[key]?.length);
+  const counts = new Map();
+  for (const support of data.supporters || []) {
+    if (support.type === 'superchat') counts.set(support.currency, (counts.get(support.currency) || 0) + 1);
+  }
+  const uses = key => data.superchatCounts?.[key] ?? counts.get(key) ?? 0;
+  const currency = currencies.includes(currencyPreference) ? currencyPreference :
+    currencies.sort((a, b) => uses(b) - uses(a) ||
+      rankings.superchat[b].length - rankings.superchat[a].length)[0];
+  return [
+    {type: 'superchat', currency, entries: rankings.superchat?.[currency]},
+    ...['bits', 'gift', 'kicks'].map(type => ({type, entries: rankings[type]}))
+  ].filter(group => group.entries?.length);
 }
-fitStage();
-window.addEventListener('resize', fitStage);
+
+function rankValue(group, value) {
+  if (group.type !== 'superchat' || !group.currency) return number(value);
+  const digits = Number.isInteger(value) ? 0 : 2;
+  return group.currency + new Intl.NumberFormat(language, {minimumFractionDigits: digits, maximumFractionDigits: 2}).format(value);
+}
+
+function rankingTitle(group) {
+  return rankingLabels[language][group.type] + (group.currency ? ' · ' + group.currency : '');
+}
+''';
+
+const _screenScript = r'''
+const stage = byId('stage');
+const backgroundMedia = byId('background-media');
+const messages = byId('messages');
+const messageLines = [...messages.children];
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const galleryDemo = Airstream.demo && location.pathname.startsWith('/gallery/');
+const screenCopy = {
+  en: {
+    chat: 'Live chat', latest: 'Latest support', topChatters: rankingLabels.en.chatters,
+    thanks: 'Thanks for watching', credits: 'Credits', farewell: 'See you at the next stream.',
+    rotating: 'Say hello in chat | Thanks for spending time with us',
+    types: {superchat: 'Super Chats', membership: 'Members', bits: 'Bits',
+      subscription: 'Subscribers', gift: 'Gifted subs', raid: 'Raids', kicks: 'Kicks'}
+  },
+  es: {
+    chat: 'Chat en vivo', latest: 'Apoyos recientes', topChatters: rankingLabels.es.chatters,
+    thanks: 'Gracias por acompañarnos', credits: 'Créditos', farewell: 'Nos vemos en el próximo directo.',
+    rotating: 'Saluda en el chat | Gracias por pasar este rato aquí',
+    types: {superchat: 'Super Chats', membership: 'Miembros', bits: 'Bits',
+      subscription: 'Suscriptores', gift: 'Regalos', raid: 'Raids', kicks: 'Kicks'}
+  }
+};
+let fields = {};
+let session = null;
+let language = 'en';
+let numberFormat = new Intl.NumberFormat(language);
+const copy = () => screenCopy[language];
+const number = value => numberFormat.format(value);
+fitGalleryStage(stage, 1920, 1080);
 
 let mediaRequest;
 let mediaKey;
@@ -414,7 +473,7 @@ function updateMessages() {
   if (source === rotationSource) return;
   rotationSource = source;
   clearInterval(rotation);
-  const lines = source.split('|').map(line => line.trim()).filter(Boolean);
+  const lines = splitGalleryMessages(source);
   messages.hidden = lines.length === 0;
   let index = 0, front = 0;
   messageLines[0].textContent = lines[0] || '';
@@ -425,8 +484,7 @@ function updateMessages() {
     const back = 1 - front;
     index = (index + 1) % lines.length;
     messageLines[back].textContent = lines[index];
-    messageLines[back].classList.add('active');
-    messageLines[front].classList.remove('active');
+    showGalleryLayer(messageLines, back);
     front = back;
   }, 8000);
 }
@@ -505,34 +563,6 @@ function subtitleText(value) {
   subtitle.hidden = !value;
 }
 
-function rankedSupport(data, currencyPreference) {
-  const rankings = data?.top;
-  if (!rankings) return [];
-  const currencies = Object.keys(rankings.superchat || {}).filter(key => rankings.superchat[key]?.length);
-  const counts = new Map();
-  for (const support of data.supporters || []) {
-    if (support.type === 'superchat') counts.set(support.currency, (counts.get(support.currency) || 0) + 1);
-  }
-  const uses = key => data.superchatCounts?.[key] ?? counts.get(key) ?? 0;
-  const currency = currencies.includes(currencyPreference) ? currencyPreference :
-    currencies.sort((a, b) => uses(b) - uses(a) ||
-      rankings.superchat[b].length - rankings.superchat[a].length)[0];
-  return [
-    {type: 'superchat', currency, entries: rankings.superchat?.[currency]},
-    ...['bits', 'gift', 'kicks'].map(type => ({type, entries: rankings[type]}))
-  ].filter(group => group.entries?.length);
-}
-
-function rankValue(group, value) {
-  if (group.type !== 'superchat' || !group.currency) return number(value);
-  const digits = Number.isInteger(value) ? 0 : 2;
-  return group.currency + new Intl.NumberFormat(language, {minimumFractionDigits: digits, maximumFractionDigits: 2}).format(value);
-}
-
-function rankingTitle(group) {
-  return copy().rankings[group.type] + (group.currency ? ' · ' + group.currency : '');
-}
-
 function configureScreen(onFields, onSession = () => {}) {
   let configured = false;
   Airstream.on('session', next => {
@@ -558,12 +588,30 @@ function configureScreen(onFields, onSession = () => {}) {
 ''';
 
 const galleryScript = r'''
+const byId = id => document.getElementById(id);
 const fonts = ['DM Sans', 'Barlow', 'Outfit'];
 const root = document.documentElement;
 const branding = document.querySelector('.gallery-logo');
 let logo;
 let fontSheet;
 let activeFont;
+function fitGalleryStage(stage, width, height) {
+  function fit() {
+    stage.style.setProperty('--stage-scale', Math.min(window.innerWidth / width, window.innerHeight / height));
+  }
+  fit();
+  window.addEventListener('resize', fit);
+}
+
+function splitGalleryMessages(source) {
+  return source.split('|').map(line => line.trim()).filter(Boolean);
+}
+
+function showGalleryLayer(layers, front) {
+  layers[front].classList.add('active');
+  layers[1 - front].classList.remove('active');
+}
+
 function applyGalleryFields(fields) {
   root.dataset.theme = ['neon', 'minimal', 'warm'].includes(fields.theme) ? fields.theme : 'neon';
   const language = fields.language === 'es' ? 'es' : 'en';
@@ -605,5 +653,98 @@ function applyGalleryFields(fields) {
     logo = null;
   }
   return language;
+}
+''';
+
+Map<String, String> galleryWidgetFiles(
+  int width,
+  int height,
+  String body,
+  String css,
+  String script,
+) =>
+    {
+      'index.html': '''
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <main id="stage" aria-labelledby="title" hidden>
+    $body
+  </main>
+</body>
+</html>
+''',
+      'style.css': '$galleryCss\n$_widgetCss\n'
+          '#stage { width: ${width}px; height: ${height}px; }\n$css',
+      'script.js': '(() => {\n"use strict";\n$galleryScript\n'
+          '$galleryDomScript\n$_widgetScript\n'
+          'fitGalleryStage(stage, $width, $height);\n$script\n})();',
+    };
+
+const _widgetCss = r'''
+html, body { width: 100%; height: 100%; overflow: hidden; }
+#stage {
+  --accent: var(--custom-accent, var(--theme-accent));
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  overflow: hidden;
+}
+.widget-panel {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+:root[data-theme="neon"] .widget-panel { box-shadow: inset 0 0 24px var(--glow); }
+.widget-header { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.widget-header h1, .widget-empty, .widget-layer p { margin: 0; }
+.widget-header .gallery-logo { flex-basis: 44px; height: 35px; }
+.widget-empty { color: var(--muted); }
+.screen-name { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.platform-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--platform);
+  box-shadow: inset 0 0 0 1px #322d3c45;
+}
+.widget-layer { grid-area: 1 / 1; opacity: 0; min-width: 0; }
+.widget-layer.active { opacity: 1; }
+''';
+
+const _widgetScript = r'''
+const stage = byId('stage');
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let fields = {};
+let language = 'en';
+let numberFormat = new Intl.NumberFormat(language);
+const number = value => numberFormat.format(value);
+
+function widgetTitle(title) {
+  byId('title').textContent = title;
+  document.title = title;
+}
+
+function configureWidget(onFields) {
+  Airstream.on('fields', next => {
+    fields = next || {};
+    const nextLanguage = applyGalleryFields(fields);
+    if (language !== nextLanguage) numberFormat = new Intl.NumberFormat(nextLanguage);
+    language = nextLanguage;
+    onFields();
+  });
+}
+
+function widgetRotation(advance) {
+  let interval;
+  let activeSeconds = 0;
+  return count => {
+    const seconds = count < 2 ? 0 : Math.min(30, Math.max(4, fields.seconds || 8));
+    if (activeSeconds === seconds) return;
+    activeSeconds = seconds;
+    clearInterval(interval);
+    if (seconds) interval = setInterval(advance, seconds * 1000);
+  };
 }
 ''';
