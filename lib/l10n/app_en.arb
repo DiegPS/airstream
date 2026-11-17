@@ -960,5 +960,72 @@
         "type": "String"
       }
     }
+  },
+  "templatesTitle": "Templates",
+  "templatesDescription": "A template is a folder of HTML, CSS and JavaScript in Documents\\Airstream\\Templates. Each template has its own OBS URL.",
+  "templatesNew": "New template",
+  "templatesOpenFolder": "Open folder",
+  "templatesTest": "Send test events",
+  "templatesTestSent": "Test events sent to open template pages",
+  "templatesTestEmpty": "Open a template in OBS first",
+  "templatesEmpty": "No templates yet",
+  "templatesInternet": "Internet access",
+  "templatesCopy": "Copy URL",
+  "templatesCopied": "URL copied",
+  "templatesPreview": "Preview",
+  "templatesEdit": "Edit code",
+  "templatesDelete": "Delete",
+  "templatesName": "Name",
+  "templatesRequired": "Enter a name",
+  "templatesCreate": "Create",
+  "templatesCancel": "Cancel",
+  "templatesSave": "Save",
+  "templatesSaved": "Changes saved",
+  "templatesClose": "Close",
+  "templatesDiscard": "Discard changes",
+  "templatesUnsaved": "Discard unsaved changes?",
+  "templatesLarge": "This file is over 512 KB. Edit it from the folder instead.",
+  "templatesFailed": "Could not complete the action. Check the template folder and try again.",
+  "templatesBlank": "Blank",
+  "templatesChat": "Chat",
+  "templatesAlerts": "Alerts",
+  "templatesGoal": "Goal bar",
+  "templatesBlankDescription": "Show the last SDK event",
+  "templatesChatDescription": "Live messages with emotes and avatars",
+  "templatesAlertsDescription": "Animated alerts, one at a time",
+  "templatesGoalDescription": "Progress towards one of your goals",
+  "templatesMissingIndex": "Missing index.html",
+  "templatesInvalidManifest": "Invalid template.json",
+  "templatesUnsupportedSdk": "Unsupported SDK version",
+  "templatesOversizedIndex": "index.html exceeds 2 MB",
+  "templatesOpenCount": "{count} open in OBS",
+  "templatesError": "Error in {source}:{line}: {message}",
+  "templatesDeleteConfirm": "Delete “{name}”? This deletes its folder and cannot be undone.",
+  "@templatesOpenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@templatesError": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "line": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "@templatesDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

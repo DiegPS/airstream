@@ -452,7 +452,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  static const _tabCount = 5;
+  static const _tabCount = 6;
 
   void _selectTab(int index) {
     if (index == _selectedTab) return;
@@ -590,6 +590,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           overlayCopyUrl,
           '$overlayCopyUrl/alerts',
         );
+      case 4:
+        return const TemplatesCard();
       default:
         return _buildSystemTab(ref, context, l, s, notifier);
     }
@@ -661,6 +663,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           label: l.obsAndOverlay,
           badgeColor: obsConnected ? const Color(0xFF5B9CFF) : null,
         ),
+        SidebarTabItem(
+            icon: Icons.dashboard_customize_outlined, label: l.templatesTitle),
         SidebarTabItem(
           icon: Icons.tune_rounded,
           label: l.systemTab,

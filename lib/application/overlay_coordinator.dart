@@ -101,6 +101,9 @@ class OverlayServerAdapter implements OverlayClient {
 class OverlayCoordinator {
   OverlayCoordinator({required OverlayClient overlay}) : _overlay = overlay;
 
+  OverlayServer? get templateServer => _overlay is OverlayServerAdapter
+      ? (_overlay as OverlayServerAdapter).server
+      : null;
   final OverlayClient _overlay;
   final _stateController = StreamController<OverlayServerState>.broadcast();
   OverlayServerState _state = const OverlayServerState();

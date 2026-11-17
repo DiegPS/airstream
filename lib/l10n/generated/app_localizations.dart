@@ -4004,6 +4004,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Audio'**
   String get mediaAudio;
+
+  /// No description provided for @templatesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Templates'**
+  String get templatesTitle;
+
+  /// No description provided for @templatesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'A template is a folder of HTML, CSS and JavaScript in Documents\\Airstream\\Templates. Each template has its own OBS URL.'**
+  String get templatesDescription;
+
+  /// No description provided for @templatesNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New template'**
+  String get templatesNew;
+
+  /// No description provided for @templatesOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get templatesOpenFolder;
+
+  /// No description provided for @templatesTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send test events'**
+  String get templatesTest;
+
+  /// No description provided for @templatesTestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test events sent to open template pages'**
+  String get templatesTestSent;
+
+  /// No description provided for @templatesTestEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a template in OBS first'**
+  String get templatesTestEmpty;
+
+  /// No description provided for @templatesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No templates yet'**
+  String get templatesEmpty;
+
+  /// No description provided for @templatesInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'Internet access'**
+  String get templatesInternet;
+
+  /// No description provided for @templatesCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy URL'**
+  String get templatesCopy;
+
+  /// No description provided for @templatesCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'URL copied'**
+  String get templatesCopied;
+
+  /// No description provided for @templatesPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get templatesPreview;
+
+  /// No description provided for @templatesEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit code'**
+  String get templatesEdit;
+
+  /// No description provided for @templatesDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get templatesDelete;
+
+  /// No description provided for @templatesName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get templatesName;
+
+  /// No description provided for @templatesRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get templatesRequired;
+
+  /// No description provided for @templatesCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get templatesCreate;
+
+  /// No description provided for @templatesCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get templatesCancel;
+
+  /// No description provided for @templatesSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get templatesSave;
+
+  /// No description provided for @templatesSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes saved'**
+  String get templatesSaved;
+
+  /// No description provided for @templatesClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get templatesClose;
+
+  /// No description provided for @templatesDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get templatesDiscard;
+
+  /// No description provided for @templatesUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard unsaved changes?'**
+  String get templatesUnsaved;
+
+  /// No description provided for @templatesLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is over 512 KB. Edit it from the folder instead.'**
+  String get templatesLarge;
+
+  /// No description provided for @templatesFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the action. Check the template folder and try again.'**
+  String get templatesFailed;
+
+  /// No description provided for @templatesBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank'**
+  String get templatesBlank;
+
+  /// No description provided for @templatesChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get templatesChat;
+
+  /// No description provided for @templatesAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get templatesAlerts;
+
+  /// No description provided for @templatesGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal bar'**
+  String get templatesGoal;
+
+  /// No description provided for @templatesBlankDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the last SDK event'**
+  String get templatesBlankDescription;
+
+  /// No description provided for @templatesChatDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Live messages with emotes and avatars'**
+  String get templatesChatDescription;
+
+  /// No description provided for @templatesAlertsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Animated alerts, one at a time'**
+  String get templatesAlertsDescription;
+
+  /// No description provided for @templatesGoalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress towards one of your goals'**
+  String get templatesGoalDescription;
+
+  /// No description provided for @templatesMissingIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing index.html'**
+  String get templatesMissingIndex;
+
+  /// No description provided for @templatesInvalidManifest.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid template.json'**
+  String get templatesInvalidManifest;
+
+  /// No description provided for @templatesUnsupportedSdk.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported SDK version'**
+  String get templatesUnsupportedSdk;
+
+  /// No description provided for @templatesOversizedIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'index.html exceeds 2 MB'**
+  String get templatesOversizedIndex;
+
+  /// No description provided for @templatesOpenCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} open in OBS'**
+  String templatesOpenCount(int count);
+
+  /// No description provided for @templatesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error in {source}:{line}: {message}'**
+  String templatesError(String source, String line, String message);
+
+  /// No description provided for @templatesDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”? This deletes its folder and cannot be undone.'**
+  String templatesDeleteConfirm(String name);
 }
 
 class _AppLocalizationsDelegate

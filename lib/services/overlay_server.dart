@@ -30,7 +30,10 @@ class OverlayServer {
   }) : _templateLibrary = templateLibrary;
 
   TemplateLibrary? _templateLibrary;
-  Future<TemplateLibrary> get templateLibrary async =>
+  Future<TemplateLibrary>? _templateLibraryFuture;
+  Future<TemplateLibrary> get templateLibrary =>
+      _templateLibraryFuture ??= _loadTemplateLibrary();
+  Future<TemplateLibrary> _loadTemplateLibrary() async =>
       _templateLibrary ??= TemplateLibrary(await TemplateLibrary.defaultRoot());
   final _templates = <WebSocketChannel, String>{};
   StreamSubscription<TemplateChange>? _templateSub;
@@ -90,6 +93,11 @@ class OverlayServer {
             jsonEncode({'type': 'fields', 'data': values, 'replay': true}));
       }
     } catch (_) {/* Disconnected or removed template. */}
+  }
+
+  void clearTemplateError(String id) {
+    _errors.remove(id);
+    _errorsController.add(templateErrors);
   }
 
   bool broadcastTemplateTest() {
@@ -526,7 +534,8 @@ class OverlayServer {
   Future<void> stop() async {
     await _templateSub?.cancel();
     _templateSub = null;
-    await _templateLibrary?.stopWatching();
+    // The Templates tab shares this watcher while the HTTP server is stopped.
+    // Library disposal owns watcher shutdown.
     _templates.clear();
     clearRecentAlerts();
     _lifecycleGeneration++;

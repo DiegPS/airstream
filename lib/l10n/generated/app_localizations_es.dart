@@ -2294,4 +2294,135 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mediaAudio => 'Audio';
+
+  @override
+  String get templatesTitle => 'Plantillas';
+
+  @override
+  String get templatesDescription =>
+      'Una plantilla es una carpeta con HTML, CSS y JavaScript en Documentos\\Airstream\\Templates. Cada plantilla tiene su propia URL para OBS.';
+
+  @override
+  String get templatesNew => 'Nueva plantilla';
+
+  @override
+  String get templatesOpenFolder => 'Abrir carpeta';
+
+  @override
+  String get templatesTest => 'Enviar eventos de prueba';
+
+  @override
+  String get templatesTestSent =>
+      'Eventos de prueba enviados a las páginas abiertas';
+
+  @override
+  String get templatesTestEmpty => 'Abre primero una plantilla en OBS';
+
+  @override
+  String get templatesEmpty => 'Aún no hay plantillas';
+
+  @override
+  String get templatesInternet => 'Acceso a internet';
+
+  @override
+  String get templatesCopy => 'Copiar URL';
+
+  @override
+  String get templatesCopied => 'URL copiada';
+
+  @override
+  String get templatesPreview => 'Vista previa';
+
+  @override
+  String get templatesEdit => 'Editar código';
+
+  @override
+  String get templatesDelete => 'Eliminar';
+
+  @override
+  String get templatesName => 'Nombre';
+
+  @override
+  String get templatesRequired => 'Escribe un nombre';
+
+  @override
+  String get templatesCreate => 'Crear';
+
+  @override
+  String get templatesCancel => 'Cancelar';
+
+  @override
+  String get templatesSave => 'Guardar';
+
+  @override
+  String get templatesSaved => 'Cambios guardados';
+
+  @override
+  String get templatesClose => 'Cerrar';
+
+  @override
+  String get templatesDiscard => 'Descartar cambios';
+
+  @override
+  String get templatesUnsaved => '¿Descartar los cambios sin guardar?';
+
+  @override
+  String get templatesLarge =>
+      'Este archivo supera los 512 KB. Edítalo desde la carpeta.';
+
+  @override
+  String get templatesFailed =>
+      'No se pudo completar la acción. Revisa la carpeta de la plantilla e inténtalo de nuevo.';
+
+  @override
+  String get templatesBlank => 'En blanco';
+
+  @override
+  String get templatesChat => 'Chat';
+
+  @override
+  String get templatesAlerts => 'Alertas';
+
+  @override
+  String get templatesGoal => 'Barra de meta';
+
+  @override
+  String get templatesBlankDescription => 'Muestra el último evento del SDK';
+
+  @override
+  String get templatesChatDescription =>
+      'Mensajes en vivo con emoticonos y avatares';
+
+  @override
+  String get templatesAlertsDescription => 'Alertas animadas, una a la vez';
+
+  @override
+  String get templatesGoalDescription => 'Progreso hacia una de tus metas';
+
+  @override
+  String get templatesMissingIndex => 'Falta index.html';
+
+  @override
+  String get templatesInvalidManifest => 'template.json no es válido';
+
+  @override
+  String get templatesUnsupportedSdk => 'Versión del SDK no compatible';
+
+  @override
+  String get templatesOversizedIndex => 'index.html supera los 2 MB';
+
+  @override
+  String templatesOpenCount(int count) {
+    return '$count abiertas en OBS';
+  }
+
+  @override
+  String templatesError(String source, String line, String message) {
+    return 'Error en $source:$line: $message';
+  }
+
+  @override
+  String templatesDeleteConfirm(String name) {
+    return '¿Eliminar «$name»? Se eliminará su carpeta y no se puede deshacer.';
+  }
 }

@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/ui/widgets/diagnostics_card.dart';
@@ -42,6 +44,161 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  testWidgets(
+      'Templates creates copies edits and deletes without creating root on open',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final temp = (await tester.runAsync(
+        () => io.Directory.systemTemp.createTemp('template-widget-')))!;
+    final library = TemplateLibrary(io.Directory('${temp.path}/templates'));
+    addTearDown(() async {
+      await tester.runAsync(() async {
+        await library.dispose();
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+    });
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('window_manager'), (call) async => false);
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('window_manager'), null));
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String;
+      }
+      return null;
+    });
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+      templateLibraryProvider.overrideWith((ref) async => library)
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Templates'));
+    await tester.pumpAndSettle();
+    expect(find.text('No templates yet'), findsOneWidget);
+    expect(await tester.runAsync(library.exists), isFalse);
+    Future<void> flushFiles() async {
+      for (var i = 0; i < 100; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)));
+      }
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> press(String key) async {
+      await tester.ensureVisible(find.byKey(Key(key)));
+      await tester.tap(find.byKey(Key(key)));
+      await flushFiles();
+    }
+
+    await press('templates-new');
+    await tester.enterText(
+        find.byKey(const Key('template-new-name')), 'Mi Chat ñ');
+    await press('template-starter-chat');
+    await press('template-new-create');
+    await flushFiles();
+    expect(find.byKey(const Key('template-mi-chat-n')), findsOneWidget);
+    await press('template-copy-mi-chat-n');
+    expect(copied, 'http://localhost:18080/custom/mi-chat-n/');
+    await press('template-menu-mi-chat-n');
+    await tester.tap(find.text('Edit code'));
+    await flushFiles();
+    await tester.pump();
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+        () async => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pumpAndSettle();
+    final index = await tester
+        .runAsync(() => library.readTemplateFile('mi-chat-n', 'index.html'));
+    await tester.tap(find.text('CSS'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('template-editor-css')), 'body { color: red; }');
+    await press('template-editor-save');
+    await tester.runAsync(
+        () async => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pumpAndSettle();
+    expect(
+        await tester
+            .runAsync(() => library.readTemplateFile('mi-chat-n', 'style.css')),
+        'body { color: red; }');
+    expect(
+        await tester.runAsync(
+            () => library.readTemplateFile('mi-chat-n', 'index.html')),
+        index);
+    await tester.enterText(
+        find.byKey(const Key('template-editor-css')), 'body { color: blue; }');
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await flushFiles();
+    expect(
+        await tester
+            .runAsync(() => library.readTemplateFile('mi-chat-n', 'style.css')),
+        'body { color: blue; }');
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final css = await library.safeFile('mi-chat-n', 'style.css');
+      await css!.delete();
+      final js = await library.safeFile('mi-chat-n', 'script.js');
+      await js!.writeAsString('x' * (TemplateLibrary.editorLimit + 1));
+    });
+    await press('template-menu-mi-chat-n');
+    await tester.tap(find.text('Edit code'));
+    await flushFiles();
+    await press('template-editor-save');
+    await tester.tap(find.text('JS'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('over 512 KB'), findsOneWidget);
+    expect(
+        await tester.runAsync(() => library.safeFile('mi-chat-n', 'style.css')),
+        isNull);
+    expect(
+        await tester.runAsync(() async =>
+            (await library.safeFile('mi-chat-n', 'script.js'))!.length()),
+        TemplateLibrary.editorLimit + 1);
+    await tester.tap(find.text('HTML'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('template-editor-html')), '<p>Unsaved</p>');
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard changes'));
+    await tester.pumpAndSettle();
+    expect(
+        await tester.runAsync(
+            () => library.readTemplateFile('mi-chat-n', 'index.html')),
+        index);
+    await press('template-menu-mi-chat-n');
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('cannot be undone'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await flushFiles();
+    await tester.pump();
+    await tester.runAsync(
+        () async => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pumpAndSettle();
+    expect(await tester.runAsync(() => library.get('mi-chat-n')), isNull);
+    expect(find.byKey(const Key('template-mi-chat-n')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('subathon starts adds five minutes pauses and resets in OBS',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1600);

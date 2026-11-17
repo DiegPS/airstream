@@ -370,9 +370,163 @@ class TemplateLibrary {
     }
   }
 
+  static const editorLimit = 512 * 1024;
+  static const editableFiles = {'index.html', 'style.css', 'script.js'};
+  Future<String> _folder(String id) async {
+    if (!validId(id)) throw ArgumentError.value(id);
+    final folder = Directory(p.join(root.path, id));
+    if (await FileSystemEntity.type(folder.path, followLinks: false) !=
+        FileSystemEntityType.directory) {
+      throw ArgumentError.value(id);
+    }
+    final realRoot = await root.resolveSymbolicLinks();
+    final real = await folder.resolveSymbolicLinks();
+    if (!p.equals(
+        Platform.isWindows ? p.dirname(real).toLowerCase() : p.dirname(real),
+        Platform.isWindows ? realRoot.toLowerCase() : realRoot)) {
+      throw ArgumentError.value(id);
+    }
+    return folder.path;
+  }
+
+  Future<void> deleteTemplate(String id) async {
+    final path = await _folder(id);
+    await Directory(path).delete(recursive: true);
+    _cache.remove(id);
+    _changes.add(TemplateChange(id, TemplateChangeKind.list));
+  }
+
+  Future<String> createTemplate(String name, Map<String, String> files) async {
+    if (name.trim().isEmpty ||
+        name.runes.length > 60 ||
+        files.keys
+            .any((k) => !{...editableFiles, 'template.json'}.contains(k))) {
+      throw ArgumentError('Invalid template');
+    }
+    await ensureRoot();
+    final base = templateId(name);
+    var id = base;
+    var suffix = 2;
+    while (await FileSystemEntity.type(p.join(root.path, id),
+            followLinks: false) !=
+        FileSystemEntityType.notFound) {
+      final ending = '-${suffix++}';
+      id =
+          '${base.substring(0, base.length.clamp(0, 40 - ending.length))}$ending';
+    }
+    await Directory(p.join(root.path, id)).create();
+    try {
+      for (final entry in files.entries) {
+        await _writeFile(id, entry.key, entry.value);
+      }
+    } catch (_) {
+      await deleteTemplate(id);
+      rethrow;
+    }
+    _changes.add(TemplateChange(id, TemplateChangeKind.list));
+    return id;
+  }
+
+  Future<String?> readTemplateFile(String id, String name) async {
+    if (!editableFiles.contains(name)) throw ArgumentError.value(name);
+    await _folder(id);
+    final type = await FileSystemEntity.type(p.join(root.path, id, name),
+        followLinks: false);
+    if (type == FileSystemEntityType.notFound) return null;
+    final file = await safeFile(id, name);
+    if (file == null) throw const FileSystemException('Unsafe template file');
+    if (await file.length() > editorLimit) throw const FormatException('size');
+    final handle = await file.open();
+    try {
+      final bytes = await handle.read(editorLimit + 1);
+      if (bytes.length > editorLimit) throw const FormatException('size');
+      return utf8.decode(bytes);
+    } finally {
+      await handle.close();
+    }
+  }
+
+  Future<void> writeTemplateFile(
+      String id, String name, String contents) async {
+    if (!editableFiles.contains(name)) throw ArgumentError.value(name);
+    final file = await safeFile(id, name);
+    if (file != null && await file.length() > editorLimit) {
+      throw const FormatException('size');
+    }
+    await _writeFile(id, name, contents);
+  }
+
+  Future<void> _writeFile(String id, String name, String contents) async {
+    if (utf8.encode(contents).length > editorLimit) {
+      throw const FormatException('size');
+    }
+    final folder = await _folder(id);
+    final target = p.join(folder, name);
+    final type = await FileSystemEntity.type(target, followLinks: false);
+    if (type != FileSystemEntityType.notFound &&
+        (type != FileSystemEntityType.file ||
+            await safeFile(id, name) == null)) {
+      throw const FileSystemException('Unsafe template file');
+    }
+    final temp = File(p.join(folder,
+        '.edit-${DateTime.now().microsecondsSinceEpoch}-${++_writeSequence}.tmp'));
+    try {
+      await temp.create(exclusive: true);
+      await temp.writeAsString(contents, flush: true);
+      await _folder(id);
+      await temp.rename(target);
+    } finally {
+      if (await temp.exists()) await temp.delete();
+    }
+  }
+
   Future<void> dispose() async {
     await stopWatching();
     await _changes.close();
     _cache.clear();
   }
+}
+
+String templateId(String name) {
+  const groups = {
+    'a': 'àáâãäåāăąǎǟǡǻȁȃȧḁạảấầẩẫậắằẳẵặ',
+    'b': 'ḃḅḇ',
+    'c': 'çćĉċčḉ',
+    'd': 'ďḋḍḏḑḓ',
+    'e': 'èéêëēĕėęěȅȇȩḕḗḙḛḝẹẻẽếềểễệ',
+    'f': 'ḟ',
+    'g': 'ĝğġģǧǵḡ',
+    'h': 'ĥȟḣḥḧḩḫẖ',
+    'i': 'ìíîïĩīĭįǐȉȋḭḯỉị',
+    'j': 'ĵǰ',
+    'k': 'ķǩḱḳḵ',
+    'l': 'ĺļľḷḹḻḽ',
+    'm': 'ḿṁṃ',
+    'n': 'ñńņňǹṅṇṉṋ',
+    'o': 'òóôõöōŏőơǒǫǭȍȏȫȭȯȱṍṏṑṓọỏốồổỗộớờởỡợø',
+    'p': 'ṕṗ',
+    'r': 'ŕŗřȑȓṙṛṝṟ',
+    's': 'śŝşšșṡṣṥṧṩ',
+    't': 'ţťțṫṭṯṱẗ',
+    'u': 'ùúûüũūŭůűųưǔǖǘǚǜȕȗṳṵṷṹṻụủứừửữự',
+    'v': 'ṽṿ',
+    'w': 'ŵẁẃẅẇẉẘ',
+    'x': 'ẋẍ',
+    'y': 'ýÿŷȳẏẙỳỵỷỹ',
+    'z': 'źżžẑẓẕ',
+  };
+  var value = name.toLowerCase();
+  for (final e in groups.entries) {
+    for (final rune in e.value.runes) {
+      value = value.replaceAll(String.fromCharCode(rune), e.key);
+    }
+  }
+  value = value
+      .replaceAll(RegExp(r'[\u0300-\u036f]'), '')
+      .replaceAll(RegExp('[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+  if (value.length > 40) {
+    value = value.substring(0, 40).replaceAll(RegExp(r'-+$'), '');
+  }
+  return value.isEmpty ? 'template' : value;
 }

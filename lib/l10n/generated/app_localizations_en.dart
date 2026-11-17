@@ -2277,4 +2277,134 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mediaAudio => 'Audio';
+
+  @override
+  String get templatesTitle => 'Templates';
+
+  @override
+  String get templatesDescription =>
+      'A template is a folder of HTML, CSS and JavaScript in Documents\\Airstream\\Templates. Each template has its own OBS URL.';
+
+  @override
+  String get templatesNew => 'New template';
+
+  @override
+  String get templatesOpenFolder => 'Open folder';
+
+  @override
+  String get templatesTest => 'Send test events';
+
+  @override
+  String get templatesTestSent => 'Test events sent to open template pages';
+
+  @override
+  String get templatesTestEmpty => 'Open a template in OBS first';
+
+  @override
+  String get templatesEmpty => 'No templates yet';
+
+  @override
+  String get templatesInternet => 'Internet access';
+
+  @override
+  String get templatesCopy => 'Copy URL';
+
+  @override
+  String get templatesCopied => 'URL copied';
+
+  @override
+  String get templatesPreview => 'Preview';
+
+  @override
+  String get templatesEdit => 'Edit code';
+
+  @override
+  String get templatesDelete => 'Delete';
+
+  @override
+  String get templatesName => 'Name';
+
+  @override
+  String get templatesRequired => 'Enter a name';
+
+  @override
+  String get templatesCreate => 'Create';
+
+  @override
+  String get templatesCancel => 'Cancel';
+
+  @override
+  String get templatesSave => 'Save';
+
+  @override
+  String get templatesSaved => 'Changes saved';
+
+  @override
+  String get templatesClose => 'Close';
+
+  @override
+  String get templatesDiscard => 'Discard changes';
+
+  @override
+  String get templatesUnsaved => 'Discard unsaved changes?';
+
+  @override
+  String get templatesLarge =>
+      'This file is over 512 KB. Edit it from the folder instead.';
+
+  @override
+  String get templatesFailed =>
+      'Could not complete the action. Check the template folder and try again.';
+
+  @override
+  String get templatesBlank => 'Blank';
+
+  @override
+  String get templatesChat => 'Chat';
+
+  @override
+  String get templatesAlerts => 'Alerts';
+
+  @override
+  String get templatesGoal => 'Goal bar';
+
+  @override
+  String get templatesBlankDescription => 'Show the last SDK event';
+
+  @override
+  String get templatesChatDescription =>
+      'Live messages with emotes and avatars';
+
+  @override
+  String get templatesAlertsDescription => 'Animated alerts, one at a time';
+
+  @override
+  String get templatesGoalDescription => 'Progress towards one of your goals';
+
+  @override
+  String get templatesMissingIndex => 'Missing index.html';
+
+  @override
+  String get templatesInvalidManifest => 'Invalid template.json';
+
+  @override
+  String get templatesUnsupportedSdk => 'Unsupported SDK version';
+
+  @override
+  String get templatesOversizedIndex => 'index.html exceeds 2 MB';
+
+  @override
+  String templatesOpenCount(int count) {
+    return '$count open in OBS';
+  }
+
+  @override
+  String templatesError(String source, String line, String message) {
+    return 'Error in $source:$line: $message';
+  }
+
+  @override
+  String templatesDeleteConfirm(String name) {
+    return 'Delete “$name”? This deletes its folder and cannot be undone.';
+  }
 }

@@ -758,5 +758,72 @@
         "type": "String"
       }
     }
+  },
+  "templatesTitle": "Plantillas",
+  "templatesDescription": "Una plantilla es una carpeta con HTML, CSS y JavaScript en Documentos\\Airstream\\Templates. Cada plantilla tiene su propia URL para OBS.",
+  "templatesNew": "Nueva plantilla",
+  "templatesOpenFolder": "Abrir carpeta",
+  "templatesTest": "Enviar eventos de prueba",
+  "templatesTestSent": "Eventos de prueba enviados a las páginas abiertas",
+  "templatesTestEmpty": "Abre primero una plantilla en OBS",
+  "templatesEmpty": "Aún no hay plantillas",
+  "templatesInternet": "Acceso a internet",
+  "templatesCopy": "Copiar URL",
+  "templatesCopied": "URL copiada",
+  "templatesPreview": "Vista previa",
+  "templatesEdit": "Editar código",
+  "templatesDelete": "Eliminar",
+  "templatesName": "Nombre",
+  "templatesRequired": "Escribe un nombre",
+  "templatesCreate": "Crear",
+  "templatesCancel": "Cancelar",
+  "templatesSave": "Guardar",
+  "templatesSaved": "Cambios guardados",
+  "templatesClose": "Cerrar",
+  "templatesDiscard": "Descartar cambios",
+  "templatesUnsaved": "¿Descartar los cambios sin guardar?",
+  "templatesLarge": "Este archivo supera los 512 KB. Edítalo desde la carpeta.",
+  "templatesFailed": "No se pudo completar la acción. Revisa la carpeta de la plantilla e inténtalo de nuevo.",
+  "templatesBlank": "En blanco",
+  "templatesChat": "Chat",
+  "templatesAlerts": "Alertas",
+  "templatesGoal": "Barra de meta",
+  "templatesBlankDescription": "Muestra el último evento del SDK",
+  "templatesChatDescription": "Mensajes en vivo con emoticonos y avatares",
+  "templatesAlertsDescription": "Alertas animadas, una a la vez",
+  "templatesGoalDescription": "Progreso hacia una de tus metas",
+  "templatesMissingIndex": "Falta index.html",
+  "templatesInvalidManifest": "template.json no es válido",
+  "templatesUnsupportedSdk": "Versión del SDK no compatible",
+  "templatesOversizedIndex": "index.html supera los 2 MB",
+  "templatesOpenCount": "{count} abiertas en OBS",
+  "templatesError": "Error en {source}:{line}: {message}",
+  "templatesDeleteConfirm": "¿Eliminar «{name}»? Se eliminará su carpeta y no se puede deshacer.",
+  "@templatesOpenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@templatesError": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "line": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "@templatesDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

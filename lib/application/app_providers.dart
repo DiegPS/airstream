@@ -1,3 +1,5 @@
+import 'package:airstream/services/templates/template_library.dart';
+import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
@@ -250,3 +252,18 @@ final subathonTrackingProvider = Provider<void>((ref) {
     unawaited(sub.cancel());
   });
 });
+
+final templateLibraryProvider = FutureProvider<TemplateLibrary>((ref) async {
+  final server = ref.watch(appControllerProvider).templateServer;
+  if (server == null) throw StateError('Templates unavailable');
+  final library = await server.templateLibrary;
+  await library.watch();
+  return library;
+});
+final templateCountsProvider = StreamProvider<Map<String, int>>((ref) =>
+    ref.watch(appControllerProvider).templateServer?.templateViewCountsStream ??
+    const Stream.empty());
+final templateErrorsProvider = StreamProvider<Map<String, TemplateError>>(
+    (ref) =>
+        ref.watch(appControllerProvider).templateServer?.templateErrorsStream ??
+        const Stream.empty());

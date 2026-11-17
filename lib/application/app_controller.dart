@@ -109,6 +109,7 @@ class AppController {
     ]);
   }
 
+  OverlayServer? get templateServer => _overlay.templateServer;
   late final ChatCoordinator _chat;
   late final AudioCoordinator _audio;
   late final OverlayCoordinator _overlay;

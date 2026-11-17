@@ -76,6 +76,31 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+  test('stopping the HTTP server keeps the shared library watcher alive',
+      () async {
+    final library = await server.templateLibrary;
+    await server.stop();
+    final changed = library.changes.firstWhere((e) => e.id == 'one');
+    await library.writeTemplateFile('one', 'style.css', 'body { color: red; }');
+    expect((await changed.timeout(const Duration(seconds: 5))).id, 'one');
+  });
+  test('clearing a template error emits updated snapshot', () async {
+    final c = await connect('custom', 'one');
+    final error =
+        server.templateErrorsStream.firstWhere((v) => v.containsKey('one'));
+    c.send({
+      'type': 'templateError',
+      'message': 'Oops',
+      'source': 'script.js',
+      'line': 7
+    });
+    expect((await error)['one']!.message, 'Oops');
+    final cleared =
+        server.templateErrorsStream.firstWhere((v) => !v.containsKey('one'));
+    server.clearTemplateError('one');
+    expect(await cleared, isEmpty);
+    expect(server.templateErrors, isEmpty);
+  });
   test('registration fields, counts and poll replay', () async {
     server.broadcastPoll({'question': 'Question'});
     final c = await connect('custom', 'one');
