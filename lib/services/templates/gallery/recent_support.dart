@@ -73,6 +73,7 @@ header::after {
   content: ''; height: 2px; min-width: 16px; flex: 1; margin-left: 2px;
   background: var(--custom-accent, var(--theme-accent));
 }
+:root[data-theme="neon"] header::after { box-shadow: 0 0 14px var(--glow); }
 #entries {
   display: grid; gap: 6px; margin: 0; padding: 0; overflow: auto;
   list-style: none; scrollbar-width: thin; scrollbar-color: var(--line) transparent;

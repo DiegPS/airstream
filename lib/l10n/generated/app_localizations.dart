@@ -4538,6 +4538,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show the empty message'**
   String get galleryShowEmpty;
+
+  /// No description provided for @galleryStartingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting soon'**
+  String get galleryStartingSoon;
+
+  /// No description provided for @galleryStartingSoonDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the stream with a countdown, rotating messages, and live chat.'**
+  String get galleryStartingSoonDescription;
+
+  /// No description provided for @galleryBeRightBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Be right back'**
+  String get galleryBeRightBack;
+
+  /// No description provided for @galleryBeRightBackDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a break timer alongside live chat and the latest support.'**
+  String get galleryBeRightBackDescription;
+
+  /// No description provided for @galleryStreamEnding.
+  ///
+  /// In en, this message translates to:
+  /// **'Stream ending'**
+  String get galleryStreamEnding;
+
+  /// No description provided for @galleryStreamEndingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank viewers with session totals and supporter rankings.'**
+  String get galleryStreamEndingDescription;
+
+  /// No description provided for @galleryCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Credits'**
+  String get galleryCredits;
+
+  /// No description provided for @galleryCreditsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll end credits with supporters, rankings, and a farewell.'**
+  String get galleryCreditsDescription;
+
+  /// No description provided for @galleryBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get galleryBackground;
+
+  /// No description provided for @galleryBackgroundMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Background image or video'**
+  String get galleryBackgroundMedia;
+
+  /// No description provided for @galleryMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotating messages (separate with |)'**
+  String get galleryMessages;
+
+  /// No description provided for @galleryScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (leave blank for the default)'**
+  String get galleryScreenTitle;
+
+  /// No description provided for @gallerySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle'**
+  String get gallerySubtitle;
+
+  /// No description provided for @galleryStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Local start time (24-hour HH:MM)'**
+  String get galleryStartTime;
+
+  /// No description provided for @galleryShowChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Show live chat'**
+  String get galleryShowChat;
+
+  /// No description provided for @galleryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Countdown minutes (0 for none)'**
+  String get galleryMinutes;
+
+  /// No description provided for @galleryShowDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Show session duration'**
+  String get galleryShowDuration;
+
+  /// No description provided for @galleryShowMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Show message count'**
+  String get galleryShowMessages;
+
+  /// No description provided for @galleryShowChatters.
+  ///
+  /// In en, this message translates to:
+  /// **'Show chatter count'**
+  String get galleryShowChatters;
+
+  /// No description provided for @galleryShowSupporters.
+  ///
+  /// In en, this message translates to:
+  /// **'Show supporter count'**
+  String get galleryShowSupporters;
+
+  /// No description provided for @galleryShowTopSupporters.
+  ///
+  /// In en, this message translates to:
+  /// **'Show top supporters'**
+  String get galleryShowTopSupporters;
+
+  /// No description provided for @galleryShowTopChatters.
+  ///
+  /// In en, this message translates to:
+  /// **'Show top chatters'**
+  String get galleryShowTopChatters;
+
+  /// No description provided for @galleryCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Super Chat currency (blank for automatic)'**
+  String get galleryCurrency;
+
+  /// No description provided for @galleryFinalText.
+  ///
+  /// In en, this message translates to:
+  /// **'Final message'**
+  String get galleryFinalText;
+
+  /// No description provided for @galleryCreditsSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll speed (pixels per second)'**
+  String get galleryCreditsSpeed;
+
+  /// No description provided for @galleryCreditsLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat credits'**
+  String get galleryCreditsLoop;
 }
 
 class _AppLocalizationsDelegate

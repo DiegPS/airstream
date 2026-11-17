@@ -2807,4 +2807,86 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryShowEmpty => 'Show the empty message';
+
+  @override
+  String get galleryStartingSoon => 'Starting soon';
+
+  @override
+  String get galleryStartingSoonDescription =>
+      'Open the stream with a countdown, rotating messages, and live chat.';
+
+  @override
+  String get galleryBeRightBack => 'Be right back';
+
+  @override
+  String get galleryBeRightBackDescription =>
+      'Show a break timer alongside live chat and the latest support.';
+
+  @override
+  String get galleryStreamEnding => 'Stream ending';
+
+  @override
+  String get galleryStreamEndingDescription =>
+      'Thank viewers with session totals and supporter rankings.';
+
+  @override
+  String get galleryCredits => 'Credits';
+
+  @override
+  String get galleryCreditsDescription =>
+      'Roll end credits with supporters, rankings, and a farewell.';
+
+  @override
+  String get galleryBackground => 'Background';
+
+  @override
+  String get galleryBackgroundMedia => 'Background image or video';
+
+  @override
+  String get galleryMessages => 'Rotating messages (separate with |)';
+
+  @override
+  String get galleryScreenTitle => 'Title (leave blank for the default)';
+
+  @override
+  String get gallerySubtitle => 'Subtitle';
+
+  @override
+  String get galleryStartTime => 'Local start time (24-hour HH:MM)';
+
+  @override
+  String get galleryShowChat => 'Show live chat';
+
+  @override
+  String get galleryMinutes => 'Countdown minutes (0 for none)';
+
+  @override
+  String get galleryShowDuration => 'Show session duration';
+
+  @override
+  String get galleryShowMessages => 'Show message count';
+
+  @override
+  String get galleryShowChatters => 'Show chatter count';
+
+  @override
+  String get galleryShowSupporters => 'Show supporter count';
+
+  @override
+  String get galleryShowTopSupporters => 'Show top supporters';
+
+  @override
+  String get galleryShowTopChatters => 'Show top chatters';
+
+  @override
+  String get galleryCurrency => 'Super Chat currency (blank for automatic)';
+
+  @override
+  String get galleryFinalText => 'Final message';
+
+  @override
+  String get galleryCreditsSpeed => 'Roll speed (pixels per second)';
+
+  @override
+  String get galleryCreditsLoop => 'Repeat credits';
 }

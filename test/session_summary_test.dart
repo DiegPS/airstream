@@ -180,6 +180,8 @@ void main() {
     final state = collector.templateState(live: true)!;
     expect(state['messages'], 2);
     expect(state['chatters'], 2);
+    expect(state['supporterCount'], 8);
+    expect(state['superchatCounts'], {r'MX$': 1});
     expect(state['topChatters'], [
       {'platform': 'youtube', 'name': 'Donor', 'messages': 1},
       {'platform': 'twitch', 'name': 'Cheerer', 'messages': 1},
@@ -203,7 +205,11 @@ void main() {
     expect(
         collector.summary.supporters.where((s) => s.name == 'Host'), isEmpty);
     collector.stop();
-    expect(collector.templateState(live: false), {...state, 'live': false});
+    expect(collector.templateState(live: false), {
+      ...state,
+      'live': false,
+      'endedAt': collector.summary.endedAt!.toUtc().toIso8601String(),
+    });
     collector.start();
     expect(collector.templateState(live: false)!['supporters'], isEmpty);
   });
@@ -275,6 +281,7 @@ void main() {
     final supporters = (state['supporters'] as List).cast<Map>();
     expect(supporters.map((s) => s['name']),
         List.generate(50, (i) => 'Viewer ${54 - i}'));
+    expect(state['supporterCount'], 56);
     expect((state['latest'] as Map)['raid'], containsPair('name', 'Raider'));
     expect((state['latest'] as Map)['kicks'], isNull);
   });
@@ -285,6 +292,25 @@ void main() {
     collector.stop();
     collector.start();
     expect(collector.summary.isEmpty, isTrue);
+  });
+
+  test('template state freezes the end time until the next start', () {
+    var now = DateTime.utc(2026, 11, 17, 16);
+    final collector = SessionSummaryCollector(clock: () => now)..start();
+    expect(collector.templateState(live: true)!['endedAt'], isNull);
+    expect(collector.templateState(live: false)!['endedAt'], isNull);
+
+    now = now.add(const Duration(minutes: 30));
+    collector.stop();
+    now = now.add(const Duration(minutes: 5));
+    collector.stop();
+    expect(collector.templateState(live: false)!['endedAt'],
+        '2026-11-17T16:30:00.000Z');
+
+    collector.start();
+    final next = collector.templateState(live: true)!;
+    expect(next['startedAt'], '2026-11-17T16:35:00.000Z');
+    expect(next['endedAt'], isNull);
   });
 
   test('the copied summary reads as plain text', () {

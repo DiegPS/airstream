@@ -4,8 +4,12 @@ import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:flutter/widgets.dart' show Locale;
 
 import '../template_library.dart';
+import 'be_right_back.dart';
+import 'credits.dart';
 import 'gallery_base.dart';
 import 'recent_support.dart';
+import 'starting_soon.dart';
+import 'stream_ending.dart';
 
 enum GalleryKind { screen, widget }
 
@@ -55,7 +59,7 @@ class GalleryItem {
 final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   'recent-support': GalleryItem(
     id: 'recent-support',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: 480,
     height: 640,
@@ -63,5 +67,41 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
     description: (l) => l.galleryRecentSupportDescription,
     files: recentSupportFiles,
     fields: recentSupportFields,
+  ),
+  'starting-soon': GalleryItem(
+    id: 'starting-soon',
+    version: 1,
+    kind: GalleryKind.screen,
+    name: (l) => l.galleryStartingSoon,
+    description: (l) => l.galleryStartingSoonDescription,
+    files: startingSoonFiles,
+    fields: startingSoonFields,
+  ),
+  'be-right-back': GalleryItem(
+    id: 'be-right-back',
+    version: 1,
+    kind: GalleryKind.screen,
+    name: (l) => l.galleryBeRightBack,
+    description: (l) => l.galleryBeRightBackDescription,
+    files: beRightBackFiles,
+    fields: beRightBackFields,
+  ),
+  'stream-ending': GalleryItem(
+    id: 'stream-ending',
+    version: 1,
+    kind: GalleryKind.screen,
+    name: (l) => l.galleryStreamEnding,
+    description: (l) => l.galleryStreamEndingDescription,
+    files: streamEndingFiles,
+    fields: streamEndingFields,
+  ),
+  'credits': GalleryItem(
+    id: 'credits',
+    version: 1,
+    kind: GalleryKind.screen,
+    name: (l) => l.galleryCredits,
+    description: (l) => l.galleryCreditsDescription,
+    files: creditsFiles,
+    fields: creditsFields,
   ),
 });

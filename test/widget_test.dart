@@ -175,7 +175,8 @@ void main() {
         TemplateManifest('media', {
           'fields': [
             {'key': 'sound', 'type': 'media', 'kind': 'audio'},
-            {'key': 'all', 'type': 'media', 'kind': 'any'}
+            {'key': 'all', 'type': 'media', 'kind': 'any'},
+            {'key': 'backdrop', 'type': 'media', 'kind': 'visual'},
           ]
         }),
         [],
@@ -193,7 +194,8 @@ void main() {
               '',
               const SettingsModel(mediaLibrary: {
                 '1234567890abcdef': {'name': 'Sound', 'kind': 'audio'},
-                'abcdef1234567890': {'name': 'Picture', 'kind': 'image'}
+                'abcdef1234567890': {'name': 'Picture', 'kind': 'image'},
+                'abcdef1234567891': {'name': 'Video', 'kind': 'video'},
               })))
         ],
         child: MaterialApp(
@@ -207,8 +209,12 @@ void main() {
         find.byKey(const Key('template-field-media-sound')));
     final all = tester.widget<DropdownButton<String>>(
         find.byKey(const Key('template-field-media-all')));
+    final backdrop = tester.widget<DropdownButton<String>>(
+        find.byKey(const Key('template-field-media-backdrop')));
     expect(sound.items!.map((i) => i.value), ['', '1234567890abcdef']);
-    expect(all.items, hasLength(3));
+    expect(all.items, hasLength(4));
+    expect(backdrop.items!.map((i) => i.value),
+        ['', 'abcdef1234567890', 'abcdef1234567891']);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   for (final valid in [true, false]) {
@@ -2120,7 +2126,8 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         overrides: [
           settingsProvider.overrideWith((ref) => _WidgetTestSettings(language)),
-          overlayUrlProvider.overrideWithValue(null),
+          overlayUrlProvider
+              .overrideWithValue(spanish ? null : 'http://localhost:18080'),
           templateLibraryProvider.overrideWith((ref) async => library),
           templateCountsProvider.overrideWith((ref) => Stream.value({})),
           templateErrorsProvider.overrideWith((ref) => Stream.value({})),
@@ -2147,9 +2154,28 @@ void main() {
           findsOneWidget);
       expect(find.descendant(of: card, matching: find.text('480×640')),
           findsOneWidget);
-      final preview = tester
-          .widget<TextButton>(find.byKey(const Key('gallery-preview-$id')));
-      expect(preview.onPressed, isNull);
+      final names = {
+        'recent-support': spanish ? 'Apoyos recientes' : 'Recent support',
+        'starting-soon': spanish ? 'Empezamos pronto' : 'Starting soon',
+        'be-right-back': spanish ? 'Vuelvo enseguida' : 'Be right back',
+        'stream-ending': spanish ? 'Fin del directo' : 'Stream ending',
+        'credits': spanish ? 'Créditos' : 'Credits',
+      };
+      for (final entry in names.entries) {
+        final item = find.byKey(Key('gallery-item-${entry.key}'));
+        await tester.ensureVisible(item);
+        await tester.pump();
+        expect(find.descendant(of: item, matching: find.text(entry.value)),
+            findsOneWidget);
+        final preview = tester.widget<TextButton>(find.descendant(
+            of: item,
+            matching: find.byKey(Key('gallery-preview-${entry.key}'))));
+        expect(preview.onPressed, spanish ? isNull : isNotNull);
+        final addButton = tester.widget<TextButton>(find.descendant(
+            of: item, matching: find.byKey(Key('gallery-add-${entry.key}'))));
+        expect(addButton.onPressed, isNotNull);
+        expect(tester.takeException(), isNull);
+      }
       if (spanish) {
         expect(find.text('Hay una versión nueva'), findsOneWidget);
       } else {
@@ -2165,7 +2191,7 @@ void main() {
       expect(find.byKey(Key('template-$installed')), findsOneWidget);
       await tester.runAsync(() async {
         final info = (await library.get(installed))!;
-        expect(info.manifest.gallery, (id: id, version: 2));
+        expect(info.manifest.gallery, (id: id, version: 3));
         expect((await library.resolvedValues(installed))['language'], language);
         expect(await library.list(), hasLength(spanish ? 2 : 1));
         if (spanish) {

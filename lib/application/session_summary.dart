@@ -231,6 +231,7 @@ class SessionSummaryCollector {
       });
     return {
       'startedAt': startedAt.toUtc().toIso8601String(),
+      'endedAt': _endedAt?.toUtc().toIso8601String(),
       'live': live,
       'messages':
           _messages.values.fold<int>(0, (total, count) => total + count),
@@ -266,6 +267,7 @@ class SessionSummaryCollector {
       'kicks': {},
     };
     final currencies = <String, Map<String, _SupportTotal>>{};
+    final superchatCounts = <String, int>{};
     final recent = supports.reversed.take(50).toList();
 
     for (final entry in supports) {
@@ -273,6 +275,10 @@ class SessionSummaryCollector {
       final type = supporter.type!;
       latest[type] = supporter;
       final currency = supporter.currency;
+      if (type == 'superchat' && currency != null) {
+        superchatCounts.update(currency, (count) => count + 1,
+            ifAbsent: () => 1);
+      }
       final value = type == 'gift' ? supporter.count : supporter.value;
       if (value == null) continue;
       final totals = type == 'superchat' && currency != null
@@ -285,6 +291,8 @@ class SessionSummaryCollector {
     }
 
     return {
+      'supporterCount': supports.map((entry) => entry.identity).toSet().length,
+      'superchatCounts': superchatCounts,
       'supporters': [
         for (final entry in recent) entry.supporter.toTemplateJson()
       ],

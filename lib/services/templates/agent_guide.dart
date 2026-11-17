@@ -103,7 +103,8 @@ interface SessionSupporter {
 }
 interface SessionRank { platform:Platform; name:string; value:number; }
 interface Session {
- startedAt:string|null; live:boolean; messages:number; chatters:number;
+ startedAt:string|null; endedAt:string|null; live:boolean; messages:number; chatters:number;
+ supporterCount:number; superchatCounts:Partial<Record<string,number>>;
  supporters:SessionSupporter[]; latest:Record<AlertType,SessionSupporter|null>;
  top:{gift:SessionRank[]; bits:SessionRank[]; kicks:SessionRank[]; superchat:Partial<Record<string,SessionRank[]>>};
  topChatters:{platform:Platform; name:string; messages:number}[];
@@ -202,7 +203,7 @@ template.json is a JSON object, at most 65,536 bytes. It is optional in the load
   - number: finite number default 0, clamped to optional finite min/max. Optional step must be finite and positive; no quantization is performed. min > max or non-positive step skips the field.
   - boolean: true/false, default false.
   - select: required options array of 1..30 strings, each at most 60 code points; default must match an option or falls back to the first.
-  - media: kind image/video/audio/any (default any); default/values are 16 lowercase hex characters or "". Resolve with Airstream.mediaUrl; kind is metadata, not a URL.
+  - media: kind image/video/audio/visual/any (default any); visual offers images and videos. Default/values are 16 lowercase hex characters or "". Resolve with Airstream.mediaUrl; kind is metadata, not a URL.
 
 Full manifest example:
 ```json
@@ -239,6 +240,7 @@ Events and WHEN they fire:
 - giveaway: state on connection/change, Giveaway or null. No id/title/membersOnly/entrant list is exposed. drawId changes on draw, winner is name/platform only; phase drawn plus replay:false can animate a new draw.
 - poll: state on connection/change, Poll or null. No id is exposed. options have label/votes/rounded integer percent; endsAt is epoch milliseconds or null for untimed.
 - session: state on registration (replay) and on change, coalesced to at most once per second. Available once chat has been started and retained after it stops until the next start. live means a chat provider is connected. The 50 newest supporters use stable ids; latest covers all seven alert types even when older than that list. top ranks five per category by total, breaking ties by earliest support. Super Chats are grouped by the currency notation in amount, with no conversion; unknown currency has no ranking. Gifts rank by count; bits, kicks and raids expose bits, kicks and viewers as value. topChatters contains up to ten and excludes the channel owner. Render names and amounts with textContent. Use id and meta.replay to avoid animating rows already shown.
+  endedAt is the ISO timestamp when chat was stopped, or null while the session is running. supporterCount counts distinct supporters across the full session. superchatCounts counts Super Chat events per known currency across the full session.
 - caption: new nonempty caption text, Caption below. Not stored/replayed.
 - settings: visual/app preferences on connection or update, Settings below. Values are preferences, not commands. alertTypeOptions has per-type optional overrides (seconds, animation, sound; optional media/mediaKind/mediaAudio; soundMediaId for library sound; soundKey for custom sound). No local file paths are exposed.
 - fields: full resolved field values on connection/update; object keyed by manifest field key, sanitized string/number/boolean values, defaults included. React to updates without reloading.
@@ -288,7 +290,8 @@ interface SessionSupporter {
 }
 interface SessionRank { platform:Platform; name:string; value:number; }
 interface Session {
- startedAt:string|null; live:boolean; messages:number; chatters:number;
+ startedAt:string|null; endedAt:string|null; live:boolean; messages:number; chatters:number;
+ supporterCount:number; superchatCounts:Partial<Record<string,number>>;
  supporters:SessionSupporter[]; latest:Record<AlertType,SessionSupporter|null>;
  top:{gift:SessionRank[]; bits:SessionRank[]; kicks:SessionRank[]; superchat:Partial<Record<string,SessionRank[]>>};
  topChatters:{platform:Platform; name:string; messages:number}[];

@@ -2831,4 +2831,90 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get galleryShowEmpty => 'Mostrar el aviso cuando no hay apoyos';
+
+  @override
+  String get galleryStartingSoon => 'Empezamos pronto';
+
+  @override
+  String get galleryStartingSoonDescription =>
+      'Abre el directo con una cuenta atrás, mensajes rotativos y chat en vivo.';
+
+  @override
+  String get galleryBeRightBack => 'Vuelvo enseguida';
+
+  @override
+  String get galleryBeRightBackDescription =>
+      'Muestra una pausa con cuenta atrás, chat en vivo y los últimos apoyos.';
+
+  @override
+  String get galleryStreamEnding => 'Fin del directo';
+
+  @override
+  String get galleryStreamEndingDescription =>
+      'Da las gracias con las cifras del directo y la clasificación de apoyos.';
+
+  @override
+  String get galleryCredits => 'Créditos';
+
+  @override
+  String get galleryCreditsDescription =>
+      'Despide el directo con créditos de apoyos, clasificaciones y un mensaje final.';
+
+  @override
+  String get galleryBackground => 'Fondo';
+
+  @override
+  String get galleryBackgroundMedia => 'Imagen o vídeo de fondo';
+
+  @override
+  String get galleryMessages => 'Mensajes rotativos (separa con |)';
+
+  @override
+  String get galleryScreenTitle =>
+      'Título (déjalo vacío para usar el predeterminado)';
+
+  @override
+  String get gallerySubtitle => 'Subtítulo';
+
+  @override
+  String get galleryStartTime =>
+      'Hora local de inicio (HH:MM en formato de 24 horas)';
+
+  @override
+  String get galleryShowChat => 'Mostrar el chat en vivo';
+
+  @override
+  String get galleryMinutes => 'Minutos de cuenta atrás (0 para ocultarla)';
+
+  @override
+  String get galleryShowDuration => 'Mostrar la duración del directo';
+
+  @override
+  String get galleryShowMessages => 'Mostrar el total de mensajes';
+
+  @override
+  String get galleryShowChatters => 'Mostrar el total de participantes';
+
+  @override
+  String get galleryShowSupporters => 'Mostrar cuántas personas apoyaron';
+
+  @override
+  String get galleryShowTopSupporters => 'Mostrar la clasificación de apoyos';
+
+  @override
+  String get galleryShowTopChatters => 'Mostrar quienes más escribieron';
+
+  @override
+  String get galleryCurrency =>
+      'Moneda de Super Chat (vacío para elegir automáticamente)';
+
+  @override
+  String get galleryFinalText => 'Mensaje final';
+
+  @override
+  String get galleryCreditsSpeed =>
+      'Velocidad de los créditos (píxeles por segundo)';
+
+  @override
+  String get galleryCreditsLoop => 'Repetir los créditos';
 }

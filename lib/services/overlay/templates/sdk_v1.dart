@@ -126,6 +126,7 @@ String sdkV1() => r"""
     'Mar 🌙','Solstice','RenPlays','AriNova','MaxHorizon'];
   const sessionStarted=Date.now()-18*60*1000;
   const sessionSupporters=[];
+  const supporterIdentities=new Set();
   const latestSupport=Object.fromEntries(supportTypes.map(type => [type,null]));
   const sessionChatters=new Map([
     ['twitch:PixelFern',{platform:'twitch',name:sessionPeople[0],messages:29}],
@@ -134,6 +135,7 @@ String sdkV1() => r"""
   ]);
   const supportTotals={gift:new Map(),bits:new Map(),kicks:new Map()};
   const moneyTotals={'$':new Map(),'MX$':new Map()};
+  const superchatCounts={};
   let sessionMessages=58, sessionSupportIndex=0;
   function sampleSupport(at) {
     const i=sessionSupportIndex++, type=supportTypes[i%7], round=Math.floor(i/7);
@@ -151,17 +153,20 @@ String sdkV1() => r"""
     sessionSupporters.unshift(support);
     if (sessionSupporters.length>50) sessionSupporters.pop();
     latestSupport[type]=support;
+    const key=platform+':'+name;
+    supporterIdentities.add(key);
+    if (currency) superchatCounts[currency]=(superchatCounts[currency] || 0)+1;
     const totals=currency?moneyTotals[currency]:supportTotals[type];
     if (totals) {
-      const key=platform+':'+name;
       const previous=totals.get(key)?.value || 0;
       totals.set(key,{platform,name,value:previous+(type==='gift'?count:value)});
     }
   }
   function sendSession(meta) {
     const rank=totals => [...totals.values()].sort((a,b) => b.value-a.value).slice(0,5);
-    emit('session',{startedAt:new Date(sessionStarted).toISOString(),live:true,
+    emit('session',{startedAt:new Date(sessionStarted).toISOString(),endedAt:null,live:true,
       messages:sessionMessages,chatters:sessionChatters.size,supporters:[...sessionSupporters],
+      supporterCount:supporterIdentities.size,superchatCounts:{...superchatCounts},
       latest:{...latestSupport},
       top:{gift:rank(supportTotals.gift),bits:rank(supportTotals.bits),kicks:rank(supportTotals.kicks),
         superchat:Object.fromEntries(Object.entries(moneyTotals).map(([currency, totals]) => [currency,rank(totals)]))},

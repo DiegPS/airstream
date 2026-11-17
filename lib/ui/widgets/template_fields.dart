@@ -20,6 +20,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
   final _controllers = <String, TextEditingController>{};
   final _focus = <String, FocusNode>{};
   final _invalid = <String>{};
+  final _pageStorage = PageStorageBucket();
   StreamSubscription<TemplateChange>? _sub;
   Timer? _timer;
   Future<void> _writing = Future.value();
@@ -119,9 +120,13 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
         }
       } else {
         entries[''] = l.templateFieldNone;
+        final kind = f.options['kind'];
         for (final e in ref.watch(settingsProvider).mediaLibrary.entries) {
-          if (f.options['kind'] == 'any' ||
-              f.options['kind'] == e.value['kind']) {
+          final entryKind = e.value['kind'];
+          if (kind == 'any' ||
+              kind == entryKind ||
+              (kind == 'visual' &&
+                  (entryKind == 'image' || entryKind == 'video'))) {
             entries[e.key] = e.value['name'] as String;
           }
         }
@@ -234,22 +239,26 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     final l = AppLocalizations.of(context)!;
     return Material(
         color: Colors.transparent,
-        child: ExpansionTile(
-            key: Key('template-fields-${widget.info.id}'),
-            tilePadding: EdgeInsets.zero,
-            title: Text(l.templateCustomize),
-            children: [
-              for (final f in widget.info.manifest.fields)
-                Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _field(f)),
-              if (_failed)
-                Text(l.templatesFailed,
-                    style: const TextStyle(color: Color(0xFFFFB15C))),
-              TextButton(
-                  key: Key('template-fields-reset-${widget.info.id}'),
-                  onPressed: _reset,
-                  child: Text(l.templateReset))
-            ]));
+        // The sidebar scroll offset and the tile's expansion flag use
+        // different types. Keep the tile and its editable fields local.
+        child: PageStorage(
+            bucket: _pageStorage,
+            child: ExpansionTile(
+                key: Key('template-fields-${widget.info.id}'),
+                tilePadding: EdgeInsets.zero,
+                title: Text(l.templateCustomize),
+                children: [
+                  for (final f in widget.info.manifest.fields)
+                    Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _field(f)),
+                  if (_failed)
+                    Text(l.templatesFailed,
+                        style: const TextStyle(color: Color(0xFFFFB15C))),
+                  TextButton(
+                      key: Key('template-fields-reset-${widget.info.id}'),
+                      onPressed: _reset,
+                      child: Text(l.templateReset))
+                ])));
   }
 }

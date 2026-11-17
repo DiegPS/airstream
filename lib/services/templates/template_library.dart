@@ -113,7 +113,8 @@ class TemplateManifest {
         o['options'] = List<String>.from(list);
       }
       if (type == 'media') {
-        if (!['image', 'video', 'audio', 'any'].contains(f['kind'] ?? 'any')) {
+        if (!['image', 'video', 'audio', 'visual', 'any']
+            .contains(f['kind'] ?? 'any')) {
           continue;
         }
         o['kind'] = f['kind'] ?? 'any';
