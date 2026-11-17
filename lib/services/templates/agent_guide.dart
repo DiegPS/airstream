@@ -147,7 +147,7 @@ interface Settings {
  alertTypeOptions:Partial<Record<AlertType,AlertOptions>>;
 }
 interface Events {
- chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
+ trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null;
 }
@@ -219,6 +219,7 @@ Events and WHEN they fire:
 - chat: accepted chat message, Chat below; timestamp is an ISO-8601 string, provider IDs are opaque. Roles are already resolved. Amounts are presentation strings, never assume numeric currency.
 - delete: moderation deletion, Delete below. scope message matches messageId, author matches authorChannelId/name, platform clears the platform; youtubeStreamOrientation may constrain YouTube deletion. Empty IDs/names can occur.
 - alert: automatic support or provider alert, Alert below. alertType superchat (YouTube money), membership (YouTube membership), bits (Twitch), subscription (Twitch/Kick subscription or renewal), gift (gift memberships/subscriptions), raid (Twitch raid/Kick host), kicks (Kick support). kind is membership for membership/subscription/gift, superchat for superchat, bits for bits, raid or host/kicks for provider alerts. count exists ONLY for raid/host/kicks; no count key on message alerts. message is trimmed chat text; provider raid has empty message, kicks has provider text. amount/color/stickerUrl come from superChat and may be null. authorChannelId is empty for provider alerts. months/giftCount/membershipKind may be null. Use alertType to distinguish celebrations.
+- trigger: automation event {name:string, data:string, rule:string}. All fields are plain text. Use textContent; never interpret data as HTML. Templates cannot trigger or edit rules.
 - featured: manually featured chat copy, same Alert fields, kind:'featured', alertType:null; no deliveryId and no confirmation command. May still contain support amount and membership metadata from the selected message.
 - event: provider lifecycle/activity event, ProviderEvent below (including raids, hosts, rewards and provider notices). data is provider-specific, arbitrary JSON; do not assume its keys. This can describe the same activity as an alert: do not celebrate both.
 - goals: full array whenever goals update and on connection; 0..3 goals, percent clamped 0..100, reached indicates current >= target.
@@ -318,7 +319,7 @@ interface Settings {
  alertTypeOptions:Partial<Record<AlertType,AlertOptions>>;
 }
 interface Events {
- chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
+ trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null;
 }

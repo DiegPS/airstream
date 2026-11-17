@@ -45,6 +45,17 @@ Map<String, dynamic> _other(SettingsModel s) =>
 SettingsModel _different() {
   const d = SettingsModel();
   return d.copyWith(
+    rulesEnabled: false,
+    rules: [
+      {
+        'id': 'test',
+        'name': 'Test',
+        'enabled': false,
+        'trigger': {'type': 'manual'},
+        'actions': <Object>[]
+      }
+    ],
+    ruleCounters: {'count': 1},
     subathonSecondsPerSub: d.subathonSecondsPerSub + 1,
     subathonSecondsPer100Bits: d.subathonSecondsPer100Bits + 1,
     subathonSecondsPer100Kicks: d.subathonSecondsPer100Kicks + 1,

@@ -1,0 +1,313 @@
+import 'dart:async';
+import 'package:flutter_test/flutter_test.dart';
+// Flutter's existing test dependency supplies deterministic timers.
+// ignore: depend_on_referenced_packages
+import 'package:fake_async/fake_async.dart';
+import 'package:airstream/application/rules/rule_model.dart';
+import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/application/rules/rule_events.dart';
+import 'package:airstream/models/chat_message.dart';
+
+class Target implements RuleActionTarget {
+  final calls = <String>[];
+  Completer<RuleActionResult>? gate;
+  void Function(RuleRun)? onAction;
+  @override
+  bool streaming = true;
+  @override
+  String currentScene = 'Original';
+  @override
+  Map<String, int> counters = {};
+  @override
+  String? skipReason(Map<String, dynamic> a, RuleEvent e) =>
+      a['type'] == 'tts.say' ? 'ttsOff' : null;
+  @override
+  Future<RuleActionResult> execute(Map<String, dynamic> a, RuleRun r) async {
+    calls.add(a['type'] as String);
+    onAction?.call(r);
+    if (a['type'] == 'obs.scene') currentScene = a['scene'] as String;
+    if (a['type'] == 'obs.previousScene') currentScene = r.previousScene!;
+    return gate == null ? RuleActionResult.done : await gate!.future;
+  }
+}
+
+Map<String, dynamic> rule(
+        {String id = 'r',
+        String type = 'manual',
+        String overlap = 'queue',
+        List<Map<String, dynamic>>? actions,
+        int cooldown = 0,
+        int userCooldown = 0}) =>
+    {
+      ...RuleSchema.newRule(type, id: id),
+      'enabled': true,
+      'overlap': overlap,
+      'cooldownSeconds': cooldown,
+      'userCooldownSeconds': userCooldown,
+      'actions': actions ??
+          [
+            {
+              'id': 'a',
+              'type': 'counter',
+              'name': 'count',
+              'op': 'add',
+              'value': 1
+            }
+          ],
+    };
+void main() {
+  void setup(FakeAsync a, void Function(RuleEngine, Target) body,
+      {List<Map<String, dynamic>>? rules}) {
+    final t = Target();
+    // Construct with the fake clock as well as fake timers.
+    final engine =
+        RuleEngine(target: t, clock: () => DateTime.utc(2026).add(a.elapsed));
+    engine.updateSettings(enabled: true, rules: rules ?? [rule()]);
+    body(engine, t);
+    unawaited(engine.dispose());
+    a.flushMicrotasks();
+  }
+
+  test(
+      'ordered actions and previous scene belongs to each run',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            e.runNow('r', const RuleEvent(type: 'manual'));
+            a.elapse(Duration.zero);
+            expect(t.calls, ['obs.scene', 'obs.previousScene']);
+            expect(t.currentScene, 'Original');
+            expect(e.history.single.results.first.reason, 'noPreviousScene');
+          }, rules: [
+            rule(actions: [
+              {'id': 'p', 'type': 'obs.previousScene'},
+              {'id': 's', 'type': 'obs.scene', 'scene': 'New'},
+              {'id': 'back', 'type': 'obs.previousScene'}
+            ])
+          ])));
+  test(
+      'skip overlap and queue cap while action is blocked',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            t.gate = Completer();
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+            a.elapse(Duration.zero);
+            for (var i = 0; i < 5; i++) {
+              expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+            }
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), 'queueFull');
+            e.updateSettings(enabled: true, rules: [rule(overlap: 'skip')]);
+            expect(e.history.where((r) => r.completed), hasLength(6));
+            t.gate!.complete(RuleActionResult.done);
+            a.flushMicrotasks();
+            e.runNow('r', const RuleEvent(type: 'manual'));
+            a.elapse(Duration.zero);
+            // A completed gate may finish immediately: use a fresh one.
+            t.gate = Completer();
+            e.runNow('r', const RuleEvent(type: 'manual'));
+            a.elapse(Duration.zero);
+            expect(e.runNow('r', const RuleEvent(type: 'manual')),
+                'overlapSkipped');
+            t.gate!.complete(RuleActionResult.done);
+            a.flushMicrotasks();
+          })));
+  test(
+      'global queue caps at 20 waiting',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            t.gate = Completer();
+            for (var i = 0; i < 5; i++) {
+              e.runNow('r$i', const RuleEvent(type: 'manual'));
+              a.elapse(Duration.zero);
+            }
+            for (var i = 0; i < 20; i++) {
+              expect(
+                  e.runNow('r${i % 5}', const RuleEvent(type: 'manual')), null);
+            }
+            expect(
+                e.runNow('r0', const RuleEvent(type: 'manual')), 'queueFull');
+            t.gate!.complete(RuleActionResult.done);
+            a.flushMicrotasks();
+          }, rules: List.generate(5, (i) => rule(id: 'r$i')))));
+  for (final change in ['disable', 'edit', 'off', 'delete']) {
+    test(
+        '$change cancels during wait and remaining actions',
+        () => fakeAsync((a) => setup(a, (e, t) {
+              e.runNow('r', const RuleEvent(type: 'manual'));
+              a.elapse(Duration.zero);
+              expect(a.nonPeriodicTimerCount, 1);
+              final r = rule(actions: [
+                {'id': 'wait', 'type': 'wait', 'seconds': 10},
+                {
+                  'id': 'a',
+                  'type': 'counter',
+                  'name': 'count',
+                  'op': 'add',
+                  'value': 1
+                }
+              ]);
+              e.updateSettings(
+                  enabled: change != 'off',
+                  rules: change == 'delete'
+                      ? []
+                      : [
+                          {
+                            ...r,
+                            if (change == 'disable') 'enabled': false,
+                            if (change == 'edit') 'name': 'Edited'
+                          }
+                        ]);
+              a.elapse(const Duration(seconds: 20));
+              expect(t.calls, isEmpty);
+              expect(e.history.single.results.map((r) => r.status),
+                  ['cancelled', 'cancelled']);
+            }, rules: [
+              rule(actions: [
+                {'id': 'wait', 'type': 'wait', 'seconds': 10},
+                {
+                  'id': 'a',
+                  'type': 'counter',
+                  'name': 'count',
+                  'op': 'add',
+                  'value': 1
+                }
+              ])
+            ])));
+  }
+  test(
+      'cooldowns, user cooldown and repeated event dedupe',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            const event = RuleEvent(
+                type: 'manual', eventId: 'one', author: RuleAuthor(id: 'u'));
+            expect(e.handle(event)['r'], null);
+            a.elapse(Duration.zero);
+            expect(e.handle(event), isEmpty);
+            expect(
+                e.handle(const RuleEvent(
+                    type: 'manual', author: RuleAuthor(id: 'u')))['r'],
+                'cooldown');
+            a.elapse(const Duration(seconds: 31));
+            expect(
+                e.handle(const RuleEvent(
+                    type: 'manual', author: RuleAuthor(id: 'u')))['r'],
+                'userCooldown');
+            expect(
+                e.handle(const RuleEvent(
+                    type: 'manual', author: RuleAuthor(id: 'v')))['r'],
+                null);
+          }, rules: [rule(cooldown: 30, userCooldown: 60)])));
+  test(
+      'breaker trips on 31, cancels and reset re-enables',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            for (var i = 0; i < 30; i++) {
+              expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+              a.elapse(Duration.zero);
+            }
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), 'tripped');
+            expect(e.tripped, 'runRateExceeded');
+            e.resetBreaker();
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+            a.elapse(Duration.zero);
+          })));
+  test(
+      'chain limit stops recursive goal actions at depth 3',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            t.onAction = (r) => e.handle(RuleEvent(
+                type: 'goal.reached',
+                goalId: 'goal',
+                chainDepth: r.event.chainDepth + 1));
+            e.handle(const RuleEvent(type: 'goal.reached', goalId: 'goal'));
+            a.elapse(Duration.zero);
+            a.flushMicrotasks();
+            expect(t.calls, hasLength(3));
+            expect(e.history, hasLength(3));
+          }, rules: [
+            rule(type: 'goal.reached', actions: [
+              {'id': 'a', 'type': 'goal.adjust', 'goalId': 'goal', 'delta': 1}
+            ])
+          ])));
+  test(
+      'OBS times out uncertain once and subsequent action runs',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            t.gate = Completer();
+            e.runNow('r', const RuleEvent(type: 'manual'));
+            a.elapse(Duration.zero);
+            a.elapse(const Duration(seconds: 5));
+            expect(t.calls, ['obs.scene']);
+            expect(e.history.single.results.map((r) => r.status),
+                ['uncertain', 'skipped']);
+            t.gate!.complete(RuleActionResult.done);
+            a.flushMicrotasks();
+            expect(t.calls, hasLength(1));
+          }, rules: [
+            rule(actions: [
+              {'id': 's', 'type': 'obs.scene', 'scene': 'New'},
+              {'id': 't', 'type': 'tts.say', 'text': 'Hello'}
+            ])
+          ])));
+  test(
+      'simulate has no calls history cooldown or timers; manual ignores trigger and cooldown',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            final sample = e.sampleEvent('chat.command');
+            final simulation = e.simulate(e.rules.single, sample);
+            expect(simulation.matched, true);
+            expect(simulation.actions.single['text'], 'Hello Alex');
+            expect(simulation.results.single.reason, 'ttsOff');
+            expect(t.calls, isEmpty);
+            expect(e.history, isEmpty);
+            expect(a.nonPeriodicTimerCount, 0);
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+            a.elapse(Duration.zero);
+            expect(e.runNow('r', const RuleEvent(type: 'manual')), null);
+            a.elapse(Duration.zero);
+            expect(e.history.first.triggerSummary, 'manual');
+          }, rules: [
+            rule(type: 'chat.command', cooldown: 30, actions: [
+              {'id': 'a', 'type': 'tts.say', 'text': 'Hello {user}'}
+            ])
+          ])));
+  test(
+      'history retains 50 newest, idle has no timers',
+      () => fakeAsync((a) => setup(a, (e, t) {
+            for (var i = 0; i < 55; i++) {
+              e.runNow('r', const RuleEvent(type: 'manual'));
+              a.elapse(const Duration(seconds: 3));
+            }
+            expect(e.history, hasLength(50));
+            expect(e.history.first.id, 'run_55');
+            e.updateSettings(enabled: true, rules: []);
+            expect(e.handle(const RuleEvent(type: 'manual')), isEmpty);
+            expect(a.nonPeriodicTimerCount, 0);
+          })));
+  test('simulation resolves subsequent text against dry-run counters only', () {
+    final target = Target();
+    target.counters = {'count': 2};
+    final engine = RuleEngine(target: target);
+    addTearDown(engine.dispose);
+    final r = rule(actions: [
+      {'id': 'c', 'type': 'counter', 'name': 'count', 'op': 'add', 'value': 3},
+      {'id': 't', 'type': 'tts.say', 'text': '{counter.count}'}
+    ]);
+    expect(
+        engine
+            .simulate(r, const RuleEvent(type: 'manual'))
+            .actions
+            .last['text'],
+        '5');
+    expect(target.counters, {'count': 2});
+    expect(target.calls, isEmpty);
+    expect(engine.history, isEmpty);
+  });
+  test('first message resets with each session', () {
+    final adapter = RuleEventAdapter();
+    ChatMessage m(String id) => ChatMessage(
+        platform: Platform.twitch,
+        id: id,
+        author: const ChatAuthor(name: 'Alex', channelId: 'u'),
+        items: const [MessageItem.text('hello')],
+        timestamp: DateTime.utc(2026));
+    expect(adapter.message(m('1')).map((e) => e.type),
+        contains('chat.firstMessage'));
+    expect(adapter.message(m('2')).map((e) => e.type),
+        isNot(contains('chat.firstMessage')));
+    adapter.startSession();
+    expect(adapter.message(m('3')).map((e) => e.type),
+        contains('chat.firstMessage'));
+  });
+}

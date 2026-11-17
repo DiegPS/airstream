@@ -1,3 +1,6 @@
+import 'rules/rule_engine.dart';
+import 'rules/rule_events.dart';
+import 'rules/rule_actions.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
@@ -80,6 +83,30 @@ class AppController {
     _obs = obsCoordinator ??
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
+    rules = RuleEngine(
+        target: RuleActions(
+            settings: () => _lastSettings ?? const SettingsModel(),
+            writeSettings: (s, depth) async {
+              final write = ruleSettingsWriter;
+              if (write == null) throw StateError('Settings unavailable');
+              _settingsDepth = depth;
+              try {
+                final pending = write(s);
+                _settingsDepth = 0;
+                await pending;
+              } finally {
+                _settingsDepth = 0;
+              }
+            },
+            obs: _obs,
+            audio: _audio,
+            giveaway: _giveaway,
+            server: () => templateServer,
+            feature: featureMessageOnStream,
+            draw: (depth) {
+              final winner = _giveaway.draw();
+              if (winner != null) _winnerEvent(depth);
+            }));
     _subscriptions.addAll([
       _chat.messages
           .listen((m) => _emitGoalIncrements(_goalTracker.message(m))),
@@ -97,6 +124,34 @@ class AppController {
       ),
       _chat.messages.listen(_overlayFeed.add),
       _chat.messages.listen(_audio.handleChatMessage),
+      _chat.messages.listen((m) {
+        if (rules.active) {
+          for (final e in _ruleAdapter.message(m,
+              firstInSession: m.isOwner || m.isMembershipEvent
+                  ? null
+                  : m.isFirstInSession)) {
+            rules.handle(e);
+          }
+        }
+      }),
+      _chat.providerEvents.listen((e) {
+        if (rules.active) {
+          final event = _ruleAdapter.provider(e);
+          if (event != null) rules.handle(event);
+        }
+      }),
+      _giveaway.states.listen((g) {
+        if (g != null && g.drawId > _lastDrawId) {
+          _winnerEvent(0);
+        }
+      }),
+      _poll.states.listen((p) {
+        if (rules.active && _pollWasOpen && p?.closed == true) {
+          rules.handle(RuleEvent(
+              type: 'poll.ended', eventId: 'poll_${++_ruleEventSequence}'));
+        }
+        _pollWasOpen = p != null && !p.closed;
+      }),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
       _chat.providerEvents.listen(_overlay.broadcastProviderEvent),
@@ -110,6 +165,27 @@ class AppController {
   }
 
   OverlayServer? get templateServer => _overlay.templateServer;
+  late final RuleEngine rules;
+  final _ruleAdapter = RuleEventAdapter();
+  Future<void> Function(SettingsModel)? ruleSettingsWriter;
+  int _settingsDepth = 0, _lastDrawId = 0, _ruleEventSequence = 0;
+  bool _pollWasOpen = false;
+  Timer? _ruleEndTimer;
+  void _winnerEvent(int depth) {
+    final g = _giveaway.current;
+    if (g == null || g.drawId <= _lastDrawId) return;
+    _lastDrawId = g.drawId;
+    if (rules.active) {
+      rules.handle(RuleEvent(
+          type: 'giveaway.winner',
+          eventId: 'draw:${g.drawId}',
+          chainDepth: depth,
+          platform: g.winner?.platform.name ?? '',
+          author: RuleAuthor(
+              name: g.winner?.name ?? '', id: g.winner?.authorId ?? '')));
+    }
+  }
+
   late final ChatCoordinator _chat;
   late final AudioCoordinator _audio;
   late final OverlayCoordinator _overlay;
@@ -227,9 +303,52 @@ class AppController {
     if (_disposed) return;
     final previous = _lastSettings;
     _lastSettings = settings;
+    rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
+    _ruleEndTimer?.cancel();
+    _ruleEndTimer = null;
+    if (rules.active) {
+      if (previous != null) {
+        for (final e in settings.goals.entries) {
+          final old = previous.goals[e.key];
+          if (old != null &&
+              (old['current'] as int) < (old['target'] as int) &&
+              (e.value['current'] as int) >= (e.value['target'] as int)) {
+            rules.handle(RuleEvent(
+                type: 'goal.reached',
+                goalId: e.key,
+                eventId: 'goal:${++_ruleEventSequence}',
+                chainDepth: _settingsDepth));
+          }
+        }
+        if (previous.subathonPhase == 'running' &&
+            settings.subathonPhase == 'ended') {
+          rules.handle(RuleEvent(
+              type: 'subathon.ended',
+              eventId: 'timer:${previous.subathonEndsAtMs}',
+              chainDepth: _settingsDepth));
+        }
+      }
+      if (settings.subathonPhase == 'running' &&
+          rules.rules.any((r) =>
+              r['enabled'] == true &&
+              (r['trigger'] as Map)['type'] == 'subathon.ended')) {
+        _ruleEndTimer = Timer(
+            Duration(
+                milliseconds: (settings.subathonEndsAtMs -
+                        DateTime.now().millisecondsSinceEpoch)
+                    .clamp(0, 8640000000000000)), () {
+          if (rules.active) {
+            rules.handle(RuleEvent(
+                type: 'subathon.ended',
+                eventId: 'timer:${settings.subathonEndsAtMs}'));
+          }
+        });
+      }
+    }
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
+        _ruleAdapter.startSession();
         _sessionSummary.start();
         _overlay.clearRecentAlerts();
       } else {
@@ -266,6 +385,8 @@ class AppController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _ruleEndTimer?.cancel();
+    await rules.dispose();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }

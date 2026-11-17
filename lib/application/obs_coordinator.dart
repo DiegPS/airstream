@@ -57,6 +57,11 @@ class ObsCoordinator {
   bool _connectRequested = false;
   bool _disposed = false;
 
+  ObsState get currentState => _obs.currentState;
+  Future<void> ruleScene(String scene) => _obs.switchScene(scene);
+  Future<void> ruleRecording(bool start) =>
+      start ? _obs.startRecording() : _obs.stopRecording();
+
   Stream<ObsState> get stateStream async* {
     yield _obs.currentState;
     yield* _obs.stateStream;

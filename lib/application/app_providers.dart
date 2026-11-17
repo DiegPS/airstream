@@ -191,6 +191,8 @@ final appControllerProvider = Provider<AppController>((ref) {
 
 final _appControllerInstanceProvider = Provider<AppController>((ref) {
   final c = AppController();
+  c.ruleSettingsWriter =
+      (settings) => ref.read(settingsProvider.notifier).update(settings);
   ref.onDispose(() => unawaited(c.dispose()));
   return c;
 });

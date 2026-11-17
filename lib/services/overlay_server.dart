@@ -84,6 +84,15 @@ class OverlayServer {
         listener.addSync(templateViewCounts);
         listener.onCancel = sub.cancel;
       }, isBroadcast: true);
+
+  /// Sends a plain-text automation event exclusively to custom templates.
+  bool broadcastRuleTrigger(
+          {required String name, required String data, required String rule}) =>
+      _sendCustom({
+        'type': 'trigger',
+        'data': {'name': name, 'data': data, 'rule': rule}
+      });
+
   bool _sendCustom(Map<String, Object?> envelope, [String? id]) {
     var sent = false;
     for (final entry in _templates.entries.toList()) {

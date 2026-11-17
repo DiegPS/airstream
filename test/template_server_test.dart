@@ -76,6 +76,20 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+  test('rule trigger envelope reaches only custom templates', () async {
+    final custom = await connect('custom', 'one');
+    final alerts = await connect('alerts');
+    final poll = await connect('poll');
+    expect(
+        server.broadcastRuleTrigger(
+            name: 'celebrate', data: '<plain>', rule: 'My rule'),
+        true);
+    expect((await custom.next('trigger'))['data'],
+        {'name': 'celebrate', 'data': '<plain>', 'rule': 'My rule'});
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(alerts.frames.where((f) => f['type'] == 'trigger'), isEmpty);
+    expect(poll.frames.where((f) => f['type'] == 'trigger'), isEmpty);
+  });
   test('stopping the HTTP server keeps the shared library watcher alive',
       () async {
     final library = await server.templateLibrary;

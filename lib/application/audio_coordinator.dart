@@ -190,6 +190,14 @@ class AudioCoordinator {
   Stream<VoiceCommand> get voiceCommands => _voiceCommandController.stream;
   Stream<CoordinatorNotice> get notices => _noticeController.stream;
 
+  bool get ruleTtsReady =>
+      !_disposed &&
+      _lastSettings?.ttsEnabled == true &&
+      _tts.currentLoadState.isReady;
+  void ruleSpeak(String text) {
+    if (ruleTtsReady) _tts.speak(text);
+  }
+
   bool testTts(String text) {
     if (text.isEmpty || _tts.currentLoadState.isLoading || _tts.isBusy) {
       return false;

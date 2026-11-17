@@ -16,6 +16,30 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('SDK maps automation trigger envelopes to trigger listeners', () async {
+    final temp = await Directory.systemTemp.createTemp('rule-sdk-');
+    try {
+      final file = File('${temp.path}/trigger.cjs');
+      final sdk = jsonEncode(sdkV1());
+      await file.writeAsString("const sdk = $sdk;\n"
+          r"""
+const vm=require('node:vm');let socket,received;
+class WebSocket {constructor(){socket=this;} send(){} addEventListener(name,fn){this[name]=fn;} }
+const context={WebSocket,location:{pathname:'/custom/test/',search:'',protocol:'http:',host:'localhost:8080'},URLSearchParams,console,Date,setTimeout:()=>0,clearTimeout(){},addEventListener(){},document:{},queueMicrotask:fn=>fn()};
+context.window=context;vm.createContext(context);vm.runInContext(sdk,context);
+context.Airstream.on('trigger',data=>received=data);
+socket.message({data:JSON.stringify({type:'trigger',data:{name:'celebrate',data:'<plain>',rule:'Bits rule'}})});
+if(!received||received.name!=='celebrate'||received.data!=='<plain>'||received.rule!=='Bits rule')throw Error('trigger mapping failed');
+console.log('SDK trigger check: PASS (name, data, rule; plain text preserved)');
+""");
+      final result = await Process.run('node', [file.path]);
+      expect(result.exitCode, 0, reason: '${result.stderr}');
+      // This output is included in the implementation verification report.
+      stdout.write(result.stdout);
+    } finally {
+      await temp.delete(recursive: true);
+    }
+  });
   test(
       'guide and declarations cover SDK names, members, manifest and exact CSP',
       () {

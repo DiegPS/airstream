@@ -23,6 +23,9 @@ const defaultProviderEventBannerKinds = <String>[
 
 /// All persisted settings for the app.
 class SettingsModel {
+  final bool rulesEnabled;
+  final List<Map<String, dynamic>> rules;
+  final Map<String, int> ruleCounters;
   final String appLanguageCode;
 
   // Platform connections
@@ -306,6 +309,9 @@ class SettingsModel {
     this.subathonRemainingMs = 0,
     this.mediaLibrary = const {},
     this.goals = const {},
+    this.rulesEnabled = true,
+    this.rules = const [],
+    this.ruleCounters = const {},
     this.alertTypeOptions = const {},
     this.alertSoundVolume = 70,
     this.connectChatOnLaunch = false,
@@ -447,6 +453,9 @@ class SettingsModel {
     int? subathonRemainingMs,
     Map<String, Map<String, dynamic>>? mediaLibrary,
     Map<String, Map<String, dynamic>>? goals,
+    bool? rulesEnabled,
+    List<Map<String, dynamic>>? rules,
+    Map<String, int>? ruleCounters,
     Map<String, Map<String, dynamic>>? alertTypeOptions,
     int? alertSoundVolume,
     bool? connectChatOnLaunch,
@@ -615,6 +624,9 @@ class SettingsModel {
         subathonRemainingMs: subathonRemainingMs ?? this.subathonRemainingMs,
         mediaLibrary: mediaLibrary ?? this.mediaLibrary,
         goals: goals ?? this.goals,
+        rulesEnabled: rulesEnabled ?? this.rulesEnabled,
+        rules: rules ?? this.rules,
+        ruleCounters: ruleCounters ?? this.ruleCounters,
         alertTypeOptions: alertTypeOptions ?? this.alertTypeOptions,
         alertSoundVolume: alertSoundVolume ?? this.alertSoundVolume,
         connectChatOnLaunch: connectChatOnLaunch ?? this.connectChatOnLaunch,

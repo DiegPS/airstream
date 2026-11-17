@@ -1,3 +1,4 @@
+import 'package:airstream/application/rules/rule_model.dart';
 import 'dart:convert';
 
 import 'settings_model.dart';
@@ -130,6 +131,9 @@ abstract final class SettingsModelCodec {
         'subathonRemainingMs': model.subathonRemainingMs,
         'mediaLibrary': MediaLibraryEntries.sanitize(model.mediaLibrary),
         'goals': Goals.sanitize(model.goals),
+        'rulesEnabled': model.rulesEnabled,
+        'rules': RuleSchema.sanitize(model.rules),
+        'ruleCounters': RuleSchema.counters(model.ruleCounters),
         'alertTypeOptions': model.alertTypeOptions,
         'alertSoundVolume': model.alertSoundVolume,
         'connectChatOnLaunch': model.connectChatOnLaunch,
@@ -160,6 +164,9 @@ abstract final class SettingsModelCodec {
       subathonRemainingMs: j['subathonRemainingMs'] as int? ?? 0,
       mediaLibrary: MediaLibraryEntries.sanitize(j['mediaLibrary']),
       goals: Goals.sanitize(j['goals']),
+      rulesEnabled: j['rulesEnabled'] as bool? ?? true,
+      rules: RuleSchema.sanitize(j['rules']),
+      ruleCounters: RuleSchema.counters(j['ruleCounters']),
       appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
       youtubeHandle: j['youtubeHandle'] as String? ?? '',
       youtubeLiveId: j['youtubeLiveId'] as String? ?? '',
@@ -337,6 +344,12 @@ abstract final class SettingsModelCodec {
       final value = entry.value;
       if (entry.key == 'mediaLibrary') {
         sanitized[entry.key] = MediaLibraryEntries.sanitize(value);
+        continue;
+      }
+      if (entry.key == 'rules' || entry.key == 'ruleCounters') {
+        sanitized[entry.key] = entry.key == 'rules'
+            ? RuleSchema.sanitize(value)
+            : RuleSchema.counters(value);
         continue;
       }
       if (entry.key == 'goals') {
