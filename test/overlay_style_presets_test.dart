@@ -45,6 +45,14 @@ Map<String, dynamic> _other(SettingsModel s) =>
 SettingsModel _different() {
   const d = SettingsModel();
   return d.copyWith(
+    subathonSecondsPerSub: d.subathonSecondsPerSub + 1,
+    subathonSecondsPer100Bits: d.subathonSecondsPer100Bits + 1,
+    subathonSecondsPer100Kicks: d.subathonSecondsPer100Kicks + 1,
+    subathonMaxRemainingMinutes: d.subathonMaxRemainingMinutes + 1,
+    subathonStartMinutes: d.subathonStartMinutes + 1,
+    subathonPhase: 'paused',
+    subathonEndsAtMs: d.subathonEndsAtMs + 1,
+    subathonRemainingMs: d.subathonRemainingMs + 1,
     goals: {
       'g': {'title': 'Test', 'type': 'manual', 'target': 100, 'current': 10}
     },

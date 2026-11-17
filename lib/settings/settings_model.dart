@@ -150,6 +150,14 @@ class SettingsModel {
   final String alertPosition;
   final String alertLayout;
   final String alertAnimation;
+  final int subathonSecondsPerSub;
+  final int subathonSecondsPer100Bits;
+  final int subathonSecondsPer100Kicks;
+  final int subathonMaxRemainingMinutes;
+  final int subathonStartMinutes;
+  final String subathonPhase;
+  final int subathonEndsAtMs;
+  final int subathonRemainingMs;
   final Map<String, Map<String, dynamic>> goals;
   final Map<String, Map<String, dynamic>> alertTypeOptions;
   final int alertSoundVolume;
@@ -287,6 +295,14 @@ class SettingsModel {
     this.alertPosition = 'center',
     this.alertLayout = 'row',
     this.alertAnimation = 'pop',
+    this.subathonSecondsPerSub = 60,
+    this.subathonSecondsPer100Bits = 60,
+    this.subathonSecondsPer100Kicks = 60,
+    this.subathonMaxRemainingMinutes = 0,
+    this.subathonStartMinutes = 60,
+    this.subathonPhase = 'idle',
+    this.subathonEndsAtMs = 0,
+    this.subathonRemainingMs = 0,
     this.goals = const {},
     this.alertTypeOptions = const {},
     this.alertSoundVolume = 70,
@@ -419,6 +435,14 @@ class SettingsModel {
     String? alertPosition,
     String? alertLayout,
     String? alertAnimation,
+    int? subathonSecondsPerSub,
+    int? subathonSecondsPer100Bits,
+    int? subathonSecondsPer100Kicks,
+    int? subathonMaxRemainingMinutes,
+    int? subathonStartMinutes,
+    String? subathonPhase,
+    int? subathonEndsAtMs,
+    int? subathonRemainingMs,
     Map<String, Map<String, dynamic>>? goals,
     Map<String, Map<String, dynamic>>? alertTypeOptions,
     int? alertSoundVolume,
@@ -574,6 +598,18 @@ class SettingsModel {
         alertPosition: alertPosition ?? this.alertPosition,
         alertLayout: alertLayout ?? this.alertLayout,
         alertAnimation: alertAnimation ?? this.alertAnimation,
+        subathonSecondsPerSub:
+            subathonSecondsPerSub ?? this.subathonSecondsPerSub,
+        subathonSecondsPer100Bits:
+            subathonSecondsPer100Bits ?? this.subathonSecondsPer100Bits,
+        subathonSecondsPer100Kicks:
+            subathonSecondsPer100Kicks ?? this.subathonSecondsPer100Kicks,
+        subathonMaxRemainingMinutes:
+            subathonMaxRemainingMinutes ?? this.subathonMaxRemainingMinutes,
+        subathonStartMinutes: subathonStartMinutes ?? this.subathonStartMinutes,
+        subathonPhase: subathonPhase ?? this.subathonPhase,
+        subathonEndsAtMs: subathonEndsAtMs ?? this.subathonEndsAtMs,
+        subathonRemainingMs: subathonRemainingMs ?? this.subathonRemainingMs,
         goals: goals ?? this.goals,
         alertTypeOptions: alertTypeOptions ?? this.alertTypeOptions,
         alertSoundVolume: alertSoundVolume ?? this.alertSoundVolume,

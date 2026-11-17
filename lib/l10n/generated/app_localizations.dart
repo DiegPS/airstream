@@ -3582,7 +3582,7 @@ abstract class AppLocalizations {
   /// No description provided for @diagnosticsMessage.
   ///
   /// In en, this message translates to:
-  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway / goals: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
+  /// **'{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway / goals / timer: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}'**
   String diagnosticsMessage(String kind, String value);
 
   /// No description provided for @diagnosticsArea.
@@ -3812,6 +3812,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Goals page URL copied'**
   String get goalsUrlCopied;
+
+  /// No description provided for @subathonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subathon timer'**
+  String get subathonTitle;
+
+  /// No description provided for @subathonStartMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Start minutes'**
+  String get subathonStartMinutes;
+
+  /// No description provided for @subathonStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get subathonStart;
+
+  /// No description provided for @subathonPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get subathonPause;
+
+  /// No description provided for @subathonResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get subathonResume;
+
+  /// No description provided for @subathonReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get subathonReset;
+
+  /// No description provided for @subathonRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules'**
+  String get subathonRules;
+
+  /// No description provided for @subathonPerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds per subscription or gifted sub'**
+  String get subathonPerSub;
+
+  /// No description provided for @subathonPerBits.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds per 100 Bits'**
+  String get subathonPerBits;
+
+  /// No description provided for @subathonPerKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds per 100 Kicks'**
+  String get subathonPerKicks;
+
+  /// No description provided for @subathonCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum remaining minutes (0 = no limit)'**
+  String get subathonCap;
+
+  /// No description provided for @subathonIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get subathonIdle;
+
+  /// No description provided for @subathonRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get subathonRunning;
+
+  /// No description provided for @subathonPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get subathonPaused;
+
+  /// No description provided for @subathonEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Time\'s up!'**
+  String get subathonEnded;
+
+  /// No description provided for @subathonPageOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the browser server to use /timer in OBS.'**
+  String get subathonPageOff;
+
+  /// No description provided for @subathonDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Add time from support during your stream.'**
+  String get subathonDescription;
+
+  /// No description provided for @subathonUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer page URL copied'**
+  String get subathonUrlCopied;
 }
 
 class _AppLocalizationsDelegate

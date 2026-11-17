@@ -1,3 +1,4 @@
+import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 import 'dart:convert';
@@ -51,7 +52,8 @@ class OverlayServer {
           'poll',
           'captions',
           'giveaway',
-          'goals'
+          'goals',
+          'timer'
         ])
           view: _views.values.where((value) => value == view).length,
       });
@@ -122,6 +124,7 @@ class OverlayServer {
     final lifecycleGeneration = ++_lifecycleGeneration;
     _settings = settings;
     _updateGoals(settings);
+    _updateTimer(settings);
     _port = port;
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
@@ -164,6 +167,7 @@ class OverlayServer {
   void setSettings(SettingsModel settings) {
     _settings = settings;
     _updateGoals(settings);
+    _updateTimer(settings);
     _broadcastSettings();
   }
 
@@ -291,6 +295,32 @@ class OverlayServer {
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
     });
+  }
+
+  Map<String, Object?>? _timer;
+  void _updateTimer(SettingsModel settings) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final next = SubathonTimer.payload(settings, now);
+    final previous = _timer;
+    if (previous == null && next['phase'] == 'idle') return;
+    if (previous != null &&
+        ['phase', 'endsAtMs'].every((k) => previous[k] == next[k]) &&
+        (next['phase'] != 'paused' ||
+            previous['remainingMs'] == next['remainingMs'])) {
+      return;
+    }
+    var added = 0;
+    if (previous != null && previous['phase'] == next['phase']) {
+      if (next['phase'] == 'running') {
+        added = (next['endsAtMs'] as int) - (previous['endsAtMs'] as int);
+      }
+      if (next['phase'] == 'paused') {
+        added = (next['remainingMs'] as int) - (previous['remainingMs'] as int);
+      }
+    }
+    next['addedMs'] = added > 0 ? added : 0;
+    _timer = next;
+    _broadcastEnvelope({'type': 'timer', 'data': next});
   }
 
   List<Map<String, Object?>> _goals = const [];
@@ -459,8 +489,15 @@ class OverlayServer {
       if (envelope['type'] == 'register') {
         final view = envelope['view'];
         if (view is String &&
-            const {'chat', 'alerts', 'poll', 'captions', 'giveaway', 'goals'}
-                .contains(view) &&
+            const {
+              'chat',
+              'alerts',
+              'poll',
+              'captions',
+              'giveaway',
+              'goals',
+              'timer'
+            }.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
           _emitViewCounts();
@@ -569,6 +606,20 @@ class OverlayServer {
         'type': 'settings',
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
+      if (_timer != null) {
+        final data = {
+          ..._timer!,
+          'addedMs': 0,
+          'serverNowMs': DateTime.now().millisecondsSinceEpoch
+        };
+        if (data['phase'] == 'running') {
+          final ms = (data['endsAtMs'] as int) - (data['serverNowMs'] as int);
+          data['remainingMs'] = ms > 0 ? ms : 0;
+          if (ms <= 0) data['phase'] = 'ended';
+        }
+        client.sink
+            .add(jsonEncode({'type': 'timer', 'data': data, 'replay': true}));
+      }
       if (_goals.isNotEmpty) {
         client.sink
             .add(jsonEncode({'type': 'goals', 'data': _goals, 'replay': true}));

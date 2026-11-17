@@ -119,6 +119,14 @@ abstract final class SettingsModelCodec {
         'alertPosition': model.alertPosition,
         'alertLayout': model.alertLayout,
         'alertAnimation': model.alertAnimation,
+        'subathonSecondsPerSub': model.subathonSecondsPerSub,
+        'subathonSecondsPer100Bits': model.subathonSecondsPer100Bits,
+        'subathonSecondsPer100Kicks': model.subathonSecondsPer100Kicks,
+        'subathonMaxRemainingMinutes': model.subathonMaxRemainingMinutes,
+        'subathonStartMinutes': model.subathonStartMinutes,
+        'subathonPhase': model.subathonPhase,
+        'subathonEndsAtMs': model.subathonEndsAtMs,
+        'subathonRemainingMs': model.subathonRemainingMs,
         'goals': Goals.sanitize(model.goals),
         'alertTypeOptions': model.alertTypeOptions,
         'alertSoundVolume': model.alertSoundVolume,
@@ -139,6 +147,15 @@ abstract final class SettingsModelCodec {
   static SettingsModel fromJson(Map<String, dynamic> source) {
     final j = _sanitizeJson(source);
     return SettingsModel(
+      subathonSecondsPerSub: j['subathonSecondsPerSub'] as int? ?? 60,
+      subathonSecondsPer100Bits: j['subathonSecondsPer100Bits'] as int? ?? 60,
+      subathonSecondsPer100Kicks: j['subathonSecondsPer100Kicks'] as int? ?? 60,
+      subathonMaxRemainingMinutes:
+          j['subathonMaxRemainingMinutes'] as int? ?? 0,
+      subathonStartMinutes: j['subathonStartMinutes'] as int? ?? 60,
+      subathonPhase: j['subathonPhase'] as String? ?? 'idle',
+      subathonEndsAtMs: j['subathonEndsAtMs'] as int? ?? 0,
+      subathonRemainingMs: j['subathonRemainingMs'] as int? ?? 0,
       goals: Goals.sanitize(j['goals']),
       appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
       youtubeHandle: j['youtubeHandle'] as String? ?? '',
@@ -386,6 +403,21 @@ abstract final class SettingsModelCodec {
 
     // Ranges match the settings sliders exactly, so a stored value always shows
     // what the app applies and every value a slider can set survives restarts.
+    for (final key in [
+      'subathonSecondsPerSub',
+      'subathonSecondsPer100Bits',
+      'subathonSecondsPer100Kicks'
+    ]) {
+      clampInt(key, 0, 3600);
+    }
+    clampInt('subathonStartMinutes', 1, 10080);
+    clampInt('subathonMaxRemainingMinutes', 0, 10080);
+    clampInt('subathonEndsAtMs', 0, 8640000000000000);
+    clampInt('subathonRemainingMs', 0, 8640000000000000);
+    if (!const ['idle', 'running', 'paused', 'ended']
+        .contains(sanitized['subathonPhase'])) {
+      sanitized['subathonPhase'] = 'idle';
+    }
     clampInt('overlayPort', 1, 65535);
     clampInt('maxMessages', 1, 1000);
     clampInt('providerEventBannerSeconds', 1, 20);

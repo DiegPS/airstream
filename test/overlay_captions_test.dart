@@ -24,7 +24,8 @@ void main() {
       'poll': 0,
       'captions': 0,
       'giveaway': 0,
-      'goals': 0
+      'goals': 0,
+      'timer': 0
     });
     Future<void> until(bool Function(Map<String, int>) matches) async {
       while (await counts.moveNext().timeout(const Duration(seconds: 5))) {
@@ -49,7 +50,8 @@ void main() {
         'poll': 1,
         'captions': 0,
         'giveaway': 0,
-        'goals': 0
+        'goals': 0,
+        'timer': 0
       });
       await alerts.sink.close();
       await until((v) => v['alerts'] == 0 && v['poll'] == 1);

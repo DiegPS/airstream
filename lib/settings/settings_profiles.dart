@@ -19,6 +19,9 @@ abstract final class SettingsProfiles {
     'overlayPort',
     'profiles',
     'goals',
+    'subathonPhase',
+    'subathonEndsAtMs',
+    'subathonRemainingMs',
   };
 
   static bool _isConnectionKey(String key) =>

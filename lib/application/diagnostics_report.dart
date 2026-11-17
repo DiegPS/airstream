@@ -74,7 +74,8 @@ const diagnosticEnglish = <String, String>{
   'listeningPort': 'Listening on port {value}',
   'starting': 'Starting',
   'noAlerts': 'No alerts page connected in OBS',
-  'pages': 'Pages: chat / alerts / poll / captions / giveaway / goals: {value}',
+  'pages':
+      'Pages: chat / alerts / poll / captions / giveaway / goals / timer: {value}',
   'loading': 'Loading {value}',
   'ready': 'Ready: {value}',
   'listening': 'Listening',
@@ -221,7 +222,8 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
                         'poll',
                         'captions',
                         'giveaway',
-                        'goals'
+                        'goals',
+                        'timer'
                       ].map((v) => snapshot.pages[v] ?? 0).join(' / '))}${noAlerts ? ' · ${t('noAlerts')}' : ''}'
                   : t('starting')));
   final tts = snapshot.tts;

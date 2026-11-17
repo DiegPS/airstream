@@ -1,3 +1,4 @@
+import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 
@@ -210,6 +211,42 @@ final goalTrackingProvider = Provider<void>((ref) {
         settings.copyWith(goals: Goals.advance(settings.goals, increments))));
   });
   ref.onDispose(() {
+    unawaited(sub.cancel());
+  });
+});
+
+final subathonTrackingProvider = Provider<void>((ref) {
+  void normalize() {
+    final s = ref.read(settingsProvider);
+    final next =
+        SubathonTimer.normalize(s, DateTime.now().millisecondsSinceEpoch);
+    if (!identical(s, next)) {
+      unawaited(ref.read(settingsProvider.notifier).update(next));
+    }
+  }
+
+  ref.listen(settingsInitializationProvider, (_, next) {
+    if (next is AsyncData<void>) normalize();
+  });
+  // Defer writes until the provider graph has finished building.
+  var disposed = false;
+  unawaited(Future<void>.microtask(() {
+    if (!disposed &&
+        ref.read(settingsInitializationProvider) is AsyncData<void>) {
+      normalize();
+    }
+  }));
+  final sub =
+      ref.watch(appControllerProvider).goalIncrements.listen((increments) {
+    final s = ref.read(settingsProvider);
+    final result = SubathonTimer.applyIncrements(
+        s, DateTime.now().millisecondsSinceEpoch, increments);
+    if (!identical(result.settings, s)) {
+      unawaited(ref.read(settingsProvider.notifier).update(result.settings));
+    }
+  });
+  ref.onDispose(() {
+    disposed = true;
     unawaited(sub.cancel());
   });
 });

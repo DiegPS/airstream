@@ -277,6 +277,19 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                         SnackBar(content: Text(l.goalsUrlCopied)));
                   },
                 ),
+                _overlayUrlCard(
+                  l: l,
+                  title: l.subathonTitle,
+                  overlayUrl: '$overlayCopyUrl/timer',
+                  description: l.subathonDescription,
+                  onCopy: () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: '$overlayCopyUrl/timer'));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.subathonUrlCopied)));
+                  },
+                ),
                 const SizedBox(height: 6),
                 Text(
                   overlayClientCount == 1
@@ -740,6 +753,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
         const PollCard(),
         const GiveawayCard(),
         const GoalsCard(),
+        const SubathonCard(),
       ],
     );
   }

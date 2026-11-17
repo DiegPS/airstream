@@ -1,3 +1,4 @@
+import 'package:airstream/services/overlay/templates/timer_overlay.dart';
 import 'dart:io';
 import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'package:airstream/settings/alert_type_options.dart';
@@ -60,6 +61,7 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
     if (request.url.path == 'captions') {
       return _htmlResponse(captionsOverlayHtml());
     }
+    if (request.url.path == 'timer') return _htmlResponse(timerOverlayHtml());
     if (request.url.path == 'goals') return _htmlResponse(goalsOverlayHtml());
     if (request.url.path == 'giveaway') {
       return _htmlResponse(giveawayOverlayHtml());

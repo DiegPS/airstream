@@ -838,7 +838,7 @@
       }
     }
   },
-  "diagnosticsMessage": "{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway / goals: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}",
+  "diagnosticsMessage": "{kind, select, set{set} off{Off} idle{Not connected} connected{Connected} connecting{Connecting / reconnecting} waiting{Waiting for live stream} failed{Failed (private details omitted)} portBusy{Port is already in use} authentication{Authentication failed} refused{Connection refused} timeout{Connection timed out} listeningPort{Listening on port {value}} starting{Starting} noAlerts{No alerts page connected in OBS} pages{Pages: chat / alerts / poll / captions / giveaway / goals / timer: {value}} loading{Loading {value}} ready{Ready: {value}} listening{Listening} downloading{Downloading {value}} missingModel{Model download required} commandsOn{Voice commands on} commandsOff{Voice commands off} shortcutsOk{None assigned or all registered} shortcutTaken{Shortcut taken by another app: {value}} silenceTts{Silence voice reader} toggleTts{Toggle voice reader} channelSet{Channel set} channelUnset{Channel not set} scene{Scene: {value}} metrics{{value} kbps / dropped frames} other{}}",
   "@diagnosticsMessage": {
     "placeholders": {
       "kind": {
@@ -914,5 +914,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "subathonTitle": "Subathon timer",
+  "subathonStartMinutes": "Start minutes",
+  "subathonStart": "Start",
+  "subathonPause": "Pause",
+  "subathonResume": "Resume",
+  "subathonReset": "Reset",
+  "subathonRules": "Rules",
+  "subathonPerSub": "Seconds per subscription or gifted sub",
+  "subathonPerBits": "Seconds per 100 Bits",
+  "subathonPerKicks": "Seconds per 100 Kicks",
+  "subathonCap": "Maximum remaining minutes (0 = no limit)",
+  "subathonIdle": "Idle",
+  "subathonRunning": "Running",
+  "subathonPaused": "Paused",
+  "subathonEnded": "Time's up!",
+  "subathonPageOff": "Enable the browser server to use /timer in OBS.",
+  "subathonDescription": "Add time from support during your stream.",
+  "subathonUrlCopied": "Timer page URL copied"
 }

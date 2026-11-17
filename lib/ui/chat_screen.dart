@@ -1,3 +1,4 @@
+import 'package:airstream/ui/widgets/subathon_card.dart';
 import 'dart:async';
 import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'dart:io' as io;
@@ -256,6 +257,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final l = AppLocalizations.of(context)!;
     ref.listen(globalShortcutsProvider, (_, __) {});
     ref.watch(goalTrackingProvider);
+    ref.watch(subathonTrackingProvider);
     ref.listen<bool>(chatPreviewProvider, (previous, enabled) {
       final app = ref.read(appControllerProvider);
       if (enabled) {

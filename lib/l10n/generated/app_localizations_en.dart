@@ -2014,7 +2014,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'starting': 'Starting',
         'noAlerts': 'No alerts page connected in OBS',
         'pages':
-            'Pages: chat / alerts / poll / captions / giveaway / goals: $value',
+            'Pages: chat / alerts / poll / captions / giveaway / goals / timer: $value',
         'loading': 'Loading $value',
         'ready': 'Ready: $value',
         'listening': 'Listening',
@@ -2174,4 +2174,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get goalsUrlCopied => 'Goals page URL copied';
+
+  @override
+  String get subathonTitle => 'Subathon timer';
+
+  @override
+  String get subathonStartMinutes => 'Start minutes';
+
+  @override
+  String get subathonStart => 'Start';
+
+  @override
+  String get subathonPause => 'Pause';
+
+  @override
+  String get subathonResume => 'Resume';
+
+  @override
+  String get subathonReset => 'Reset';
+
+  @override
+  String get subathonRules => 'Rules';
+
+  @override
+  String get subathonPerSub => 'Seconds per subscription or gifted sub';
+
+  @override
+  String get subathonPerBits => 'Seconds per 100 Bits';
+
+  @override
+  String get subathonPerKicks => 'Seconds per 100 Kicks';
+
+  @override
+  String get subathonCap => 'Maximum remaining minutes (0 = no limit)';
+
+  @override
+  String get subathonIdle => 'Idle';
+
+  @override
+  String get subathonRunning => 'Running';
+
+  @override
+  String get subathonPaused => 'Paused';
+
+  @override
+  String get subathonEnded => 'Time\'s up!';
+
+  @override
+  String get subathonPageOff =>
+      'Enable the browser server to use /timer in OBS.';
+
+  @override
+  String get subathonDescription => 'Add time from support during your stream.';
+
+  @override
+  String get subathonUrlCopied => 'Timer page URL copied';
 }

@@ -2028,7 +2028,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'starting': 'Iniciando',
         'noAlerts': 'No hay página de alertas conectada en OBS',
         'pages':
-            'Páginas: chat / alertas / encuesta / subtítulos / sorteo / metas: $value',
+            'Páginas: chat / alertas / encuesta / subtítulos / sorteo / metas / temporizador: $value',
         'loading': 'Cargando $value',
         'ready': 'Listo: $value',
         'listening': 'Escuchando',
@@ -2190,4 +2190,60 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get goalsUrlCopied => 'URL de la página de metas copiada';
+
+  @override
+  String get subathonTitle => 'Temporizador de subatón';
+
+  @override
+  String get subathonStartMinutes => 'Minutos iniciales';
+
+  @override
+  String get subathonStart => 'Iniciar';
+
+  @override
+  String get subathonPause => 'Pausar';
+
+  @override
+  String get subathonResume => 'Reanudar';
+
+  @override
+  String get subathonReset => 'Reiniciar';
+
+  @override
+  String get subathonRules => 'Reglas';
+
+  @override
+  String get subathonPerSub => 'Segundos por suscripción o regalo';
+
+  @override
+  String get subathonPerBits => 'Segundos por cada 100 Bits';
+
+  @override
+  String get subathonPerKicks => 'Segundos por cada 100 Kicks';
+
+  @override
+  String get subathonCap => 'Máximo de minutos restantes (0 = sin límite)';
+
+  @override
+  String get subathonIdle => 'Inactivo';
+
+  @override
+  String get subathonRunning => 'En marcha';
+
+  @override
+  String get subathonPaused => 'En pausa';
+
+  @override
+  String get subathonEnded => '¡Se acabó el tiempo!';
+
+  @override
+  String get subathonPageOff =>
+      'Activa el servidor de páginas para usar /timer en OBS.';
+
+  @override
+  String get subathonDescription =>
+      'Añade tiempo con los apoyos durante tu directo.';
+
+  @override
+  String get subathonUrlCopied => 'URL de la página del temporizador copiada';
 }

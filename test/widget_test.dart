@@ -42,6 +42,50 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  testWidgets('subathon starts adds five minutes pauses and resets in OBS',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: false));
+    await tester.pumpWidget(ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    Future<void> press(String key) async {
+      final button = find.byKey(Key(key));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+    }
+
+    await press('subathon-start');
+    expect(settings.state.subathonPhase, 'running');
+    final before = settings.state.subathonEndsAtMs;
+    await press('subathon-add-5');
+    expect(settings.state.subathonEndsAtMs, before + 300000);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('subathon-remaining'))).data,
+        startsWith('1:05:'));
+    await press('subathon-pause');
+    expect(settings.state.subathonPhase, 'paused');
+    await press('subathon-reset');
+    expect(settings.state.subathonPhase, 'idle');
+    expect(
+        tester.widget<Text>(find.byKey(const Key('subathon-remaining'))).data,
+        '0:00');
+    final rules = find.byKey(const Key('subathon-rules'));
+    await tester.ensureVisible(rules);
+    await tester.tap(rules);
+    await tester.pumpAndSettle();
+    expect(find.text('Seconds per subscription or gifted sub'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('System diagnostics is first, shows OBS error and copies report',
       (tester) async {
     tester.view.physicalSize = const Size(1200, 1600);

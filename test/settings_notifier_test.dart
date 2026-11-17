@@ -16,6 +16,27 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  test('subathon rules and state survive a settings save and reload', () async {
+    final store = _MemorySecureSettingsStore();
+    final first = SettingsNotifier(secureStore: store);
+    await first.ready;
+    final changed = first.state.copyWith(
+        subathonPhase: 'running',
+        subathonEndsAtMs: 123456789,
+        subathonRemainingMs: 987,
+        subathonSecondsPerSub: 7,
+        subathonSecondsPer100Bits: 8,
+        subathonSecondsPer100Kicks: 9,
+        subathonStartMinutes: 10,
+        subathonMaxRemainingMinutes: 11);
+    await first.update(changed);
+    final second = SettingsNotifier(secureStore: store);
+    await second.ready;
+    expect(second.state.toJson(), changed.toJson());
+    first.dispose();
+    second.dispose();
+  });
+
   test('goals survive a settings save and reload', () async {
     final store = _MemorySecureSettingsStore();
     final first = SettingsNotifier(secureStore: store);
