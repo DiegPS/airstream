@@ -20,6 +20,8 @@ abstract final class SettingsProfiles {
     'profiles',
     'goals',
     'rulesEnabled',
+    'rulesWebhookEnabled',
+    'rulesWebhookToken',
     'rules',
     'ruleCounters',
     'mediaLibrary',
@@ -51,7 +53,10 @@ abstract final class SettingsProfiles {
         ...current.toJson(),
         for (final entry in profile.entries)
           if (!_isConnectionKey(entry.key)) entry.key: entry.value,
-      }).copyWith(obsPassword: current.obsPassword);
+      }).copyWith(
+          obsPassword: current.obsPassword,
+          rulesWebhookToken: current.rulesWebhookToken,
+          rulesWebhookEnabled: current.rulesWebhookEnabled);
 
   static SettingsModel save(SettingsModel current, String name) {
     final profiles = {...current.profiles, name.trim(): capture(current)};
@@ -66,14 +71,14 @@ abstract final class SettingsProfiles {
   static SettingsModel resetToDefaults(SettingsModel current) =>
       apply(current, capture(const SettingsModel()));
 
-  /// Every setting as a file, without the OBS password (kept in Windows'
-  /// secure storage, never in the settings document).
+  /// Every setting as a file, excluding the OBS password and webhook token.
   static String export(SettingsModel settings) =>
-      SettingsDocumentCodec.encode(settings);
+      SettingsDocumentCodec.encode(settings, includeWebhookSecret: false);
 
-  /// Settings read from an exported file, keeping the current OBS password.
+  /// Settings read from a backup, keeping local credentials and API opt-in.
   static SettingsModel import(String source, SettingsModel current) =>
-      SettingsDocumentCodec.decode(source)
-          .settings
-          .copyWith(obsPassword: current.obsPassword);
+      SettingsDocumentCodec.decode(source).settings.copyWith(
+          obsPassword: current.obsPassword,
+          rulesWebhookToken: current.rulesWebhookToken,
+          rulesWebhookEnabled: current.rulesWebhookEnabled);
 }

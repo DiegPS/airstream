@@ -19,9 +19,13 @@ import 'package:shelf/shelf.dart';
 Handler buildOverlayRoutes(Handler webSocketHandler,
     {File? Function(String alertType)? customSound,
     Future<MediaLibrary> Function()? mediaLibrary,
-    Future<TemplateLibrary> Function()? templates}) {
+    Future<TemplateLibrary> Function()? templates,
+    Handler? rulesApi}) {
   return const Pipeline().addHandler((Request request) async {
     final path = request.url.path;
+    if (path == 'api' || path.startsWith('api/')) {
+      return rulesApi == null ? Response.notFound('') : rulesApi(request);
+    }
     if (path == 'sdk' || path.startsWith('sdk/')) {
       if (!['GET', 'HEAD'].contains(request.method) || path != 'sdk/v1.js') {
         return Response.notFound('');

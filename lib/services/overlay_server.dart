@@ -1,3 +1,5 @@
+import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/services/overlay/rules_api_route.dart';
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
@@ -29,6 +31,9 @@ class OverlayServer {
     this.giftGroupingWindow = const Duration(seconds: 2),
   }) : _templateLibrary = templateLibrary;
 
+  RuleEngine? rulesEngine;
+  late final _rulesApi =
+      RulesApiRoute(settings: () => _settings, engine: () => rulesEngine);
   TemplateLibrary? _templateLibrary;
   Future<TemplateLibrary>? _templateLibraryFuture;
   Future<TemplateLibrary> get templateLibrary =>
@@ -327,6 +332,7 @@ class OverlayServer {
     });
 
     final handler = buildOverlayRoutes(wsHandler,
+        rulesApi: _rulesApi.call,
         templates: () => templateLibrary,
         mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
         customSound: (type) {

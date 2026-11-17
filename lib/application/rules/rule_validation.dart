@@ -9,7 +9,8 @@ Map<String, String> ruleProblems(Map<String, dynamic> rule) {
       return;
     }
     for (final entry in schema.entries) {
-      final f = entry.value, v = map[entry.key];
+      final f = entry.value,
+          v = map[entry.key] ?? (entry.key == 'webhook' ? '' : null);
       final bad = f.numeric
           ? v is! num || !v.isFinite || v < f.min || v > f.max
           : f.choices != null

@@ -2713,6 +2713,37 @@ class AppLocalizationsEn extends AppLocalizations {
         'knoAlertsPage': 'No alerts page connected',
         'kwillCheckInObs': 'Will check in OBS',
         'kwouldSkip': 'Would be skipped',
+        'kwebhook': 'Webhook name (optional)',
+        'kwebhookConflict': 'This webhook name is already used.',
+        'kwebhookTitle': 'Stream Deck and other apps',
+        'kwebhookEnable': 'Enable local rule URLs',
+        'kwebhookHelp':
+            'Stream Deck: use the Website action with GET request in background. Any app or script can call the URL.',
+        'kwebhookSecretWarning':
+            'Anyone with the URL can run these rules. Keep it private.',
+        'kwebhookServerHelp':
+            'Enable the local server in OBS settings to use these URLs.',
+        'khideToken': 'Hide token',
+        'krevealToken': 'Reveal token',
+        'kcopyToken': 'Copy token',
+        'kregenerate': 'Regenerate',
+        'kregenerateConfirm':
+            'Regenerate token? Existing buttons will stop working.',
+        'kexportRules': 'Export rules',
+        'kimportRules': 'Import rules',
+        'kimportReview': 'Review imported rules',
+        'kimportDisabled':
+            'All imported rules will be disabled. Review them before enabling.',
+        'kimportSkipped': 'Rules skipped (50-rule limit)',
+        'kwebhookCollision': 'Webhook name removed because it is already used:',
+        'kobsNames': 'Check these names exist in your OBS:',
+        'kmissingMedia': 'Library media missing here (action kept):',
+        'ktemplateName': 'Template trigger name:',
+        'kunknownFormat': 'Unknown rules file format.',
+        'kunknownVersion': 'Unsupported rules file version.',
+        'kmalformedJson': 'Invalid rules JSON file.',
+        'kfileTooLarge': 'Rules file exceeds 1 MB.',
+        'ksharingFailed': 'Could not read or write the rules file.',
         'other': '…',
       },
     );

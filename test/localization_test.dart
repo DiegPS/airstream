@@ -22,7 +22,8 @@ void main() {
 
     for (final entry in spanish.entries) {
       expect(
-        entry.value,
+        // Stream Deck is the product name required by the integration card.
+        entry.value.replaceAll('Stream Deck', ''),
         isNot(matches(forbidden)),
         reason: 'Unexpected English UI term in ${entry.key}',
       );

@@ -46,6 +46,8 @@ SettingsModel _different() {
   const d = SettingsModel();
   return d.copyWith(
     rulesEnabled: false,
+    rulesWebhookEnabled: true,
+    rulesWebhookToken: '0123456789abcdef0123456789abcdef',
     rules: [
       {
         'id': 'test',

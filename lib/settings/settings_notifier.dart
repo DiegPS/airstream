@@ -1,3 +1,4 @@
+import 'package:airstream/application/rules/rules_webhook.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show PlatformDispatcher;
@@ -144,6 +145,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       final base = state;
       return ready.then((_) => update(_rebase(base, settings, state)));
     }
+    settings = enableRulesWebhook(settings, settings.rulesWebhookEnabled);
     final next = settings.appLanguageCode == state.appLanguageCode
         ? settings
         : _localizeBuiltInTtsDefaults(settings);

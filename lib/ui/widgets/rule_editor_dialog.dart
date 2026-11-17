@@ -57,9 +57,37 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
 
     draft = jsonDecode(jsonEncode(widget.rule)) as Map<String, dynamic>;
 
+    if (draft['trigger']['type'] == 'manual' &&
+        (draft['trigger']['webhook'] as String? ?? '').isEmpty) {
+      draft['trigger']['webhook'] = suggestWebhook(draft['name'] as String);
+    }
     baseline = jsonEncode(draft);
 
     saved = widget.saved;
+  }
+
+  Map<String, String> get problems {
+    final result = ruleProblems(draft);
+    final t = draft['trigger'] as Map;
+    final name = t['webhook'];
+    if (t['type'] == 'manual' &&
+        name is String &&
+        name.isNotEmpty &&
+        ref.read(settingsProvider).rules.any((r) =>
+            r['id'] != draft['id'] &&
+            r['trigger']['type'] == 'manual' &&
+            r['trigger']['webhook'] == name)) {
+      result['trigger-webhook'] = 'webhookConflict';
+    }
+    return result;
+  }
+
+  String suggestWebhook(String name) {
+    final slug = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug.substring(0, slug.length.clamp(0, 40));
   }
 
   bool get dirty => baseline != jsonEncode(draft);
@@ -153,7 +181,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
       String? hint}) {
     final l = AppLocalizations.of(context)!;
 
-    final problem = ruleProblems(draft)[path];
+    final problem = problems[path];
 
     final decoration = settingsInput(
             hint: hint, error: problem == null ? null : ruleText(l, problem))
@@ -292,7 +320,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             input(
                 '$prefix-${e.key}',
                 '${ruleText(l, e.key)}${e.value.numeric ? ' (${e.value.min}–${e.value.max})' : ''}',
-                map[e.key],
+                map[e.key] ?? (e.key == 'webhook' ? '' : null),
                 (v) => map[e.key] = v,
                 field: e.value,
                 hint: e.key == 'scene' &&
@@ -323,7 +351,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                         : null)
         ];
 
-    final valid = ruleProblems(draft).isEmpty;
+    final valid = problems.isEmpty;
 
     return PopScope(
         canPop: false,
@@ -386,6 +414,11 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                         final fresh = widget.engine.newRule(v,
                                             id: draft['id'] as String);
                                         draft['trigger'] = fresh['trigger'];
+                                        if (v == 'manual') {
+                                          draft['trigger']['webhook'] =
+                                              suggestWebhook(
+                                                  draft['name'] as String);
+                                        }
                                         if (!saved) {
                                           draft['cooldownSeconds'] =
                                               fresh['cooldownSeconds'];

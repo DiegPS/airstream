@@ -1,3 +1,5 @@
+import 'rules_sharing.dart';
+import 'rules_webhook_card.dart';
 import 'dart:async';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'dart:convert';
@@ -102,6 +104,14 @@ class RulesCard extends ConsumerWidget {
                           'name': ruleText(l, 'new')
                         }, saved: false),
                 child: Text(ruleText(l, 'new'))),
+            Wrap(children: [
+              TextButton(
+                  onPressed: () => exportRules(context, s.rules),
+                  child: Text(ruleText(l, 'exportRules'))),
+              TextButton(
+                  onPressed: () => importRules(context, ref),
+                  child: Text(ruleText(l, 'importRules')))
+            ]),
             OutlinedButton(
                 key: const Key('rules-recipes'),
                 style: secondarySettingsStyle(),
@@ -189,6 +199,9 @@ class RulesCard extends ConsumerWidget {
                             PopupMenuButton<String>(
                                 key: Key('rule-menu-$id'),
                                 onSelected: (v) async {
+                                  if (v == 'exportRules') {
+                                    await exportRules(context, [r]);
+                                  }
                                   if (v == 'edit') {
                                     await edit(r);
                                   }
@@ -201,7 +214,12 @@ class RulesCard extends ConsumerWidget {
                                         'id': freshRuleId(),
                                         'name':
                                             '${r['name']} (${ruleText(l, 'copy')})',
-                                        'enabled': false
+                                        'enabled': false,
+                                        'trigger': {
+                                          ...r['trigger'] as Map,
+                                          if (r['trigger']['type'] == 'manual')
+                                            'webhook': ''
+                                        }
                                       }
                                     ]);
                                   }
@@ -217,6 +235,7 @@ class RulesCard extends ConsumerWidget {
                                 itemBuilder: (_) => [
                                       for (final v in [
                                         'edit',
+                                        'exportRules',
                                         'duplicate',
                                         'delete'
                                       ])
@@ -245,6 +264,8 @@ class RulesCard extends ConsumerWidget {
                         ]));
               }),
           ]),
+      RulesWebhookCard(
+          baseUrl: engine == null ? ref.watch(overlayUrlProvider) : null),
       RuleHistoryCard(engine: e),
     ]);
   }

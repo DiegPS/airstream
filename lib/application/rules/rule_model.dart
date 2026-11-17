@@ -65,7 +65,9 @@ abstract final class RuleSchema {
     'obs.recordingStopped': {},
     'obs.sceneChanged': {'scene': RuleField.text(max: 100)},
     'interval': {'minutes': RuleField.number(5, 240, fallback: 5)},
-    'manual': {},
+    'manual': {
+      'webhook': RuleField.text(max: 40, pattern: r'^[a-z0-9-]{1,40}$')
+    },
   };
   static const actions = <String, Map<String, RuleField>>{
     'wait': {'seconds': RuleField.number(1, 600, fallback: 1)},
@@ -140,7 +142,24 @@ abstract final class RuleSchema {
   static List<Map<String, dynamic>> sanitize(Object? raw) {
     if (raw is! List) return [];
     final ids = <String>{};
-    return [for (final item in raw.take(maxRules)) _rule(item, ids)];
+    final names = <String>{};
+    return [
+      for (final item in raw.take(maxRules))
+        _uniqueWebhook(_rule(item, ids), names)
+    ];
+  }
+
+  static Map<String, dynamic> _uniqueWebhook(
+      Map<String, dynamic> rule, Set<String> names) {
+    final t = rule['trigger'] as Map;
+    final name = t['webhook'];
+    if (t['type'] == 'manual' &&
+        name is String &&
+        name.isNotEmpty &&
+        !names.add(name)) {
+      t['webhook'] = '';
+    }
+    return rule;
   }
 
   static Map<String, dynamic> _rule(Object? raw, Set<String> ids) {

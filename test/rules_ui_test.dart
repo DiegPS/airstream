@@ -1,3 +1,6 @@
+import 'package:airstream/ui/widgets/rules_webhook_card.dart';
+import 'package:airstream/ui/widgets/rules_sharing.dart';
+import 'package:airstream/application/rules/rule_sharing.dart';
 import 'package:airstream/ui/widgets/rule_buttons_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -65,6 +68,80 @@ void main() {
                             child: child ?? RulesCard(engine: engine))))))));
     await t.pumpAndSettle();
   }
+
+  testWidgets(
+      'webhook URLs are opt in and limited to enabled named manual rules; regeneration confirms',
+      (t) async {
+    Map<String, dynamic> manual(String id, bool enabled, String webhook) => {
+          ...RuleSchema.newRule('manual', id: id),
+          'enabled': enabled,
+          'trigger': {'type': 'manual', 'webhook': webhook}
+        };
+    final rules = [
+      manual('yes', true, 'run'),
+      manual('off', false, 'off'),
+      manual('unnamed', true, ''),
+      {...RuleSchema.newRule('chat.firstMessage', id: 'chat'), 'enabled': true}
+    ];
+    await settings.update(
+        settings.state.copyWith(rules: rules, rulesWebhookToken: 'a' * 64));
+    await mount(t, child: const RulesWebhookCard());
+    expect(find.byKey(const Key('rule-webhook-copy-yes')), findsNothing);
+    await settings.update(settings.state.copyWith(rulesWebhookEnabled: true));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('rule-webhook-copy-yes')), findsOneWidget);
+    for (final id in ['off', 'unnamed', 'chat']) {
+      expect(find.byKey(Key('rule-webhook-copy-$id')), findsNothing);
+    }
+    expect(find.text('a' * 64), findsNothing);
+    await visible(t, find.byKey(const Key('rules-webhook-regenerate')));
+    await t.tap(find.byKey(const Key('rules-webhook-regenerate')));
+    await t.pumpAndSettle();
+    expect(find.text('Regenerate token? Existing buttons will stop working.'),
+        findsOneWidget);
+    expect(settings.state.rulesWebhookToken, 'a' * 64);
+    await t.tap(find.widgetWithText(OutlinedButton, 'Regenerate'));
+    await t.pumpAndSettle();
+    expect(settings.state.rulesWebhookToken, isNot('a' * 64));
+  });
+
+  testWidgets('import review shows external warnings and saves disabled rules',
+      (t) async {
+    final rule = {
+      ...RuleSchema.newRule('manual', id: 'incoming'),
+      'enabled': true,
+      'actions': [
+        {'id': 'a', 'type': 'obs.scene', 'scene': 'Studio'},
+        {
+          'id': 'b',
+          'type': 'alert.show',
+          'title': 'Hello',
+          'text': '',
+          'seconds': 5,
+          'mediaId': '0123456789abcdef'
+        }
+      ]
+    };
+    final review = RuleSharing.import(RuleSharing.export([rule]), existing: []);
+    await mount(t,
+        child: Builder(
+            builder: (c) => TextButton(
+                onPressed: () => showDialog<void>(
+                    context: c,
+                    builder: (_) => RulesImportDialog(review: review)),
+                child: const Text('Open import'))));
+    await t.tap(find.text('Open import'));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('rules-import-dialog')), findsOneWidget);
+    expect(find.textContaining('Check these names exist in your OBS: Studio'),
+        findsOneWidget);
+    expect(find.textContaining('0123456789abcdef'), findsOneWidget);
+    expect(settings.state.rules, isEmpty);
+    await t.tap(find.byKey(const Key('rules-import-confirm')));
+    await t.pumpAndSettle();
+    expect(settings.state.rules.single['enabled'], false);
+    expect(settings.state.rules.single['id'], isNot('incoming'));
+  });
 
   testWidgets('manual buttons include enabled rules only and explain cooldown',
       (t) async {

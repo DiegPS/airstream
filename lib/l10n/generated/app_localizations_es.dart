@@ -2735,6 +2735,39 @@ class AppLocalizationsEs extends AppLocalizations {
         'knoAlertsPage': 'No hay una página de alertas conectada',
         'kwillCheckInObs': 'Se comprobará en OBS',
         'kwouldSkip': 'Se omitiría',
+        'kwebhook': 'Nombre de acceso web (opcional)',
+        'kwebhookConflict': 'Este nombre de acceso web ya está en uso.',
+        'kwebhookTitle': 'Stream Deck y otras aplicaciones',
+        'kwebhookEnable': 'Activar URL locales de reglas',
+        'kwebhookHelp':
+            'Stream Deck: usa la acción Sitio web con solicitud GET en segundo plano. Cualquier aplicación o script puede llamar a la URL.',
+        'kwebhookSecretWarning':
+            'Cualquier persona con la URL puede ejecutar estas reglas. Mantenla privada.',
+        'kwebhookServerHelp':
+            'Activa el servidor local en los ajustes de OBS para usar estas URL.',
+        'khideToken': 'Ocultar token',
+        'krevealToken': 'Mostrar token',
+        'kcopyToken': 'Copiar token',
+        'kregenerate': 'Regenerar',
+        'kregenerateConfirm':
+            '¿Regenerar el token? Los botones existentes dejarán de funcionar.',
+        'kexportRules': 'Exportar reglas',
+        'kimportRules': 'Importar reglas',
+        'kimportReview': 'Revisar reglas importadas',
+        'kimportDisabled':
+            'Todas las reglas importadas estarán desactivadas. Revísalas antes de activarlas.',
+        'kimportSkipped': 'Reglas omitidas (límite de 50)',
+        'kwebhookCollision':
+            'Nombre de acceso web eliminado porque ya está en uso:',
+        'kobsNames': 'Comprueba que estos nombres existan en tu OBS:',
+        'kmissingMedia':
+            'Medio ausente en esta biblioteca (se conserva la acción):',
+        'ktemplateName': 'Nombre del evento de plantilla:',
+        'kunknownFormat': 'Formato de archivo de reglas desconocido.',
+        'kunknownVersion': 'Versión del archivo de reglas no compatible.',
+        'kmalformedJson': 'Archivo JSON de reglas no válido.',
+        'kfileTooLarge': 'El archivo de reglas supera 1 MB.',
+        'ksharingFailed': 'No se pudo leer o escribir el archivo de reglas.',
         'other': '…',
       },
     );

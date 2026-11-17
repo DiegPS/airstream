@@ -316,6 +316,7 @@ class AppController {
     final previous = _lastSettings;
     _lastSettings = settings;
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
+    templateServer?.rulesEngine = rules;
     _ruleEndTimer?.cancel();
     _ruleEndTimer = null;
     if (rules.active) {
