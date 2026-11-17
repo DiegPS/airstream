@@ -82,7 +82,9 @@ class RuleEngine {
     'targetError',
     'timeout',
     'disposed',
-    'notAvailableYet',
+    'notFound',
+    'noAlertsPage',
+    'willCheckInObs',
     'notConnected',
     'ttsOff',
     'noMessage',
@@ -96,7 +98,7 @@ class RuleEngine {
     'counterLimit'
   ];
   static bool triggerAdapterActive(String type) =>
-      !type.startsWith('obs.') && type != 'interval' && type != 'manual';
+      RuleSchema.triggers.containsKey(type);
   RuleEngine({required this.target, DateTime Function()? clock})
       : _clock = clock ?? DateTime.now;
   final RuleActionTarget target;
@@ -132,10 +134,59 @@ class RuleEngine {
           replacement == null ||
           jsonEncode(old) != jsonEncode(replacement)) {
         _cancel(old['id'] as String);
+        _due.remove(old['id']);
       }
     }
     _enabled = enabled;
     _rules = next;
+    _syncIntervals();
+  }
+
+  bool _chatConnected = false;
+  Timer? _intervalTimer;
+  final _due = <String, DateTime>{};
+  bool get intervalTimerActive => _intervalTimer != null;
+  void updateEnvironment({bool? chatConnected}) {
+    if (chatConnected != null) _chatConnected = chatConnected;
+    _syncIntervals();
+  }
+
+  void _syncIntervals() {
+    final eligible = <String, Map<String, dynamic>>{
+      if (active && _chatConnected)
+        for (final r in _rules)
+          if (r['enabled'] == true &&
+              r['trigger']['type'] == 'interval' &&
+              (r['conditions']['onlyWhileStreaming'] != true ||
+                  target.streaming))
+            r['id'] as String: r
+    };
+    _due.removeWhere((id, _) => !eligible.containsKey(id));
+    for (final entry in eligible.entries) {
+      _due.putIfAbsent(
+          entry.key,
+          () => _clock().add(
+              Duration(minutes: entry.value['trigger']['minutes'] as int)));
+    }
+    if (_due.isEmpty) {
+      _intervalTimer?.cancel();
+      _intervalTimer = null;
+    } else {
+      _intervalTimer ??=
+          Timer.periodic(const Duration(seconds: 1), (_) => _tickIntervals());
+    }
+  }
+
+  void _tickIntervals() {
+    _syncIntervals();
+    for (final id in _due.keys.toList()) {
+      if (_clock().isBefore(_due[id]!)) continue;
+      final r = _rules.firstWhere((r) => r['id'] == id);
+      _due[id] =
+          _clock().add(Duration(minutes: r['trigger']['minutes'] as int));
+      _accept(
+          r, RuleEvent(type: 'interval', eventId: 'interval:${++_sequence}'));
+    }
   }
 
   void _publish() {
@@ -325,10 +376,23 @@ class RuleEngine {
                 .clamp(-1000000000, 1000000000);
       }
       results.add(skip == null
-          ? const RuleActionResult('wouldRun')
+          ? RuleActionResult(
+              'wouldRun',
+              const ['obs.source', 'obs.mute'].contains(a['type'])
+                  ? 'willCheckInObs'
+                  : null)
           : RuleActionResult('skipped', skip));
     }
     return RuleSimulation(null, actions, results);
+  }
+
+  String? fireManual(String ruleId) {
+    if (_disposed) return 'disposed';
+    if (_tripped != null) return 'tripped';
+    final r = _rules.where((r) => r['id'] == ruleId).firstOrNull;
+    if (r == null) return 'invalidRule';
+    return _accept(
+        r, RuleEvent(type: 'manual', eventId: 'manual:${++_sequence}'));
   }
 
   String? runNow(String ruleId, RuleEvent sampleEvent) {
@@ -383,6 +447,8 @@ class RuleEngine {
       _cancel(id);
     }
     _disposed = true;
+    _intervalTimer?.cancel();
+    _intervalTimer = null;
     await _changes.close();
     await _breaker.close();
   }

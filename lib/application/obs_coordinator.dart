@@ -1,3 +1,4 @@
+import 'rules/rule_obs_transitions.dart';
 import 'dart:async';
 
 import 'package:airstream/application/coordinator_notice.dart';
@@ -17,6 +18,8 @@ abstract interface class ObsClient {
   Future<void> pauseRecording();
   Future<void> resumeRecording();
   Future<void> switchScene(String sceneName);
+  Future<void> ruleSource(String scene, String source, String visibility);
+  Future<void> ruleMute(String input, String state);
   Future<void> dispose();
 }
 
@@ -45,6 +48,12 @@ class ObsServiceAdapter implements ObsClient {
   @override
   Future<void> switchScene(String sceneName) => service.switchScene(sceneName);
   @override
+  Future<void> ruleSource(String scene, String source, String visibility) =>
+      service.ruleSource(scene, source, visibility);
+  @override
+  Future<void> ruleMute(String input, String state) =>
+      service.ruleMute(input, state);
+  @override
   Future<void> dispose() => service.dispose();
 }
 
@@ -58,7 +67,16 @@ class ObsCoordinator {
   bool _disposed = false;
 
   ObsState get currentState => _obs.currentState;
-  Future<void> ruleScene(String scene) => _obs.switchScene(scene);
+  final ruleEvents = RuleObsTransitions();
+  Future<void> ruleScene(String scene, {int chainDepth = 0}) async {
+    ruleEvents.expectScene(scene, chainDepth);
+    await _obs.switchScene(scene);
+  }
+
+  Future<void> ruleSource(String scene, String source, String visibility) =>
+      _obs.ruleSource(scene, source, visibility);
+  Future<void> ruleMute(String input, String state) =>
+      _obs.ruleMute(input, state);
   Future<void> ruleRecording(bool start) =>
       start ? _obs.startRecording() : _obs.stopRecording();
 

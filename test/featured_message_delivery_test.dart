@@ -57,6 +57,35 @@ void main() {
     await messages.close();
   });
 
+  test(
+      'custom alerts target alerts only, repeat independently, and never enter provider history',
+      () async {
+    final poll = await connect('poll');
+    expect(
+        server.broadcastRuleAlert(
+            title: '<b>Title</b>', text: '<script>text</script>', seconds: 3),
+        false);
+    final alerts = await connect('alerts');
+    for (var i = 0; i < 2; i++) {
+      expect(
+          server.broadcastRuleAlert(
+              title: '<b>Title</b>', text: '<script>text</script>', seconds: 3),
+          true);
+      final envelope = await alerts.next();
+      expect(envelope['data'], {
+        'kind': 'custom',
+        'title': '<b>Title</b>',
+        'message': '<script>text</script>',
+        'seconds': 3
+      });
+    }
+    expect(server.recentAlertsSnapshot, isEmpty);
+    final received = poll.events.moveNext();
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    await poll.socket.sink.close();
+    expect(await received, false);
+  });
+
   test('poll, captions, chat and legacy clients cannot receive highlights',
       () async {
     expect(server.broadcastFeaturedMessage(message).status,

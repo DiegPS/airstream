@@ -1,3 +1,5 @@
+import 'package:obs_websocket/obs_websocket.dart' show ObsRequestException;
+import 'rule_sound_player.dart';
 import 'package:airstream/services/speech/voice_command.dart';
 import 'rule_model.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -20,7 +22,10 @@ class RuleActions implements RuleActionTarget {
       required this.giveaway,
       required this.server,
       required this.feature,
-      required this.draw});
+      required this.draw,
+      RuleSoundPlayer? sounds})
+      : sounds = sounds ?? RuleSoundPlayer(settings: settings);
+  final RuleSoundPlayer sounds;
   final SettingsModel Function() settings;
   final Future<void> Function(SettingsModel, int) writeSettings;
   final ObsCoordinator obs;
@@ -38,9 +43,13 @@ class RuleActions implements RuleActionTarget {
   @override
   String? skipReason(Map<String, dynamic> a, RuleEvent e) {
     final s = settings(), type = a['type'];
-    if (const ['obs.source', 'obs.mute', 'sound.play', 'alert.show']
-        .contains(type)) {
-      return 'notAvailableYet';
+    if (type == 'alert.show' && (server()?.viewCounts['alerts'] ?? 0) == 0) {
+      return 'noAlertsPage';
+    }
+    if (type == 'sound.play' &&
+        a['source'] == 'library' &&
+        s.mediaLibrary[a['mediaId']]?['kind'] != 'audio') {
+      return 'notFound';
     }
     if (type.toString().startsWith('obs.') &&
         (!s.obsEnabled || !obs.currentState.connected)) {
@@ -88,59 +97,84 @@ class RuleActions implements RuleActionTarget {
     final skip = skipReason(a, run.event);
     if (skip != null) return RuleActionResult('skipped', skip);
     final s = settings(), depth = run.event.chainDepth + 1;
-    switch (a['type']) {
-      case 'obs.scene':
-        await obs.ruleScene(a['scene'] as String);
-      case 'obs.previousScene':
-        await obs.ruleScene(run.previousScene!);
-      case 'obs.recording':
-        await obs.ruleRecording(a['state'] == 'start');
-      case 'tts.say':
-        audio.ruleSpeak(a['text'] as String);
-      case 'featured':
-        feature(run.event.message!);
-      case 'template.trigger':
-        if (!server()!.broadcastRuleTrigger(
-            name: a['name'] as String,
-            data: a['data'] as String,
-            rule: run.ruleName)) {
-          return const RuleActionResult('skipped', 'noReceiver');
-        }
-      case 'goal.adjust':
-        final id = a['goalId'] as String, g = s.goals[id]!;
-        await writeSettings(
-            s.copyWith(goals: {
-              ...s.goals,
-              id: {
-                ...g,
-                'current': ((g['current'] as int) + (a['delta'] as int))
-                    .clamp(0, 10000000)
-              }
-            }),
-            depth);
-      case 'subathon.adjust':
-        await writeSettings(
-            SubathonTimer.addSeconds(
-                s, DateTime.now().millisecondsSinceEpoch, a['seconds'] as int),
-            depth);
-      case 'counter':
-        final name = a['name'] as String,
-            value = ((a['op'] == 'add' ? (s.ruleCounters[name] ?? 0) : 0) +
-                    (a['value'] as int))
-                .clamp(-1000000000, 1000000000);
-        await writeSettings(
-            s.copyWith(ruleCounters: {...s.ruleCounters, name: value}), depth);
-      case 'giveaway':
-        switch (a['op']) {
-          case 'start':
-            giveaway.start(
-                keyword: a['keyword'] as String,
-                membersOnly: a['membersOnly'] as bool);
-          case 'close':
-            giveaway.close();
-          case 'draw':
-            draw(depth);
-        }
+    try {
+      switch (a['type']) {
+        case 'obs.scene':
+          await obs.ruleScene(a['scene'] as String, chainDepth: depth);
+        case 'obs.previousScene':
+          await obs.ruleScene(run.previousScene!, chainDepth: depth);
+        case 'obs.recording':
+          await obs.ruleRecording(a['state'] == 'start');
+        case 'obs.source':
+          await obs.ruleSource(a['scene'] as String, a['source'] as String,
+              a['visible'] as String);
+        case 'obs.mute':
+          await obs.ruleMute(a['input'] as String, a['state'] as String);
+        case 'sound.play':
+          if (!await sounds.play(a)) {
+            return const RuleActionResult('skipped', 'notFound');
+          }
+        case 'alert.show':
+          if (!server()!.broadcastRuleAlert(
+              title: a['title'] as String,
+              text: a['text'] as String,
+              mediaId: a['mediaId'] as String,
+              seconds: a['seconds'] as int)) {
+            return const RuleActionResult('skipped', 'noAlertsPage');
+          }
+        case 'tts.say':
+          audio.ruleSpeak(a['text'] as String);
+        case 'featured':
+          feature(run.event.message!);
+        case 'template.trigger':
+          if (!server()!.broadcastRuleTrigger(
+              name: a['name'] as String,
+              data: a['data'] as String,
+              rule: run.ruleName)) {
+            return const RuleActionResult('skipped', 'noReceiver');
+          }
+        case 'goal.adjust':
+          final id = a['goalId'] as String, g = s.goals[id]!;
+          await writeSettings(
+              s.copyWith(goals: {
+                ...s.goals,
+                id: {
+                  ...g,
+                  'current': ((g['current'] as int) + (a['delta'] as int))
+                      .clamp(0, 10000000)
+                }
+              }),
+              depth);
+        case 'subathon.adjust':
+          await writeSettings(
+              SubathonTimer.addSeconds(s, DateTime.now().millisecondsSinceEpoch,
+                  a['seconds'] as int),
+              depth);
+        case 'counter':
+          final name = a['name'] as String,
+              value = ((a['op'] == 'add' ? (s.ruleCounters[name] ?? 0) : 0) +
+                      (a['value'] as int))
+                  .clamp(-1000000000, 1000000000);
+          await writeSettings(
+              s.copyWith(ruleCounters: {...s.ruleCounters, name: value}),
+              depth);
+        case 'giveaway':
+          switch (a['op']) {
+            case 'start':
+              giveaway.start(
+                  keyword: a['keyword'] as String,
+                  membersOnly: a['membersOnly'] as bool);
+            case 'close':
+              giveaway.close();
+            case 'draw':
+              draw(depth);
+          }
+      }
+    } on ObsRequestException catch (e) {
+      if (e.code == 600 || e.code == 601) {
+        return const RuleActionResult('failed', 'notFound');
+      }
+      rethrow;
     }
     return RuleActionResult.done;
   }

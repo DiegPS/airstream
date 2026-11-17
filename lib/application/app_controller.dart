@@ -161,6 +161,18 @@ class AppController {
       ),
       _audio.notices.listen(_emitNotice),
       _obs.notices.listen(_emitNotice),
+      _obs.stateStream.listen((state) {
+        final events = _obs.ruleEvents.observe(state);
+        rules.updateEnvironment();
+        if (rules.active) {
+          for (final event in events) {
+            rules.handle(event);
+          }
+        }
+      }),
+      _chat.connectionStatusStream.listen((states) => rules.updateEnvironment(
+          chatConnected:
+              states.values.any((s) => s.$1 == ServiceStatus.connected))),
     ]);
   }
 
@@ -387,6 +399,7 @@ class AppController {
     _disposed = true;
     _ruleEndTimer?.cancel();
     await rules.dispose();
+    await (rules.target as RuleActions).sounds.dispose();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }

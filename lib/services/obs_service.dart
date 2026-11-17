@@ -11,6 +11,7 @@ enum ObsPollFailureAction { preserve, unstable, reconnect }
 
 @immutable
 class ObsState {
+  final int connectionGeneration;
   final bool connected;
   final bool connecting;
   final bool outputActive;
@@ -31,6 +32,7 @@ class ObsState {
   ObsDropTrend get dropTrend => _dropTrend ?? ObsDropTrend.normal;
 
   const ObsState({
+    this.connectionGeneration = 0,
     this.connected = false,
     this.connecting = false,
     this.outputActive = false,
@@ -51,6 +53,7 @@ class ObsState {
   }) : _dropTrend = dropTrend ?? ObsDropTrend.normal;
 
   ObsState copyWith({
+    int? connectionGeneration,
     bool? connected,
     bool? connecting,
     bool? outputActive,
@@ -71,6 +74,7 @@ class ObsState {
     ObsDropTrend? dropTrend,
   }) =>
       ObsState(
+        connectionGeneration: connectionGeneration ?? this.connectionGeneration,
         connected: connected ?? this.connected,
         connecting: connecting ?? this.connecting,
         outputActive: outputActive ?? this.outputActive,
@@ -160,6 +164,14 @@ class ObsService {
           await obs.switchScene(scene);
         },
       );
+
+  Future<void> ruleSource(String scene, String source, String visibility) =>
+      _runControl(
+          'change source',
+          (obs) => obs.source(
+              scene.isEmpty ? _state.currentScene : scene, source, visibility));
+  Future<void> ruleMute(String input, String state) =>
+      _runControl('mute input', (obs) => obs.mute(input, state));
 
   Future<void> _runControl(
     String label,
@@ -268,6 +280,7 @@ class ObsService {
       final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
       _emit(
         _state.copyWith(
+          connectionGeneration: generation,
           connected: true,
           connecting: false,
           currentScene: currentScene,

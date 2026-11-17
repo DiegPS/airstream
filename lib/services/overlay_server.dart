@@ -248,6 +248,37 @@ class OverlayServer {
     return false;
   }
 
+  bool broadcastRuleAlert(
+      {required String title,
+      required String text,
+      String mediaId = '',
+      required int seconds}) {
+    if ((viewCounts['alerts'] ?? 0) == 0) return false;
+    final medium = _settings.mediaLibrary[mediaId];
+    final payload = jsonEncode({
+      'type': 'alert',
+      'data': {
+        'kind': 'custom',
+        'title': title,
+        'message': text,
+        'seconds': seconds,
+        if (medium != null && ['image', 'video'].contains(medium['kind']))
+          'media': mediaId,
+        if (medium != null) 'mediaKind': medium['kind'],
+      }
+    });
+    for (final client in List.of(_clients)) {
+      if (_views[client] == 'alerts') {
+        try {
+          client.sink.add(payload);
+        } catch (_) {
+          _removeClient(client);
+        }
+      }
+    }
+    return true;
+  }
+
   void _sendAutomaticAlert(Map<String, Object?> data) {
     final sent = _broadcastEnvelope({'type': 'alert', 'data': data});
     if (!sent) return;

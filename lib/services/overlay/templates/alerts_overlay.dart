@@ -218,6 +218,7 @@ const ENTRANCES = {
 };
 
 function typeOption(alert) {
+  if (alert.kind === 'custom') return { seconds: alert.seconds, media: alert.media, mediaKind: alert.mediaKind };
   return alert.kind === 'featured' ? {} : (settings.alertTypeOptions || {})[alert.alertType] || {};
 }
 
@@ -263,6 +264,7 @@ function renderAlert(alert, animate = true) {
       ? strings.resubscribed(alert.months) : strings.subscribed);
     kicker = platformLabel(alert.platform) + ' · ' + strings.subscription;
   }
+  if (alert.kind === 'custom') { title = String(alert.title || ''); kicker = ''; }
   const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
@@ -272,7 +274,7 @@ function renderAlert(alert, animate = true) {
   card.style.animationName = animate ? (ENTRANCES[entrance] || ENTRANCES.pop) : 'none';
   card.style.borderBottom = '5px solid ' + accent;
 
-  if (settings.alertShowAvatars) {
+  if (settings.alertShowAvatars && alert.kind !== 'custom') {
     if (avatarUrl) {
       card.appendChild(createImage('alert-avatar', avatarUrl, author, (image) => {
         const fallback = document.createElement('div');
@@ -414,7 +416,7 @@ function showNext() {
     }
   }));
   const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
-  const duration = active.kind !== 'featured' && queue.length >= 5
+  const duration = active.kind !== 'featured' && active.kind !== 'custom' && queue.length >= 5
     ? Math.max(2, seconds / 2) : seconds;
   hideTimer = window.setTimeout(() => {
     active = null;

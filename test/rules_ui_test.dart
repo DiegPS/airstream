@@ -1,3 +1,4 @@
+import 'package:airstream/ui/widgets/rule_buttons_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,6 +65,39 @@ void main() {
                             child: child ?? RulesCard(engine: engine))))))));
     await t.pumpAndSettle();
   }
+
+  testWidgets('manual buttons include enabled rules only and explain cooldown',
+      (t) async {
+    final rules = [
+      {
+        ...RuleSchema.newRule('manual', id: 'button'),
+        'enabled': true,
+        'name': 'Celebrate',
+        'cooldownSeconds': 30
+      },
+      {...RuleSchema.newRule('manual', id: 'disabled'), 'name': 'Disabled'},
+      {
+        ...RuleSchema.newRule('poll.ended', id: 'poll'),
+        'enabled': true,
+        'name': 'Poll'
+      },
+    ];
+    settings.state = settings.state.copyWith(rules: rules);
+    engine.updateSettings(enabled: true, rules: rules);
+    await mount(t, child: RuleButtonsCard(engine: engine));
+    expect(find.text('Rule buttons'), findsOneWidget);
+    expect(find.byKey(const Key('rule-button-disabled')), findsNothing);
+    expect(find.byKey(const Key('rule-button-poll')), findsNothing);
+    await t.tap(find.byKey(const Key('rule-button-button')));
+    await t.pumpAndSettle();
+    expect(engine.history.length, 1);
+    await t.tap(find.byKey(const Key('rule-button-button')));
+    await t.pump();
+    expect(find.text('Rule is cooling down'), findsOneWidget);
+    settings.state = settings.state.copyWith(rules: []);
+    await t.pump();
+    expect(find.text('Rule buttons'), findsNothing);
+  });
 
   testWidgets(
       'empty state, recipe edit save enable, duplicate and confirmed delete',

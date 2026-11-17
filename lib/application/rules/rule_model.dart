@@ -75,7 +75,7 @@ abstract final class RuleSchema {
       'state': RuleField.choice(['start', 'stop'], 'start')
     },
     'obs.source': {
-      'scene': RuleField.text(min: 1, max: 100, fallback: 'Scene'),
+      'scene': RuleField.text(max: 100),
       'source': RuleField.text(min: 1, fallback: 'Source'),
       'visible': RuleField.choice(['show', 'hide', 'toggle'], 'show')
     },

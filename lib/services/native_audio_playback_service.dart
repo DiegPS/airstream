@@ -5,6 +5,10 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
+typedef _MciNative = Uint32 Function(
+    Pointer<Utf16>, Pointer<Utf16>, Uint32, IntPtr);
+typedef _Mci = int Function(Pointer<Utf16>, Pointer<Utf16>, int, int);
+
 typedef _PlaySoundWNative = Int32 Function(
   Pointer<Utf16> sound,
   IntPtr module,
@@ -36,15 +40,67 @@ class NativeAudioPlaybackService {
   Future<void> playFile(
     File file, {
     Duration timeout = const Duration(seconds: 20),
+    double? volume,
   }) async {
     if (_disposed) return;
     await stop();
 
+    if (Platform.isWindows && volume != null) {
+      await _playMci(file, volume, timeout);
+      return;
+    }
     if (Platform.isWindows) {
       await _playWindows(file, timeout: timeout);
       return;
     }
     await _playProcess(file, timeout: timeout);
+  }
+
+  _Mci? _mci;
+  String? _alias;
+  static int _aliasSequence = 0;
+  String _mciCommand(String command) {
+    final input = command.toNativeUtf16();
+    final output = calloc<Uint16>(256).cast<Utf16>();
+    try {
+      final result = (_mci ??= DynamicLibrary.open('winmm.dll')
+              .lookupFunction<_MciNative, _Mci>('mciSendStringW'))(
+          input, output, 256, 0);
+      if (result != 0) throw StateError('Native audio error $result');
+      return output.toDartString();
+    } finally {
+      calloc.free(input);
+      calloc.free(output);
+    }
+  }
+
+  Future<void> _playMci(File file, double volume, Duration timeout) async {
+    final alias = 'airstreamRule${++_aliasSequence}';
+    // File paths originate exclusively in the application-owned media/cache library.
+    if (file.path.contains('"')) throw ArgumentError('Invalid audio path');
+    _mciCommand('open "${file.absolute.path}" alias $alias');
+    _alias = alias;
+    final playback = Completer<void>();
+    _activePlayback = playback;
+    try {
+      _mciCommand('set $alias time format milliseconds');
+      _mciCommand(
+          'setaudio $alias volume to ${(volume.clamp(0, 1) * 1000).round()}');
+      final duration = int.parse(_mciCommand('status $alias length'));
+      _mciCommand('play $alias');
+      _completionTimer = Timer(Duration(milliseconds: duration), () {
+        if (!playback.isCompleted) playback.complete();
+      });
+      await playback.future.timeout(timeout);
+    } finally {
+      if (_alias == alias) {
+        _mciCommand('close $alias');
+        _alias = null;
+        _completionTimer?.cancel();
+        _completionTimer = null;
+        _activePlayback = null;
+      }
+    }
   }
 
   Future<void> _playWindows(File file, {required Duration timeout}) async {
@@ -93,6 +149,9 @@ class NativeAudioPlaybackService {
   }
 
   Future<void> stop() async {
+    final alias = _alias;
+    _alias = null;
+    if (alias != null) _mciCommand('close $alias');
     _completionTimer?.cancel();
     _completionTimer = null;
     if (Platform.isWindows && _playSound != null) {

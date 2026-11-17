@@ -324,6 +324,19 @@ class FakeOverlayClient implements OverlayClient {
 }
 
 class FakeObsClient implements ObsClient {
+  final ruleControls = <String>[];
+  @override
+  Future<void> ruleSource(
+      String scene, String source, String visibility) async {
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleMute(String input, String state) async {
+    ruleControls.add('mute:$input:$state');
+    if (commandError != null) throw commandError!;
+  }
+
   final statesController = StreamController<ObsState>.broadcast(sync: true);
   ObsState state = const ObsState();
   int connectCount = 0;

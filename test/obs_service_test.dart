@@ -153,6 +153,12 @@ void main() {
 }
 
 class _FakeObsClient implements ObsClient {
+  @override
+  Future<void> source(String scene, String source, String visibility) async =>
+      commands.add('source:$scene:$source:$visibility');
+  @override
+  Future<void> mute(String input, String state) async =>
+      commands.add('mute:$input:$state');
   final commands = <String>[];
   int statsCalls = 0;
   int closeCount = 0;

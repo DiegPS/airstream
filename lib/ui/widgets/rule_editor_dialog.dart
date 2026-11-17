@@ -394,10 +394,6 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                         sampleAmount = null;
                                       });
                                     }),
-                                if (!RuleEngine.triggerAdapterActive(type))
-                                  Text(ruleText(l, 'coming'),
-                                      style: const TextStyle(
-                                          color: Color(0xFFFFB15C))),
                                 ...params(t, RuleSchema.triggers[type] ?? {},
                                     'trigger'),
                                 section('if'),

@@ -1,3 +1,4 @@
+import 'package:obs_websocket/event.dart' show SceneItemEnableStateChanged;
 import 'package:obs_websocket/obs_websocket.dart';
 
 class ObsStreamSnapshot {
@@ -47,6 +48,8 @@ abstract interface class ObsClient {
   Future<void> resumeRecording();
   Future<void> switchScene(String sceneName);
   Future<List<String>> sceneNames();
+  Future<void> source(String scene, String source, String visibility);
+  Future<void> mute(String input, String state);
   Future<void> close();
 }
 
@@ -128,6 +131,28 @@ class ObsWebSocketClient implements ObsClient {
   Future<List<String>> sceneNames() async {
     final list = await _socket.scenes.getSceneList();
     return [for (final scene in list.scenes) scene.sceneName];
+  }
+
+  @override
+  Future<void> source(String scene, String source, String visibility) async {
+    final id = await _socket.sceneItems
+        .getSceneItemId(sceneName: scene, sourceName: source);
+    final enabled = visibility == 'toggle'
+        ? !await _socket.sceneItems
+            .getSceneItemEnabled(sceneName: scene, sceneItemId: id)
+        : visibility == 'show';
+    await _socket.sceneItems.setSceneItemEnabled(SceneItemEnableStateChanged(
+        sceneName: scene, sceneItemId: id, sceneItemEnabled: enabled));
+  }
+
+  @override
+  Future<void> mute(String input, String state) async {
+    if (state == 'toggle') {
+      await _socket.inputs.toggleInputMute(inputName: input);
+    } else {
+      await _socket.inputs
+          .setInputMute(inputName: input, inputMuted: state == 'mute');
+    }
   }
 
   @override

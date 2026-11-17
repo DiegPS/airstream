@@ -56,10 +56,9 @@ void main() {
     r['cooldownSeconds'] = 3601;
     expect(ruleProblems(r), contains('cooldownSeconds'));
   });
-  test('pending adapters are reported honestly', () {
+  test('all declared trigger adapters are active', () {
     for (final t in RuleSchema.triggers.keys) {
-      expect(RuleEngine.triggerAdapterActive(t),
-          !(t.startsWith('obs.') || t == 'interval' || t == 'manual'));
+      expect(RuleEngine.triggerAdapterActive(t), isTrue);
     }
   });
 }

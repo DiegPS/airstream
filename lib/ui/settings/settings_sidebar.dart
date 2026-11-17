@@ -612,6 +612,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                               onPressed: () => _selectTab(3),
                               child: Text(l.liveOpenObs))),
                     ]),
+              const RuleButtonsCard(),
               const PollCard(),
               const GiveawayCard(),
               const GoalsCard(),
