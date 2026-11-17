@@ -8,6 +8,8 @@ String goalsOverlayHtml() => '''<!DOCTYPE html>
   const root = document.getElementById('goals');
   const rows = new Map();
   let language='en', socket=null, retry=0, closing=false;
+  // A narrow space groups thousands the same way in every language.
+  function group(n) { const s = String(Math.round(Number(n) || 0)); let out = ''; for (let i = 0; i < s.length; i++) { if (i > 0 && s[i - 1] !== '-' && (s.length - i) % 3 === 0) out += String.fromCharCode(0x202f); out += s[i]; } return out; }
   function node(tag, cls) { const n=document.createElement(tag); n.className=cls; return n; }
   function strings() {return STRINGS[language] || STRINGS.en;}
   function localize() {
@@ -27,7 +29,7 @@ String goalsOverlayHtml() => '''<!DOCTYPE html>
         heading.append(title,count);track.append(fill);box.append(heading,track,percent,notice);root.append(box);
         row={box,title,count,fill,notice,percent,reached:false,celebrated:!!g.reached,timer:0}; rows.set(g.id,row);
       }
-      row.title.textContent=g.title;row.count.textContent=g.current+' / '+g.target;
+      row.title.textContent=g.title;row.count.textContent=group(g.current)+' / '+group(g.target);
       row.percent.textContent=Math.round(g.percent)+'%';row.fill.style.width=Math.max(0,Math.min(100,g.percent))+'%';
       row.box.classList.toggle('reached',!!g.reached);row.reached=!!g.reached;
       if(celebrate) {row.celebrated=true;row.box.classList.add('celebrate');row.notice.textContent=strings().reached;row.timer=window.setTimeout(()=>{row.box.classList.remove('celebrate');row.notice.textContent='';row.timer=0;},2000);}

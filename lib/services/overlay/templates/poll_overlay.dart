@@ -37,9 +37,11 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
 <div id="poll" role="status" aria-live="polite"></div>
 <script>
 (() => {
+  // 208 seconds reads better as 3:28.
+  const clock = (s) => s < 60 ? s + ' s' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   const STRINGS = {
-    en: { poll: 'Poll', vote: 'Vote in chat with', votes: (n) => n === 1 ? '1 vote' : n + ' votes', left: (s) => s + 's left', closed: 'Final results' },
-    es: { poll: 'Encuesta', vote: 'Vota en el chat con', votes: (n) => n === 1 ? '1 voto' : n + ' votos', left: (s) => 'Quedan ' + s + ' s', closed: 'Resultados finales' },
+    en: { poll: 'Poll', vote: 'Vote in chat with', votes: (n) => n === 1 ? '1 vote' : n + ' votes', left: (s) => clock(s) + ' left', closed: 'Final results' },
+    es: { poll: 'Encuesta', vote: 'Vota en el chat con', votes: (n) => n === 1 ? '1 voto' : n + ' votos', left: (s) => 'Quedan ' + clock(s), closed: 'Resultados finales' },
   };
   const card = document.getElementById('poll');
   let language = 'en';

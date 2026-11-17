@@ -8,13 +8,24 @@ body { display:flex;justify-content:center;align-items:flex-start;padding:24px;f
 #giveaway[hidden] { display:none; }
 h1 { margin:0 0 14px;font-size:32px;line-height:1.25; }
 p { margin:0;color:#ccc;font-size:17px; }
+.platform { display:inline-flex;align-items:center;gap:8px; }
+.dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
 ::selection { background:#53FC18;color:#141414; }
 </style></head><body><div id="giveaway" hidden role="status" aria-live="polite"></div><script>
 (() => {
   const STRINGS = {
-    en: { title: 'Airstream Giveaway', participants: (n) => n + ' participants', closed: 'Entries closed', winner: 'Winner', drawing: 'Drawing…' },
-    es: { title: 'Sorteo Airstream', participants: (n) => n + ' participantes', closed: 'Participación cerrada', winner: 'Ganador', drawing: 'Sorteando…' },
+    en: { title: 'Airstream Giveaway', participants: (n) => group(n) + ' participants', closed: 'Entries closed', winner: 'Winner', drawing: 'Drawing…' },
+    es: { title: 'Sorteo Airstream', participants: (n) => group(n) + ' participantes', closed: 'Participación cerrada', winner: 'Ganador', drawing: 'Sorteando…' },
   };
+  const PLATFORMS = { youtube: ['YouTube', '#FF0033'], twitch: ['Twitch', '#9146FF'], kick: ['Kick', '#53FC18'] };
+  function group(n) { const s = String(Math.round(Number(n) || 0)); let out = ''; for (let i = 0; i < s.length; i++) { if (i > 0 && s[i - 1] !== '-' && (s.length - i) % 3 === 0) out += String.fromCharCode(0x202f); out += s[i]; } return out; }
+  function platformLine(prefix, platform) {
+    const [name, color] = PLATFORMS[platform] || [String(platform || ''), '#FFFFFF'];
+    const line = document.createElement('p'); line.className = 'platform';
+    const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = color;
+    line.append(dot, document.createTextNode(prefix + ' · ' + name));
+    return line;
+  }
   const card = document.getElementById('giveaway');
   let language = 'en', state = null, lastDrawId = null;
   let socket = null, retry = 0, spin = 0, reveal = 0, closing = false, spinning = false;
@@ -32,7 +43,7 @@ p { margin:0;color:#ccc;font-size:17px; }
     if (!state) { card.replaceChildren(); return; }
     if (spinning) return;
     if (state.phase === 'drawn' && state.winner) {
-      card.replaceChildren(text('h1', state.winner.name), text('p', strings.winner + ' · ' + state.winner.platform));
+      card.replaceChildren(text('h1', state.winner.name), platformLine(strings.winner, state.winner.platform));
     } else {
       card.replaceChildren(text('h1', state.keyword), text('p', state.phase === 'closed' ? strings.closed : strings.participants(state.entrantCount || 0)));
     }
