@@ -1,3 +1,4 @@
+import 'package:airstream/ui/widgets/rules_card.dart';
 import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:airstream/ui/widgets/templates_card.dart';
 import 'package:airstream/ui/widgets/subathon_card.dart';

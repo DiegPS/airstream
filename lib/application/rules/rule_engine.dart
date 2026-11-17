@@ -59,6 +59,44 @@ class RuleSimulation {
 /// evaluation and preflight; [runNow] accepts a real manual run. [sampleEvent]
 /// and [newRule] supply editor defaults. Never await actions from a chat listener.
 class RuleEngine {
+  static const reasonCodes = [
+    'automationOff',
+    'chainLimit',
+    'invalidRule',
+    'ruleDisabled',
+    'wrongTrigger',
+    'platform',
+    'role',
+    'notStreaming',
+    'textMismatch',
+    'amountUnknown',
+    'currencyMismatch',
+    'belowMinimum',
+    'cooldown',
+    'userCooldown',
+    'tripped',
+    'runRateExceeded',
+    'overlapSkipped',
+    'queueFull',
+    'noPreviousScene',
+    'targetError',
+    'timeout',
+    'disposed',
+    'notAvailableYet',
+    'notConnected',
+    'ttsOff',
+    'noMessage',
+    'goalNotFound',
+    'timerNotRunning',
+    'noReceiver',
+    'invalidKeyword',
+    'alreadyOpen',
+    'notOpen',
+    'noEntrants',
+    'counterLimit'
+  ];
+  static bool triggerAdapterActive(String type) =>
+      !type.startsWith('obs.') && type != 'interval' && type != 'manual';
   RuleEngine({required this.target, DateTime Function()? clock})
       : _clock = clock ?? DateTime.now;
   final RuleActionTarget target;

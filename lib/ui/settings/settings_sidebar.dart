@@ -452,7 +452,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  static const _tabCount = 7;
+  static const _tabCount = 8;
 
   void _selectTab(int index) {
     if (index == _selectedTab) return;
@@ -619,6 +619,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               const RecentAlertsCard(),
             ]);
       case 5:
+        return const RulesCard();
+      case 6:
         return const TemplatesCard();
       default:
         return _buildSystemTab(ref, context, l, s, notifier);
@@ -692,6 +694,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           badgeColor: obsConnected ? const Color(0xFF5B9CFF) : null,
         ),
         SidebarTabItem(icon: Icons.bolt_rounded, label: l.liveTab),
+        SidebarTabItem(icon: Icons.rule_rounded, label: l.ruleLabel('krules')),
         SidebarTabItem(
             icon: Icons.dashboard_customize_outlined, label: l.templatesTitle),
         SidebarTabItem(
