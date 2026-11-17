@@ -844,5 +844,36 @@
         "type": "String"
       }
     }
+  },
+  "templateCustomize": "Personalizar",
+  "templateReset": "Restablecer valores predeterminados",
+  "templateFieldNone": "Ninguno",
+  "templateFieldColorInvalid": "Usa #rrggbb o #rrggbbaa. Este color no se ha guardado.",
+  "templateExport": "Exportar .zip",
+  "templateImport": "Importar .zip",
+  "templateDuplicate": "Duplicar",
+  "templateCopyWord": "copia",
+  "templateArchiveDone": "Plantilla guardada",
+  "templateTrust": "Esta plantilla contiene código que se ejecuta en OBS. Importa solo plantillas de personas en las que confíes.",
+  "templateArchiveSummary": "{count} archivos · {bytes} bytes",
+  "templateRejectZip": "El ZIP supera los 100 MB.",
+  "templateRejectCount": "Más de 500 archivos.",
+  "templateRejectTotal": "El contenido descomprimido supera los 100 MB.",
+  "templateRejectFile": "Un archivo supera los 50 MB.",
+  "templateRejectPath": "Ruta de archivo insegura o duplicada.",
+  "templateRejectLink": "No se permiten enlaces ni archivos especiales.",
+  "templateRejectType": "Tipo de archivo no permitido.",
+  "templateRejectLayout": "Coloca los archivos en la raíz del ZIP o dentro de una sola carpeta.",
+  "templateRejectIndex": "Falta index.html.",
+  "templateRejectSize": "ZIP no válido, contenido dañado o límite de descompresión superado.",
+  "@templateArchiveSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:file_selector/file_selector.dart';
+import 'package:airstream/services/templates/template_archive.dart';
+import 'template_fields.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -44,6 +47,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
     setState(() => _busy = true);
     try {
       await run();
+    } on FormatException catch (error) {
+      if (mounted) setState(() => _notice = _reason(error.message));
     } catch (_) {
       if (mounted) {
         setState(() => _notice = AppLocalizations.of(context)!.templatesFailed);
@@ -70,8 +75,76 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
     await _refresh();
   }
 
+  String _reason(String reason) {
+    final l = AppLocalizations.of(context)!;
+    return switch (reason) {
+      'zip' => l.templateRejectZip,
+      'count' => l.templateRejectCount,
+      'total' => l.templateRejectTotal,
+      'file' => l.templateRejectFile,
+      'path' => l.templateRejectPath,
+      'link' => l.templateRejectLink,
+      'type' => l.templateRejectType,
+      'layout' => l.templateRejectLayout,
+      'index' => l.templateRejectIndex,
+      _ => l.templateRejectSize,
+    };
+  }
+
+  static const _zipGroup = XTypeGroup(label: 'ZIP', extensions: ['zip']);
+  Future<void> _import() async {
+    final file = await openFile(acceptedTypeGroups: [_zipGroup]);
+    if (file == null) return;
+    final archive = await const TemplateArchive().validate(file.path);
+    if (!mounted) return;
+    final l = AppLocalizations.of(context)!;
+    final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+                key: const Key('template-import-dialog'),
+                title: Text(archive.name),
+                content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.templateArchiveSummary(
+                          archive.count, archive.bytes)),
+                      if (archive.network)
+                        Text(l.templatesInternet,
+                            style: const TextStyle(color: Color(0xFFFFB15C))),
+                      const SizedBox(height: 12),
+                      Text(l.templateTrust)
+                    ]),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(l.templatesCancel)),
+                  FilledButton(
+                      key: const Key('template-import-confirm'),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text(l.templateImport))
+                ]));
+    if (yes != true) return;
+    await const TemplateArchive().import(_library!, archive);
+    await _refresh();
+    if (mounted) setState(() => _notice = l.templateArchiveDone);
+  }
+
   Future<void> _menu(String action, TemplateInfo info) async {
     switch (action) {
+      case 'export':
+        final l = AppLocalizations.of(context)!;
+        final target = await getSaveLocation(
+            suggestedName: '${info.id}.zip', acceptedTypeGroups: [_zipGroup]);
+        if (target == null) return;
+        await const TemplateArchive().export(_library!, info.id, target.path);
+        if (mounted) setState(() => _notice = l.templateArchiveDone);
+      case 'duplicate':
+        final l = AppLocalizations.of(context)!;
+        await const TemplateArchive()
+            .duplicate(_library!, info.id, l.templateCopyWord);
+        await _refresh();
+
       case 'preview':
         await _explore('${_url(info.id)}?demo=1');
       case 'folder':
@@ -135,6 +208,10 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         description: l.templatesDescription,
         children: [
           Wrap(spacing: 8, runSpacing: 8, children: [
+            TextButton(
+                key: const Key('templates-import'),
+                onPressed: enabled ? () => _action(_import) : null,
+                child: Text(l.templateImport)),
             FilledButton.tonal(
                 key: const Key('templates-ai'),
                 onPressed: enabled
@@ -207,10 +284,15 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                                     'preview': l.templatesPreview,
                                     'edit': l.templatesEdit,
                                     'folder': l.templatesOpenFolder,
+                                    'export': l.templateExport,
+                                    'duplicate': l.templateDuplicate,
                                     'delete': l.templatesDelete
                                   }.entries)
                                     PopupMenuItem(
-                                        value: e.key, child: Text(e.value))
+                                        key:
+                                            Key('template-${e.key}-${info.id}'),
+                                        value: e.key,
+                                        child: Text(e.value))
                                 ])
                       ]),
                       Text(
@@ -231,6 +313,11 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                             },
                             style: const TextStyle(color: Color(0xFFFFB15C))),
                       Text(l.templatesOpenCount(counts[info.id] ?? 0)),
+                      if (info.manifest.fields.isNotEmpty)
+                        TemplateFields(
+                            key: ValueKey('fields-${info.id}'),
+                            library: _library!,
+                            info: info),
                       if (errors[info.id] case final error?)
                         Row(children: [
                           Expanded(

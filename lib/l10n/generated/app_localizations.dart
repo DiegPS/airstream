@@ -4280,6 +4280,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read AGENTS.md in this folder first. Create a new template in a new folder named {id}.\nWhat it must show:\n{description}\nTest it at {url} and fix browser console errors. When done, tell me its OBS URL and recommended size.'**
   String templatesAiInstruction(String id, String description, String url);
+
+  /// No description provided for @templateCustomize.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get templateCustomize;
+
+  /// No description provided for @templateReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to defaults'**
+  String get templateReset;
+
+  /// No description provided for @templateFieldNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get templateFieldNone;
+
+  /// No description provided for @templateFieldColorInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use #rrggbb or #rrggbbaa. This color has not been saved.'**
+  String get templateFieldColorInvalid;
+
+  /// No description provided for @templateExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export .zip'**
+  String get templateExport;
+
+  /// No description provided for @templateImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import .zip'**
+  String get templateImport;
+
+  /// No description provided for @templateDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get templateDuplicate;
+
+  /// No description provided for @templateCopyWord.
+  ///
+  /// In en, this message translates to:
+  /// **'copy'**
+  String get templateCopyWord;
+
+  /// No description provided for @templateArchiveDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Template saved'**
+  String get templateArchiveDone;
+
+  /// No description provided for @templateTrust.
+  ///
+  /// In en, this message translates to:
+  /// **'This template contains code that runs in OBS. Import only templates from people you trust.'**
+  String get templateTrust;
+
+  /// No description provided for @templateArchiveSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files · {bytes} bytes'**
+  String templateArchiveSummary(int count, int bytes);
+
+  /// No description provided for @templateRejectZip.
+  ///
+  /// In en, this message translates to:
+  /// **'ZIP exceeds 100 MB.'**
+  String get templateRejectZip;
+
+  /// No description provided for @templateRejectCount.
+  ///
+  /// In en, this message translates to:
+  /// **'More than 500 files.'**
+  String get templateRejectCount;
+
+  /// No description provided for @templateRejectTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncompressed content exceeds 100 MB.'**
+  String get templateRejectTotal;
+
+  /// No description provided for @templateRejectFile.
+  ///
+  /// In en, this message translates to:
+  /// **'A file exceeds 50 MB.'**
+  String get templateRejectFile;
+
+  /// No description provided for @templateRejectPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe or duplicate file path.'**
+  String get templateRejectPath;
+
+  /// No description provided for @templateRejectLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Links and special files are not allowed.'**
+  String get templateRejectLink;
+
+  /// No description provided for @templateRejectType.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported file type.'**
+  String get templateRejectType;
+
+  /// No description provided for @templateRejectLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Use files at the ZIP root or inside one folder.'**
+  String get templateRejectLayout;
+
+  /// No description provided for @templateRejectIndex.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing index.html.'**
+  String get templateRejectIndex;
+
+  /// No description provided for @templateRejectSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid ZIP, damaged content or decompression size limit exceeded.'**
+  String get templateRejectSize;
 }
 
 class _AppLocalizationsDelegate

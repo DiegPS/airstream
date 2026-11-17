@@ -2428,4 +2428,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String templatesAiInstruction(String id, String description, String url) {
     return 'Read AGENTS.md in this folder first. Create a new template in a new folder named $id.\nWhat it must show:\n$description\nTest it at $url and fix browser console errors. When done, tell me its OBS URL and recommended size.';
   }
+
+  @override
+  String get templateCustomize => 'Customize';
+
+  @override
+  String get templateReset => 'Reset to defaults';
+
+  @override
+  String get templateFieldNone => 'None';
+
+  @override
+  String get templateFieldColorInvalid =>
+      'Use #rrggbb or #rrggbbaa. This color has not been saved.';
+
+  @override
+  String get templateExport => 'Export .zip';
+
+  @override
+  String get templateImport => 'Import .zip';
+
+  @override
+  String get templateDuplicate => 'Duplicate';
+
+  @override
+  String get templateCopyWord => 'copy';
+
+  @override
+  String get templateArchiveDone => 'Template saved';
+
+  @override
+  String get templateTrust =>
+      'This template contains code that runs in OBS. Import only templates from people you trust.';
+
+  @override
+  String templateArchiveSummary(int count, int bytes) {
+    return '$count files · $bytes bytes';
+  }
+
+  @override
+  String get templateRejectZip => 'ZIP exceeds 100 MB.';
+
+  @override
+  String get templateRejectCount => 'More than 500 files.';
+
+  @override
+  String get templateRejectTotal => 'Uncompressed content exceeds 100 MB.';
+
+  @override
+  String get templateRejectFile => 'A file exceeds 50 MB.';
+
+  @override
+  String get templateRejectPath => 'Unsafe or duplicate file path.';
+
+  @override
+  String get templateRejectLink => 'Links and special files are not allowed.';
+
+  @override
+  String get templateRejectType => 'Unsupported file type.';
+
+  @override
+  String get templateRejectLayout =>
+      'Use files at the ZIP root or inside one folder.';
+
+  @override
+  String get templateRejectIndex => 'Missing index.html.';
+
+  @override
+  String get templateRejectSize =>
+      'Invalid ZIP, damaged content or decompression size limit exceeded.';
 }

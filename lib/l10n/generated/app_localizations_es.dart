@@ -2446,4 +2446,75 @@ class AppLocalizationsEs extends AppLocalizations {
   String templatesAiInstruction(String id, String description, String url) {
     return 'Lee primero AGENTS.md en esta carpeta. Crea una plantilla nueva en una carpeta nueva llamada $id.\nQué debe mostrar:\n$description\nPruébala en $url y corrige los errores de la consola del navegador. Al terminar, dime su URL para OBS y el tamaño recomendado.';
   }
+
+  @override
+  String get templateCustomize => 'Personalizar';
+
+  @override
+  String get templateReset => 'Restablecer valores predeterminados';
+
+  @override
+  String get templateFieldNone => 'Ninguno';
+
+  @override
+  String get templateFieldColorInvalid =>
+      'Usa #rrggbb o #rrggbbaa. Este color no se ha guardado.';
+
+  @override
+  String get templateExport => 'Exportar .zip';
+
+  @override
+  String get templateImport => 'Importar .zip';
+
+  @override
+  String get templateDuplicate => 'Duplicar';
+
+  @override
+  String get templateCopyWord => 'copia';
+
+  @override
+  String get templateArchiveDone => 'Plantilla guardada';
+
+  @override
+  String get templateTrust =>
+      'Esta plantilla contiene código que se ejecuta en OBS. Importa solo plantillas de personas en las que confíes.';
+
+  @override
+  String templateArchiveSummary(int count, int bytes) {
+    return '$count archivos · $bytes bytes';
+  }
+
+  @override
+  String get templateRejectZip => 'El ZIP supera los 100 MB.';
+
+  @override
+  String get templateRejectCount => 'Más de 500 archivos.';
+
+  @override
+  String get templateRejectTotal =>
+      'El contenido descomprimido supera los 100 MB.';
+
+  @override
+  String get templateRejectFile => 'Un archivo supera los 50 MB.';
+
+  @override
+  String get templateRejectPath => 'Ruta de archivo insegura o duplicada.';
+
+  @override
+  String get templateRejectLink =>
+      'No se permiten enlaces ni archivos especiales.';
+
+  @override
+  String get templateRejectType => 'Tipo de archivo no permitido.';
+
+  @override
+  String get templateRejectLayout =>
+      'Coloca los archivos en la raíz del ZIP o dentro de una sola carpeta.';
+
+  @override
+  String get templateRejectIndex => 'Falta index.html.';
+
+  @override
+  String get templateRejectSize =>
+      'ZIP no válido, contenido dañado o límite de descompresión superado.';
 }

@@ -1,3 +1,9 @@
+import 'package:airstream/services/overlay_server.dart';
+import 'dart:convert';
+import 'package:archive/archive.dart';
+import 'package:airstream/services/templates/template_starters.dart';
+import 'package:airstream/ui/widgets/template_fields.dart';
+import 'package:airstream/ui/widgets/templates_card.dart';
 import 'dart:io' as io;
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/application/chat_coordinator.dart';
@@ -44,6 +50,226 @@ class _WidgetTestSettings extends SettingsNotifier {
 }
 
 void main() {
+  testWidgets('Chat fields debounce, validate colors, refresh disk and reset',
+      (tester) async {
+    final temp = (await tester
+        .runAsync(() => io.Directory.systemTemp.createTemp('fields-widget-')))!;
+    final library = _CountingTemplateLibrary(temp);
+    final info = await tester.runAsync(() async {
+      final id = await library.createTemplate(
+          'Chat', templateStarterFiles(TemplateStarter.chat, 'Chat'));
+      return library.get(id);
+    });
+    final server = OverlayServer(templateLibrary: library);
+    final sockets = <io.WebSocket>[];
+    final frames = <List<Map>>[];
+    await tester.runAsync(() async {
+      await library.createTemplate(
+          'Other', templateStarterFiles(TemplateStarter.chat, 'Other'));
+      await server.start(
+          messages: const Stream<ChatMessage>.empty(),
+          settings: const SettingsModel(),
+          port: 0);
+      for (final id in ['chat', 'other']) {
+        final socket =
+            await io.WebSocket.connect('ws://127.0.0.1:${server.port}/ws');
+        sockets.add(socket);
+        final received = <Map>[];
+        frames.add(received);
+        socket.listen((raw) => received.add(jsonDecode(raw as String) as Map));
+        socket.add(
+            jsonEncode({'type': 'register', 'view': 'custom', 'template': id}));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      for (final received in frames) {
+        received.clear();
+      }
+    });
+    addTearDown(() async {
+      await tester.runAsync(() async {
+        for (final socket in sockets) {
+          await socket.close();
+        }
+        await server.dispose();
+        await temp.delete(recursive: true);
+      });
+    });
+    await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings())
+        ],
+        child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+                body: SingleChildScrollView(
+                    child: SizedBox(
+                        width: 360,
+                        child:
+                            TemplateFields(library: library, info: info!)))))));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('template-fields-chat')));
+    await tester.pumpAndSettle();
+    final color = find.byKey(const Key('template-field-chat-accentColor'));
+    final slider = find.byKey(const Key('template-field-chat-maxMessages'));
+    expect(tester.widget(slider), isA<Slider>());
+    expect(
+        tester.widget(
+            find.byKey(const Key('template-field-chat-lifetimeSeconds'))),
+        isA<TextField>());
+    await tester.enterText(color, '#123456');
+    await tester.enterText(color, '#abcdef');
+    tester.widget<Slider>(slider).onChanged!(25);
+    await tester.pump(const Duration(milliseconds: 399));
+    expect(library.writes, 0);
+    await tester.pump(const Duration(milliseconds: 1));
+    await _flushTemplateIO(tester);
+    expect(library.writes, 1);
+    final values = await tester.runAsync(() => library.resolvedValues('chat'));
+    expect(values!['accentColor'], '#abcdef');
+    expect(values['maxMessages'], 25);
+    expect(frames.first.where((f) => f['type'] == 'fields').last['data'],
+        containsPair('accentColor', '#abcdef'));
+    expect(frames.first.where((f) => f['type'] == 'reload'), isEmpty);
+    expect(
+        frames.last
+            .where((f) => f['type'] == 'fields' || f['type'] == 'reload'),
+        isEmpty);
+    await tester.enterText(color, 'wrong');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(library.writes, 1);
+    expect(
+        find.textContaining('This color has not been saved'), findsOneWidget);
+    await tester.runAsync(
+        () => library.writeValues('chat', {'accentColor': '#445566'}));
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 400)));
+    await tester.pump();
+    expect(tester.widget<TextField>(color).controller!.text, 'wrong');
+    tester.widget<TextField>(color).focusNode!.unfocus();
+    await _flushTemplateIO(tester);
+    expect(tester.widget<TextField>(color).controller!.text, '#445566');
+    await tester.tap(find.byKey(const Key('template-fields-reset-chat')));
+    await _flushTemplateIO(tester);
+    await tester.pump();
+    expect(
+        (await tester
+            .runAsync(() => library.resolvedValues('chat')))!['accentColor'],
+        '#53fc18');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('media fields filter entries by kind', (tester) async {
+    final temp = (await tester
+        .runAsync(() => io.Directory.systemTemp.createTemp('fields-media-')))!;
+    final library = TemplateLibrary(temp);
+    final info = TemplateInfo(
+        'media',
+        TemplateManifest('media', {
+          'fields': [
+            {'key': 'sound', 'type': 'media', 'kind': 'audio'},
+            {'key': 'all', 'type': 'media', 'kind': 'any'}
+          ]
+        }),
+        [],
+        temp.path);
+    addTearDown(() async {
+      await tester.runAsync(() async {
+        await library.dispose();
+        await temp.delete(recursive: true);
+      });
+    });
+    await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings(
+              'en',
+              '',
+              const SettingsModel(mediaLibrary: {
+                '1234567890abcdef': {'name': 'Sound', 'kind': 'audio'},
+                'abcdef1234567890': {'name': 'Picture', 'kind': 'image'}
+              })))
+        ],
+        child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home:
+                Scaffold(body: TemplateFields(library: library, info: info)))));
+    await tester.tap(find.byKey(const Key('template-fields-media')));
+    await tester.pumpAndSettle();
+    final sound = tester.widget<DropdownButton<String>>(
+        find.byKey(const Key('template-field-media-sound')));
+    final all = tester.widget<DropdownButton<String>>(
+        find.byKey(const Key('template-field-media-all')));
+    expect(sound.items!.map((i) => i.value), ['', '1234567890abcdef']);
+    expect(all.items, hasLength(3));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  for (final valid in [true, false]) {
+    testWidgets('Import ZIP confirmation and rejection valid=$valid',
+        (tester) async {
+      final temp = (await tester.runAsync(
+          () => io.Directory.systemTemp.createTemp('import-widget-')))!;
+      final library = TemplateLibrary(io.Directory('${temp.path}/templates'));
+      final archive = Archive()
+        ..addFile(ArchiveFile('shared/index.html', 1, [1]))
+        ..addFile(ArchiveFile(
+            'shared/template.json',
+            utf8.encode('{"name":"Shared","network":true}').length,
+            utf8.encode('{"name":"Shared","network":true}')));
+      if (!valid) archive.addFile(ArchiveFile('shared/evil.exe', 1, [1]));
+      final zip = io.File('${temp.path}/test.zip');
+      await tester
+          .runAsync(() => zip.writeAsBytes(ZipEncoder().encode(archive)));
+      const channel = MethodChannel('plugins.flutter.io/file_selector');
+      tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async => [zip.path]);
+      addTearDown(() async {
+        tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+        await tester.runAsync(() async {
+          await library.dispose();
+          await temp.delete(recursive: true);
+        });
+      });
+      await tester.pumpWidget(ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+            templateLibraryProvider.overrideWith((ref) async => library),
+            templateCountsProvider.overrideWith((ref) => Stream.value({})),
+            templateErrorsProvider.overrideWith((ref) => Stream.value({}))
+          ],
+          child: const MaterialApp(
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                  body: SingleChildScrollView(child: TemplatesCard())))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('templates-import')));
+      await tester.pump();
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pumpAndSettle();
+      expect(await tester.runAsync(library.exists), false);
+      if (valid) {
+        expect(find.byKey(const Key('template-import-dialog')), findsOneWidget);
+        expect(find.text('Internet access'), findsOneWidget);
+        expect(
+            find.textContaining('Import only templates from people you trust.'),
+            findsOneWidget);
+        await tester.tap(find.byKey(const Key('template-import-confirm')));
+        await tester.pump();
+        await _flushTemplateIO(tester);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('template-shared')), findsOneWidget);
+      } else {
+        expect(find.text('Unsupported file type.'), findsOneWidget);
+        expect(await tester.runAsync(library.list), isEmpty);
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets(
       'Create with AI copies localized instruction and generates guides',
       (tester) async {
@@ -1718,4 +1944,23 @@ class _LoadedSettings extends _WidgetTestSettings {
 
   @override
   Future<void> get ready => Future<void>.value();
+}
+
+class _CountingTemplateLibrary extends TemplateLibrary {
+  _CountingTemplateLibrary(super.root);
+  int writes = 0;
+  @override
+  Future<void> writeValues(String id, Map values) {
+    writes++;
+    return super.writeValues(id, values);
+  }
+}
+
+Future<void> _flushTemplateIO(WidgetTester tester) async {
+  for (var i = 0; i < 100; i++) {
+    await tester.pump(const Duration(milliseconds: 25));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+  }
+  await tester.pumpAndSettle();
 }

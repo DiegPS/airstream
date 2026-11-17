@@ -1046,5 +1046,36 @@
         "type": "String"
       }
     }
+  },
+  "templateCustomize": "Customize",
+  "templateReset": "Reset to defaults",
+  "templateFieldNone": "None",
+  "templateFieldColorInvalid": "Use #rrggbb or #rrggbbaa. This color has not been saved.",
+  "templateExport": "Export .zip",
+  "templateImport": "Import .zip",
+  "templateDuplicate": "Duplicate",
+  "templateCopyWord": "copy",
+  "templateArchiveDone": "Template saved",
+  "templateTrust": "This template contains code that runs in OBS. Import only templates from people you trust.",
+  "templateArchiveSummary": "{count} files · {bytes} bytes",
+  "templateRejectZip": "ZIP exceeds 100 MB.",
+  "templateRejectCount": "More than 500 files.",
+  "templateRejectTotal": "Uncompressed content exceeds 100 MB.",
+  "templateRejectFile": "A file exceeds 50 MB.",
+  "templateRejectPath": "Unsafe or duplicate file path.",
+  "templateRejectLink": "Links and special files are not allowed.",
+  "templateRejectType": "Unsupported file type.",
+  "templateRejectLayout": "Use files at the ZIP root or inside one folder.",
+  "templateRejectIndex": "Missing index.html.",
+  "templateRejectSize": "Invalid ZIP, damaged content or decompression size limit exceeded.",
+  "@templateArchiveSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "int"
+      }
+    }
   }
 }
