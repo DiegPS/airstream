@@ -3,8 +3,8 @@ String sdkV1() => r"""
 (() => {
   'use strict';
   if (window.Airstream) return;
-  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','connected','disconnected'];
-  const states = new Set(['goals','timer','giveaway','poll','settings','fields','session']);
+  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','queue','connected','disconnected'];
+  const states = new Set(['goals','timer','giveaway','poll','settings','fields','session','queue']);
   const handlers = new Map(names.map(n => [n,new Set()]));
   const state = {};
   const template = (location.pathname.match(/^\/custom\/([a-z0-9][a-z0-9-]{0,39})(?:\/|$)/) || [,''])[1];
@@ -67,7 +67,7 @@ String sdkV1() => r"""
   window.Airstream=api;
   window.addEventListener('error',e => report(e.message,e.filename,e.lineno));
   window.addEventListener('unhandledrejection',e => report(e.reason));
-  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session'};
+  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session',queue:'queue'};
   function connect() {
     if (closing || socket) return;
     const ws=new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')+location.host+'/ws'); socket=ws;
@@ -115,6 +115,39 @@ String sdkV1() => r"""
   function sendTimer(addedMs=0,meta) { emit('timer',{phase:'running',endsAtMs,remainingMs:Math.max(0,endsAtMs-Date.now()),serverNowMs:Date.now(),addedMs},meta); }
   sendTimer(0,replay);
   const people=['Demo Alex','Demo Luna','Demo Sam','Demo Kai','Demo Sol','Demo Ren','Demo Ari','Demo Max'];
+  const queuePeople = ['CaptainOfTheLongestStarshipNameEver', 'Mar 🌙', 'PixelFern',
+    'AriNova', 'LunaBuilds', 'Kai 🎮', 'Solstice', 'RenPlays', 'MaxHorizon',
+    'Ollie', 'EmberFox', 'Juniper', 'MintByte', 'RiverQuest', 'Nube ☁️'];
+  const queueNotes = ['Ready for doubles', 'Mar#204 🎮', '', 'First time playing', ''];
+  let queueIndex = 0, queueTick = 0, queueStatus = 'open';
+  function queuePlayer() {
+    const i = queueIndex++;
+    return {id:'demo-queue-'+i,platform:['youtube','twitch','kick'][i%3],
+      name:queuePeople[i%queuePeople.length],note:queueNotes[i%queueNotes.length],
+      priority:i%6===0,joinedAt:new Date().toISOString()};
+  }
+  const queuePlaying = [queuePlayer()];
+  const queueEntries = Array.from({length:12},queuePlayer)
+    .sort((a,b) => Number(b.priority)-Number(a.priority));
+  function sendQueue(meta) {
+    const spanish = (state.fields?.language || state.settings.appLanguageCode) === 'es';
+    emit('queue',{status:queueStatus,entries:[...queueEntries],playing:[...queuePlaying],
+      max:50,command:spanish?'!unirme':'!join'},meta);
+  }
+  sendQueue(replay);
+  setInterval(() => {
+    queueTick++;
+    const step = queueTick % 9;
+    queueStatus = step === 3 ? 'paused' : step === 6 ? 'closed' : 'open';
+    if (queueStatus === 'open') {
+      if (queueTick % 2 === 0 && queueEntries.length) queuePlaying.splice(0,1,queueEntries.shift());
+      const player = queuePlayer();
+      const firstRegular = queueEntries.findIndex(entry => !entry.priority);
+      queueEntries.splice(player.priority && firstRegular >= 0 ? firstRegular : queueEntries.length,0,player);
+      if (queueEntries.length > 14) queueEntries.pop();
+    }
+    sendQueue();
+  },4000);
   let chatIndex=0, alertIndex=0, earlier=null;
   const emote='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><text y="20">★</text></svg>');
   function chat() {

@@ -4440,7 +4440,7 @@ abstract class AppLocalizations {
   /// No description provided for @ruleLabel.
   ///
   /// In en, this message translates to:
-  /// **'{code, select, krules{Rules} kdescription{When something happens in your stream, Airstream can do things for you.} kautomation{Automation on} knew{New rule} krecipes{Recipes} kempty{Start with Recipes for an example.} kempty2{Or choose New rule to build your own.} ktripped{Automation paused itself after too many runs in a minute.} kresume{Resume} kinvalid{This rule needs fixing} kpublicObs{Anyone in chat can change OBS with this rule} knoCooldown{No cooldown: chat can repeat it as fast as it wants} kedit{Edit} kduplicate{Duplicate} kdelete{Delete} kcopy{copy} kconfirmDelete{Delete this rule?} kcancel{Cancel} kdiscard{Discard changes?} kclose{Close} ksave{Save} kname{Name} kwhen{When} kif{If} kdo{Do} klimits{Limits} koverlap{If it is already running} kaddAction{Add action} ktest{Test} ktestWith{Test with} krun{Run now} kmatched{Matched} kaccepted{Run accepted} khistory{History} kclear{Clear} knoHistory{No runs yet.} kup{Move up} kdown{Move down} kfieldError{Check this value and its limits} kcooldownSeconds{Cooldown (seconds, 0–3600)} kuserCooldownSeconds{Per-person cooldown (seconds, 0–3600)} kqueue{Queue: wait for the previous run} kskip{Skip: ignore while already running} konlyWhileStreaming{Only while OBS is streaming} keveryone{Everyone} kmember{Members/subscribers} kmoderator{Moderators} kvip{VIPs} kowner{Owner} kchat{Chat} ksupport{Support} klive{Live tools} kobs{OBS} ktime{Time} kmanual{Manual} kflow{Flow} kvoice{Voice} ksound{Sound} kpages{Pages and templates} kadd{Add} kdone{Done ✓} kskipped{Skipped} kfailed{Failed} kuncertain{Uncertain} kcancelled{Cancelled} kwouldRun{Would run} kpending{Pending} kchat_message{Message contains text} kchat_command{Chat command} kchat_firstMessage{First message} ksupport_superchat{Super Chat} ksupport_bits{Bits} ksupport_membership{Membership / subscription} ksupport_gift{Gift subscriptions} ksupport_raid{Raid} ksupport_kicks{Kicks} kgoal_reached{Goal reached} kgiveaway_winner{Giveaway winner} kpoll_ended{Poll ended} ksubathon_ended{Subathon ended} kobs_streamStarted{Stream started} kobs_streamStopped{Stream stopped} kobs_recordingStarted{Recording started} kobs_recordingStopped{Recording stopped} kobs_sceneChanged{Scene changed} kinterval{Every N minutes} kwait{Wait} kobs_scene{Switch scene} kobs_previousScene{Return to previous scene} kobs_recording{Recording} kobs_source{Show / hide source} kobs_mute{Mute / unmute input} ktts_say{Read aloud} ksound_play{Play sound} kalert_show{Show alert} kfeatured{Feature message} ktemplate_trigger{Trigger template} kgoal_adjust{Adjust goal} ksubathon_adjust{Adjust subathon} kgiveaway{Giveaway} kcounter{Counter} kcommand{Command} kmatch{Match} ktext{Text} kminAmount{Minimum amount} kcurrency{Currency} kmin{Minimum count} kminMonths{Minimum months} kgoalId{Goal} kscene{Scene} kminutes{Minutes} kseconds{Seconds} kstate{State} ksource{Source} kvisible{Visibility} kinput{Audio input} kmediaId{Library media} ktitle{Title} kdata{Data} kdelta{Change} kop{Operation} kkeyword{Keyword} kmembersOnly{Members only} kvalue{Value} kcontains{Contains} kstartsWith{Starts with} kequals{Equals} kstart{Start} kstop{Stop} kshow{Show} khide{Hide} ktoggle{Toggle} kmute{Mute} kunmute{Unmute} kbuiltin{Built in} klibrary{Library} kchime{Chime} kcoin{Coin} kfanfare{Fanfare} kset{Set} kdraw{Draw} kautomationOff{Automation is off} kchainLimit{Chain limit reached} kinvalidRule{Invalid rule} kruleDisabled{Rule is disabled} kwrongTrigger{Different trigger} kplatform{Platform does not match} krole{Role does not match} knotStreaming{OBS is not streaming} ktextMismatch{Text does not match} kamountUnknown{Amount is unknown} kcurrencyMismatch{Currency does not match} kbelowMinimum{Below the minimum} kcooldown{Rule is cooling down} kuserCooldown{Person is cooling down} ktrippedReason{Automation paused by the safety limit} krunRateExceeded{Too many runs in a minute} koverlapSkipped{Already running} kqueueFull{Queue is full} knoPreviousScene{No previous scene saved} ktargetError{Action failed} ktimeout{Action timed out} kdisposed{Engine is closed} knotConnected{OBS is disconnected} kttsOff{Voice reader is off or not ready} knoMessage{No chat message available} kgoalNotFound{Goal not found} ktimerNotRunning{Subathon is not running} knoReceiver{No template receiver connected} kinvalidKeyword{Invalid keyword} kalreadyOpen{Giveaway is already open} knotOpen{Giveaway is not open} knoEntrants{No eligible entrants} kcounterLimit{Counter limit reached} krecipe1{Welcome a raid} krecipeDesc1{Show Raid for 15 seconds, then return.} krecipe2{Share your socials} krecipeDesc2{Trigger redes and read your links aloud.} krecipe3{Read Super Chats} krecipeDesc3{Read messages with an amount of at least \$5.} krecipe4{Regular reminder} krecipeDesc4{Trigger recordatorio every 20 minutes.} krecipe5{Celebrate a goal} krecipeDesc5{Show Celebración for 10 seconds, then return.} krecipe6{Count deaths} krecipeDesc6{Moderators add to muertes and trigger a template.} kdiscardAction{Discard} kbuttons{Rule buttons} knotFound{Item not found} knoAlertsPage{No alerts page connected} kwillCheckInObs{Will check in OBS} kwouldSkip{Would be skipped} kwebhook{Webhook name (optional)} kwebhookConflict{This webhook name is already used.} kwebhookTitle{Stream Deck and other apps} kwebhookEnable{Enable local rule URLs} kwebhookHelp{Stream Deck: use the Website action with GET request in background. Any app or script can call the URL.} kwebhookSecretWarning{Anyone with the URL can run these rules. Keep it private.} kwebhookServerHelp{Enable the local server in OBS settings to use these URLs.} khideToken{Hide token} krevealToken{Reveal token} kcopyToken{Copy token} kregenerate{Regenerate} kregenerateConfirm{Regenerate token? Existing buttons will stop working.} kexportRules{Export rules} kimportRules{Import rules} kimportReview{Review imported rules} kimportDisabled{All imported rules will be disabled. Review them before enabling.} kimportSkipped{Rules skipped (50-rule limit)} kwebhookCollision{Webhook name removed because it is already used:} kobsNames{Check these names exist in your OBS:} kmissingMedia{Library media missing here (action kept):} ktemplateName{Template trigger name:} kunknownFormat{Unknown rules file format.} kunknownVersion{Unsupported rules file version.} kmalformedJson{Invalid rules JSON file.} kfileTooLarge{Rules file exceeds 1 MB.} ksharingFailed{Could not read or write the rules file.} other{…}}'**
+  /// **'{code, select, krules{Rules} kdescription{When something happens in your stream, Airstream can do things for you.} kautomation{Automation on} knew{New rule} krecipes{Recipes} kempty{Start with Recipes for an example.} kempty2{Or choose New rule to build your own.} ktripped{Automation paused itself after too many runs in a minute.} kresume{Resume} kinvalid{This rule needs fixing} kpublicObs{Anyone in chat can change OBS with this rule} knoCooldown{No cooldown: chat can repeat it as fast as it wants} kedit{Edit} kduplicate{Duplicate} kdelete{Delete} kcopy{copy} kconfirmDelete{Delete this rule?} kcancel{Cancel} kdiscard{Discard changes?} kclose{Close} ksave{Save} kname{Name} kwhen{When} kif{If} kdo{Do} klimits{Limits} koverlap{If it is already running} kaddAction{Add action} ktest{Test} ktestWith{Test with} krun{Run now} kmatched{Matched} kaccepted{Run accepted} khistory{History} kclear{Clear} knoHistory{No runs yet.} kup{Move up} kdown{Move down} kfieldError{Check this value and its limits} kcooldownSeconds{Cooldown (seconds, 0–3600)} kuserCooldownSeconds{Per-person cooldown (seconds, 0–3600)} kqueue{Queue: wait for the previous run} kskip{Skip: ignore while already running} konlyWhileStreaming{Only while OBS is streaming} keveryone{Everyone} kmember{Members/subscribers} kmoderator{Moderators} kvip{VIPs} kowner{Owner} kchat{Chat} ksupport{Support} klive{Live tools} kobs{OBS} ktime{Time} kmanual{Manual} kflow{Flow} kvoice{Voice} ksound{Sound} kpages{Pages and templates} kadd{Add} kdone{Done ✓} kskipped{Skipped} kfailed{Failed} kuncertain{Uncertain} kcancelled{Cancelled} kwouldRun{Would run} kpending{Pending} kchat_message{Message contains text} kchat_command{Chat command} kchat_firstMessage{First message} ksupport_superchat{Super Chat} ksupport_bits{Bits} ksupport_membership{Membership / subscription} ksupport_gift{Gift subscriptions} ksupport_raid{Raid} ksupport_kicks{Kicks} kgoal_reached{Goal reached} kgiveaway_winner{Giveaway winner} kpoll_ended{Poll ended} ksubathon_ended{Subathon ended} kobs_streamStarted{Stream started} kobs_streamStopped{Stream stopped} kobs_recordingStarted{Recording started} kobs_recordingStopped{Recording stopped} kobs_sceneChanged{Scene changed} kinterval{Every N minutes} kwait{Wait} kobs_scene{Switch scene} kobs_previousScene{Return to previous scene} kobs_recording{Recording} kobs_source{Show / hide source} kobs_mute{Mute / unmute input} ktts_say{Read aloud} ksound_play{Play sound} kalert_show{Show alert} kfeatured{Feature message} ktemplate_trigger{Trigger template} kgoal_adjust{Adjust goal} ksubathon_adjust{Adjust subathon} kgiveaway{Giveaway} kcounter{Counter} kcommand{Command} kmatch{Match} ktext{Text} kminAmount{Minimum amount} kcurrency{Currency} kmin{Minimum count} kminMonths{Minimum months} kgoalId{Goal} kscene{Scene} kminutes{Minutes} kseconds{Seconds} kstate{State} ksource{Source} kvisible{Visibility} kinput{Audio input} kmediaId{Library media} ktitle{Title} kdata{Data} kdelta{Change} kop{Operation} kkeyword{Keyword} kmembersOnly{Members only} kvalue{Value} kcontains{Contains} kstartsWith{Starts with} kequals{Equals} kstart{Start} kstop{Stop} kshow{Show} khide{Hide} ktoggle{Toggle} kmute{Mute} kunmute{Unmute} kbuiltin{Built in} klibrary{Library} kchime{Chime} kcoin{Coin} kfanfare{Fanfare} kset{Set} kdraw{Draw} kautomationOff{Automation is off} kchainLimit{Chain limit reached} kinvalidRule{Invalid rule} kruleDisabled{Rule is disabled} kwrongTrigger{Different trigger} kplatform{Platform does not match} krole{Role does not match} knotStreaming{OBS is not streaming} ktextMismatch{Text does not match} kamountUnknown{Amount is unknown} kcurrencyMismatch{Currency does not match} kbelowMinimum{Below the minimum} kcooldown{Rule is cooling down} kuserCooldown{Person is cooling down} ktrippedReason{Automation paused by the safety limit} krunRateExceeded{Too many runs in a minute} koverlapSkipped{Already running} kqueueFull{Queue is full} knoPreviousScene{No previous scene saved} ktargetError{Action failed} ktimeout{Action timed out} kdisposed{Engine is closed} knotConnected{OBS is disconnected} kttsOff{Voice reader is off or not ready} knoMessage{No chat message available} kgoalNotFound{Goal not found} ktimerNotRunning{Subathon is not running} knoReceiver{No template receiver connected} kinvalidKeyword{Invalid keyword} kalreadyOpen{Giveaway is already open} knotOpen{Giveaway is not open} knoEntrants{No eligible entrants} kqueue_joined{Viewer joined the queue} kqueue_next{Next players} kqueue_open{Open the queue} kqueue_close{Close the queue} kqueue_pause{Pause the queue} kcount{Players} krandom{Pick randomly} kqueueAlreadyOpen{The queue is already open} kqueueAlreadyPaused{The queue is already paused} kqueueAlreadyClosed{The queue is already closed} kqueueEmpty{Nobody is waiting in the queue} kcounterLimit{Counter limit reached} krecipe1{Welcome a raid} krecipeDesc1{Show Raid for 15 seconds, then return.} krecipe2{Share your socials} krecipeDesc2{Trigger redes and read your links aloud.} krecipe3{Read Super Chats} krecipeDesc3{Read messages with an amount of at least \$5.} krecipe4{Regular reminder} krecipeDesc4{Trigger recordatorio every 20 minutes.} krecipe5{Celebrate a goal} krecipeDesc5{Show Celebración for 10 seconds, then return.} krecipe6{Count deaths} krecipeDesc6{Moderators add to muertes and trigger a template.} kdiscardAction{Discard} kbuttons{Rule buttons} knotFound{Item not found} knoAlertsPage{No alerts page connected} kwillCheckInObs{Will check in OBS} kwouldSkip{Would be skipped} kwebhook{Webhook name (optional)} kwebhookConflict{This webhook name is already used.} kwebhookTitle{Stream Deck and other apps} kwebhookEnable{Enable local rule URLs} kwebhookHelp{Stream Deck: use the Website action with GET request in background. Any app or script can call the URL.} kwebhookSecretWarning{Anyone with the URL can run these rules. Keep it private.} kwebhookServerHelp{Enable the local server in OBS settings to use these URLs.} khideToken{Hide token} krevealToken{Reveal token} kcopyToken{Copy token} kregenerate{Regenerate} kregenerateConfirm{Regenerate token? Existing buttons will stop working.} kexportRules{Export rules} kimportRules{Import rules} kimportReview{Review imported rules} kimportDisabled{All imported rules will be disabled. Review them before enabling.} kimportSkipped{Rules skipped (50-rule limit)} kwebhookCollision{Webhook name removed because it is already used:} kobsNames{Check these names exist in your OBS:} kmissingMedia{Library media missing here (action kept):} ktemplateName{Template trigger name:} kunknownFormat{Unknown rules file format.} kunknownVersion{Unsupported rules file version.} kmalformedJson{Invalid rules JSON file.} kfileTooLarge{Rules file exceeds 1 MB.} ksharingFailed{Could not read or write the rules file.} other{…}}'**
   String ruleLabel(String code);
 
   /// No description provided for @ruleSummary.
@@ -4790,6 +4790,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Leaderboard type'**
   String get galleryRankingType;
+
+  /// No description provided for @queueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get queueTitle;
+
+  /// No description provided for @queueClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get queueClosed;
+
+  /// No description provided for @queueOpenStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get queueOpenStatus;
+
+  /// No description provided for @queuePaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get queuePaused;
+
+  /// No description provided for @queueOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get queueOpen;
+
+  /// No description provided for @queuePause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get queuePause;
+
+  /// No description provided for @queueClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get queueClose;
+
+  /// No description provided for @queueJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type {command} to play'**
+  String queueJoinHint(String command);
+
+  /// No description provided for @queueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is waiting'**
+  String get queueEmpty;
+
+  /// No description provided for @queueNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get queueNext;
+
+  /// No description provided for @queueNextCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Players'**
+  String get queueNextCount;
+
+  /// No description provided for @queueRandom.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get queueRandom;
+
+  /// No description provided for @queueClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get queueClear;
+
+  /// No description provided for @queueClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the queue and everyone playing?'**
+  String get queueClearConfirm;
+
+  /// No description provided for @queuePlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing now'**
+  String get queuePlaying;
+
+  /// No description provided for @queueNobodyPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is playing'**
+  String get queueNobodyPlaying;
+
+  /// No description provided for @queueSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue settings'**
+  String get queueSettings;
+
+  /// No description provided for @queueMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum queue size'**
+  String get queueMax;
+
+  /// No description provided for @queueRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can join'**
+  String get queueRoles;
+
+  /// No description provided for @queueEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get queueEveryone;
+
+  /// No description provided for @queueMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members and subscribers'**
+  String get queueMembers;
+
+  /// No description provided for @queueVip.
+  ///
+  /// In en, this message translates to:
+  /// **'VIPs'**
+  String get queueVip;
+
+  /// No description provided for @queueModerators.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderators'**
+  String get queueModerators;
+
+  /// No description provided for @queuePriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Prioritize members and subscribers'**
+  String get queuePriority;
+
+  /// No description provided for @queueRejoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow joining again after playing'**
+  String get queueRejoin;
+
+  /// No description provided for @queueChatMods.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderator chat commands'**
+  String get queueChatMods;
+
+  /// No description provided for @queueChatModsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Allows the owner and moderators to manage the queue from chat.'**
+  String get queueChatModsHint;
+
+  /// No description provided for @queueCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Join command'**
+  String get queueCommand;
+
+  /// No description provided for @queueJoinWhenOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Type {command} to play when the queue opens'**
+  String queueJoinWhenOpen(String command);
+
+  /// No description provided for @queueReservedCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'This command is reserved. Choose another one.'**
+  String get queueReservedCommand;
+
+  /// No description provided for @queueInvalidCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Use ! followed by 1–24 letters, digits, hyphens or underscores.'**
+  String get queueInvalidCommand;
+
+  /// No description provided for @queueSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get queueSave;
+
+  /// No description provided for @queueRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get queueRemove;
+
+  /// No description provided for @queueDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get queueDone;
+
+  /// No description provided for @galleryQueueDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show who is playing and who is waiting for a turn.'**
+  String get galleryQueueDescription;
+
+  /// No description provided for @galleryQueueCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue entries to show'**
+  String get galleryQueueCount;
+
+  /// No description provided for @galleryQueueHideClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide when the queue is closed'**
+  String get galleryQueueHideClosed;
+
+  /// No description provided for @galleryQueueWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Up next'**
+  String get galleryQueueWaiting;
+
+  /// No description provided for @galleryQueueMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String galleryQueueMore(String count);
 }
 
 class _AppLocalizationsDelegate

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/application/session_summary.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'chat_queue_test.dart' show queueMessage;
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
@@ -144,6 +146,48 @@ void main() {
     expect(replay['replay'], true);
     expect(replay['data']['messages'], 62);
     expect(snapshots, afterDisconnect + 1);
+  });
+
+  test('queue snapshots are coalesced and replay only to templates', () async {
+    final queue = ChatQueueController();
+    addTearDown(queue.dispose);
+    server.queueState = queue.overlayState;
+    final subscription = queue.states
+        .listen((state) => server.broadcastQueue(queue.overlayState(state)));
+    addTearDown(subscription.cancel);
+    final plain = await connect('chat');
+    final custom = await connect('custom', 'one');
+    final gallery = await connect('gallery', 'queue-list');
+    for (final client in [custom, gallery]) {
+      final replay = await client.next('queue');
+      expect(replay['replay'], true);
+      expect(replay['data']['status'], 'closed');
+      expect(replay['data']['command'], '!join');
+    }
+    queue.setStatus(QueueStatus.open);
+    for (var i = 0; i < 20; i++) {
+      queue.handleMessage(queueMessage('Viewer $i', '!join Note $i'));
+    }
+    final update = await custom.next('queue');
+    expect(update['replay'], isNot(true));
+    final entries = update['data']['entries'] as List;
+    expect(entries, hasLength(20));
+    expect(entries.first, {
+      'id': queue.current.entries.first.id,
+      'platform': 'twitch',
+      'name': 'Viewer 0',
+      'note': 'Note 0',
+      'priority': false,
+      'joinedAt':
+          queue.current.entries.first.joinedAt.toUtc().toIso8601String(),
+    });
+    expect(await gallery.next('queue'), update);
+    final reopened = await connect('custom', 'two');
+    expect(await reopened.next('queue'), {...update, 'replay': true});
+    await Future<void>.delayed(const Duration(milliseconds: 275));
+    for (final c in [plain, custom, gallery, reopened]) {
+      expect(c.frames.where((f) => f['type'] == 'queue'), isEmpty);
+    }
   });
 
   test('rule trigger envelope reaches only custom templates', () async {

@@ -1,3 +1,4 @@
+import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/settings/overlay_style_presets.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +59,8 @@ SettingsModel _different() {
       }
     ],
     ruleCounters: {'count': 1},
+    queueOptions: const QueueOptions(command: '!play', max: 20, rejoin: false),
+    queueState: const QueueState(status: QueueStatus.paused),
     subathonSecondsPerSub: d.subathonSecondsPerSub + 1,
     subathonSecondsPer100Bits: d.subathonSecondsPer100Bits + 1,
     subathonSecondsPer100Kicks: d.subathonSecondsPer100Kicks + 1,

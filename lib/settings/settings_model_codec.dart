@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'settings_model.dart';
 import 'alert_type_options.dart';
 import 'goals.dart';
+import 'package:airstream/application/chat_queue.dart';
 import 'media_library_entries.dart';
 
 abstract final class SettingsModelCodec {
@@ -131,6 +132,8 @@ abstract final class SettingsModelCodec {
         'subathonRemainingMs': model.subathonRemainingMs,
         'mediaLibrary': MediaLibraryEntries.sanitize(model.mediaLibrary),
         'goals': Goals.sanitize(model.goals),
+        'queueOptions': model.queueOptions.toJson(),
+        'queueState': model.queueState.toJson(),
         'rulesEnabled': model.rulesEnabled,
         'rulesWebhookEnabled': model.rulesWebhookEnabled,
         'rulesWebhookToken': model.rulesWebhookToken,
@@ -166,6 +169,8 @@ abstract final class SettingsModelCodec {
       subathonRemainingMs: j['subathonRemainingMs'] as int? ?? 0,
       mediaLibrary: MediaLibraryEntries.sanitize(j['mediaLibrary']),
       goals: Goals.sanitize(j['goals']),
+      queueOptions: QueueOptions.fromJson(j['queueOptions']),
+      queueState: QueueState.fromJson(j['queueState']),
       rulesEnabled: j['rulesEnabled'] as bool? ?? true,
       rulesWebhookEnabled: j['rulesWebhookEnabled'] as bool? ?? false,
       rulesWebhookToken: j['rulesWebhookToken'] as String? ?? '',
@@ -354,6 +359,10 @@ abstract final class SettingsModelCodec {
         sanitized[entry.key] = entry.key == 'rules'
             ? RuleSchema.sanitize(value)
             : RuleSchema.counters(value);
+        continue;
+      }
+      if (entry.key == 'queueOptions' || entry.key == 'queueState') {
+        sanitized[entry.key] = value;
         continue;
       }
       if (entry.key == 'goals') {

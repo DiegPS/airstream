@@ -101,6 +101,8 @@ String resolveRuleText(
     'message': e.text,
     'amount': e.presentationAmount,
     'count': '${e.count}',
+    if (e.note != null) 'note': e.note!,
+    if (e.position != null) 'position': '${e.position}',
     'months': '${e.months}',
     'scene': e.scene,
     'args': e.args,

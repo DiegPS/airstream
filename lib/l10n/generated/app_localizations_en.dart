@@ -2694,6 +2694,17 @@ class AppLocalizationsEn extends AppLocalizations {
         'kalreadyOpen': 'Giveaway is already open',
         'knotOpen': 'Giveaway is not open',
         'knoEntrants': 'No eligible entrants',
+        'kqueue_joined': 'Viewer joined the queue',
+        'kqueue_next': 'Next players',
+        'kqueue_open': 'Open the queue',
+        'kqueue_close': 'Close the queue',
+        'kqueue_pause': 'Pause the queue',
+        'kcount': 'Players',
+        'krandom': 'Pick randomly',
+        'kqueueAlreadyOpen': 'The queue is already open',
+        'kqueueAlreadyPaused': 'The queue is already paused',
+        'kqueueAlreadyClosed': 'The queue is already closed',
+        'kqueueEmpty': 'Nobody is waiting in the queue',
         'kcounterLimit': 'Counter limit reached',
         'krecipe1': 'Welcome a raid',
         'krecipeDesc1': 'Show Raid for 15 seconds, then return.',
@@ -2940,4 +2951,131 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryRankingType => 'Leaderboard type';
+
+  @override
+  String get queueTitle => 'Queue';
+
+  @override
+  String get queueClosed => 'Closed';
+
+  @override
+  String get queueOpenStatus => 'Open';
+
+  @override
+  String get queuePaused => 'Paused';
+
+  @override
+  String get queueOpen => 'Open';
+
+  @override
+  String get queuePause => 'Pause';
+
+  @override
+  String get queueClose => 'Close';
+
+  @override
+  String queueJoinHint(String command) {
+    return 'Type $command to play';
+  }
+
+  @override
+  String get queueEmpty => 'Nobody is waiting';
+
+  @override
+  String get queueNext => 'Next';
+
+  @override
+  String get queueNextCount => 'Players';
+
+  @override
+  String get queueRandom => 'Random';
+
+  @override
+  String get queueClear => 'Clear';
+
+  @override
+  String get queueClearConfirm => 'Clear the queue and everyone playing?';
+
+  @override
+  String get queuePlaying => 'Playing now';
+
+  @override
+  String get queueNobodyPlaying => 'Nobody is playing';
+
+  @override
+  String get queueSettings => 'Queue settings';
+
+  @override
+  String get queueMax => 'Maximum queue size';
+
+  @override
+  String get queueRoles => 'Who can join';
+
+  @override
+  String get queueEveryone => 'Everyone';
+
+  @override
+  String get queueMembers => 'Members and subscribers';
+
+  @override
+  String get queueVip => 'VIPs';
+
+  @override
+  String get queueModerators => 'Moderators';
+
+  @override
+  String get queuePriority => 'Prioritize members and subscribers';
+
+  @override
+  String get queueRejoin => 'Allow joining again after playing';
+
+  @override
+  String get queueChatMods => 'Moderator chat commands';
+
+  @override
+  String get queueChatModsHint =>
+      'Allows the owner and moderators to manage the queue from chat.';
+
+  @override
+  String get queueCommand => 'Join command';
+
+  @override
+  String queueJoinWhenOpen(String command) {
+    return 'Type $command to play when the queue opens';
+  }
+
+  @override
+  String get queueReservedCommand =>
+      'This command is reserved. Choose another one.';
+
+  @override
+  String get queueInvalidCommand =>
+      'Use ! followed by 1–24 letters, digits, hyphens or underscores.';
+
+  @override
+  String get queueSave => 'Save';
+
+  @override
+  String get queueRemove => 'Remove';
+
+  @override
+  String get queueDone => 'Done';
+
+  @override
+  String get galleryQueueDescription =>
+      'Show who is playing and who is waiting for a turn.';
+
+  @override
+  String get galleryQueueCount => 'Queue entries to show';
+
+  @override
+  String get galleryQueueHideClosed => 'Hide when the queue is closed';
+
+  @override
+  String get galleryQueueWaiting => 'Up next';
+
+  @override
+  String galleryQueueMore(String count) {
+    return '+$count more';
+  }
 }

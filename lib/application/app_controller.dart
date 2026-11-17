@@ -11,6 +11,8 @@ import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/coordinator_notice.dart';
@@ -101,12 +103,14 @@ class AppController {
             obs: _obs,
             audio: _audio,
             giveaway: _giveaway,
+            queue: queue,
             server: () => templateServer,
             feature: featureMessageOnStream,
             draw: (depth) {
               final winner = _giveaway.draw();
               if (winner != null) _winnerEvent(depth);
             }));
+    templateServer?.queueState = queue.overlayState;
     templateServer?.sessionState = () =>
         _sessionSummary.templateState(live: _chatRunning && _chatConnected);
     _subscriptions.addAll([
@@ -125,6 +129,8 @@ class AppController {
           templateServer?.sessionChanged();
         }
       }),
+      queue.states.listen(
+          (state) => templateServer?.broadcastQueue(queue.overlayState(state))),
       _chat.messages.listen(_giveaway.handleMessage),
       _giveaway.states.listen(
           (state) => _overlay.broadcastGiveaway(state?.toOverlayJson())),
@@ -135,6 +141,7 @@ class AppController {
       _chat.messages.listen(_overlayFeed.add),
       _chat.messages.listen(_audio.handleChatMessage),
       _chat.messages.listen((m) {
+        queue.handleMessage(m);
         if (rules.active) {
           for (final e in _ruleAdapter.message(m,
               firstInSession: m.isOwner || m.isMembershipEvent
@@ -196,6 +203,54 @@ class AppController {
   late final RuleEngine rules;
   final _ruleAdapter = RuleEventAdapter();
   Future<void> Function(SettingsModel)? ruleSettingsWriter;
+  Future<void> Function(QueueState)? queueSettingsWriter;
+  Future<void>? _queueWrite;
+  bool _publishingQueueSettings = false;
+
+  late final queue = ChatQueueController(
+    onJoined: (entry, position) => _queueEvent(
+      'queue.joined',
+      entry,
+      position: position,
+    ),
+    onNext: (entries, depth) => _queueEvent(
+      'queue.next',
+      entries.first,
+      count: entries.length,
+      depth: depth,
+    ),
+    onPersist: (state) {
+      final write = queueSettingsWriter;
+      if (write == null) return;
+      _publishingQueueSettings = true;
+      try {
+        _queueWrite = Future<void>.sync(() => write(state))
+            .catchError((Object error, StackTrace stack) {
+          AppLogger.warning('Queue persistence failed',
+              error: error, stackTrace: stack);
+        });
+      } finally {
+        _publishingQueueSettings = false;
+      }
+    },
+  );
+
+  void _queueEvent(String type, QueueEntry entry,
+      {int? position, int count = 0, int depth = 0}) {
+    if (!rules.active) return;
+    rules.handle(RuleEvent(
+      type: type,
+      eventId: 'queue:${++_ruleEventSequence}',
+      chainDepth: depth,
+      platform: entry.platform.name,
+      author:
+          RuleAuthor(name: entry.name, id: entry.identity, roles: entry.roles),
+      note: position == null ? null : entry.note,
+      position: position,
+      count: count,
+    ));
+  }
+
   int _settingsDepth = 0, _lastDrawId = 0, _ruleEventSequence = 0;
   bool _pollWasOpen = false;
   Timer? _ruleEndTimer;
@@ -332,6 +387,11 @@ class AppController {
     if (_disposed) return;
     final previous = _lastSettings;
     _lastSettings = settings;
+    // Queue writes synchronously notify Riverpod. Keep the new snapshot for
+    // subsequent rule writes without reapplying chat, OBS or browser settings.
+    if (_publishingQueueSettings && previous != null) return;
+    queue.configure(settings.queueOptions, settings.appLanguageCode);
+    if (previous == null) queue.restore(settings.queueState);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
     templateServer?.rulesEngine = rules;
     _ruleEndTimer?.cancel();
@@ -418,7 +478,9 @@ class AppController {
     if (_disposed) return;
     _disposed = true;
     _ruleEndTimer?.cancel();
+    final queueDisposed = queue.dispose();
     await rules.dispose();
+    await queueDisposed;
     await (rules.target as RuleActions).sounds.dispose();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
@@ -431,6 +493,7 @@ class AppController {
     await _overlayFeed.close();
     await _poll.dispose();
     await _giveaway.dispose();
+    await _queueWrite;
     await _goalIncrements.close();
     await _chatLog.endSession();
   }

@@ -18,6 +18,8 @@ class RuleEvent {
       this.presentationAmount = '',
       this.currency = '',
       this.count = 0,
+      this.note,
+      this.position,
       this.months = 0,
       this.scene = '',
       this.goalId = '',
@@ -34,6 +36,8 @@ class RuleEvent {
   final RuleAuthor author;
   final num? amount;
   final int count, months, chainDepth;
+  final String? note;
+  final int? position;
   final ChatMessage? message;
   String get command => text.trim().split(RegExp(r'\s+')).first.toLowerCase();
   String get args {

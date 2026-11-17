@@ -1,3 +1,4 @@
+import 'package:airstream/application/chat_queue.dart';
 import 'settings_model_codec.dart';
 
 const defaultProviderEventBannerKinds = <String>[
@@ -165,6 +166,8 @@ class SettingsModel {
   final int subathonRemainingMs;
   final Map<String, Map<String, dynamic>> mediaLibrary;
   final Map<String, Map<String, dynamic>> goals;
+  final QueueOptions queueOptions;
+  final QueueState queueState;
   final Map<String, Map<String, dynamic>> alertTypeOptions;
   final int alertSoundVolume;
 
@@ -311,6 +314,8 @@ class SettingsModel {
     this.subathonRemainingMs = 0,
     this.mediaLibrary = const {},
     this.goals = const {},
+    this.queueOptions = const QueueOptions(),
+    this.queueState = const QueueState(),
     this.rulesEnabled = true,
     this.rulesWebhookEnabled = false,
     this.rulesWebhookToken = '',
@@ -457,6 +462,8 @@ class SettingsModel {
     int? subathonRemainingMs,
     Map<String, Map<String, dynamic>>? mediaLibrary,
     Map<String, Map<String, dynamic>>? goals,
+    QueueOptions? queueOptions,
+    QueueState? queueState,
     bool? rulesEnabled,
     bool? rulesWebhookEnabled,
     String? rulesWebhookToken,
@@ -630,6 +637,8 @@ class SettingsModel {
         subathonRemainingMs: subathonRemainingMs ?? this.subathonRemainingMs,
         mediaLibrary: mediaLibrary ?? this.mediaLibrary,
         goals: goals ?? this.goals,
+        queueOptions: queueOptions ?? this.queueOptions,
+        queueState: queueState ?? this.queueState,
         rulesEnabled: rulesEnabled ?? this.rulesEnabled,
         rulesWebhookEnabled: rulesWebhookEnabled ?? this.rulesWebhookEnabled,
         rulesWebhookToken: rulesWebhookToken ?? this.rulesWebhookToken,

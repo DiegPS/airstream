@@ -273,6 +273,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         currency: e.currency,
         presentationAmount: sampleAmount ?? e.presentationAmount,
         count: e.count,
+        note: e.note,
+        position: e.position,
         months: e.months,
         scene: e.scene,
         goalId: e.goalId,
@@ -295,6 +297,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
     final placeholders = [
       'platform',
       if (meaningful) ...['user', 'message'],
+      if (type == 'queue.joined') ...['user', 'note', 'position'],
+      if (type == 'queue.next') ...['user', 'count'],
       if (type == 'chat.command') ...[
         'args',
         for (var i = 1; i <= 9; i++) 'arg$i'
@@ -430,7 +434,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                 ...params(t, RuleSchema.triggers[type] ?? {},
                                     'trigger'),
                                 section('if'),
-                                if (meaningful) ...[
+                                if (meaningful ||
+                                    type.startsWith('queue.')) ...[
                                   Wrap(spacing: 6, children: [
                                     for (final p in RuleSchema.platforms)
                                       FilterChip(

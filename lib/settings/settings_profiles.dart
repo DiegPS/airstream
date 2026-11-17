@@ -19,6 +19,7 @@ abstract final class SettingsProfiles {
     'overlayPort',
     'profiles',
     'goals',
+    'queueState',
     'rulesEnabled',
     'rulesWebhookEnabled',
     'rulesWebhookToken',
@@ -71,13 +72,15 @@ abstract final class SettingsProfiles {
   static SettingsModel resetToDefaults(SettingsModel current) =>
       apply(current, capture(const SettingsModel()));
 
-  /// Every setting as a file, excluding the OBS password and webhook token.
+  /// Settings for portable backups, without credentials or the current queue.
   static String export(SettingsModel settings) =>
-      SettingsDocumentCodec.encode(settings, includeWebhookSecret: false);
+      SettingsDocumentCodec.encode(settings,
+          includeWebhookSecret: false, includeQueueState: false);
 
   /// Settings read from a backup, keeping local credentials and API opt-in.
   static SettingsModel import(String source, SettingsModel current) =>
       SettingsDocumentCodec.decode(source).settings.copyWith(
+          queueState: current.queueState,
           obsPassword: current.obsPassword,
           rulesWebhookToken: current.rulesWebhookToken,
           rulesWebhookEnabled: current.rulesWebhookEnabled);

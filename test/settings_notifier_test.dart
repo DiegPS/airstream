@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:airstream/settings/secure_settings_store.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/settings/settings_profiles.dart';
+import 'chat_queue_test.dart' show queueMessage;
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -14,6 +17,68 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  test('queue options and live state reload, but portable exports omit state',
+      () async {
+    final store = _MemorySecureSettingsStore();
+    final first =
+        SettingsNotifier(secureStore: store, systemLanguageCode: () => 'es');
+    await first.ready;
+    expect(first.state.queueOptions.command, '!unirme');
+    final english =
+        SettingsNotifier(secureStore: store, systemLanguageCode: () => 'en');
+    await english.ready;
+    expect(english.state.queueOptions.command, '!join');
+    english.dispose();
+
+    const options = QueueOptions(
+      command: '!turno',
+      max: 30,
+      role: QueueRole.member,
+      nextCount: 2,
+      priority: true,
+      rejoin: false,
+      moderatorCommands: true,
+    );
+    final queue = ChatQueueController()
+      ..configure(options, 'es')
+      ..setStatus(QueueStatus.open)
+      ..handleMessage(queueMessage('Former', '!turno', member: true))
+      ..handleMessage(queueMessage('Current', '!turno note', member: true))
+      ..handleMessage(queueMessage('Waiting', '!turno other', member: true));
+    final picked = queue.next(2);
+    queue.done(picked.first.id);
+    queue.setStatus(QueueStatus.paused);
+    await first.update(first.state.copyWith(queueOptions: options));
+    await first.saveQueueState(queue.current);
+    final state = first.state;
+    final second = SettingsNotifier(secureStore: store);
+    await second.ready;
+    expect(second.state.queueOptions.toJson(), options.toJson());
+    expect(second.state.queueState.toJson(), state.queueState.toJson());
+
+    final profile = SettingsProfiles.capture(second.state);
+    expect(profile, isNot(contains('queueState')));
+    expect(profile['queueOptions'], options.toJson());
+    final file = SettingsProfiles.export(second.state);
+    final payload = jsonDecode(file)['settings'] as Map;
+    expect(payload, isNot(contains('queueState')));
+    expect(payload['queueOptions'], options.toJson());
+    final imported = SettingsProfiles.import(file, state);
+    expect(imported.queueState, same(state.queueState));
+    expect(
+        SettingsProfiles.apply(state, {'queueState': {}}).queueState.toJson(),
+        state.queueState.toJson());
+
+    queue.clear();
+    queue.restore(second.state.queueState);
+    queue.setStatus(QueueStatus.open);
+    queue.handleMessage(queueMessage('Former', '!turno', member: true));
+    expect(queue.current.entries.single.name, 'Waiting');
+    await queue.dispose();
+    first.dispose();
+    second.dispose();
   });
 
   test('subathon rules and state survive a settings save and reload', () async {

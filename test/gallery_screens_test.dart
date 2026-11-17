@@ -16,15 +16,17 @@ void main() {
     'ticker': ['Ticker', 'Barra informativa'],
     'latest-support': ['Latest support', 'Último apoyo'],
     'top-supporters': ['Top of the stream', 'Top del directo'],
+    'queue-list': ['Queue', 'Lista de turnos'],
   };
   const widgets = {
     'recent-support': (480, 640),
     'ticker': (1920, 64),
     'latest-support': (640, 160),
     'top-supporters': (560, 480),
+    'queue-list': (480, 720),
   };
 
-  test('all eight gallery items build valid localized manifests and files', () {
+  test('all nine gallery items build valid localized manifests and files', () {
     expect(galleryCatalog.keys, orderedEquals(names.keys));
     expect(galleryCatalog.values.map((i) => i.id), orderedEquals(names.keys));
     for (final (i, language) in ['en', 'es'].indexed) {
@@ -69,6 +71,13 @@ void main() {
                   .options,
               containsPair('kind', 'visual'));
         }
+        if (item.id == 'queue-list') {
+          final count = manifest.fields.singleWhere((f) => f.key == 'count');
+          expect(count.defaultValue, 10);
+          expect(count.sanitize(0), 5);
+          expect(count.sanitize(50), 30);
+          expect(defaults['hideWhenClosed'], false);
+        }
         if (item.id == 'ticker') {
           final speed = manifest.fields.singleWhere((f) => f.key == 'speed');
           expect(speed.defaultValue, 80);
@@ -100,7 +109,12 @@ void main() {
             },
       };
       final widgets = {
-        for (final id in ['ticker', 'latest-support', 'top-supporters'])
+        for (final id in [
+          'ticker',
+          'latest-support',
+          'top-supporters',
+          'queue-list'
+        ])
           id: {
             'en': galleryCatalog[id]!.buildFiles('en'),
             'es': galleryCatalog[id]!.buildFiles('es'),
@@ -150,6 +164,7 @@ class Element extends EventTarget {
     if (this.className === 'ticker-group') return this.children.reduce((width, child) => width + child.offsetWidth, 0);
     return 92 + this.textContent.length * 9;
   }
+  getBoundingClientRect() { return {top: this.offsetTop, left: 0, width: 220}; }
   get offsetTop() { return (this.parent?.children.indexOf(this) ?? 0) * 66; }
   append(...children) {
     for (const child of children) this.insertBefore(child, null);
@@ -474,6 +489,68 @@ async function checkWidgetDemos() {
   console.log('PASS: SDK demo exercises all three widgets in English and Spanish with all themes and optional branding');
 }
 
+async function checkQueue() {
+  const pageQueue = page('queue-list');
+  const {nodes} = pageQueue;
+  const player = (id, name = 'Player ' + id, note = '') => ({
+    id: String(id), platform: 'twitch', name, note, priority: id === 0,
+    joinedAt: '2026-11-17T12:00:00Z'
+  });
+  const entries = Array.from({length: 12}, (_, i) => player(i));
+  entries[0] = player(0, literal, '<b>note</b> 🎮');
+  const state = {status: 'open', entries, playing: [player(20)], max: 50, command: '!join'};
+  pageQueue.send('queue', state, true);
+  pageQueue.fields({});
+  assert.equal(nodes.status.textContent, 'Open');
+  assert.equal(nodes.join.textContent, 'Type !join to play');
+  assert.equal(nodes.waiting.children.length, 10);
+  assert.equal(nodes.more.textContent, '+2 more');
+  const first = nodes.waiting.children[0];
+  assert.equal(first.children[0].textContent, '1');
+  assert.equal(first.children[2].textContent, literal);
+  assert.equal(first.children[3].textContent, '<b>note</b> 🎮');
+  assert.equal(first.dataset.priority, 'true');
+  assert.equal(first.classList.contains('enter'), false);
+  assert.equal(nodes.playing.children[0].children[2].textContent, 'Player 20');
+  assert.equal(pageQueue.win.Airstream.state.queue.status, 'open');
+  const added = {...state, entries: [player(21), ...entries.slice(1)]};
+  pageQueue.send('queue', added);
+  assert.equal(first.classList.contains('leave'), true);
+  const newest = nodes.waiting.children[0];
+  assert.equal(newest.classList.contains('enter'), true);
+  newest.dispatchEvent(new Event('animationend'));
+  pageQueue.advance(180);
+  assert.ok(!nodes.waiting.children.includes(first));
+  pageQueue.send('queue', added, true);
+  assert.equal(nodes.waiting.children[0], newest);
+  assert.equal(newest.classList.contains('enter'), false);
+  pageQueue.fields({language: 'es', hideWhenClosed: true, count: 5});
+  assert.equal(nodes.more.textContent, '+7 más');
+  pageQueue.send('queue', {...added, status: 'paused'});
+  assert.equal(nodes.status.textContent, 'En pausa');
+  assert.equal(nodes.queue.hidden, false);
+  assert.equal(nodes.join.textContent, 'Cuando abra, escribe !join para jugar');
+  pageQueue.send('queue', {...added, status: 'closed'}, true);
+  assert.equal(nodes.status.textContent, 'Cerrada');
+  assert.equal(nodes.queue.hidden, true);
+  pageQueue.fields({language: 'es', hideWhenClosed: false});
+  assert.equal(nodes.queue.hidden, false);
+
+  for (const lang of ['en', 'es']) {
+    const demo = page('queue-list', lang, {demo: true, reduced: true});
+    await new Promise(setImmediate);
+    assert.deepEqual(demo.errors, []);
+    assert.equal(demo.nodes.join.textContent, lang === 'en'
+      ? 'Type !join to play' : 'Escribe !unirme para jugar');
+    const before = demo.win.Airstream.state.queue.playing[0].id;
+    demo.advance(8000);
+    assert.notEqual(demo.win.Airstream.state.queue.playing[0].id, before);
+    demo.advance(4000);
+    assert.equal(demo.win.Airstream.state.queue.status, 'paused');
+  }
+  console.log('PASS: Queue renders literal names and notes, keeps keyed rows on replay, animates joins and departures, localizes status and overflow, hides when closed, and evolves in demo');
+}
+
 async function main() {
   const starting = page('starting-soon');
   starting.fields({startTime: '12:01'});
@@ -633,6 +710,7 @@ async function main() {
   checkLatestSupport();
   checkTopSupporters();
   await checkWidgetDemos();
+  await checkQueue();
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
 ''';

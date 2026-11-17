@@ -7,6 +7,7 @@ import 'package:airstream/settings/goals.dart';
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -193,6 +194,8 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
   final c = AppController();
   c.ruleSettingsWriter =
       (settings) => ref.read(settingsProvider.notifier).update(settings);
+  final notifier = ref.read(settingsProvider.notifier);
+  c.queueSettingsWriter = notifier.saveQueueState;
   ref.onDispose(() => unawaited(c.dispose()));
   return c;
 });
@@ -200,6 +203,9 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
 final overlayViewCountsProvider = StreamProvider<Map<String, int>>((ref) {
   return ref.watch(appControllerProvider).overlayViewCountsStream;
 });
+
+final chatQueueProvider = Provider<ChatQueueController>(
+    (ref) => ref.watch(appControllerProvider).queue);
 
 final chatGiveawayProvider = StreamProvider<ChatGiveaway?>(
     (ref) => ref.watch(appControllerProvider).giveawayStream);

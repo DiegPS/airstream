@@ -7,6 +7,7 @@ import 'package:airstream/application/subathon_timer.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'rule_engine.dart';
@@ -20,6 +21,7 @@ class RuleActions implements RuleActionTarget {
       required this.obs,
       required this.audio,
       required this.giveaway,
+      required this.queue,
       required this.server,
       required this.feature,
       required this.draw,
@@ -31,6 +33,7 @@ class RuleActions implements RuleActionTarget {
   final ObsCoordinator obs;
   final AudioCoordinator audio;
   final ChatGiveawayController giveaway;
+  final ChatQueueController queue;
   final OverlayServer? Function() server;
   final void Function(ChatMessage) feature;
   final void Function(int) draw;
@@ -84,6 +87,16 @@ class RuleActions implements RuleActionTarget {
         return 'noEntrants';
       }
     }
+    final queueReason = switch (type) {
+      'queue.open' when queue.status == QueueStatus.open => 'queueAlreadyOpen',
+      'queue.pause' when queue.status == QueueStatus.paused =>
+        'queueAlreadyPaused',
+      'queue.close' when queue.status == QueueStatus.closed =>
+        'queueAlreadyClosed',
+      'queue.next' when !queue.hasEntries => 'queueEmpty',
+      _ => null,
+    };
+    if (queueReason != null) return queueReason;
     if (type == 'counter' &&
         !s.ruleCounters.containsKey(a['name']) &&
         s.ruleCounters.length >= RuleSchema.maxCounters) {
@@ -158,6 +171,15 @@ class RuleActions implements RuleActionTarget {
           await writeSettings(
               s.copyWith(ruleCounters: {...s.ruleCounters, name: value}),
               depth);
+        case 'queue.open':
+          queue.setStatus(QueueStatus.open);
+        case 'queue.close':
+          queue.setStatus(QueueStatus.closed);
+        case 'queue.pause':
+          queue.setStatus(QueueStatus.paused);
+        case 'queue.next':
+          queue.next(a['count'] as int,
+              random: a['random'] == true, depth: depth);
         case 'giveaway':
           switch (a['op']) {
             case 'start':

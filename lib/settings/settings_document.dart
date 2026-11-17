@@ -18,12 +18,13 @@ class DecodedSettingsDocument {
 
 abstract final class SettingsDocumentCodec {
   static String encode(SettingsModel settings,
-          {bool includeWebhookSecret = true}) =>
+          {bool includeWebhookSecret = true, bool includeQueueState = true}) =>
       jsonEncode({
         'schemaVersion': currentSettingsSchemaVersion,
         'settings': settings.toJson()
-          ..removeWhere(
-              (key, _) => !includeWebhookSecret && key == 'rulesWebhookToken'),
+          ..removeWhere((key, _) =>
+              (!includeWebhookSecret && key == 'rulesWebhookToken') ||
+              (!includeQueueState && key == 'queueState')),
       });
 
   static DecodedSettingsDocument decode(String source) {

@@ -1,4 +1,5 @@
 import 'package:airstream/application/rules/rules_webhook.dart';
+import 'package:airstream/application/chat_queue.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show PlatformDispatcher;
@@ -68,7 +69,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       // First run: speak the language Windows uses, when Airstream has it.
       final language = _systemLanguageCode();
       if (_supportedLanguages.contains(language)) {
-        state = _localizeBuiltInTtsDefaults(
+        state = _localizeBuiltInDefaults(
           state.copyWith(appLanguageCode: language, ttsLanguage: language),
         );
       }
@@ -95,7 +96,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
           recoveredFromBackup = true;
         }
         final decodedSettings = document.settings;
-        final loaded = _localizeBuiltInTtsDefaults(decodedSettings);
+        final loaded = _localizeBuiltInDefaults(decodedSettings);
         final localizedDefaultsChanged =
             loaded.ttsCommandPrefix != decodedSettings.ttsCommandPrefix ||
                 loaded.ttsSeparatorText != decodedSettings.ttsSeparatorText;
@@ -148,7 +149,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     settings = enableRulesWebhook(settings, settings.rulesWebhookEnabled);
     final next = settings.appLanguageCode == state.appLanguageCode
         ? settings
-        : _localizeBuiltInTtsDefaults(settings);
+        : _localizeBuiltInDefaults(settings);
+    return _publishAndPersist(next);
+  }
+
+  Future<void> _publishAndPersist(SettingsModel next) {
     state = next;
     // Only the latest settings need to reach the disk: a slider produces a
     // change per frame, and writing each one would queue dozens of writes.
@@ -174,6 +179,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       }
     });
     return pending.future;
+  }
+
+  Future<void> saveQueueState(QueueState queue) async {
+    if (!_loaded) await ready;
+    if (mounted) await _publishAndPersist(state.copyWith(queueState: queue));
   }
 
   _PendingPersist? _pendingPersist;
@@ -214,7 +224,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   static const _supportedLanguages = {'en', 'es'};
 
-  static SettingsModel _localizeBuiltInTtsDefaults(SettingsModel settings) {
+  static SettingsModel _localizeBuiltInDefaults(SettingsModel settings) {
     final spanish = settings.appLanguageCode == 'es';
     final prefix = settings.ttsCommandPrefix.trim();
     final separator = settings.ttsSeparatorText.trim();
@@ -227,6 +237,8 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
             ? (spanish ? 'dice' : 'says')
             : settings.ttsSeparatorText;
     return settings.copyWith(
+      queueOptions: settings.queueOptions.copyWith(
+          command: settings.queueOptions.commandFor(settings.appLanguageCode)),
       ttsCommandPrefix: localizedPrefix,
       ttsSeparatorText: localizedSeparator,
     );

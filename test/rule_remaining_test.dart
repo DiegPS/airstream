@@ -13,11 +13,17 @@ import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/native_audio_playback_service.dart';
 import 'package:airstream/services/media_library.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'application/coordinator_fakes.dart';
+import 'package:airstream/application/rules/rule_model.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/ui/widgets/rules_card.dart';
+import 'package:flutter/widgets.dart' show Locale;
+import 'chat_queue_test.dart' show queueMessage;
 import 'rule_engine_test.dart' show Target, rule;
 
 class Playback extends NativeAudioPlaybackService {
@@ -67,6 +73,98 @@ class SoundTarget extends RuleSoundPlayer {
 }
 
 void main() {
+  test(
+      'queue rule triggers and actions sanitize, simulate, execute, and localize',
+      () async {
+    final obs = ObsCoordinator(obs: FakeObsClient());
+    final audio =
+        AudioCoordinator(tts: FakeTtsClient(), captions: FakeCaptionsClient());
+    final giveaway = ChatGiveawayController();
+    final picks = <(String, int, int)>[];
+    final queue = ChatQueueController(
+      onNext: (entries, depth) =>
+          picks.add((entries.first.name, entries.length, depth)),
+    );
+    final actions = RuleActions(
+      queue: queue,
+      settings: () => const SettingsModel(),
+      writeSettings: (_, depth) async {},
+      obs: obs,
+      audio: audio,
+      giveaway: giveaway,
+      server: () => null,
+      feature: (_) {},
+      draw: (_) {},
+    );
+    final engine = RuleEngine(target: actions);
+    addTearDown(() async {
+      await engine.dispose();
+      await actions.sounds.dispose();
+      await obs.dispose();
+      await audio.dispose();
+      await giveaway.dispose();
+      await queue.dispose();
+    });
+    for (final (i, type, pattern, expected) in [
+      (0, 'queue.joined', '{user} {note} {position}', 'Alex Player 🎮 3'),
+      (1, 'queue.next', '{user} × {count}', 'Alex × 2'),
+    ]) {
+      final definition = rule(id: 'queue_$i', type: type, actions: [
+        {'id': 'alert', 'type': 'alert.show', 'text': pattern, 'seconds': 3},
+      ]);
+      final sanitized = RuleSchema.sanitize([definition]).single;
+      expect(sanitized['trigger'], {'type': type});
+      final simulated = engine.simulate(definition, engine.sampleEvent(type));
+      expect(simulated.matched, isTrue);
+      expect(simulated.actions.single['text'], expected);
+    }
+
+    Future<void> action(String type, String repeatedReason) async {
+      final definition = rule(actions: [
+        {
+          'id': 'a',
+          'type': type,
+          if (type == 'queue.next') ...{'count': 20, 'random': true}
+        }
+      ]);
+      final event = engine.sampleEvent('manual');
+      final before = queue.current.toJson();
+      final simulated = engine.simulate(definition, event);
+      expect(simulated.results.single.status, 'wouldRun');
+      expect(queue.current.toJson(), before);
+      final action = simulated.actions.single;
+      if (type == 'queue.next') {
+        expect(action['count'], 10);
+        expect(action['random'], true);
+      }
+      final run = RuleRun(
+        id: 'test',
+        rule: definition,
+        event: event,
+        startedAt: DateTime.now(),
+        generation: 0,
+      );
+      expect((await actions.execute(action, run)).status, 'done');
+      expect(engine.simulate(definition, event).results.single.reason,
+          repeatedReason);
+      expect((await actions.execute(action, run)).reason, repeatedReason);
+      expect(RuleEngine.reasonCodes, contains(repeatedReason));
+      for (final lang in ['en', 'es']) {
+        final l = lookupAppLocalizations(Locale(lang));
+        expect(ruleText(l, repeatedReason), isNot('…'));
+        expect(ruleText(l, type), isNot('…'));
+        expect(ruleText(l, 'queue.joined'), isNot('…'));
+      }
+    }
+
+    await action('queue.open', 'queueAlreadyOpen');
+    queue.handleMessage(queueMessage('Viewer', '!join'));
+    await action('queue.pause', 'queueAlreadyPaused');
+    await action('queue.close', 'queueAlreadyClosed');
+    await action('queue.next', 'queueEmpty');
+    expect(picks, [('Viewer', 1, 1)]);
+  });
+
   test('OBS baseline, real transitions once, reconnect and user scene', () {
     final adapter = RuleObsTransitions();
     var state = const ObsState(
@@ -230,7 +328,10 @@ void main() {
     var settings = const SettingsModel(obsEnabled: true);
     final soundTarget = SoundTarget();
     AlertTarget? alertTarget;
+    final queue = ChatQueueController();
+    addTearDown(queue.dispose);
     final actions = RuleActions(
+        queue: queue,
         sounds: soundTarget,
         settings: () => settings,
         writeSettings: (_, depth) async {},

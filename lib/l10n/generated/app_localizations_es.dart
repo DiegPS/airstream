@@ -2715,6 +2715,17 @@ class AppLocalizationsEs extends AppLocalizations {
         'kalreadyOpen': 'El sorteo ya está abierto',
         'knotOpen': 'El sorteo no está abierto',
         'knoEntrants': 'Sin participantes elegibles',
+        'kqueue_joined': 'Alguien se unió a la lista',
+        'kqueue_next': 'Siguientes jugadores',
+        'kqueue_open': 'Abrir la lista',
+        'kqueue_close': 'Cerrar la lista',
+        'kqueue_pause': 'Pausar la lista',
+        'kcount': 'Jugadores',
+        'krandom': 'Elegir al azar',
+        'kqueueAlreadyOpen': 'La lista ya está abierta',
+        'kqueueAlreadyPaused': 'La lista ya está en pausa',
+        'kqueueAlreadyClosed': 'La lista ya está cerrada',
+        'kqueueEmpty': 'No hay nadie en la lista',
         'kcounterLimit': 'Límite de contadores alcanzado',
         'krecipe1': 'Recibir una raid',
         'krecipeDesc1': 'Muestra Raid durante 15 segundos y vuelve.',
@@ -2971,4 +2982,131 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get galleryRankingType => 'Tipo de clasificación';
+
+  @override
+  String get queueTitle => 'Lista de turnos';
+
+  @override
+  String get queueClosed => 'Cerrada';
+
+  @override
+  String get queueOpenStatus => 'Abierta';
+
+  @override
+  String get queuePaused => 'En pausa';
+
+  @override
+  String get queueOpen => 'Abrir';
+
+  @override
+  String get queuePause => 'Pausar';
+
+  @override
+  String get queueClose => 'Cerrar';
+
+  @override
+  String queueJoinHint(String command) {
+    return 'Escribe $command para jugar';
+  }
+
+  @override
+  String get queueEmpty => 'No hay nadie en espera';
+
+  @override
+  String get queueNext => 'Siguiente';
+
+  @override
+  String get queueNextCount => 'Jugadores';
+
+  @override
+  String get queueRandom => 'Al azar';
+
+  @override
+  String get queueClear => 'Vaciar';
+
+  @override
+  String get queueClearConfirm =>
+      '¿Vaciar la lista y quitar a quienes están jugando?';
+
+  @override
+  String get queuePlaying => 'Jugando ahora';
+
+  @override
+  String get queueNobodyPlaying => 'No hay nadie jugando';
+
+  @override
+  String get queueSettings => 'Ajustes de la lista';
+
+  @override
+  String get queueMax => 'Tamaño máximo de la lista';
+
+  @override
+  String get queueRoles => 'Quién puede unirse';
+
+  @override
+  String get queueEveryone => 'Todos';
+
+  @override
+  String get queueMembers => 'Miembros y suscriptores';
+
+  @override
+  String get queueVip => 'VIP';
+
+  @override
+  String get queueModerators => 'Moderadores';
+
+  @override
+  String get queuePriority => 'Dar prioridad a miembros y suscriptores';
+
+  @override
+  String get queueRejoin => 'Permitir volver a unirse después de jugar';
+
+  @override
+  String get queueChatMods => 'Comandos de moderación en el chat';
+
+  @override
+  String get queueChatModsHint =>
+      'Permite al dueño y a los moderadores gestionar la lista desde el chat.';
+
+  @override
+  String get queueCommand => 'Comando para unirse';
+
+  @override
+  String queueJoinWhenOpen(String command) {
+    return 'Cuando abra, escribe $command para jugar';
+  }
+
+  @override
+  String get queueReservedCommand => 'Este comando está reservado. Elige otro.';
+
+  @override
+  String get queueInvalidCommand =>
+      'Usa ! seguido de 1 a 24 letras, números, guiones o guiones bajos.';
+
+  @override
+  String get queueSave => 'Guardar';
+
+  @override
+  String get queueRemove => 'Quitar';
+
+  @override
+  String get queueDone => 'Terminó';
+
+  @override
+  String get galleryQueueDescription =>
+      'Muestra quién está jugando y quién espera su turno.';
+
+  @override
+  String get galleryQueueCount => 'Turnos visibles';
+
+  @override
+  String get galleryQueueHideClosed => 'Ocultar cuando la lista esté cerrada';
+
+  @override
+  String get galleryQueueWaiting => 'En espera';
+
+  @override
+  String galleryQueueMore(String count) {
+    return '+$count más';
+  }
 }

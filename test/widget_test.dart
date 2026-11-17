@@ -1599,18 +1599,24 @@ void main() {
     await tester.enterText(find.byKey(const Key('poll-option-0')), 'Uno');
     await tester.enterText(find.byKey(const Key('poll-option-1')), 'Dos');
     await tester.pump();
-    await tester.tap(start);
+    Future<void> tapPollControl(Finder control) async {
+      await Scrollable.ensureVisible(tester.element(control), alignment: 0.5);
+      await tester.pump();
+      await tester.tap(control);
+    }
+
+    await tapPollControl(start);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('¿Qué juego?'), findsOneWidget);
     expect(find.textContaining('0 votes'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('poll-end')));
+    await tapPollControl(find.byKey(const Key('poll-end')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Final results'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('poll-new')));
+    await tapPollControl(find.byKey(const Key('poll-new')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const Key('poll-start')), findsOneWidget);
@@ -2113,7 +2119,9 @@ void main() {
                     (widget.key! as ValueKey<String>)
                         .value
                         .startsWith('gallery-item-'))),
-            findsNWidgets(8));
+            findsNWidgets(9));
+        expect(
+            find.byKey(const Key('gallery-item-queue-list')), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       });

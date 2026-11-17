@@ -9,6 +9,7 @@ import 'credits.dart';
 import 'gallery_base.dart';
 import 'latest_support.dart';
 import 'recent_support.dart';
+import 'queue_list.dart';
 import 'starting_soon.dart';
 import 'stream_ending.dart';
 import 'ticker.dart';
@@ -139,5 +140,16 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
     description: (l) => l.galleryTopSupportersDescription,
     files: topSupportersFiles,
     fields: topSupportersFields,
+  ),
+  'queue-list': GalleryItem(
+    id: 'queue-list',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: 480,
+    height: 720,
+    name: (l) => l.queueTitle,
+    description: (l) => l.galleryQueueDescription,
+    files: queueListFiles,
+    fields: queueListFields,
   ),
 });

@@ -7,6 +7,8 @@ import 'package:fake_async/fake_async.dart';
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
+import 'package:airstream/application/chat_queue.dart';
+import '../chat_queue_test.dart' show queueMessage;
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -46,6 +48,73 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test(
+      'queue joins from chat trigger rules, move players and save coalesced state',
+      () {
+    fakeAsync((async) {
+      final twitch = FakeChannelChatClient();
+      final server = RuleOverlay()..feedSeen = true;
+      final app = makeController(twitch, server);
+      final saved = <QueueState>[];
+      final settings = SettingsModel(
+        overlayEnabled: false,
+        queueState: const QueueState(status: QueueStatus.open),
+        rules: [
+          {
+            ...RuleSchema.newRule('queue.joined', id: 'join'),
+            'enabled': true,
+            'actions': [
+              {
+                'id': 'first',
+                'type': 'template.trigger',
+                'name': 'joined',
+                'data': '{user}/{note}/{position}'
+              },
+              {'id': 'pick', 'type': 'queue.next', 'count': 1, 'random': false},
+            ],
+          },
+          {
+            ...RuleSchema.newRule('queue.next', id: 'next'),
+            'enabled': true,
+            'actions': [
+              {
+                'id': 'show',
+                'type': 'template.trigger',
+                'name': 'next',
+                'data': '{user}/{count}'
+              },
+            ],
+          }
+        ],
+      );
+      app.queueSettingsWriter = (state) async {
+        saved.add(state);
+        app.applySettings(settings.copyWith(queueState: state),
+            connectChats: false);
+      };
+      app.applySettings(settings, connectChats: false);
+      async.flushMicrotasks();
+      expect(server.triggers, isEmpty);
+      twitch.messageController.add(queueMessage('Alex', '!join Ready 🎮'));
+      async.elapse(Duration.zero);
+      expect(server.triggers.map((entry) => entry['data']),
+          ['Alex/Ready 🎮/1', 'Alex/1']);
+      expect(app.queue.current.playing.single.name, 'Alex');
+      expect(app.rules.history.map((run) => run.event.chainDepth), [1, 0]);
+      expect(saved, isEmpty);
+      async.elapse(const Duration(milliseconds: 250));
+      expect(saved.single.playing.single.name, 'Alex');
+      List<ChatMessage>? buffered;
+      unawaited(app.messageListStream.first.then<void>((messages) {
+        buffered = messages;
+      }));
+      async.flushMicrotasks();
+      expect(buffered?.single.author.name, 'Alex');
+      unawaited(app.dispose());
+      async.flushMicrotasks();
+    });
+  });
 
   test('real wiring delivers Bits feed before rule actions and adjusts goal',
       () async {

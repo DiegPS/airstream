@@ -95,6 +95,10 @@ class RuleEngine {
     'alreadyOpen',
     'notOpen',
     'noEntrants',
+    'queueAlreadyOpen',
+    'queueAlreadyPaused',
+    'queueAlreadyClosed',
+    'queueEmpty',
     'counterLimit'
   ];
   static bool triggerAdapterActive(String type) =>
@@ -424,11 +428,14 @@ class RuleEngine {
       amount: 5,
       presentationAmount: r'$5.00',
       currency: r'$',
-      count: type == 'support.gift'
-          ? 5
-          : type == 'support.raid'
-              ? 50
-              : 500,
+      note: type == 'queue.joined' ? 'Player 🎮' : null,
+      position: type == 'queue.joined' ? 3 : null,
+      count: switch (type) {
+        'queue.next' => 2,
+        'support.gift' => 5,
+        'support.raid' => 50,
+        _ => 500,
+      },
       months: 12,
       scene: 'Gameplay',
       goalId: 'goal',

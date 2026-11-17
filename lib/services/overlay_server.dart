@@ -76,6 +76,20 @@ class OverlayServer {
   /// Reads the current session only when a template is registered.
   Map<String, Object?>? Function()? sessionState;
 
+  Map<String, Object?> Function()? queueState;
+
+  void broadcastQueue(Map<String, Object?> state) {
+    if (_sessionClients.isEmpty) return;
+    final json = jsonEncode({'type': 'queue', 'data': state});
+    for (final client in _sessionClients.keys.toList()) {
+      try {
+        client.sink.add(json);
+      } catch (_) {
+        _removeClient(client);
+      }
+    }
+  }
+
   void sessionChanged() {
     if (_sessionClients.isEmpty) return;
     _sessionDirty = true;
@@ -762,6 +776,14 @@ class OverlayServer {
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
           _sessionClients[client] = null;
           _sendSession(client, replay: true);
+          final queue = queueState?.call();
+          if (queue != null) {
+            client.sink.add(jsonEncode({
+              'type': 'queue',
+              'data': queue,
+              'replay': true,
+            }));
+          }
           if (item == null) {
             unawaited(_sendFields(client, id));
           } else {

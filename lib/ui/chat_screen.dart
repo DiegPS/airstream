@@ -51,6 +51,7 @@ import 'package:airstream/ui/widgets/recent_alerts_card.dart';
 import 'package:airstream/ui/widgets/overlay_style_presets_card.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
 import 'package:airstream/ui/widgets/giveaway_card.dart';
+import 'package:airstream/ui/widgets/queue_card.dart';
 import 'package:airstream/ui/widgets/goals_card.dart';
 import 'package:airstream/ui/widgets/session_summary_dialog.dart';
 import 'package:airstream/ui/widgets/settings_profiles_card.dart';

@@ -58,6 +58,8 @@ abstract final class RuleSchema {
     'goal.reached': {'goalId': RuleField.text(pattern: goalPattern)},
     'giveaway.winner': {},
     'poll.ended': {},
+    'queue.joined': {},
+    'queue.next': {},
     'subathon.ended': {},
     'obs.streamStarted': {},
     'obs.streamStopped': {},
@@ -117,6 +119,13 @@ abstract final class RuleSchema {
       'op': RuleField.choice(['start', 'close', 'draw'], 'start'),
       'keyword': RuleField.text(),
       'membersOnly': RuleField.boolean()
+    },
+    'queue.open': {},
+    'queue.close': {},
+    'queue.pause': {},
+    'queue.next': {
+      'count': RuleField.number(1, 10, fallback: 1),
+      'random': RuleField.boolean()
     },
     'counter': {
       'name': RuleField.text(
