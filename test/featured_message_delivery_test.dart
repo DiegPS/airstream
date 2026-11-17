@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -37,7 +38,9 @@ void main() {
 
   setUp(() async {
     messages = StreamController<ChatMessage>.broadcast();
-    server = OverlayServer();
+    server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     await server.start(
       messages: messages.stream,
       settings: const SettingsModel(),
@@ -114,6 +117,7 @@ void main() {
   test('missing render receipt expires as sent, never as rendered', () async {
     await server.dispose();
     server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
       featuredAcknowledgementTimeout: const Duration(milliseconds: 100),
     );
     await server.start(

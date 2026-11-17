@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -586,7 +587,8 @@ void main() {
 }
 
 class _Connection {
-  OverlayServer server = OverlayServer(giftGroupingWindow: window);
+  OverlayServer server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(), giftGroupingWindow: window);
   final messages = StreamController<ChatMessage>.broadcast();
   final envelopes = StreamController<Map<String, dynamic>>.broadcast();
   final alerts = <Map<String, dynamic>>[];
@@ -615,7 +617,9 @@ class _Connection {
     await subscription?.cancel();
     await socket?.sink.close();
     await server.dispose();
-    server = OverlayServer(giftGroupingWindow: groupingWindow);
+    server = OverlayServer(
+        templateLibrary: emptyTemplateLibrary(),
+        giftGroupingWindow: groupingWindow);
     await start();
   }
 

@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -58,7 +59,9 @@ void main() {
   test('the running server refuses a foreign page and serves its own',
       () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     addTearDown(() async {
       await server.dispose();
       await messages.close();

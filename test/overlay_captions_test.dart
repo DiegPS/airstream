@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -12,7 +13,9 @@ import 'package:web_socket_channel/io.dart';
 
 void main() {
   test('registered view counts follow registration and disconnect', () async {
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final messages = StreamController<ChatMessage>.broadcast();
     await server.start(
         messages: messages.stream, settings: const SettingsModel(), port: 0);
@@ -25,7 +28,8 @@ void main() {
       'captions': 0,
       'giveaway': 0,
       'goals': 0,
-      'timer': 0
+      'timer': 0,
+      'custom': 0
     });
     Future<void> until(bool Function(Map<String, int>) matches) async {
       while (await counts.moveNext().timeout(const Duration(seconds: 5))) {
@@ -51,7 +55,8 @@ void main() {
         'captions': 0,
         'giveaway': 0,
         'goals': 0,
-        'timer': 0
+        'timer': 0,
+        'custom': 0
       });
       await alerts.sink.close();
       await until((v) => v['alerts'] == 0 && v['poll'] == 1);
@@ -68,7 +73,9 @@ void main() {
 
   test('publishes the operating-system assigned overlay port', () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     try {
       await server.start(
         messages: messages.stream,
@@ -87,7 +94,9 @@ void main() {
 
   test('rejects overlay ports outside the TCP range', () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     try {
       await expectLater(
         server.start(
@@ -109,7 +118,9 @@ void main() {
     final port = reservation.port;
     await reservation.close();
     final messages = StreamController<ChatMessage>();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = http.Client();
     try {
       await server.start(
@@ -241,7 +252,9 @@ void main() {
   test('tracks WebSocket clients and broadcasts live setting changes',
       () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     IOWebSocketChannel? socket;
     StreamIterator<dynamic>? events;
     final clientCounts = StreamIterator(server.clientCountStream);
@@ -305,7 +318,9 @@ void main() {
 
   test('serves the poll overlay and replays the current poll', () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = http.Client();
     IOWebSocketChannel? socket;
     StreamIterator<dynamic>? events;
@@ -353,7 +368,9 @@ void main() {
   });
   test('goals page replays current progress to a late connection', () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = http.Client();
     IOWebSocketChannel? socket;
     StreamIterator<dynamic>? events;
@@ -401,7 +418,9 @@ void main() {
   test('serves the giveaway overlay and replays the current giveaway',
       () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = http.Client();
     IOWebSocketChannel? socket;
     StreamIterator<dynamic>? events;

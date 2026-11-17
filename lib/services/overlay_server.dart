@@ -1,3 +1,4 @@
+import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/application/subathon_timer.dart';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
@@ -23,9 +24,109 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// Serves the OBS overlay HTML page and broadcasts chat messages over WebSocket.
 class OverlayServer {
   OverlayServer({
+    TemplateLibrary? templateLibrary,
     this.featuredAcknowledgementTimeout = const Duration(seconds: 30),
     this.giftGroupingWindow = const Duration(seconds: 2),
-  });
+  }) : _templateLibrary = templateLibrary;
+
+  TemplateLibrary? _templateLibrary;
+  Future<TemplateLibrary> get templateLibrary async =>
+      _templateLibrary ??= TemplateLibrary(await TemplateLibrary.defaultRoot());
+  final _templates = <WebSocketChannel, String>{};
+  StreamSubscription<TemplateChange>? _templateSub;
+  final _templateCounts = StreamController<Map<String, int>>.broadcast();
+  final _errorsController =
+      StreamController<Map<String, TemplateError>>.broadcast();
+  final _errors = <String, TemplateError>{};
+  Map<String, TemplateError> get templateErrors => Map.unmodifiable(_errors);
+  Stream<Map<String, TemplateError>> get templateErrorsStream =>
+      Stream.multi((listener) {
+        final sub = _errorsController.stream
+            .listen(listener.addSync, onDone: listener.closeSync);
+        listener.addSync(templateErrors);
+        listener.onCancel = sub.cancel;
+      }, isBroadcast: true);
+  Map<String, int> get templateViewCounts => Map.unmodifiable({
+        for (final id in _templates.values.toSet())
+          id: _templates.values.where((v) => v == id).length
+      });
+  Stream<Map<String, int>> get templateViewCountsStream =>
+      Stream.multi((listener) {
+        final sub = _templateCounts.stream
+            .listen(listener.addSync, onDone: listener.closeSync);
+        listener.addSync(templateViewCounts);
+        listener.onCancel = sub.cancel;
+      }, isBroadcast: true);
+  bool _sendCustom(Map<String, Object?> envelope, [String? id]) {
+    var sent = false;
+    for (final entry in _templates.entries.toList()) {
+      if (id != null && entry.value != id) continue;
+      try {
+        entry.key.sink.add(jsonEncode(envelope));
+        sent = true;
+      } catch (_) {
+        _removeClient(entry.key);
+      }
+    }
+    return sent;
+  }
+
+  Future<void> _templateChanged(TemplateChange change) async {
+    if (change.kind == TemplateChangeKind.values) {
+      try {
+        final values = await (await templateLibrary).resolvedValues(change.id);
+        _sendCustom({'type': 'fields', 'data': values}, change.id);
+      } on FileSystemException {/* A template can be removed during a save. */}
+    } else {
+      _sendCustom({'type': 'reload'}, change.id);
+    }
+  }
+
+  Future<void> _sendFields(WebSocketChannel client, String id) async {
+    try {
+      final values = await (await templateLibrary).resolvedValues(id);
+      if (_templates[client] == id) {
+        client.sink.add(
+            jsonEncode({'type': 'fields', 'data': values, 'replay': true}));
+      }
+    } catch (_) {/* Disconnected or removed template. */}
+  }
+
+  bool broadcastTemplateTest() {
+    final now = DateTime.now();
+    final name = _settings.appLanguageCode == 'es'
+        ? 'Espectador de prueba'
+        : 'Test viewer';
+    final msg = ChatMessage(
+        platform: Platform.twitch,
+        id: 'template-test-${now.microsecondsSinceEpoch}',
+        author: ChatAuthor(name: name, channelId: 'test-viewer'),
+        items: [
+          MessageItem.text(_settings.appLanguageCode == 'es'
+              ? 'Mensaje de prueba'
+              : 'Test chat message')
+        ],
+        timestamp: now);
+    final sent = _sendCustom({
+      'type': 'message',
+      'data': OverlayPayloadEncoder.message(msg),
+      'test': true
+    });
+    _sendCustom({
+      'type': 'alert',
+      'data': _providerAlertData(
+          ChatProviderEvent(
+              platform: Platform.twitch,
+              kind: ChatProviderEventKind.raid,
+              id: 'template-raid-${now.microsecondsSinceEpoch}',
+              timestamp: now,
+              authorName: name,
+              count: 42),
+          'raid'),
+      'test': true
+    });
+    return sent;
+  }
 
   static bool isValidPort(int port) => port >= 0 && port <= 65535;
 
@@ -56,7 +157,8 @@ class OverlayServer {
           'captions',
           'giveaway',
           'goals',
-          'timer'
+          'timer',
+          'custom'
         ])
           view: _views.values.where((value) => value == view).length,
       });
@@ -129,6 +231,17 @@ class OverlayServer {
     _updateGoals(settings);
     _updateTimer(settings);
     _port = port;
+    try {
+      final library = await templateLibrary;
+      await library.watch();
+      _templateSub = library.changes.listen((change) {
+        unawaited(_templateChanged(change));
+      });
+    } catch (error, stack) {
+      // Templates are optional: the built-in pages must start regardless.
+      AppLogger.warning('Templates folder unavailable',
+          error: error, stackTrace: stack);
+    }
     final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
       _clients.add(ws);
       _emitClientCount();
@@ -141,6 +254,7 @@ class OverlayServer {
     });
 
     final handler = buildOverlayRoutes(wsHandler,
+        templates: () => templateLibrary,
         mediaLibrary: () async => MediaLibrary(
             Directory(
                 p.join((await getApplicationSupportDirectory()).path, 'media')),
@@ -410,6 +524,10 @@ class OverlayServer {
       };
 
   Future<void> stop() async {
+    await _templateSub?.cancel();
+    _templateSub = null;
+    await _templateLibrary?.stopWatching();
+    _templates.clear();
     clearRecentAlerts();
     _lifecycleGeneration++;
     _providerAlertIds.clear();
@@ -444,6 +562,9 @@ class OverlayServer {
     await _clientCountController.close();
     await _viewCountsController.close();
     await _recentAlertsController.close();
+    await _templateLibrary?.dispose();
+    await _templateCounts.close();
+    await _errorsController.close();
   }
 
   void _broadcastMessage(ChatMessage msg) {
@@ -455,6 +576,7 @@ class OverlayServer {
   }
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
+    _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
     final recipients = _views.entries
         .where((entry) => entry.value == 'alerts')
         .map((entry) => entry.key)
@@ -496,6 +618,16 @@ class OverlayServer {
       if (envelope is! Map) return;
       if (envelope['type'] == 'register') {
         final view = envelope['view'];
+        if (view == 'custom' && !_views.containsKey(client)) {
+          final id = envelope['template'];
+          if (id is! String || !TemplateLibrary.validId(id)) return;
+          _views[client] = 'custom';
+          _templates[client] = id;
+          _emitViewCounts();
+          client.sink.add(jsonEncode({'type': 'registered', 'view': 'custom'}));
+          unawaited(_sendFields(client, id));
+          return;
+        }
         if (view is String &&
             const {
               'chat',
@@ -511,6 +643,32 @@ class OverlayServer {
           _emitViewCounts();
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
         }
+      } else if (envelope['type'] == 'templateError' &&
+          _templates.containsKey(client)) {
+        final id = _templates[client]!;
+        final now = DateTime.now();
+        if (_errors[id] != null &&
+            now.difference(_errors[id]!.timestamp) <
+                const Duration(seconds: 2)) {
+          return;
+        }
+        String clean(Object? value, int max) => value is String
+            ? String.fromCharCodes(value
+                .replaceAll(RegExp(r'[\x00-\x1f\x7f-\x9f]'), '')
+                .runes
+                .take(max))
+            : '';
+        final source = clean(envelope['source'], 1024)
+            .replaceAll('\\', '/')
+            .split('/')
+            .last
+            .split('?')
+            .first
+            .split('#')
+            .first;
+        _errors[id] = TemplateError(clean(envelope['message'], 300), source,
+            envelope['line'] is int ? envelope['line'] as int : null, now);
+        _errorsController.add(templateErrors);
       } else if (envelope['type'] == 'featuredRendered' &&
           _views[client] == 'alerts') {
         final id = envelope['deliveryId'];
@@ -637,7 +795,8 @@ class OverlayServer {
             {'type': 'giveaway', 'data': _giveaway, 'replay': true}));
       }
       if (_poll != null) {
-        client.sink.add(jsonEncode({'type': 'poll', 'data': _poll}));
+        client.sink
+            .add(jsonEncode({'type': 'poll', 'data': _poll, 'replay': true}));
       }
     } catch (_) {
       // A failed send means the browser disconnected before its close event.
@@ -662,6 +821,7 @@ class OverlayServer {
   }
 
   void _emitViewCounts() {
+    if (!_templateCounts.isClosed) _templateCounts.add(templateViewCounts);
     if (!_viewCountsController.isClosed) _viewCountsController.add(viewCounts);
   }
 
@@ -674,6 +834,7 @@ class OverlayServer {
 
   void _removeClient(WebSocketChannel client) {
     _views.remove(client);
+    _templates.remove(client);
     for (final entry in _featured.entries.toList()) {
       entry.value.recipients.remove(client);
       if (entry.value.recipients.isEmpty) {
@@ -704,4 +865,11 @@ class _PendingGiftGroup {
   final ChatMessage first;
   int count = 0;
   Timer? timer;
+}
+
+class TemplateError {
+  const TemplateError(this.message, this.source, this.line, this.timestamp);
+  final String message, source;
+  final int? line;
+  final DateTime timestamp;
 }

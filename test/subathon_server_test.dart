@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:airstream/models/chat_message.dart';
@@ -12,7 +13,9 @@ void main() {
       'timer serves registers broadcasts additions and replays without a badge',
       () async {
     final messages = StreamController<ChatMessage>.broadcast();
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = http.Client();
     IOWebSocketChannel? socket;
     StreamIterator<dynamic>? events;

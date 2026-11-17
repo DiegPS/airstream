@@ -1,3 +1,5 @@
+import 'support/empty_template_library.dart';
+import 'package:airstream/services/overlay_server.dart';
 import 'dart:io';
 
 import 'package:airstream/application/app_controller.dart';
@@ -9,7 +11,8 @@ void main() {
   test('moves the overlay to the next free port when its port is busy',
       () async {
     final occupiedPort = await HttpServer.bind(InternetAddress.anyIPv4, 0);
-    final controller = AppController();
+    final controller = AppController(
+        overlay: OverlayServer(templateLibrary: emptyTemplateLibrary()));
     addTearDown(() async {
       await controller.dispose();
       await occupiedPort.close(force: true);

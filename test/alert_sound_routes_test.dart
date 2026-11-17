@@ -1,3 +1,4 @@
+import 'support/empty_template_library.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:airstream/models/chat_message.dart';
@@ -10,7 +11,9 @@ void main() {
       () async {
     final dir = Directory.systemTemp.createTempSync('airstream-routes-');
     final file = File('${dir.path}/raid.mp3')..writeAsBytesSync([1, 2, 3]);
-    final server = OverlayServer();
+    final server = OverlayServer(
+      templateLibrary: emptyTemplateLibrary(),
+    );
     final client = HttpClient();
     addTearDown(() async {
       client.close(force: true);

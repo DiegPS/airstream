@@ -128,7 +128,13 @@ void main() {
           settings: settings,
           server: OverlayServerState(
               phase: phase, port: 8123, error: 'port is taken'),
-          pages: const {'alerts': 1, 'chat': 2, 'poll': 3, 'captions': 4});
+          pages: const {
+            'alerts': 1,
+            'chat': 2,
+            'poll': 3,
+            'captions': 4,
+            'custom': 5
+          });
       final row = item(snapshot, 'overlay');
       expect(
           row.status,
@@ -139,7 +145,8 @@ void main() {
                   : DiagnosticStatus.warning);
       if (phase == OverlayServerPhase.ready) {
         expect(row.summary, contains('Listening on port 8123'));
-        expect(row.summary, contains('2 / 1 / 3 / 4'));
+        expect(row.summary, contains('2 / 1 / 3 / 4 / 0 / 0 / 0 / 5'));
+        expect(row.summary, contains('goals / timer / custom'));
       }
     });
   }
