@@ -53,6 +53,15 @@ SettingsModel _different() {
     subathonPhase: 'paused',
     subathonEndsAtMs: d.subathonEndsAtMs + 1,
     subathonRemainingMs: d.subathonRemainingMs + 1,
+    mediaLibrary: {
+      '1234567890abcdef': {
+        'name': 'test.png',
+        'kind': 'image',
+        'ext': 'png',
+        'bytes': 8,
+        'addedAt': 1
+      }
+    },
     goals: {
       'g': {'title': 'Test', 'type': 'manual', 'target': 100, 'current': 10}
     },

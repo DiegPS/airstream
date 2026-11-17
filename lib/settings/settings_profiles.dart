@@ -19,6 +19,7 @@ abstract final class SettingsProfiles {
     'overlayPort',
     'profiles',
     'goals',
+    'mediaLibrary',
     'subathonPhase',
     'subathonEndsAtMs',
     'subathonRemainingMs',

@@ -37,6 +37,42 @@ void main() {
     second.dispose();
   });
 
+  test('media library and alert references survive save and reload', () async {
+    final store = _MemorySecureSettingsStore();
+    final first = SettingsNotifier(secureStore: store);
+    await first.ready;
+    final changed = first.state.copyWith(mediaLibrary: {
+      '1234567890abcdef': {
+        'name': 'Picture.png',
+        'kind': 'image',
+        'ext': 'png',
+        'bytes': 8,
+        'addedAt': 1
+      },
+      'abcdef1234567890': {
+        'name': 'Music.wav',
+        'kind': 'audio',
+        'ext': 'wav',
+        'bytes': 12,
+        'addedAt': 1
+      },
+    }, alertTypeOptions: {
+      'raid': {
+        'media': '1234567890abcdef',
+        'mediaAudio': false,
+        'sound': 'library',
+        'soundMediaId': 'abcdef1234567890'
+      }
+    });
+    await first.update(changed);
+    final second = SettingsNotifier(secureStore: store);
+    await second.ready;
+    expect(second.state.mediaLibrary, changed.mediaLibrary);
+    expect(second.state.alertTypeOptions, changed.alertTypeOptions);
+    first.dispose();
+    second.dispose();
+  });
+
   test('goals survive a settings save and reload', () async {
     final store = _MemorySecureSettingsStore();
     final first = SettingsNotifier(secureStore: store);

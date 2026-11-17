@@ -2229,4 +2229,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subathonUrlCopied => 'Timer page URL copied';
+
+  @override
+  String get mediaLibraryTitle => 'Media library';
+
+  @override
+  String mediaUsage(String used) {
+    return '$used of 500 MB';
+  }
+
+  @override
+  String get mediaAdd => 'Add files';
+
+  @override
+  String get mediaDelete => 'Delete';
+
+  @override
+  String get mediaRejectType =>
+      'Unsupported file type or invalid file contents.';
+
+  @override
+  String get mediaRejectSize =>
+      'File exceeds its size limit (images 10 MB, videos 50 MB, audio 5 MB).';
+
+  @override
+  String get mediaRejectTotal => 'The library would exceed 500 MB.';
+
+  @override
+  String get alertMedia => 'Image or video';
+
+  @override
+  String get mediaNone => 'None';
+
+  @override
+  String get alertMediaAudio => 'Play video sound';
+
+  @override
+  String mediaLibraryName(String name) {
+    return 'Library: $name';
+  }
+
+  @override
+  String get mediaImage => 'Image';
+
+  @override
+  String get mediaVideo => 'Video';
+
+  @override
+  String get mediaAudio => 'Audio';
 }

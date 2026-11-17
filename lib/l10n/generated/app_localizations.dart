@@ -3920,6 +3920,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Timer page URL copied'**
   String get subathonUrlCopied;
+
+  /// No description provided for @mediaLibraryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media library'**
+  String get mediaLibraryTitle;
+
+  /// No description provided for @mediaUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of 500 MB'**
+  String mediaUsage(String used);
+
+  /// No description provided for @mediaAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add files'**
+  String get mediaAdd;
+
+  /// No description provided for @mediaDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get mediaDelete;
+
+  /// No description provided for @mediaRejectType.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported file type or invalid file contents.'**
+  String get mediaRejectType;
+
+  /// No description provided for @mediaRejectSize.
+  ///
+  /// In en, this message translates to:
+  /// **'File exceeds its size limit (images 10 MB, videos 50 MB, audio 5 MB).'**
+  String get mediaRejectSize;
+
+  /// No description provided for @mediaRejectTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'The library would exceed 500 MB.'**
+  String get mediaRejectTotal;
+
+  /// No description provided for @alertMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Image or video'**
+  String get alertMedia;
+
+  /// No description provided for @mediaNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get mediaNone;
+
+  /// No description provided for @alertMediaAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Play video sound'**
+  String get alertMediaAudio;
+
+  /// No description provided for @mediaLibraryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Library: {name}'**
+  String mediaLibraryName(String name);
+
+  /// No description provided for @mediaImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get mediaImage;
+
+  /// No description provided for @mediaVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get mediaVideo;
+
+  /// No description provided for @mediaAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get mediaAudio;
 }
 
 class _AppLocalizationsDelegate

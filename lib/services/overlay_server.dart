@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:airstream/services/media_library.dart';
 
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -137,12 +140,17 @@ class OverlayServer {
       );
     });
 
-    final handler = buildOverlayRoutes(wsHandler, customSound: (type) {
-      final option = AlertTypeOptions.of(_settings, type);
-      return option.sound == 'custom'
-          ? AlertSounds.customFile(option.soundPath)
-          : null;
-    });
+    final handler = buildOverlayRoutes(wsHandler,
+        mediaLibrary: () async => MediaLibrary(
+            Directory(
+                p.join((await getApplicationSupportDirectory()).path, 'media')),
+            () => _settings.mediaLibrary),
+        customSound: (type) {
+          final option = AlertTypeOptions.of(_settings, type);
+          return option.sound == 'custom'
+              ? AlertSounds.customFile(option.soundPath)
+              : null;
+        });
 
     final server =
         await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);

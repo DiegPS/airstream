@@ -1369,6 +1369,61 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  testWidgets('raid stores a library image and audio selection',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings = _RecordingSettings(
+        const SettingsModel(overlayEnabled: true, mediaLibrary: {
+      '1234567890abcdef': {
+        'name': 'Picture.png',
+        'kind': 'image',
+        'ext': 'png',
+        'bytes': 8,
+        'addedAt': 1
+      },
+      'abcdef1234567890': {
+        'name': 'Music.wav',
+        'kind': 'audio',
+        'ext': 'wav',
+        'bytes': 12,
+        'addedAt': 1
+      },
+    }));
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => settings),
+      overlayUrlProvider.overrideWith((ref) => null)
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final expand = find.byKey(const Key('alert-type-options-raid'));
+    await tester.ensureVisible(expand);
+    await tester.tap(expand);
+    await tester.pumpAndSettle();
+    Future<void> choose(String key, String label) async {
+      final dropdown = find.descendant(
+          of: find.byKey(Key(key)),
+          matching: find.byType(DropdownButton<String>));
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    await choose('alert-type-media-raid', 'Picture.png');
+    await choose('alert-type-sound-raid', 'Library: Music.wav');
+    expect(
+        settings.state.alertTypeOptions['raid']!['media'], '1234567890abcdef');
+    expect(settings.state.alertTypeOptions['raid']!['sound'], 'library');
+    expect(settings.state.alertTypeOptions['raid']!['soundMediaId'],
+        'abcdef1234567890');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('raid sound stores Coin and its Test button sends feedback',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1600);

@@ -1,3 +1,5 @@
+import 'package:airstream/settings/alert_type_options.dart';
+import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -141,10 +143,18 @@ abstract final class OverlayPayloadEncoder {
         'alertLayout': settings.alertLayout,
         'alertAnimation': settings.alertAnimation,
         'alertTypeOptions': {
-          for (final entry in settings.alertTypeOptions.entries)
+          for (final entry in AlertTypeOptions.resolved(settings).entries)
             entry.key: {
               for (final key in ['seconds', 'animation', 'sound'])
                 if (entry.value.containsKey(key)) key: entry.value[key],
+              if (entry.value['media'] != null) ...{
+                'media': entry.value['media'],
+                'mediaKind': MediaLibraryEntries.sanitize(
+                    settings.mediaLibrary)[entry.value['media']]!['kind'],
+                'mediaAudio': entry.value['mediaAudio'] == true,
+              },
+              if (entry.value['sound'] == 'library')
+                'soundMediaId': entry.value['soundMediaId'],
               if (entry.value['sound'] == 'custom')
                 'soundKey': (entry.value['soundPath'] as String? ?? '')
                     .hashCode

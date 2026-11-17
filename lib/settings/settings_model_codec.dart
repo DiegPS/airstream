@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'settings_model.dart';
 import 'alert_type_options.dart';
 import 'goals.dart';
+import 'media_library_entries.dart';
 
 abstract final class SettingsModelCodec {
   static Map<String, dynamic> toJson(SettingsModel model) => {
@@ -127,6 +128,7 @@ abstract final class SettingsModelCodec {
         'subathonPhase': model.subathonPhase,
         'subathonEndsAtMs': model.subathonEndsAtMs,
         'subathonRemainingMs': model.subathonRemainingMs,
+        'mediaLibrary': MediaLibraryEntries.sanitize(model.mediaLibrary),
         'goals': Goals.sanitize(model.goals),
         'alertTypeOptions': model.alertTypeOptions,
         'alertSoundVolume': model.alertSoundVolume,
@@ -156,6 +158,7 @@ abstract final class SettingsModelCodec {
       subathonPhase: j['subathonPhase'] as String? ?? 'idle',
       subathonEndsAtMs: j['subathonEndsAtMs'] as int? ?? 0,
       subathonRemainingMs: j['subathonRemainingMs'] as int? ?? 0,
+      mediaLibrary: MediaLibraryEntries.sanitize(j['mediaLibrary']),
       goals: Goals.sanitize(j['goals']),
       appLanguageCode: j['appLanguageCode'] as String? ?? 'en',
       youtubeHandle: j['youtubeHandle'] as String? ?? '',
@@ -332,6 +335,10 @@ abstract final class SettingsModelCodec {
     for (final entry in source.entries) {
       final expected = schema[entry.key];
       final value = entry.value;
+      if (entry.key == 'mediaLibrary') {
+        sanitized[entry.key] = MediaLibraryEntries.sanitize(value);
+        continue;
+      }
       if (entry.key == 'goals') {
         sanitized[entry.key] = Goals.sanitize(value);
         continue;

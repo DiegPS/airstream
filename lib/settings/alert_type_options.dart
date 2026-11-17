@@ -1,4 +1,5 @@
 import 'settings_model.dart';
+import 'media_library_entries.dart';
 
 const alertTypeIds = [
   'superchat',
@@ -15,7 +16,13 @@ class AlertTypeOption {
       {this.seconds = 0,
       this.animation = '',
       this.sound = '',
-      this.soundPath = ''});
+      this.soundPath = '',
+      this.media = '',
+      this.mediaAudio = false,
+      this.soundMediaId = ''});
+  final String media;
+  final bool mediaAudio;
+  final String soundMediaId;
   final int seconds;
   final String animation;
   final String sound;
@@ -40,7 +47,8 @@ abstract final class AlertTypeOptions {
       final animation = entry['animation'];
       if (_animations.contains(animation)) option['animation'] = animation;
       final sound = entry['sound'];
-      if (const ['chime', 'coin', 'fanfare', 'custom'].contains(sound)) {
+      if (const ['chime', 'coin', 'fanfare', 'custom', 'library']
+          .contains(sound)) {
         option['sound'] = sound;
         final path = entry['soundPath'];
         if (sound == 'custom' &&
@@ -50,14 +58,26 @@ abstract final class AlertTypeOptions {
           option['soundPath'] = path;
         }
       }
+      for (final key in ['media', 'soundMediaId']) {
+        final id = entry[key];
+        if (id is String && MediaLibraryEntries.idPattern.hasMatch(id)) {
+          option[key] = id;
+        }
+      }
+      if (entry['mediaAudio'] is bool) {
+        option['mediaAudio'] = entry['mediaAudio'];
+      }
       if (option.isNotEmpty) result[type] = option;
     }
     return result;
   }
 
   static AlertTypeOption of(SettingsModel settings, String type) {
-    final entry = sanitize(settings.alertTypeOptions)[type];
+    final entry = resolved(settings)[type];
     return AlertTypeOption(
+      media: entry?['media'] as String? ?? '',
+      mediaAudio: entry?['mediaAudio'] == true,
+      soundMediaId: entry?['soundMediaId'] as String? ?? '',
       seconds: entry?['seconds'] as int? ?? 0,
       animation: entry?['animation'] as String? ?? '',
       sound: entry?['sound'] as String? ?? '',
@@ -65,8 +85,31 @@ abstract final class AlertTypeOptions {
     );
   }
 
+  static Map<String, Map<String, dynamic>> resolved(SettingsModel settings) {
+    final options = sanitize(settings.alertTypeOptions);
+    final library = MediaLibraryEntries.sanitize(settings.mediaLibrary);
+    for (final e in options.values) {
+      if (!['image', 'video'].contains(library[e['media']]?['kind'])) {
+        e.remove('media');
+        e.remove('mediaAudio');
+      }
+      if (e['sound'] == 'library' &&
+          library[e['soundMediaId']]?['kind'] != 'audio') {
+        e.remove('sound');
+        e.remove('soundMediaId');
+      }
+    }
+    return options;
+  }
+
   static SettingsModel withOption(SettingsModel settings, String type,
-      {int? seconds, String? animation, String? sound, String? soundPath}) {
+      {int? seconds,
+      String? animation,
+      String? sound,
+      String? soundPath,
+      String? media,
+      bool? mediaAudio,
+      String? soundMediaId}) {
     final options = sanitize(settings.alertTypeOptions);
     final entry = <String, dynamic>{...?options[type]};
     if (seconds != null) {
@@ -92,6 +135,12 @@ abstract final class AlertTypeOptions {
       }
     }
     if (soundPath != null && sound != '') entry['soundPath'] = soundPath;
+    if (media != null) {
+      entry['media'] = media;
+      if (media.isEmpty) entry.remove('mediaAudio');
+    }
+    if (mediaAudio != null) entry['mediaAudio'] = mediaAudio;
+    if (soundMediaId != null) entry['soundMediaId'] = soundMediaId;
     options[type] = entry;
     return settings.copyWith(alertTypeOptions: sanitize(options));
   }

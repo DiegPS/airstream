@@ -437,6 +437,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 },
               ),
               const SizedBox(height: 12),
+              const MediaLibraryCard(),
               _section(l.overlayMode),
               _switchRow(
                 l.chromaKey,
@@ -787,6 +788,9 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
     final s = widget.settings;
     final id = widget.id;
     final option = AlertTypeOptions.of(s, id);
+    final library = MediaLibraryEntries.sanitize(s.mediaLibrary);
+    final visuals = library.entries.where((e) => e.value['kind'] != 'audio');
+    final audio = library.entries.where((e) => e.value['kind'] == 'audio');
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
         Expanded(
@@ -803,7 +807,8 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
         )),
         if (option.seconds != 0 ||
             option.animation.isNotEmpty ||
-            option.sound.isNotEmpty)
+            option.sound.isNotEmpty ||
+            option.media.isNotEmpty)
           Tooltip(
               message: l.alertTypeCustomized,
               child: const Icon(Icons.circle, size: 6, color: Colors.white70)),
@@ -850,22 +855,51 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
                       'zoom': l.alertAnimationZoom
                     }[v]!)),
         KeyedSubtree(
+            key: Key('alert-type-media-$id'),
+            child: _dropdownRow(
+                l.alertMedia,
+                option.media,
+                ['', ...visuals.map((e) => e.key)],
+                (v) => widget.onChanged(AlertTypeOptions.withOption(s, id,
+                    media: v, mediaAudio: false)),
+                optionLabel: (v) =>
+                    v.isEmpty ? l.mediaNone : library[v]!['name'] as String)),
+        if (library[option.media]?['kind'] == 'video')
+          KeyedSubtree(
+              key: Key('alert-type-media-audio-$id'),
+              child: _switchRow(
+                  l.alertMediaAudio,
+                  option.mediaAudio,
+                  (v) => widget.onChanged(
+                      AlertTypeOptions.withOption(s, id, mediaAudio: v)))),
+        KeyedSubtree(
           key: Key('alert-type-sound-$id'),
           child: _dropdownRow(
             l.alertSound,
-            option.sound,
-            const ['', 'chime', 'coin', 'fanfare', 'custom'],
+            option.sound == 'library' ? option.soundMediaId : option.sound,
+            [
+              '',
+              'chime',
+              'coin',
+              'fanfare',
+              'custom',
+              ...audio.map((e) => e.key)
+            ],
             (v) {
               setState(() => _invalidSound = false);
-              widget.onChanged(AlertTypeOptions.withOption(s, id, sound: v));
+              widget.onChanged(AlertTypeOptions.withOption(s, id,
+                  sound: library[v]?['kind'] == 'audio' ? 'library' : v,
+                  soundMediaId: library[v]?['kind'] == 'audio' ? v : ''));
             },
-            optionLabel: (v) => {
-              '': l.alertSoundNone,
-              'chime': l.alertSoundChime,
-              'coin': l.alertSoundCoin,
-              'fanfare': l.alertSoundFanfare,
-              'custom': l.alertSoundCustom,
-            }[v]!,
+            optionLabel: (v) => library.containsKey(v)
+                ? l.mediaLibraryName(library[v]!['name'] as String)
+                : {
+                    '': l.alertSoundNone,
+                    'chime': l.alertSoundChime,
+                    'coin': l.alertSoundCoin,
+                    'fanfare': l.alertSoundFanfare,
+                    'custom': l.alertSoundCustom,
+                  }[v]!,
           ),
         ),
         if (option.sound == 'custom') ...[

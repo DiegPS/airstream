@@ -2246,4 +2246,52 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get subathonUrlCopied => 'URL de la página del temporizador copiada';
+
+  @override
+  String get mediaLibraryTitle => 'Biblioteca de medios';
+
+  @override
+  String mediaUsage(String used) {
+    return '$used de 500 MB';
+  }
+
+  @override
+  String get mediaAdd => 'Añadir archivos';
+
+  @override
+  String get mediaDelete => 'Eliminar';
+
+  @override
+  String get mediaRejectType =>
+      'Tipo de archivo no admitido o contenido inválido.';
+
+  @override
+  String get mediaRejectSize =>
+      'El archivo supera su límite (imágenes 10 MB, videos 50 MB, audio 5 MB).';
+
+  @override
+  String get mediaRejectTotal => 'La biblioteca superaría los 500 MB.';
+
+  @override
+  String get alertMedia => 'Imagen o video';
+
+  @override
+  String get mediaNone => 'Ninguno';
+
+  @override
+  String get alertMediaAudio => 'Reproducir el sonido del video';
+
+  @override
+  String mediaLibraryName(String name) {
+    return 'Biblioteca: $name';
+  }
+
+  @override
+  String get mediaImage => 'Imagen';
+
+  @override
+  String get mediaVideo => 'Video';
+
+  @override
+  String get mediaAudio => 'Audio';
 }

@@ -730,5 +730,33 @@
   "subathonEnded": "¡Se acabó el tiempo!",
   "subathonPageOff": "Activa el servidor de páginas para usar /timer en OBS.",
   "subathonDescription": "Añade tiempo con los apoyos durante tu directo.",
-  "subathonUrlCopied": "URL de la página del temporizador copiada"
+  "subathonUrlCopied": "URL de la página del temporizador copiada",
+  "mediaLibraryTitle": "Biblioteca de medios",
+  "mediaUsage": "{used} de 500 MB",
+  "mediaAdd": "Añadir archivos",
+  "mediaDelete": "Eliminar",
+  "mediaRejectType": "Tipo de archivo no admitido o contenido inválido.",
+  "mediaRejectSize": "El archivo supera su límite (imágenes 10 MB, videos 50 MB, audio 5 MB).",
+  "mediaRejectTotal": "La biblioteca superaría los 500 MB.",
+  "alertMedia": "Imagen o video",
+  "mediaNone": "Ninguno",
+  "alertMediaAudio": "Reproducir el sonido del video",
+  "mediaLibraryName": "Biblioteca: {name}",
+  "mediaImage": "Imagen",
+  "mediaVideo": "Video",
+  "mediaAudio": "Audio",
+  "@mediaUsage": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "@mediaLibraryName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

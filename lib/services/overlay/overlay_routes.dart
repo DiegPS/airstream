@@ -1,5 +1,7 @@
 import 'package:airstream/services/overlay/templates/timer_overlay.dart';
 import 'dart:io';
+import 'package:airstream/services/media_library.dart';
+import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'package:airstream/settings/alert_type_options.dart';
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
@@ -11,9 +13,13 @@ import 'package:airstream/services/overlay/templates/goals_overlay.dart';
 import 'package:shelf/shelf.dart';
 
 Handler buildOverlayRoutes(Handler webSocketHandler,
-    {File? Function(String alertType)? customSound}) {
+    {File? Function(String alertType)? customSound,
+    Future<MediaLibrary> Function()? mediaLibrary}) {
   return const Pipeline().addHandler((Request request) async {
     final path = request.url.path;
+    if (path == 'media' || path.startsWith('media/')) {
+      return serveLibraryMedia(request, mediaLibrary);
+    }
     if (path == 'sounds' || path.startsWith('sounds/')) {
       const headers = {
         'x-content-type-options': 'nosniff',
@@ -103,4 +109,51 @@ bool isTrustedOverlayOrigin(Request request) {
   }
   return _loopbackHosts.contains(uri.host) &&
       uri.port == request.requestedUri.port;
+}
+
+Future<Response> serveLibraryMedia(
+    Request request, Future<MediaLibrary> Function()? library) async {
+  const headers = {
+    'x-content-type-options': 'nosniff',
+    'cache-control': 'private, max-age=86400',
+    'accept-ranges': 'bytes'
+  };
+  final match = RegExp(r'^media/([0-9a-f]{16})$').firstMatch(request.url.path);
+  if (request.method != 'GET' || match == null || library == null) {
+    return Response.notFound('', headers: headers);
+  }
+  try {
+    final service = await library();
+    final id = match[1]!;
+    final entry = MediaLibraryEntries.sanitize(service.entries())[id];
+    if (entry == null) return Response.notFound('', headers: headers);
+    final file = await service.fileFor(MapEntry(id, entry));
+    if (file == null) return Response.notFound('', headers: headers);
+    final size = await file.length();
+    final responseHeaders = {
+      ...headers,
+      'content-type': MediaLibraryEntries.types[entry['ext']]!.$2
+    };
+    final range = request.headers['range'];
+    if (range == null) {
+      return Response.ok(file.openRead(),
+          headers: {...responseHeaders, 'content-length': '$size'});
+    }
+    final parts = RegExp(r'^bytes=([0-9]+)-([0-9]*)$').firstMatch(range);
+    final start = parts == null ? null : int.tryParse(parts[1]!);
+    final end =
+        parts == null || parts[2]!.isEmpty ? size - 1 : int.tryParse(parts[2]!);
+    if (start == null || end == null || start >= size || end < start) {
+      return Response(416,
+          headers: {...responseHeaders, 'content-range': 'bytes */$size'});
+    }
+    final last = end.clamp(0, size - 1);
+    return Response(206, body: file.openRead(start, last + 1), headers: {
+      ...responseHeaders,
+      'content-length': '${last - start + 1}',
+      'content-range': 'bytes $start-$last/$size'
+    });
+  } on FileSystemException {
+    return Response.notFound('', headers: headers);
+  }
 }

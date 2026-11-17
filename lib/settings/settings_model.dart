@@ -158,6 +158,7 @@ class SettingsModel {
   final String subathonPhase;
   final int subathonEndsAtMs;
   final int subathonRemainingMs;
+  final Map<String, Map<String, dynamic>> mediaLibrary;
   final Map<String, Map<String, dynamic>> goals;
   final Map<String, Map<String, dynamic>> alertTypeOptions;
   final int alertSoundVolume;
@@ -303,6 +304,7 @@ class SettingsModel {
     this.subathonPhase = 'idle',
     this.subathonEndsAtMs = 0,
     this.subathonRemainingMs = 0,
+    this.mediaLibrary = const {},
     this.goals = const {},
     this.alertTypeOptions = const {},
     this.alertSoundVolume = 70,
@@ -443,6 +445,7 @@ class SettingsModel {
     String? subathonPhase,
     int? subathonEndsAtMs,
     int? subathonRemainingMs,
+    Map<String, Map<String, dynamic>>? mediaLibrary,
     Map<String, Map<String, dynamic>>? goals,
     Map<String, Map<String, dynamic>>? alertTypeOptions,
     int? alertSoundVolume,
@@ -610,6 +613,7 @@ class SettingsModel {
         subathonPhase: subathonPhase ?? this.subathonPhase,
         subathonEndsAtMs: subathonEndsAtMs ?? this.subathonEndsAtMs,
         subathonRemainingMs: subathonRemainingMs ?? this.subathonRemainingMs,
+        mediaLibrary: mediaLibrary ?? this.mediaLibrary,
         goals: goals ?? this.goals,
         alertTypeOptions: alertTypeOptions ?? this.alertTypeOptions,
         alertSoundVolume: alertSoundVolume ?? this.alertSoundVolume,
