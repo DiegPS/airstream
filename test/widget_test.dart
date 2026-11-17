@@ -45,6 +45,81 @@ class _WidgetTestSettings extends SettingsNotifier {
 
 void main() {
   testWidgets(
+      'Create with AI copies localized instruction and generates guides',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final temp = (await tester
+        .runAsync(() => io.Directory.systemTemp.createTemp('ai-widget-')))!;
+    final library = TemplateLibrary(io.Directory('${temp.path}/templates'));
+    addTearDown(() async {
+      await tester.runAsync(() async {
+        await library.dispose();
+        await temp.delete(recursive: true);
+      });
+    });
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('window_manager'), (call) async => false);
+    tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String;
+      }
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          const MethodChannel('window_manager'), null);
+      tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    await tester.pumpWidget(ProviderScope(overrides: [
+      settingsProvider.overrideWith((ref) => _WidgetTestSettings(
+          'en',
+          '',
+          const SettingsModel(
+              appLanguageCode: 'en',
+              overlayEnabled: false,
+              overlayPort: 9123))),
+      templateLibraryProvider.overrideWith((ref) async => library),
+      overlayUrlProvider.overrideWithValue('http://localhost:9456'),
+    ], child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Templates'));
+    await tester.pumpAndSettle();
+    expect(await tester.runAsync(library.exists), isFalse);
+    await tester.tap(find.byKey(const Key('templates-ai')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('templates-ai-dialog')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('templates-ai-copy')));
+    await tester.pumpAndSettle();
+    expect(copied, isNull);
+    expect(await tester.runAsync(library.exists), isFalse);
+    await tester.enterText(
+        find.byKey(const Key('templates-ai-description')), 'Latest supporter');
+    await tester.tap(find.byKey(const Key('templates-ai-copy')));
+    for (var i = 0; i < 150; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.pumpAndSettle();
+    expect(copied, contains('AGENTS.md'));
+    expect(copied, contains('latest-supporter'));
+    expect(copied,
+        contains('http://localhost:9456/custom/latest-supporter/?demo=1'));
+    expect(find.text('Instruction copied'), findsOneWidget);
+    for (final name in ['AGENTS.md', 'CLAUDE.md', 'airstream.d.ts']) {
+      expect(
+          await tester
+              .runAsync(() => io.File('${library.rootPath}/$name').exists()),
+          isTrue);
+    }
+  });
+
+  testWidgets(
       'Templates creates copies edits and deletes without creating root on open',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1000);

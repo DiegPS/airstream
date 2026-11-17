@@ -249,6 +249,14 @@ Future<Response> serveTemplate(
     final ext = p.extension(files.last).substring(1).toLowerCase();
     final mime = templateContentTypes[ext];
     if (mime == null) return missing();
+    if (files.length == 1 && files.single == 'values.json') {
+      final bytes = utf8.encode(jsonEncode(await service.resolvedValues(id)));
+      return Response.ok(request.method == 'HEAD' ? null : bytes, headers: {
+        ...headers,
+        'content-type': mime,
+        'content-length': '${bytes.length}'
+      });
+    }
     final file = await service.safeFile(id, p.joinAll(files));
     if (file == null || await file.length() > 50 * 1024 * 1024) {
       return missing();

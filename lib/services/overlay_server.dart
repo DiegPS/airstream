@@ -241,6 +241,7 @@ class OverlayServer {
     _port = port;
     try {
       final library = await templateLibrary;
+      if (await library.exists()) await library.writeAgentGuide();
       await library.watch();
       _templateSub = library.changes.listen((change) {
         unawaited(_templateChanged(change));

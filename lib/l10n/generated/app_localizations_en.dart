@@ -2407,4 +2407,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String templatesDeleteConfirm(String name) {
     return 'Delete “$name”? This deletes its folder and cannot be undone.';
   }
+
+  @override
+  String get templatesAi => 'Create with AI';
+
+  @override
+  String get templatesAiSteps =>
+      '1. Open this folder in your AI tool, for example OpenCode, Claude Code or Codex.\n2. Paste the instruction.\n3. The template appears in this list: copy its URL into OBS.';
+
+  @override
+  String get templatesAiDescription => 'What should your template show?';
+
+  @override
+  String get templatesAiCopy => 'Copy instruction';
+
+  @override
+  String get templatesAiCopied => 'Instruction copied';
+
+  @override
+  String templatesAiInstruction(String id, String description, String url) {
+    return 'Read AGENTS.md in this folder first. Create a new template in a new folder named $id.\nWhat it must show:\n$description\nTest it at $url and fix browser console errors. When done, tell me its OBS URL and recommended size.';
+  }
 }

@@ -106,7 +106,7 @@ String sdkV1() => r"""
   }
   demoFields().catch(e => report(e));
   const replay={replay:true,test:false};
-  emit('settings',{appLanguageCode:navigator.language.toLowerCase().startsWith('es')?'es':'en'},replay);
+  emit('settings',{appLanguageCode:navigator.language.toLowerCase().startsWith('es')?'es':'en',chromaMode:false,chromaColor:'#00FF00',showGrid:false,hideScrollbar:false,fontSize:14.0,bgOpacity:0.0,messageOpacity:0.45,showAvatars:true,showPlatformIcons:true,showBadges:true,showYoutubeStreamBadges:true,showTimestamp:false,textStroke:0.0,textStrokeColor:'#000000',lineHeight:1.5,messageGap:15.0,fontWeight:400.0,borderRadius:16.0,textShadow:false,showBubble:true,superChatBarEnabled:true,superChatBarColor:'#1DE9B6',superChatBarWidth:3.0,maxMessages:100,messageTtlSeconds:20,animation:'slide-up',animationDuration:0.4,textAlign:'left',twitchBubbleAccent:true,kickBubbleAccent:true,threeDEnabled:false,perspective:1000.0,rotateX:0.0,rotateY:0.0,rotateZ:0.0,skewX:0.0,scale:1.0,alertFontSize:28.0,alertDisplaySeconds:7,alertShowAvatars:true,alertPosition:'center',alertLayout:'row',alertAnimation:'pop',alertSoundVolume:70,alertTypeOptions:{}},replay);
   const goals=[{id:'demo-subs',title:'Demo subscriptions',type:'subs',current:3,target:10},{id:'demo-bits',title:'Demo bits',type:'bits',current:450,target:1000}];
   function sendGoals(meta) { emit('goals',goals.map(g => ({...g,percent:Math.min(100,g.current/g.target*100),reached:g.current>=g.target})),meta); }
   sendGoals(replay);
@@ -118,23 +118,24 @@ String sdkV1() => r"""
   const emote='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><text y="20">★</text></svg>');
   function chat() {
     const n=chatIndex++, platform=['youtube','twitch','kick'][n%3];
-    return {platform,id:'demo-chat-'+n,author:people[n%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+n%8,badgeImageUrl:null,badgeLabel:n%4===0?'Moderator':null,badges:[],color:api.platformColor(platform),text:'Demo message '+(n+1)+' ★',items:[{kind:'text',text:'Demo message '+(n+1)+' '},{kind:'emoji',url:emote,alt:'★',isAnimated:false,isCustom:false,isZeroWidth:false}],isSuperChat:false,superChatAmount:null,superChatColor:null,superChatStickerUrl:null,isMembership:n%3===0,isMembershipEvent:false,membershipEventKind:null,membershipMonths:null,membershipGiftCount:null,isOwner:n%8===0,isModerator:n%4===0,isVip:n%5===0,isVerified:false,youtubeStreamOrientation:null,timestamp:new Date().toISOString(),reply:null,sharedSource:null,isAction:false,providerRoomId:null,isFirstMessage:false,isReturningChatter:false,rewardId:null};
+    return {platform,id:'demo-chat-'+n,author:people[n%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+n%8,badgeImageUrl:null,badgeLabel:n%4===0?'Moderator':null,badges:[],color:api.platformColor(platform),text:'Demo message '+(n+1)+' ★',items:[{kind:'text',text:'Demo message '+(n+1)+' '},{kind:'emoji',url:emote,alt:'★',isAnimated:false,isCustom:false,isZeroWidth:false}],isSuperChat:false,superChatAmount:null,superChatColor:null,superChatStickerUrl:null,isMembership:n%3===0,isMembershipEvent:false,membershipEventKind:null,membershipMonths:null,membershipGiftCount:null,isOwner:n%8===0,isModerator:n%4===0,isVip:n%5===0,isVerified:false,youtubeStreamOrientation:null,timestamp:new Date().toISOString(),reply:null,sharedSource:null,isAction:false,providerRoomId:'',isFirstMessage:false,isReturningChatter:false,rewardId:null};
   }
   setInterval(() => { earlier=chat(); emit('chat',earlier); },1500);
   setInterval(() => {
     const type=['superchat','membership','bits','subscription','gift','raid','kicks'][alertIndex++%7];
     const platform=['superchat','membership'].includes(type)?'youtube':type==='kicks'?'kick':'twitch';
-    const data={platform,kind:['subscription','gift'].includes(type)?'membership':type,alertType:type,id:'demo-alert-'+alertIndex,author:people[alertIndex%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+alertIndex%8,badgeImageUrl:null,badgeLabel:null,message:'Clearly fake demo alert',amount:type==='superchat'?'$5.00':type==='bits'?'100 Bits':null,color:api.platformColor(platform),stickerUrl:null,timestamp:new Date().toISOString(),membershipKind:type==='gift'?'gift':type==='subscription'?'subscription':null,months:type==='subscription'?3:null,giftCount:type==='gift'?5:null,count:type==='raid'?42:type==='kicks'?100:null};
+    const data={platform,kind:['subscription','gift'].includes(type)?'membership':type,alertType:type,id:'demo-alert-'+alertIndex,author:people[alertIndex%8],authorAvatarUrl:null,authorChannelId:['raid','kicks'].includes(type)?'':'demo-user-'+alertIndex%8,badgeImageUrl:null,badgeLabel:null,message:type==='raid'?'':'Clearly fake demo alert',amount:type==='superchat'?'$5.00':type==='bits'?'100 Bits':null,color:['superchat','bits'].includes(type)?api.platformColor(platform):null,stickerUrl:null,timestamp:new Date().toISOString(),membershipKind:type==='gift'?'gift':type==='subscription'?'subscription':null,months:type==='subscription'?3:null,giftCount:type==='gift'?5:null,...(['raid','kicks'].includes(type)?{count:type==='raid'?42:100}:{})};
     emit('alert',data);
+    if (['raid','kicks'].includes(type)) emit('event',{platform,kind:type==='raid'?'raid':'support',id:data.id,timestamp:data.timestamp,authorName:data.author,text:data.message,count:data.count,data:{}});
     if (['membership','bits','subscription','gift'].includes(type)) { goals[type==='bits'?1:0].current+=type==='bits'?100:type==='gift'?5:1; sendGoals(); endsAtMs+=60000; sendTimer(60000); }
   },7000);
   setInterval(() => emit('caption',{text:'Demo caption — welcome to the stream!'}),6000);
-  setInterval(() => { if (earlier) emit('delete',{platform:earlier.platform,scope:'message',messageId:earlier.id,authorChannelId:earlier.authorChannelId,authorName:earlier.author}); },20000);
-  setInterval(() => { const m=chat(); emit('featured',{platform:m.platform,kind:'featured',alertType:null,id:m.id,author:m.author,authorAvatarUrl:null,authorChannelId:m.authorChannelId,badgeImageUrl:null,badgeLabel:null,message:m.text,amount:null,color:m.color,stickerUrl:null,timestamp:m.timestamp,membershipKind:null,months:null,giftCount:null}); },25000);
-  const poll={id:'demo-poll',question:'Demo: which game next?',options:[{label:'Adventure',votes:3,percent:60},{label:'Racing',votes:2,percent:40}],total:5,closed:false,endsAt:Date.now()+45000};
+  setInterval(() => { if (earlier) emit('delete',{platform:earlier.platform,scope:'message',messageId:earlier.id,authorChannelId:earlier.authorChannelId,authorName:'',youtubeStreamOrientation:earlier.youtubeStreamOrientation}); },20000);
+  setInterval(() => { const m=chat(); emit('featured',{platform:m.platform,kind:'featured',alertType:null,id:m.id,author:m.author,authorAvatarUrl:null,authorChannelId:m.authorChannelId,badgeImageUrl:null,badgeLabel:null,message:m.text,amount:null,color:null,stickerUrl:null,timestamp:m.timestamp,membershipKind:null,months:null,giftCount:null}); },25000);
+  const poll={question:'Demo: which game next?',options:[{label:'Adventure',votes:3,percent:60},{label:'Racing',votes:2,percent:40}],total:5,closed:false,endsAt:Date.now()+45000};
   setTimeout(() => emit('poll',poll),3000);
   setTimeout(() => emit('poll',{...poll,closed:true}),45000);
-  const giveaway={id:'demo-giveaway',title:'Demo giveaway',keyword:'!demo',phase:'open',entrantCount:8,winner:null,drawId:0};
+  const giveaway={keyword:'!demo',phase:'open',entrantCount:8,winner:null,drawId:0};
   setTimeout(() => emit('giveaway',giveaway),5000);
   setTimeout(() => emit('giveaway',{...giveaway,phase:'drawn',drawId:1,winner:{platform:'twitch',name:people[0]}}),50000);
 })();

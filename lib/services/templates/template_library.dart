@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'agent_guide.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -169,7 +170,33 @@ class TemplateLibrary {
   Future<bool> exists() => root.exists();
   Future<void> ensureRoot() async {
     await root.create(recursive: true);
+    await writeAgentGuide();
     await watch();
+  }
+
+  Future<void>? _guideWrite;
+  Future<void> writeAgentGuide() {
+    final pending = _guideWrite;
+    if (pending != null) return pending;
+    return _guideWrite = writeGeneratedAgentGuide(root).whenComplete(() {
+      _guideWrite = null;
+    });
+  }
+
+  Future<String> suggestedAgentId(String description) async {
+    final base = templateId(
+        description.trim().split(RegExp(r'\s+')).take(6).join(' '),
+        fallback: 'my-template');
+    var id = base;
+    var suffix = 2;
+    while (await FileSystemEntity.type(p.join(root.path, id),
+            followLinks: false) !=
+        FileSystemEntityType.notFound) {
+      final ending = '-${suffix++}';
+      id =
+          '${base.substring(0, base.length.clamp(0, 40 - ending.length))}$ending';
+    }
+    return id;
   }
 
   Future<void> watch() async {
@@ -487,7 +514,7 @@ class TemplateLibrary {
   }
 }
 
-String templateId(String name) {
+String templateId(String name, {String fallback = 'template'}) {
   const groups = {
     'a': 'àáâãäåāăąǎǟǡǻȁȃȧḁạảấầẩẫậắằẳẵặ',
     'b': 'ḃḅḇ',
@@ -528,5 +555,5 @@ String templateId(String name) {
   if (value.length > 40) {
     value = value.substring(0, 40).replaceAll(RegExp(r'-+$'), '');
   }
-  return value.isEmpty ? 'template' : value;
+  return value.isEmpty ? fallback : value;
 }

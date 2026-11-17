@@ -825,5 +825,24 @@
         "type": "String"
       }
     }
+  },
+  "templatesAi": "Crear con IA",
+  "templatesAiSteps": "1. Abre esta carpeta en tu herramienta de IA, por ejemplo OpenCode, Claude Code o Codex.\n2. Pega la instrucción.\n3. La plantilla aparece en esta lista: copia su URL en OBS.",
+  "templatesAiDescription": "¿Qué debe mostrar tu plantilla?",
+  "templatesAiCopy": "Copiar instrucción",
+  "templatesAiCopied": "Instrucción copiada",
+  "templatesAiInstruction": "Lee primero AGENTS.md en esta carpeta. Crea una plantilla nueva en una carpeta nueva llamada {id}.\nQué debe mostrar:\n{description}\nPruébala en {url} y corrige los errores de la consola del navegador. Al terminar, dime su URL para OBS y el tamaño recomendado.",
+  "@templatesAiInstruction": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
   }
 }

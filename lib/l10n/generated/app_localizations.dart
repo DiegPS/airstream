@@ -4244,6 +4244,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete “{name}”? This deletes its folder and cannot be undone.'**
   String templatesDeleteConfirm(String name);
+
+  /// No description provided for @templatesAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Create with AI'**
+  String get templatesAi;
+
+  /// No description provided for @templatesAiSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Open this folder in your AI tool, for example OpenCode, Claude Code or Codex.\n2. Paste the instruction.\n3. The template appears in this list: copy its URL into OBS.'**
+  String get templatesAiSteps;
+
+  /// No description provided for @templatesAiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What should your template show?'**
+  String get templatesAiDescription;
+
+  /// No description provided for @templatesAiCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy instruction'**
+  String get templatesAiCopy;
+
+  /// No description provided for @templatesAiCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Instruction copied'**
+  String get templatesAiCopied;
+
+  /// No description provided for @templatesAiInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Read AGENTS.md in this folder first. Create a new template in a new folder named {id}.\nWhat it must show:\n{description}\nTest it at {url} and fix browser console errors. When done, tell me its OBS URL and recommended size.'**
+  String templatesAiInstruction(String id, String description, String url);
 }
 
 class _AppLocalizationsDelegate

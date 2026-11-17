@@ -2425,4 +2425,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String templatesDeleteConfirm(String name) {
     return '¿Eliminar «$name»? Se eliminará su carpeta y no se puede deshacer.';
   }
+
+  @override
+  String get templatesAi => 'Crear con IA';
+
+  @override
+  String get templatesAiSteps =>
+      '1. Abre esta carpeta en tu herramienta de IA, por ejemplo OpenCode, Claude Code o Codex.\n2. Pega la instrucción.\n3. La plantilla aparece en esta lista: copia su URL en OBS.';
+
+  @override
+  String get templatesAiDescription => '¿Qué debe mostrar tu plantilla?';
+
+  @override
+  String get templatesAiCopy => 'Copiar instrucción';
+
+  @override
+  String get templatesAiCopied => 'Instrucción copiada';
+
+  @override
+  String templatesAiInstruction(String id, String description, String url) {
+    return 'Lee primero AGENTS.md en esta carpeta. Crea una plantilla nueva en una carpeta nueva llamada $id.\nQué debe mostrar:\n$description\nPruébala en $url y corrige los errores de la consola del navegador. Al terminar, dime su URL para OBS y el tamaño recomendado.';
+  }
 }

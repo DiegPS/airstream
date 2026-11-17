@@ -141,7 +141,7 @@ Airstream.on('chat', message => {
 });
 Airstream.on('delete', event => {
   for (const item of [...messages]) {
-    if (item.message.platform === event.platform && (event.scope === 'user' ? item.message.authorChannelId === event.authorChannelId : item.message.id === event.messageId)) {
+    if (item.message.platform === event.platform && (event.scope === 'platform' || (event.scope === 'author' ? item.message.authorChannelId === event.authorChannelId : item.message.id === event.messageId))) {
       item.node.remove(); messages.splice(messages.indexOf(item),1);
     }
   }

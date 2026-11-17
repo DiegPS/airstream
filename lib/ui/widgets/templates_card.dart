@@ -135,6 +135,16 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         description: l.templatesDescription,
         children: [
           Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.tonal(
+                key: const Key('templates-ai'),
+                onPressed: enabled
+                    ? () => showDialog<void>(
+                          context: context,
+                          builder: (_) =>
+                              _AiTemplateDialog(library: _library!, url: _url),
+                        )
+                    : null,
+                child: Text(l.templatesAi)),
             FilledButton(
                 key: const Key('templates-new'),
                 onPressed: enabled ? () => _action(_new) : null,
@@ -517,5 +527,105 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                                         child: Text(l.templatesSave))
                                   ]),
                             ])))))));
+  }
+}
+
+class _AiTemplateDialog extends StatefulWidget {
+  const _AiTemplateDialog({required this.library, required this.url});
+  final TemplateLibrary library;
+  final String Function(String) url;
+  @override
+  State<_AiTemplateDialog> createState() => _AiTemplateDialogState();
+}
+
+class _AiTemplateDialogState extends State<_AiTemplateDialog> {
+  final _description = TextEditingController();
+  bool _invalid = false, _busy = false;
+  String? _notice;
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(bool copy) async {
+    if (_busy) return;
+    final l = AppLocalizations.of(context)!;
+    final description = _description.text.trim();
+    if (copy && description.isEmpty) {
+      setState(() => _invalid = true);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _notice = null;
+    });
+    try {
+      await widget.library.ensureRoot();
+      if (copy) {
+        final id = await widget.library.suggestedAgentId(description);
+        await Clipboard.setData(ClipboardData(
+            text: l.templatesAiInstruction(
+                id, description, '${widget.url(id)}?demo=1')));
+        if (mounted) setState(() => _notice = l.templatesAiCopied);
+      } else {
+        await _explore(widget.library.rootPath);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _notice = l.templatesFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return AlertDialog(
+      key: const Key('templates-ai-dialog'),
+      title: Text(l.templatesAi),
+      content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+              child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.templatesAiSteps),
+              const SizedBox(height: 20),
+              TextField(
+                  key: const Key('templates-ai-description'),
+                  controller: _description,
+                  autofocus: true,
+                  enabled: !_busy,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                      labelText: l.templatesAiDescription,
+                      errorText: _invalid ? l.templatesRequired : null),
+                  onChanged: (_) {
+                    if (_invalid) setState(() => _invalid = false);
+                  }),
+              if (_busy) const LinearProgressIndicator(),
+              if (_notice != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_notice!)),
+            ],
+          ))),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context),
+            child: Text(l.templatesClose)),
+        TextButton(
+            key: const Key('templates-ai-open'),
+            onPressed: _busy ? null : () => _run(false),
+            child: Text(l.templatesOpenFolder)),
+        FilledButton(
+            key: const Key('templates-ai-copy'),
+            onPressed: _busy ? null : () => _run(true),
+            child: Text(l.templatesAiCopy)),
+      ],
+    );
   }
 }

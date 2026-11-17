@@ -47,6 +47,32 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+  test('server startup generates guides for existing root', () async {
+    for (final name in ['AGENTS.md', 'CLAUDE.md', 'airstream.d.ts']) {
+      expect(await File('${root.path}/$name').exists(), isTrue);
+    }
+  });
+
+  test(
+      'values returns resolved defaults without disk file and sanitizes saved values',
+      () async {
+    await put('one/template.json',
+        '{"fields":[{"key":"title","type":"text","default":"Hello"}]}');
+    final (response, body) = await get('/custom/one/values.json');
+    expect(response.statusCode, 200);
+    expect(jsonDecode(body), {'title': 'Hello'});
+    expect(response.headers.value('content-type'),
+        'application/json; charset=utf-8');
+    expect(response.headers.value('cache-control'), 'no-store');
+    expect(response.headers.value('x-content-type-options'), 'nosniff');
+    await put('one/values.json', '{"title":42,"extra":"ignored"}');
+    expect(
+        jsonDecode((await get('/custom/one/values.json')).$2), {'title': ''});
+    final (head, empty) = await get('/custom/one/values.json', method: 'HEAD');
+    expect(head.statusCode, 200);
+    expect(empty, isEmpty);
+  });
+
   test(
       'redirect preserves demo and SDK injection handles head, html and fragment',
       () async {
