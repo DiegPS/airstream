@@ -194,14 +194,18 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
       if (next != null && next != _library) {
         _subscription?.cancel();
         _library = next;
-        _subscription = next.changes.listen((_) => unawaited(_refresh()));
+        _subscription = next.changes
+            .where((c) => c.kind != TemplateChangeKind.values)
+            .listen((_) => unawaited(_refresh()));
         unawaited(_refresh());
       }
     });
     // A provider override may already have completed before the first build.
     if (_library == null && library.valueOrNull != null) {
       _library = library.requireValue;
-      _subscription = _library!.changes.listen((_) => unawaited(_refresh()));
+      _subscription = _library!.changes
+          .where((c) => c.kind != TemplateChangeKind.values)
+          .listen((_) => unawaited(_refresh()));
       unawaited(_refresh());
     }
     final counts = ref.watch(templateCountsProvider).valueOrNull ?? {};

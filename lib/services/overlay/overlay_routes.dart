@@ -227,10 +227,17 @@ Future<Response> serveTemplate(
     }
     final id = segments[1];
     final service = await library();
-    final info = await service.get(id);
-    if (info == null || !info.usable) return missing();
+    // The page itself (and its redirect) revalidates the template; the many
+    // asset requests that follow reuse that manifest and are still checked
+    // one by one through safeFile below.
+    final page =
+        segments.length == 2 || (segments.length == 3 && segments.last.isEmpty);
+    final info = page ? await service.get(id) : null;
+    if (page && (info == null || !info.usable)) return missing();
+    final manifest = info?.manifest ?? await service.manifestFor(id);
+    if (manifest == null) return missing();
     headers['content-security-policy'] =
-        templateCsp(request.requestedUri.port, network: info.manifest.network);
+        templateCsp(request.requestedUri.port, network: manifest.network);
     if (segments.length == 2) {
       return Response(302, headers: {
         ...headers,

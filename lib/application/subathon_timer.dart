@@ -72,7 +72,9 @@ abstract final class SubathonTimer {
                 s.subathonSecondsPer100Kicks *
                 10;
     final before = remaining(s, now);
-    final after = _cap(s, before + ms);
+    // The cap limits what support adds; it never takes away time that is
+    // already there (for example after the streamer lowers the cap).
+    final after = math.max(before, _cap(s, before + ms));
     return (
       settings: s.copyWith(subathonEndsAtMs: now + after),
       addedMs: math.max(0, after - before)

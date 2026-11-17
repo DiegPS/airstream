@@ -276,6 +276,11 @@ class TemplateLibrary {
     return result;
   }
 
+  /// The manifest as last validated by [get]. A page load asks for many
+  /// assets right after its index, which always revalidates through [get].
+  Future<TemplateManifest?> manifestFor(String id) async =>
+      _cache[id]?.manifest ?? (await get(id))?.manifest;
+
   Future<TemplateInfo?> get(String id) async {
     if (!validId(id)) return null;
     final folder = Directory(p.join(root.path, id));

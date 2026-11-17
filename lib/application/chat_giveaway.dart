@@ -67,6 +67,7 @@ class ChatGiveawayController {
   // every arriving message. Published states never share this mutable list.
   final _entrants = <GiveawayEntrant>[];
   bool _dirty = false;
+  String _keyword = '';
   ChatGiveaway? _current;
   Timer? _publishTimer;
   int _drawSequence = 0;
@@ -91,6 +92,7 @@ class ChatGiveawayController {
     _identities.clear();
     _entrants.clear();
     _dirty = false;
+    _keyword = normalizeVoiceText(keyword);
     _current = ChatGiveaway(keyword: keyword.trim(), membersOnly: membersOnly);
     _publishNow();
   }
@@ -106,9 +108,8 @@ class ChatGiveawayController {
         (state.membersOnly && !message.isMembership)) {
       return;
     }
-    final keyword = normalizeVoiceText(state.keyword);
     final text = normalizeVoiceText(message.plainText);
-    if (text != keyword && !text.startsWith('$keyword ')) return;
+    if (text != _keyword && !text.startsWith('$_keyword ')) return;
     final entrant = GiveawayEntrant(
         platform: message.platform,
         authorId: message.author.channelId.trim().isNotEmpty

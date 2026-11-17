@@ -17,18 +17,37 @@ class SubathonCard extends ConsumerStatefulWidget {
 }
 
 class _SubathonCardState extends ConsumerState<SubathonCard> {
-  late final Timer _refresh;
-  @override
-  void initState() {
-    super.initState();
-    _refresh =
-        Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+  Timer? _refresh;
+
+  /// Refreshes the countdown once a second only while it runs and this tab
+  /// is on screen (hidden tabs stay built with tickers disabled).
+  void _syncRefresh(bool active) {
+    if (active && _refresh == null) {
+      _refresh =
+          Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+    } else if (!active) {
+      _refresh?.cancel();
+      _refresh = null;
+    }
   }
 
   @override
   void dispose() {
-    _refresh.cancel();
+    _refresh?.cancel();
     super.dispose();
+  }
+
+  void restart() {
+    final notifier = ref.read(settingsProvider.notifier);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final s = SubathonTimer.normalize(ref.read(settingsProvider), now);
+    // A new run passes through idle, so OBS does not show the difference
+    // between the old and new end as support-added time.
+    if (s.subathonPhase == 'running' || s.subathonPhase == 'paused') {
+      unawaited(notifier.update(SubathonTimer.reset(s, now)));
+    }
+    unawaited(
+        notifier.update(SubathonTimer.start(ref.read(settingsProvider), now)));
   }
 
   void change(SettingsModel Function(SettingsModel, int) action) {
@@ -43,25 +62,26 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
     final s = ref.watch(settingsProvider);
     final now = DateTime.now().millisecondsSinceEpoch;
     final phase = SubathonTimer.normalize(s, now).subathonPhase;
+    _syncRefresh(phase == 'running' && TickerMode.valuesOf(context).enabled);
     final url = ref.watch(overlayUrlProvider);
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
         OverlayServerPhase.ready;
     final page = ready && url != null ? '$url/timer' : null;
     Widget button(String key, String label,
             SettingsModel Function(SettingsModel, int) action,
-            {bool primary = false}) =>
+            {bool primary = false, VoidCallback? onPressed}) =>
         primary
             ? SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                     key: Key(key),
                     style: primarySettingsStyle(),
-                    onPressed: () => change(action),
+                    onPressed: onPressed ?? () => change(action),
                     child: Text(label)))
             : OutlinedButton(
                 key: Key(key),
                 style: secondarySettingsStyle(),
-                onPressed: () => change(action),
+                onPressed: onPressed ?? () => change(action),
                 child: Text(label));
     Widget field(String key, String label, int value, int min, int max,
             SettingsModel Function(SettingsModel, int) update) =>
@@ -121,6 +141,7 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: button(
                         'subathon-start', l.subathonStart, SubathonTimer.start,
+                        onPressed: restart,
                         primary: phase != 'running' && phase != 'paused'))),
           ]),
           if (phase == 'running')

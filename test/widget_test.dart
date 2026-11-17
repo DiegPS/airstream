@@ -509,6 +509,34 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('restarting a running subathon passes through idle',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final phases = <String>[];
+    final settings =
+        _RecordingSettings(const SettingsModel(overlayEnabled: false));
+    settings.addListener((s) => phases.add(s.subathonPhase),
+        fireImmediately: false);
+    await tester.pumpWidget(ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => settings)],
+        child: const AirstreamApp()));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Live'));
+    await tester.pump();
+    final start = find.byKey(const Key('subathon-start'));
+    await tester.ensureVisible(start);
+    await tester.tap(start);
+    await tester.pump();
+    phases.clear();
+    // OBS would read a running-to-running jump as support-added time.
+    await tester.tap(start);
+    await tester.pump();
+    expect(phases, ['idle', 'running']);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('subathon starts adds five minutes pauses and resets in OBS',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 1600);

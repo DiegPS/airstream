@@ -86,6 +86,15 @@ void main() {
       expect(r.settings.subathonEndsAtMs - s.subathonEndsAtMs, ms);
     }
   });
+  test('support never shortens a run that is above a lowered cap', () {
+    final s =
+        SubathonTimer.start(defaults.copyWith(subathonStartMinutes: 180), now);
+    final lowered = s.copyWith(subathonMaxRemainingMinutes: 120);
+    final r = SubathonTimer.applyIncrements(lowered, now, {'subs': 1});
+    expect(r.addedMs, 0);
+    expect(r.settings.subathonEndsAtMs, s.subathonEndsAtMs);
+  });
+
   test(
       'cap returns actual addition then zero and inactive increments do nothing',
       () {

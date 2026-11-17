@@ -96,6 +96,16 @@ void main() {
     expect(await library.fileFor(e), isNull);
     await library.delete(e.key);
   });
+  test('a long name is cut by characters, never inside an emoji', () async {
+    // 79 letters then an emoji: cutting at 80 UTF-16 units would split it.
+    final name = '${'a' * 79}\u{1F3AE}${'b' * 10}.png';
+    final file =
+        await File(p.join(temp.path, name)).writeAsBytes(magic['png']!);
+    final e = await library.import(file.path);
+    final stored = e.value['name'] as String;
+    expect(stored.runes.length, 80);
+    expect(stored, '${'a' * 79}\u{1F3AE}');
+  });
   test('fileFor refuses missing files directories and links', () async {
     final e = await library.import((await source('png')).path);
     entries[e.key] = e.value;

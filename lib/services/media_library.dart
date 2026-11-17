@@ -100,7 +100,7 @@ class MediaLibrary {
         final check = await validate(dest.path);
         if (check != kind) throw FormatException(check);
         final metadata = <String, dynamic>{
-          'name': name.substring(0, name.length.clamp(0, 80)),
+          'name': String.fromCharCodes(name.runes.take(80)),
           'kind': kind,
           'ext': ext,
           'bytes': await dest.length(),

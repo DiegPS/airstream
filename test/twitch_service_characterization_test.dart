@@ -211,6 +211,33 @@ void main() {
       expect(message.plainText, 'Un año');
     });
 
+    test('a community gift reaches chat once per recipient, never twice',
+        () async {
+      // Goals, the subathon and the alert grouping count one sub per gift
+      // message: the community summary must not arrive as a chat message.
+      await service.connect('channel');
+      final messages = <ChatMessage>[];
+      final sub = service.messages.listen(messages.add);
+      socket.receive(
+        '@id=mystery-1;login=gifter;msg-id=submysterygift;'
+        'msg-param-mass-gift-count=2;msg-param-community-gift-id=777 '
+        ':tmi.twitch.tv USERNOTICE #channel\r\n',
+      );
+      for (final id in ['gift-1', 'gift-2']) {
+        socket.receive(
+          '@id=$id;login=gifter;msg-id=subgift;'
+          'msg-param-community-gift-id=777 '
+          ':tmi.twitch.tv USERNOTICE #channel\r\n',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await sub.cancel();
+      expect(messages.map((m) => m.id), ['gift-1', 'gift-2']);
+      expect(messages.map((m) => m.membershipEventKind),
+          everyElement(MembershipEventKind.gift));
+      expect(messages.map((m) => m.membershipGiftCount), everyElement(isNull));
+    });
+
     test('preserves all typed USERNOTICE parameters for app consumers',
         () async {
       await service.connect('channel');

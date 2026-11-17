@@ -33,8 +33,32 @@ class OverlayServer {
   Future<TemplateLibrary>? _templateLibraryFuture;
   Future<TemplateLibrary> get templateLibrary =>
       _templateLibraryFuture ??= _loadTemplateLibrary();
-  Future<TemplateLibrary> _loadTemplateLibrary() async =>
-      _templateLibrary ??= TemplateLibrary(await TemplateLibrary.defaultRoot());
+  // Resolved once: a video played in byte ranges asks for /media many times.
+  Future<MediaLibrary>? _mediaLibrary;
+  Future<MediaLibrary> _loadMediaLibrary() async {
+    try {
+      return MediaLibrary(
+          Directory(
+              p.join((await getApplicationSupportDirectory()).path, 'media')),
+          () => _settings.mediaLibrary);
+    } catch (_) {
+      _mediaLibrary = null;
+      rethrow;
+    }
+  }
+
+  Future<TemplateLibrary> _loadTemplateLibrary() async {
+    try {
+      return _templateLibrary ??=
+          TemplateLibrary(await TemplateLibrary.defaultRoot());
+    } catch (_) {
+      // Retry on the next use: a failed Documents lookup is often transient
+      // (folder redirection or sync still starting).
+      _templateLibraryFuture = null;
+      rethrow;
+    }
+  }
+
   final _templates = <WebSocketChannel, String>{};
   StreamSubscription<TemplateChange>? _templateSub;
   final _templateCounts = StreamController<Map<String, int>>.broadcast();
@@ -264,10 +288,7 @@ class OverlayServer {
 
     final handler = buildOverlayRoutes(wsHandler,
         templates: () => templateLibrary,
-        mediaLibrary: () async => MediaLibrary(
-            Directory(
-                p.join((await getApplicationSupportDirectory()).path, 'media')),
-            () => _settings.mediaLibrary),
+        mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
         customSound: (type) {
           final option = AlertTypeOptions.of(_settings, type);
           return option.sound == 'custom'
