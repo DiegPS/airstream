@@ -809,7 +809,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsDescription.
   ///
   /// In en, this message translates to:
-  /// **'YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.'**
+  /// **'Shows YouTube Super Chats and memberships, Twitch Bits, subscriptions, gifts and raids, and Kick subscriptions, gifts, hosts and Kicks on /alerts. Each type can be switched off below.'**
   String get alertsDescription;
 
   /// No description provided for @alertFontSize.
@@ -2730,7 +2730,7 @@ abstract class AppLocalizations {
   /// No description provided for @pollOverlayOff.
   ///
   /// In en, this message translates to:
-  /// **'Turn on the overlay server to show the poll in OBS.'**
+  /// **'Turn on the overlay server to show this in OBS.'**
   String get pollOverlayOff;
 
   /// No description provided for @pollOverlayUrl.
@@ -3678,7 +3678,7 @@ abstract class AppLocalizations {
   /// No description provided for @giveawayPageOff.
   ///
   /// In en, this message translates to:
-  /// **'Enable the browser server to use /giveaway in OBS.'**
+  /// **'Turn on the overlay server to show this in OBS.'**
   String get giveawayPageOff;
 
   /// No description provided for @giveawayPageUrl.
@@ -3798,7 +3798,7 @@ abstract class AppLocalizations {
   /// No description provided for @goalsPageOff.
   ///
   /// In en, this message translates to:
-  /// **'Enable the browser server to use /goals in OBS.'**
+  /// **'Turn on the overlay server to show this in OBS.'**
   String get goalsPageOff;
 
   /// No description provided for @goalsPageUrl.
@@ -3906,7 +3906,7 @@ abstract class AppLocalizations {
   /// No description provided for @subathonPageOff.
   ///
   /// In en, this message translates to:
-  /// **'Enable the browser server to use /timer in OBS.'**
+  /// **'Turn on the overlay server to show this in OBS.'**
   String get subathonPageOff;
 
   /// No description provided for @subathonDescription.
@@ -4406,6 +4406,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invalid ZIP, damaged content or decompression size limit exceeded.'**
   String get templateRejectSize;
+
+  /// No description provided for @liveTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get liveTab;
+
+  /// No description provided for @liveServerOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay server is off'**
+  String get liveServerOff;
+
+  /// No description provided for @liveOpenObs.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to OBS & Overlay'**
+  String get liveOpenObs;
+
+  /// No description provided for @liveServerNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'To show these tools in OBS, turn on the overlay server.'**
+  String get liveServerNotice;
+
+  /// No description provided for @templatesEmptyGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'Start from an example\nAsk an AI agent\nImport a template someone shared'**
+  String get templatesEmptyGuide;
 }
 
 class _AppLocalizationsDelegate

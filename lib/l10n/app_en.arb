@@ -137,7 +137,7 @@
   "noOverlayClientConnected": "No overlay client connected",
   "reloadOverlay": "Reload Overlay",
   "alerts": "Alerts",
-  "alertsDescription": "YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.",
+  "alertsDescription": "Shows YouTube Super Chats and memberships, Twitch Bits, subscriptions, gifts and raids, and Kick subscriptions, gifts, hosts and Kicks on /alerts. Each type can be switched off below.",
   "alertFontSize": "Alert font size",
   "alertDuration": "Alert duration",
   "alertAvatars": "Alert avatars",
@@ -607,7 +607,7 @@
   "@pollVotes": {
     "placeholders": { "count": { "type": "int" } }
   },
-  "pollOverlayOff": "Turn on the overlay server to show the poll in OBS.",
+  "pollOverlayOff": "Turn on the overlay server to show this in OBS.",
   "pollOverlayUrl": "Add {url} to OBS as a Browser Source to show it.",
   "@pollOverlayUrl": {
     "placeholders": { "url": { "type": "String" } }
@@ -878,7 +878,7 @@
       }
     }
   },
-  "giveawayPageOff": "Enable the browser server to use /giveaway in OBS.",
+  "giveawayPageOff": "Turn on the overlay server to show this in OBS.",
   "giveawayPageUrl": "OBS page: {url}",
   "@giveawayPageUrl": {
     "placeholders": {
@@ -905,7 +905,7 @@
   "goalsReached": "Goal reached!",
   "goalsPageTitle": "Airstream Goals",
   "goalsInvalid": "Enter a title and a target from 1 to 1,000,000.",
-  "goalsPageOff": "Enable the browser server to use /goals in OBS.",
+  "goalsPageOff": "Turn on the overlay server to show this in OBS.",
   "goalsPageUrl": "OBS page: {url}",
   "goalsUrlCopied": "Goals page URL copied",
   "@goalsPageUrl": {
@@ -930,7 +930,7 @@
   "subathonRunning": "Running",
   "subathonPaused": "Paused",
   "subathonEnded": "Time's up!",
-  "subathonPageOff": "Enable the browser server to use /timer in OBS.",
+  "subathonPageOff": "Turn on the overlay server to show this in OBS.",
   "subathonDescription": "Add time from support during your stream.",
   "subathonUrlCopied": "Timer page URL copied",
   "mediaLibraryTitle": "Media library",
@@ -1077,5 +1077,10 @@
         "type": "int"
       }
     }
-  }
+  },
+  "liveTab": "Live",
+  "liveServerOff": "Overlay server is off",
+  "liveOpenObs": "Go to OBS & Overlay",
+  "liveServerNotice": "To show these tools in OBS, turn on the overlay server.",
+  "templatesEmptyGuide": "Start from an example\nAsk an AI agent\nImport a template someone shared"
 }

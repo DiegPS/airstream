@@ -389,7 +389,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertsDescription =>
-      'YouTube Super Chats and membership events from YouTube and Kick show on /alerts. The alert payload keeps the originating platform.';
+      'Shows YouTube Super Chats and memberships, Twitch Bits, subscriptions, gifts and raids, and Kick subscriptions, gifts, hosts and Kicks on /alerts. Each type can be switched off below.';
 
   @override
   String get alertFontSize => 'Alert font size';
@@ -1477,7 +1477,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pollOverlayOff =>
-      'Turn on the overlay server to show the poll in OBS.';
+      'Turn on the overlay server to show this in OBS.';
 
   @override
   String pollOverlayUrl(String url) {
@@ -2102,7 +2102,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get giveawayPageOff =>
-      'Enable the browser server to use /giveaway in OBS.';
+      'Turn on the overlay server to show this in OBS.';
 
   @override
   String giveawayPageUrl(String url) {
@@ -2165,7 +2165,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goalsInvalid => 'Enter a title and a target from 1 to 1,000,000.';
 
   @override
-  String get goalsPageOff => 'Enable the browser server to use /goals in OBS.';
+  String get goalsPageOff => 'Turn on the overlay server to show this in OBS.';
 
   @override
   String goalsPageUrl(String url) {
@@ -2222,7 +2222,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subathonPageOff =>
-      'Enable the browser server to use /timer in OBS.';
+      'Turn on the overlay server to show this in OBS.';
 
   @override
   String get subathonDescription => 'Add time from support during your stream.';
@@ -2497,4 +2497,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get templateRejectSize =>
       'Invalid ZIP, damaged content or decompression size limit exceeded.';
+
+  @override
+  String get liveTab => 'Live';
+
+  @override
+  String get liveServerOff => 'Overlay server is off';
+
+  @override
+  String get liveOpenObs => 'Go to OBS & Overlay';
+
+  @override
+  String get liveServerNotice =>
+      'To show these tools in OBS, turn on the overlay server.';
+
+  @override
+  String get templatesEmptyGuide =>
+      'Start from an example\nAsk an AI agent\nImport a template someone shared';
 }

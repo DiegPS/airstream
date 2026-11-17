@@ -392,7 +392,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertsDescription =>
-      'Los Super Chats de YouTube y los eventos de membresía de YouTube y Kick se muestran en /alerts. Los datos conservan la plataforma de origen.';
+      'Muestra Super Chats y membresías de YouTube, Bits, suscripciones, regalos y raids de Twitch, y suscripciones, regalos, hosts y Kicks de Kick en /alerts. Puedes desactivar cada tipo abajo.';
 
   @override
   String get alertFontSize => 'Tamaño de fuente de alerta';
@@ -1489,7 +1489,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pollOverlayOff =>
-      'Activa el servidor de superposición para mostrar la encuesta en OBS.';
+      'Activa el servidor de superposición para mostrarlo en OBS.';
 
   @override
   String pollOverlayUrl(String url) {
@@ -2116,7 +2116,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get giveawayPageOff =>
-      'Activa el servidor de páginas para usar /giveaway en OBS.';
+      'Activa el servidor de superposición para mostrarlo en OBS.';
 
   @override
   String giveawayPageUrl(String url) {
@@ -2181,7 +2181,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get goalsPageOff =>
-      'Activa el servidor de páginas para usar /goals en OBS.';
+      'Activa el servidor de superposición para mostrarlo en OBS.';
 
   @override
   String goalsPageUrl(String url) {
@@ -2238,7 +2238,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get subathonPageOff =>
-      'Activa el servidor de páginas para usar /timer en OBS.';
+      'Activa el servidor de superposición para mostrarlo en OBS.';
 
   @override
   String get subathonDescription =>
@@ -2517,4 +2517,21 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get templateRejectSize =>
       'ZIP no válido, contenido dañado o límite de descompresión superado.';
+
+  @override
+  String get liveTab => 'En directo';
+
+  @override
+  String get liveServerOff => 'Servidor de superposición apagado';
+
+  @override
+  String get liveOpenObs => 'Ir a OBS y superposición';
+
+  @override
+  String get liveServerNotice =>
+      'Para mostrar estas herramientas en OBS, activa el servidor de superposición.';
+
+  @override
+  String get templatesEmptyGuide =>
+      'Empieza con un ejemplo\nPídeselo a un agente de IA\nImporta una plantilla compartida';
 }

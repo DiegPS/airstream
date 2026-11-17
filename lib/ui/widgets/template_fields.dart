@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:async';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -178,50 +179,54 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
                 : 'ff$hex',
             radix: 16))
         : null;
-    return TextField(
-        key: key,
-        controller: controller,
-        focusNode: focus,
-        maxLength: f.type == 'text' ? f.options['maxLength'] as int : null,
-        keyboardType: f.type == 'number'
-            ? const TextInputType.numberWithOptions(decimal: true, signed: true)
-            : TextInputType.text,
-        decoration: InputDecoration(
-            labelText: f.label,
-            suffixIcon: preview == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Container(width: 20, height: 20, color: preview)),
-            helperText:
-                _invalid.contains(f.key) ? l.templateFieldColorInvalid : null,
-            helperStyle: const TextStyle(color: Color(0xFFFFB15C))),
-        onChanged: (v) {
-          if (color) {
-            final text = v.trim();
-            final valid =
-                RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(text);
-            setState(() {
-              if (valid) {
-                _invalid.remove(f.key);
-              } else {
-                _invalid.add(f.key);
-              }
-            });
-            if (!valid) return;
-            _change(
-                f,
-                text.length == 7
-                    ? SettingsInputNormalizer.hexColor(text,
-                        fallback: '#ffffff')
-                    : text.toLowerCase());
-          } else if (f.type == 'number') {
-            final n = num.tryParse(v);
-            if (n != null && n.isFinite) _change(f, n);
-          } else {
-            _change(f, v);
-          }
-        });
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      settingsLabel(f.label),
+      TextField(
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          key: key,
+          controller: controller,
+          focusNode: focus,
+          maxLength: f.type == 'text' ? f.options['maxLength'] as int : null,
+          keyboardType: f.type == 'number'
+              ? const TextInputType.numberWithOptions(
+                  decimal: true, signed: true)
+              : TextInputType.text,
+          decoration: settingsInput().copyWith(
+              suffixIcon: preview == null
+                  ? null
+                  : Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Container(width: 20, height: 20, color: preview)),
+              helperText:
+                  _invalid.contains(f.key) ? l.templateFieldColorInvalid : null,
+              helperStyle: const TextStyle(color: Color(0xFFFFB15C))),
+          onChanged: (v) {
+            if (color) {
+              final text = v.trim();
+              final valid =
+                  RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(text);
+              setState(() {
+                if (valid) {
+                  _invalid.remove(f.key);
+                } else {
+                  _invalid.add(f.key);
+                }
+              });
+              if (!valid) return;
+              _change(
+                  f,
+                  text.length == 7
+                      ? SettingsInputNormalizer.hexColor(text,
+                          fallback: '#ffffff')
+                      : text.toLowerCase());
+            } else if (f.type == 'number') {
+              final n = num.tryParse(v);
+              if (n != null && n.isFinite) _change(f, n);
+            } else {
+              _change(f, v);
+            }
+          })
+    ]);
   }
 
   @override

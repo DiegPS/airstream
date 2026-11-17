@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:async';
 
 import 'package:airstream/application/app_providers.dart';
@@ -266,37 +267,21 @@ class _PollCardState extends ConsumerState<PollCard> {
         OverlayServerPhase.ready;
     final url = ref.watch(overlayUrlProvider);
     if (!ready || url == null) {
-      return Text(
-        l.pollOverlayOff,
-        style: const TextStyle(color: Colors.white38, fontSize: 11),
-      );
+      return const SizedBox.shrink();
     }
     final pollUrl = '$url/poll';
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            l.pollOverlayUrl(pollUrl),
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
-          ),
-        ),
-        IconButton(
-          tooltip: l.copyUrl,
-          icon: const Icon(Icons.copy_rounded, size: 16),
-          color: Colors.white54,
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: pollUrl));
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(l.pollOverlayUrlCopied),
-                duration: const Duration(milliseconds: 1400),
-              ),
-            );
-          },
-        ),
-      ],
-    );
+    return PageUrlRow(
+        url: pollUrl,
+        onCopy: () async {
+          await Clipboard.setData(ClipboardData(text: pollUrl));
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l.pollOverlayUrlCopied),
+              duration: const Duration(milliseconds: 1400),
+            ),
+          );
+        });
   }
 
   Widget _input(TextEditingController controller, String hint, {Key? key}) =>

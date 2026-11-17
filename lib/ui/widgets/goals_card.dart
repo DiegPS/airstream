@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:async';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/models/app_notice.dart';
@@ -40,8 +41,20 @@ class GoalsCard extends ConsumerWidget {
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
         OverlayServerPhase.ready;
     final page = ready && url != null ? '$url/goals' : null;
-    Widget button(String key, String label, VoidCallback action) =>
-        ElevatedButton(key: Key(key), onPressed: action, child: Text(label));
+    Widget button(String key, String label, VoidCallback action) => key ==
+            'goals-add'
+        ? SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+                key: Key(key),
+                style: primarySettingsStyle(),
+                onPressed: action,
+                child: Text(label)))
+        : OutlinedButton(
+            key: Key(key),
+            style: secondarySettingsStyle(destructive: key.endsWith('-delete')),
+            onPressed: action,
+            child: Text(label));
     return UiCard(
         title: l.goalsTitle,
         description: l.goalsDescription,
@@ -55,55 +68,65 @@ class GoalsCard extends ConsumerWidget {
                 style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 8),
             LinearProgressIndicator(
+                color: const Color(0xFF53FC18),
+                backgroundColor: const Color(0xFF262626),
                 value:
                     ((e.value['current'] as int) / (e.value['target'] as int))
                         .clamp(0, 1)),
-            Text("${e.value['current']} / ${e.value['target']}",
+            Text(
+                '${groupDigits(e.value['current'] as int)} / '
+                '${groupDigits(e.value['target'] as int)}',
                 key: Key('goal-${e.key}-progress'),
                 style: const TextStyle(color: Colors.white70)),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              button(
-                  'goal-${e.key}-minus', '−1', () => _change(ref, e.key, -1)),
-              button('goal-${e.key}-plus', '+1', () => _change(ref, e.key, 1)),
-              button(
-                  'goal-${e.key}-plus10', '+10', () => _change(ref, e.key, 10)),
-              if (['bits', 'kicks'].contains(e.value['type']))
-                button('goal-${e.key}-plus100', '+100',
-                    () => _change(ref, e.key, 100)),
-              button('goal-${e.key}-reset', l.goalsReset,
-                  () => _change(ref, e.key, null)),
-              button('goal-${e.key}-edit', l.goalsEdit,
-                  () => _edit(context, ref, e.key)),
-              button('goal-${e.key}-delete', l.goalsDelete, () {
+            const SizedBox(height: 8),
+            // Quick adjustments share one row; management actions the next.
+            Row(children: [
+              for (final (key, label, delta) in [
+                ('minus', '−1', -1),
+                ('plus', '+1', 1),
+                ('plus10', '+10', 10),
+                if (['bits', 'kicks'].contains(e.value['type']))
+                  ('plus100', '+100', 100),
+              ]) ...[
+                if (key != 'minus') const SizedBox(width: 8),
+                Expanded(
+                    child: button('goal-${e.key}-$key', label,
+                        () => _change(ref, e.key, delta))),
+              ],
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                  child: button('goal-${e.key}-reset', l.goalsReset,
+                      () => _change(ref, e.key, null))),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: button('goal-${e.key}-edit', l.goalsEdit,
+                      () => _edit(context, ref, e.key))),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: button('goal-${e.key}-delete', l.goalsDelete, () {
                 final s = ref.read(settingsProvider);
                 unawaited(ref
                     .read(settingsProvider.notifier)
                     .update(s.copyWith(goals: {...s.goals}..remove(e.key))));
-              }),
+              })),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
           if (goals.length < 3)
             button('goals-add', l.goalsAdd, () => _edit(context, ref, null)),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(
-                child: Text(
-                    page == null ? l.goalsPageOff : l.goalsPageUrl(page),
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 11))),
-            if (page != null)
-              IconButton(
-                  tooltip: l.copyUrl,
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: page));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l.goalsUrlCopied)));
-                    }
-                  }),
-          ]),
+          const SizedBox(height: 12),
+          if (page != null)
+            PageUrlRow(
+                url: page,
+                onCopy: () async {
+                  await Clipboard.setData(ClipboardData(text: page));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.goalsUrlCopied)));
+                  }
+                }),
         ]);
   }
 
@@ -122,38 +145,46 @@ class GoalsCard extends ConsumerWidget {
                   content: SizedBox(
                       width: 280,
                       child: SingleChildScrollView(
-                          child:
-                              Column(mainAxisSize: MainAxisSize.min, children: [
-                        TextField(
-                            key: const Key('goal-title'),
-                            controller: title,
-                            maxLength: 60,
-                            decoration:
-                                InputDecoration(labelText: l.goalsName)),
-                        DropdownButton<String>(
-                            value: type,
-                            isExpanded: true,
-                            items: [
-                              for (final t in goalTypes)
-                                DropdownMenuItem(
-                                    value: t, child: Text(_type(l, t)))
-                            ],
-                            onChanged: (v) => setState(() => type = v!)),
-                        Text(l.goalsType),
-                        TextField(
-                            key: const Key('goal-target'),
-                            controller: target,
-                            keyboardType: TextInputType.number,
-                            decoration:
-                                InputDecoration(labelText: l.goalsTarget)),
-                        if (invalid) Text(l.goalsInvalid),
-                      ]))),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                            settingsLabel(l.goalsName),
+                            TextField(
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 13),
+                                key: const Key('goal-title'),
+                                controller: title,
+                                maxLength: 60,
+                                decoration: settingsInput()),
+                            settingsLabel(l.goalsType),
+                            DropdownButton<String>(
+                                value: type,
+                                isExpanded: true,
+                                items: [
+                                  for (final t in goalTypes)
+                                    DropdownMenuItem(
+                                        value: t, child: Text(_type(l, t)))
+                                ],
+                                onChanged: (v) => setState(() => type = v!)),
+                            settingsLabel(l.goalsTarget),
+                            TextField(
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 13),
+                                key: const Key('goal-target'),
+                                controller: target,
+                                keyboardType: TextInputType.number,
+                                decoration: settingsInput()),
+                            if (invalid) Text(l.goalsInvalid),
+                          ]))),
                   actions: [
-                    TextButton(
+                    OutlinedButton(
+                        style: secondarySettingsStyle(),
                         onPressed: () => Navigator.pop(context),
                         child: Text(l.cancel)),
                     ElevatedButton(
                         key: const Key('goal-save'),
+                        style: primarySettingsStyle(),
                         child: Text(l.goalsSave),
                         onPressed: () {
                           final n = int.tryParse(target.text);
@@ -195,4 +226,16 @@ class GoalsCard extends ConsumerWidget {
     title.dispose();
     target.dispose();
   }
+}
+
+/// 7420 -> "7 420" with a narrow no-break space, readable in every language
+/// and the same grouping the OBS goals page uses.
+String groupDigits(int value) {
+  final digits = value.abs().toString();
+  final out = StringBuffer(value < 0 ? '-' : '');
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(' ');
+    out.write(digits[i]);
+  }
+  return out.toString();
 }

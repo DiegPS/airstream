@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 class StyledSliderRow extends StatelessWidget {
   final String label;
+  final bool wrapLabel;
   final double value;
   final double min;
   final double max;
@@ -22,6 +23,7 @@ class StyledSliderRow extends StatelessWidget {
     this.unit,
     this.formatValue,
     this.accentColor,
+    this.wrapLabel = false,
   });
 
   String _formatText(double v) {
@@ -47,14 +49,25 @@ class StyledSliderRow extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+              if (wrapLabel)
+                Expanded(
+                    child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ))
+              else
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(

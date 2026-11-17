@@ -639,72 +639,8 @@ Widget _overlayUrlCard({
   required String description,
   required VoidCallback onCopy,
 }) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: const Color(0xFF1E1E1E),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: const Color(0xFF2C2C2C)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 26,
-              child: OutlinedButton.icon(
-                onPressed: onCopy,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFACCBFF),
-                  side: const BorderSide(color: Color(0xFF35527A)),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                icon: const Icon(Icons.copy_rounded, size: 12),
-                label: Text(
-                  l.copy,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SelectableText(
-          overlayUrl,
-          style: const TextStyle(
-            color: Color(0xFFACCBFF),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'monospace',
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          description,
-          style: const TextStyle(
-            color: Colors.white38,
-            fontSize: 10,
-            height: 1.3,
-          ),
-        ),
-      ],
-    ),
-  );
+  return PageUrlRow(
+      url: overlayUrl, title: title, description: description, onCopy: onCopy);
 }
 
 Widget _alertTestButtons({
@@ -731,30 +667,34 @@ Widget _alertTestButtons({
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _alertTestButton(
-              l.superChat,
-              () => onTest('superchat'),
-            ),
-            _alertTestButton(
-              l.noMessage,
-              () => onTest('superchat-empty'),
-            ),
-            _alertTestButton(
-              l.member,
-              () => onTest('membership'),
-            ),
-            _alertTestButton(l.testAlertBits, () => onTest('bits')),
-            _alertTestButton(
-                l.testAlertSubscription, () => onTest('subscription')),
-            _alertTestButton(l.testAlertGift, () => onTest('gift')),
-            _alertTestButton(l.testAlertRaid, () => onTest('raid')),
-            _alertTestButton(l.testAlertKicks, () => onTest('kicks')),
-          ],
-        ),
+        LayoutBuilder(
+            builder: (context, constraints) =>
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final button in <Widget>[
+                    _alertTestButton(
+                      l.superChat,
+                      () => onTest('superchat'),
+                    ),
+                    _alertTestButton(
+                      l.noMessage,
+                      () => onTest('superchat-empty'),
+                    ),
+                    _alertTestButton(
+                      l.member,
+                      () => onTest('membership'),
+                    ),
+                    _alertTestButton(l.testAlertBits, () => onTest('bits')),
+                    _alertTestButton(
+                        l.testAlertSubscription, () => onTest('subscription')),
+                    _alertTestButton(l.testAlertGift, () => onTest('gift')),
+                    _alertTestButton(l.testAlertRaid, () => onTest('raid')),
+                    _alertTestButton(l.testAlertKicks, () => onTest('kicks')),
+                  ])
+                    SizedBox(
+                        width: (constraints.maxWidth - 24) / 4,
+                        height: 64,
+                        child: button),
+                ])),
       ],
     ),
   );
@@ -763,12 +703,7 @@ Widget _alertTestButtons({
 Widget _alertTestButton(String label, VoidCallback onPressed) {
   return OutlinedButton(
     onPressed: onPressed,
-    style: OutlinedButton.styleFrom(
-      foregroundColor: const Color(0xFFACCBFF),
-      side: const BorderSide(color: Color(0xFF35527A)),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    ),
+    style: secondarySettingsStyle(),
     child: Text(
       label,
       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),

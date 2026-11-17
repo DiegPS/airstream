@@ -331,6 +331,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 style: const TextStyle(color: Colors.white54, fontSize: 11),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.alertFontSize,
                 value: s.alertFontSize,
                 min: 18,
@@ -339,6 +340,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onChanged: (v) => notifier.update(s.copyWith(alertFontSize: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.alertDuration,
                 value: s.alertDisplaySeconds.toDouble(),
                 min: 3,
@@ -383,6 +385,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                         'zoom': l.alertAnimationZoom
                       }[v]!),
               StyledSliderRow(
+                wrapLabel: true,
                 key: const Key('alert-sound-volume'),
                 label: l.alertSoundVolume,
                 value: s.alertSoundVolume.toDouble(),
@@ -493,6 +496,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               const SizedBox(height: 12),
               _section(l.styleSettings),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.fontSize,
                 value: s.overlayFontSize,
                 min: 12,
@@ -502,6 +506,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayFontSize: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.lineHeight,
                 value: s.overlayLineHeight,
                 min: 1,
@@ -510,6 +515,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayLineHeight: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.fontWeight,
                 value: s.overlayFontWeight,
                 min: 100,
@@ -519,6 +525,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayFontWeight: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.overlayBg,
                 value: s.overlayBgOpacity,
                 min: 0,
@@ -556,6 +563,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 (v) => notifier.update(s.copyWith(overlayTextShadow: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.textOutline,
                 value: s.overlayTextStroke,
                 min: 0,
@@ -590,6 +598,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 optionLabel: (v) => _alignmentLabel(l, v),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.bubbleOpacity,
                 value: s.overlayMessageOpacity,
                 min: 0,
@@ -599,6 +608,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayMessageOpacity: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.cornerRadius,
                 value: s.overlayBorderRadius,
                 min: 0,
@@ -608,6 +618,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayBorderRadius: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.verticalGap,
                 value: s.overlayMessageGap,
                 min: 0,
@@ -617,6 +628,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayMessageGap: v)),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.maxMessages,
                 value: s.overlayMaxMessages.toDouble(),
                 min: 10,
@@ -625,6 +637,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     notifier.update(s.copyWith(overlayMaxMessages: v.round())),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.messageLifetime,
                 value: s.overlayMessageTtlSeconds.toDouble(),
                 min: 5,
@@ -652,6 +665,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   onSubmitted: (_) => _saveTextSettings(),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.superChatWidth,
                   value: s.overlaySuperChatBarWidth,
                   min: 1,
@@ -672,6 +686,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 optionLabel: (v) => _animationLabel(l, v),
               ),
               StyledSliderRow(
+                wrapLabel: true,
                 label: l.duration,
                 value: s.overlayAnimationDuration,
                 min: 0.1,
@@ -690,6 +705,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               if (s.overlayThreeDEnabled) ...[
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.perspective,
                   value: s.overlayPerspective,
                   min: 500,
@@ -698,6 +714,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(overlayPerspective: v)),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.rotateX,
                   value: s.overlayRotateX,
                   min: -180,
@@ -707,6 +724,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(overlayRotateX: v)),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.rotateY,
                   value: s.overlayRotateY,
                   min: -180,
@@ -716,6 +734,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(overlayRotateY: v)),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.rotateZ,
                   value: s.overlayRotateZ,
                   min: -180,
@@ -725,6 +744,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(overlayRotateZ: v)),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.skewX,
                   value: s.overlaySkewX,
                   min: -45,
@@ -734,6 +754,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(overlaySkewX: v)),
                 ),
                 StyledSliderRow(
+                  wrapLabel: true,
                   label: l.scale,
                   value: s.overlayScale,
                   min: 0.5,
@@ -751,10 +772,6 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
             ],
           ],
         ),
-        const PollCard(),
-        const GiveawayCard(),
-        const GoalsCard(),
-        const SubathonCard(),
       ],
     );
   }
@@ -829,6 +846,7 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
                         enabled ? s.alertDisplaySeconds.clamp(3, 20) : 0)))),
         if (option.seconds != 0)
           StyledSliderRow(
+              wrapLabel: true,
               key: Key('alert-type-duration-$id'),
               label: l.alertDuration,
               value: option.seconds.toDouble(),

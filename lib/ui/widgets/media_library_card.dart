@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:io';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/services/media_library.dart';
@@ -100,17 +101,20 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
               key: const Key('media-usage'),
               style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 8),
-          ElevatedButton.icon(
-              key: const Key('media-add'),
-              onPressed: _busy ? null : _add,
-              icon: const Icon(Icons.add),
-              label: Text(l.mediaAdd)),
+          SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                  style: primarySettingsStyle(),
+                  key: const Key('media-add'),
+                  onPressed: _busy ? null : _add,
+                  icon: const Icon(Icons.add),
+                  label: Text(l.mediaAdd))),
           for (final error in _errors)
             Text(error, style: const TextStyle(color: Color(0xFFFFB15C))),
           for (final e in entries.entries)
             Padding(
                 key: Key('media-item-${e.key}'),
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: 12),
                 child: Row(children: [
                   SizedBox(
                       width: 40,
@@ -150,6 +154,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                   IconButton(
                       key: Key('media-delete-${e.key}'),
                       tooltip: l.mediaDelete,
+                      color: const Color(0xFFFF6B6B),
                       onPressed: _busy ? null : () => _delete(e.key),
                       icon: const Icon(Icons.delete_outline, size: 18)),
                 ])),

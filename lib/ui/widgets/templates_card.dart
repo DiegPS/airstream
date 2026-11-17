@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
@@ -119,7 +120,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(l.templatesCancel)),
-                  FilledButton(
+                  ElevatedButton(
+                      style: primarySettingsStyle(),
                       key: const Key('template-import-confirm'),
                       onPressed: () => Navigator.pop(context, true),
                       child: Text(l.templateImport))
@@ -166,12 +168,15 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                     title: Text(l.templatesDelete),
                     content: Text(l.templatesDeleteConfirm(info.manifest.name)),
                     actions: [
-                      TextButton(
+                      OutlinedButton(
+                          style: secondarySettingsStyle(),
                           onPressed: () => Navigator.pop(context, false),
                           child: Text(l.templatesCancel)),
-                      FilledButton(
+                      OutlinedButton(
+                          style: secondarySettingsStyle(destructive: true),
                           onPressed: () => Navigator.pop(context, true),
-                          child: Text(l.templatesDelete))
+                          child: Text(l.templatesDelete,
+                              style: const TextStyle(color: Color(0xFFFF6B6B))))
                     ]));
         if (yes == true) {
           await _library!.deleteTemplate(info.id);
@@ -207,25 +212,37 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         icon: Icons.dashboard_customize_outlined,
         description: l.templatesDescription,
         children: [
+          SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                  style: primarySettingsStyle(),
+                  key: const Key('templates-new'),
+                  onPressed: enabled ? () => _action(_new) : null,
+                  child: Text(l.templatesNew))),
+          const SizedBox(height: 8),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+                child: OutlinedButton(
+                    style: secondarySettingsStyle(),
+                    key: const Key('templates-ai'),
+                    onPressed: enabled
+                        ? () => showDialog<void>(
+                              context: context,
+                              builder: (_) => _AiTemplateDialog(
+                                  library: _library!, url: _url),
+                            )
+                        : null,
+                    child: Text(l.templatesAi))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: OutlinedButton(
+                    style: secondarySettingsStyle(),
+                    key: const Key('templates-import'),
+                    onPressed: enabled ? () => _action(_import) : null,
+                    child: Text(l.templateImport)))
+          ]),
+          const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            TextButton(
-                key: const Key('templates-import'),
-                onPressed: enabled ? () => _action(_import) : null,
-                child: Text(l.templateImport)),
-            FilledButton.tonal(
-                key: const Key('templates-ai'),
-                onPressed: enabled
-                    ? () => showDialog<void>(
-                          context: context,
-                          builder: (_) =>
-                              _AiTemplateDialog(library: _library!, url: _url),
-                        )
-                    : null,
-                child: Text(l.templatesAi)),
-            FilledButton(
-                key: const Key('templates-new'),
-                onPressed: enabled ? () => _action(_new) : null,
-                child: Text(l.templatesNew)),
             TextButton(
                 key: const Key('templates-open-folder'),
                 onPressed: enabled
@@ -235,22 +252,26 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                         })
                     : null,
                 child: Text(l.templatesOpenFolder)),
-            TextButton(
-                key: const Key('templates-test'),
-                onPressed: enabled
-                    ? () {
-                        final sent = ref
-                                .read(appControllerProvider)
-                                .templateServer
-                                ?.broadcastTemplateTest() ??
-                            false;
-                        setState(() => _notice =
-                            sent ? l.templatesTestSent : l.templatesTestEmpty);
-                      }
-                    : null,
-                child: Text(l.templatesTest)),
+            if (counts.values.any((count) => count > 0))
+              TextButton(
+                  key: const Key('templates-test'),
+                  onPressed: enabled
+                      ? () {
+                          final sent = ref
+                                  .read(appControllerProvider)
+                                  .templateServer
+                                  ?.broadcastTemplateTest() ??
+                              false;
+                          setState(() => _notice = sent
+                              ? l.templatesTestSent
+                              : l.templatesTestEmpty);
+                        }
+                      : null,
+                  child: Text(l.templatesTest))
           ]),
-          if (library.isLoading) const LinearProgressIndicator(),
+          if (library.isLoading)
+            const LinearProgressIndicator(
+                color: Color(0xFF53FC18), backgroundColor: Color(0xFF262626)),
           if (library.hasError) Text(l.templatesFailed),
           if (_notice != null)
             Padding(
@@ -260,7 +281,9 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
           if (_items.isEmpty && !library.isLoading)
             Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(l.templatesEmpty)),
+                child: Text(l.templatesEmptyGuide,
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12, height: 1.6))),
           for (final info in _items)
             Padding(
                 key: Key('template-${info.id}'),
@@ -292,7 +315,11 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                                         key:
                                             Key('template-${e.key}-${info.id}'),
                                         value: e.key,
-                                        child: Text(e.value))
+                                        child: Text(e.value,
+                                            style: e.key == 'delete'
+                                                ? const TextStyle(
+                                                    color: Color(0xFFFF6B6B))
+                                                : null))
                                 ])
                       ]),
                       Text(
@@ -394,14 +421,15 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
             width: 420,
             child: SingleChildScrollView(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
+              settingsLabel(l.templatesName),
               TextField(
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
                   key: const Key('template-new-name'),
                   controller: _name,
                   autofocus: true,
                   maxLength: 60,
-                  decoration: InputDecoration(
-                      labelText: l.templatesName,
-                      errorText: _invalid ? l.templatesRequired : null)),
+                  decoration: settingsInput(
+                      error: _invalid ? l.templatesRequired : null)),
               for (final starter in TemplateStarter.values)
                 ListTile(
                     key: Key('template-starter-${starter.name}'),
@@ -413,10 +441,12 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
                     onTap: () => setState(() => _starter = starter)),
             ]))),
         actions: [
-          TextButton(
+          OutlinedButton(
+              style: secondarySettingsStyle(),
               onPressed: () => Navigator.pop(context),
               child: Text(l.templatesCancel)),
-          FilledButton(
+          ElevatedButton(
+              style: primarySettingsStyle(),
               key: const Key('template-new-create'),
               onPressed: () {
                 if (_name.text.trim().isEmpty) {
@@ -503,10 +533,12 @@ class _TemplateEditorState extends State<_TemplateEditor> {
           context: context,
           builder: (context) =>
               AlertDialog(title: Text(l.templatesUnsaved), actions: [
-                TextButton(
+                OutlinedButton(
+                    style: secondarySettingsStyle(),
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(l.templatesCancel)),
-                FilledButton(
+                ElevatedButton(
+                    style: primarySettingsStyle(),
                     onPressed: () => Navigator.pop(context, true),
                     child: Text(l.templatesDiscard))
               ]));
@@ -550,7 +582,8 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                                 Expanded(
                                     child: Text(
                                         '${l.templatesEdit}: ${widget.info.manifest.name}')),
-                                TextButton(
+                                OutlinedButton(
+                                    style: secondarySettingsStyle(),
                                     onPressed: () async {
                                       try {
                                         await _explore('${widget.url}?demo=1');
@@ -569,7 +602,9 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                                 Tab(text: 'JS')
                               ]),
                               if (_loading || _saving)
-                                const LinearProgressIndicator(),
+                                const LinearProgressIndicator(
+                                    color: Color(0xFF53FC18),
+                                    backgroundColor: Color(0xFF262626)),
                               Expanded(
                                   child: TabBarView(children: [
                                 for (var i = 0; i < 3; i++)
@@ -593,21 +628,24 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                                                   TextAlignVertical.top,
                                               style: const TextStyle(
                                                   fontFamily: 'monospace',
-                                                  fontSize: 14),
-                                              decoration: const InputDecoration(
-                                                  border: OutlineInputBorder()),
+                                                  color: Colors.white,
+                                                  fontSize: 13),
+                                              decoration: settingsInput(),
                                               onChanged: (_) =>
                                                   setState(() {})))
                               ])),
                               if (_notice != null) Text(_notice!),
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                              Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
-                                    TextButton(
+                                    OutlinedButton(
+                                        style: secondarySettingsStyle(),
                                         onPressed: _saving ? null : _close,
                                         child: Text(l.templatesClose)),
-                                    const SizedBox(width: 8),
-                                    FilledButton(
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                        style: primarySettingsStyle(),
                                         key: const Key('template-editor-save'),
                                         onPressed:
                                             _loading || _saving ? null : _save,
@@ -680,20 +718,24 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
             children: [
               Text(l.templatesAiSteps),
               const SizedBox(height: 20),
+              settingsLabel(l.templatesAiDescription),
               TextField(
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
                   key: const Key('templates-ai-description'),
                   controller: _description,
                   autofocus: true,
                   enabled: !_busy,
                   minLines: 3,
                   maxLines: 6,
-                  decoration: InputDecoration(
-                      labelText: l.templatesAiDescription,
-                      errorText: _invalid ? l.templatesRequired : null),
+                  decoration: settingsInput(
+                      error: _invalid ? l.templatesRequired : null),
                   onChanged: (_) {
                     if (_invalid) setState(() => _invalid = false);
                   }),
-              if (_busy) const LinearProgressIndicator(),
+              if (_busy)
+                const LinearProgressIndicator(
+                    color: Color(0xFF53FC18),
+                    backgroundColor: Color(0xFF262626)),
               if (_notice != null)
                 Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -701,14 +743,17 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
             ],
           ))),
       actions: [
-        TextButton(
+        OutlinedButton(
+            style: secondarySettingsStyle(),
             onPressed: _busy ? null : () => Navigator.pop(context),
             child: Text(l.templatesClose)),
-        TextButton(
+        OutlinedButton(
+            style: secondarySettingsStyle(),
             key: const Key('templates-ai-open'),
             onPressed: _busy ? null : () => _run(false),
             child: Text(l.templatesOpenFolder)),
-        FilledButton(
+        ElevatedButton(
+            style: primarySettingsStyle(),
             key: const Key('templates-ai-copy'),
             onPressed: _busy ? null : () => _run(true),
             child: Text(l.templatesAiCopy)),

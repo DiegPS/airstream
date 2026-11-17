@@ -242,7 +242,6 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                 label: Text(l.sessionSummary),
               ),
             ),
-            const RecentAlertsCard(),
             const SizedBox(height: 14),
             const Divider(height: 1, color: Color(0xFF2A2A2A)),
             const SizedBox(height: 14),

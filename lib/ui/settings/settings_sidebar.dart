@@ -452,7 +452,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
   }
 
-  static const _tabCount = 6;
+  static const _tabCount = 7;
 
   void _selectTab(int index) {
     if (index == _selectedTab) return;
@@ -591,6 +591,34 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           '$overlayCopyUrl/alerts',
         );
       case 4:
+        final ready = s.overlayEnabled &&
+            ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
+                OverlayServerPhase.ready;
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!ready)
+                UiCard(
+                    key: const Key('live-server-notice'),
+                    title: l.liveServerOff,
+                    description: l.liveServerNotice,
+                    icon: Icons.info_outline_rounded,
+                    children: [
+                      SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                              key: const Key('live-open-obs'),
+                              style: secondarySettingsStyle(),
+                              onPressed: () => _selectTab(3),
+                              child: Text(l.liveOpenObs))),
+                    ]),
+              const PollCard(),
+              const GiveawayCard(),
+              const GoalsCard(),
+              const SubathonCard(),
+              const RecentAlertsCard(),
+            ]);
+      case 5:
         return const TemplatesCard();
       default:
         return _buildSystemTab(ref, context, l, s, notifier);
@@ -663,6 +691,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           label: l.obsAndOverlay,
           badgeColor: obsConnected ? const Color(0xFF5B9CFF) : null,
         ),
+        SidebarTabItem(icon: Icons.bolt_rounded, label: l.liveTab),
         SidebarTabItem(
             icon: Icons.dashboard_customize_outlined, label: l.templatesTitle),
         SidebarTabItem(

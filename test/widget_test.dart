@@ -1,3 +1,9 @@
+import 'package:airstream/models/app_notice.dart';
+import 'package:airstream/ui/widgets/settings_controls.dart';
+import 'package:airstream/ui/widgets/poll_card.dart';
+import 'package:airstream/ui/widgets/giveaway_card.dart';
+import 'package:airstream/ui/widgets/goals_card.dart';
+import 'package:airstream/ui/widgets/subathon_card.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'dart:convert';
 import 'package:archive/archive.dart';
@@ -381,7 +387,10 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('Templates'));
     await tester.pumpAndSettle();
-    expect(find.text('No templates yet'), findsOneWidget);
+    expect(
+        find.text(
+            'Start from an example\nAsk an AI agent\nImport a template someone shared'),
+        findsOneWidget);
     expect(await tester.runAsync(library.exists), isFalse);
     Future<void> flushFiles() async {
       for (var i = 0; i < 100; i++) {
@@ -488,7 +497,7 @@ void main() {
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(find.textContaining('cannot be undone'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Delete'));
     await flushFiles();
     await tester.pump();
     await tester.runAsync(
@@ -511,7 +520,7 @@ void main() {
         overrides: [settingsProvider.overrideWith((ref) => settings)],
         child: const AirstreamApp()));
     await tester.pump();
-    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.tap(find.byTooltip('Live'));
     await tester.pump();
     Future<void> press(String key) async {
       final button = find.byKey(Key(key));
@@ -644,6 +653,8 @@ void main() {
     ], child: const AirstreamApp()));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Connections').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Live'));
     await tester.pumpAndSettle();
     final replay = find.byKey(const Key('recent-alert-replay-one'));
     await tester.ensureVisible(replay);
@@ -1440,7 +1451,7 @@ void main() {
     final container =
         ProviderScope.containerOf(tester.element(find.byType(AirstreamApp)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.tap(find.byTooltip('Live'));
     await tester.pumpAndSettle();
     final add = find.byKey(const Key('goals-add'));
     await tester.ensureVisible(add);
@@ -1485,7 +1496,7 @@ void main() {
       appControllerProvider.overrideWithValue(controller),
     ], child: const AirstreamApp()));
     await tester.pump();
-    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.tap(find.byTooltip('Live'));
     await tester.pump();
     final start = find.byKey(const Key('giveaway-start'));
     await tester.ensureVisible(start);
@@ -1531,7 +1542,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.tap(find.byTooltip('Live'));
     await tester.pump();
 
     final start = find.byKey(const Key('poll-start'));
@@ -1916,6 +1927,168 @@ void main() {
     expect(find.text('Open the alerts overlay in OBS/browser first'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  for (final language in ['en', 'es']) {
+    for (final ready in [false, true]) {
+      testWidgets('360px settings $language server ready=$ready',
+          (tester) async {
+        tester.view.physicalSize = const Size(1000, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            const MethodChannel('window_manager'), (call) async => false);
+        addTearDown(() => tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+                const MethodChannel('window_manager'), null));
+        final overrides = [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings(
+              language,
+              '',
+              SettingsModel(appLanguageCode: language, overlayEnabled: ready))),
+          overlayUrlProvider
+              .overrideWithValue(ready ? 'http://localhost:9456' : null),
+          overlayServerStateProvider.overrideWith((ref) => Stream.value(
+              OverlayServerState(
+                  phase: ready
+                      ? OverlayServerPhase.ready
+                      : OverlayServerPhase.disabled))),
+          templateCountsProvider.overrideWith((ref) => Stream.value({})),
+        ];
+        await tester.pumpWidget(
+            ProviderScope(overrides: overrides, child: const AirstreamApp()));
+        await tester.pump();
+        final sidebarFinder = find.byWidgetPredicate(
+            (widget) => widget.runtimeType.toString() == '_SettingsSidebar');
+        final sidebar = tester.widget<Widget>(sidebarFinder);
+        final theme = Theme.of(tester.element(sidebarFinder));
+        await tester.pumpWidget(ProviderScope(
+            overrides: overrides,
+            child: MaterialApp(
+              theme: theme,
+              locale: Locale(language),
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(body: SizedBox(width: 360, child: sidebar)),
+            )));
+        await tester.pumpAndSettle();
+        expect(tester.getSize(sidebarFinder).width, 360);
+        final live = language == 'en' ? 'Live' : 'En directo';
+        final obs = language == 'en' ? 'OBS & Overlay' : 'OBS y superposición';
+        await tester.tap(find.byTooltip(obs));
+        await tester.pump();
+        expect(find.byType(PollCard), findsNothing);
+        expect(find.byType(GiveawayCard), findsNothing);
+        expect(find.byType(GoalsCard), findsNothing);
+        expect(find.byType(SubathonCard), findsNothing);
+        expect(find.byType(RecentAlertsCard), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byTooltip(live));
+        await tester.pump();
+        for (final type in [
+          PollCard,
+          GiveawayCard,
+          GoalsCard,
+          SubathonCard,
+          RecentAlertsCard
+        ]) {
+          expect(find.byType(type), findsOneWidget);
+        }
+        expect(find.byKey(const Key('live-server-notice')),
+            ready ? findsNothing : findsOneWidget);
+        if (ready) {
+          final rows = find.descendant(
+              of: find.byType(PollCard), matching: find.byType(PageUrlRow));
+          expect(tester.widget<PageUrlRow>(rows).url,
+              'http://localhost:9456/poll');
+          for (final (type, path) in [
+            (GiveawayCard, 'giveaway'),
+            (GoalsCard, 'goals'),
+            (SubathonCard, 'timer')
+          ]) {
+            expect(
+                tester
+                    .widget<PageUrlRow>(find.descendant(
+                        of: find.byType(type),
+                        matching: find.byType(PageUrlRow)))
+                    .url,
+                'http://localhost:9456/$path');
+          }
+          String? copied;
+          tester.binding.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copied = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          });
+          final copy =
+              find.descendant(of: rows, matching: find.byType(IconButton));
+          await tester.ensureVisible(copy);
+          await tester.tap(copy);
+          await tester.pump();
+          expect(copied, 'http://localhost:9456/poll');
+          tester.binding.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+        }
+        final segments = [
+          for (final key in ['sub-5', 'sub-1', 'add-1', 'add-5'])
+            find.byKey(Key('subathon-$key'))
+        ];
+        final y = tester.getTopLeft(segments.first).dy;
+        for (final segment in segments) {
+          expect(tester.getTopLeft(segment).dy, y);
+          expect(tester.getSize(segment).width,
+              tester.getSize(segments.first).width);
+        }
+        expect(tester.getSize(find.byType(SubathonCard)).width,
+            lessThanOrEqualTo(360));
+        expect(tester.takeException(), isNull);
+        if (!ready) {
+          final button = find.byKey(const Key('live-open-obs'));
+          await tester.ensureVisible(button);
+          await tester.tap(button);
+          await tester.pump();
+          expect(
+              find.text(
+                  language == 'en' ? 'OBS Integration' : 'Integración OBS'),
+              findsOneWidget);
+        }
+        await tester
+            .tap(find.byTooltip(language == 'en' ? 'Templates' : 'Plantillas'));
+        await tester.pump();
+        expect(find.byKey(const Key('templates-test')), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
+  }
+  testWidgets('Templates test events appear only for an open template page',
+      (tester) async {
+    final counts = StreamController<Map<String, int>>();
+    addTearDown(counts.close);
+    await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+          templateCountsProvider.overrideWith((ref) => counts.stream),
+        ],
+        child: const MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+                body: SizedBox(
+                    width: 360,
+                    child: SingleChildScrollView(child: TemplatesCard()))))));
+    await tester.pump();
+    expect(find.byKey(const Key('templates-test')), findsNothing);
+    counts.add({'example': 1});
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('templates-test')), findsOneWidget);
+    counts.add({'example': 0});
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('templates-test')), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

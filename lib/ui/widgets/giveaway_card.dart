@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -34,8 +35,21 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
         OverlayServerPhase.ready;
     final pageUrl = ready && url != null ? '$url/giveaway' : null;
-    Widget button(String key, String label, VoidCallback? action) =>
-        ElevatedButton(key: Key(key), onPressed: action, child: Text(label));
+    Widget button(String key, String label, VoidCallback? action) => key ==
+                'giveaway-close' ||
+            key == 'giveaway-clear'
+        ? OutlinedButton(
+            key: Key(key),
+            style: secondarySettingsStyle(destructive: key == 'giveaway-clear'),
+            onPressed: action,
+            child: Text(label))
+        : SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+                key: Key(key),
+                style: primarySettingsStyle(),
+                onPressed: action,
+                child: Text(label)));
     return UiCard(
         key: const Key('giveaway-card'),
         title: l.giveawayTitle,
@@ -43,13 +57,13 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
         icon: Icons.card_giftcard_rounded,
         children: [
           if (state == null) ...[
+            settingsLabel(l.giveawayKeyword),
             TextField(
                 key: const Key('giveaway-keyword'),
                 controller: _keyword,
                 onChanged: (_) => setState(() {}),
                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                    labelText: l.giveawayKeyword, isDense: true)),
+                decoration: settingsInput()),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
@@ -79,7 +93,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
               Text(l.giveawayClosed,
                   style: const TextStyle(color: Colors.white70)),
             if (winner != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(l.giveawayWinner,
                   style: const TextStyle(color: Colors.white70)),
               Row(children: [
@@ -107,43 +121,36 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                         const TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
             ],
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              if (state.phase == GiveawayPhase.open)
-                button('giveaway-close', l.giveawayClose,
-                    controller.closeGiveaway),
-              button(
-                  winner == null ? 'giveaway-draw' : 'giveaway-redraw',
-                  winner == null ? l.giveawayDraw : l.giveawayRedraw,
-                  state.entrantCount > state.winners.length
-                      ? () {
-                          controller.drawGiveaway();
-                        }
-                      : null),
-              button(
-                  'giveaway-clear', l.giveawayClear, controller.clearGiveaway),
-            ]),
+            const SizedBox(height: 12),
+            Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 8,
+                children: [
+                  if (state.phase == GiveawayPhase.open)
+                    button('giveaway-close', l.giveawayClose,
+                        controller.closeGiveaway),
+                  button(
+                      winner == null ? 'giveaway-draw' : 'giveaway-redraw',
+                      winner == null ? l.giveawayDraw : l.giveawayRedraw,
+                      state.entrantCount > state.winners.length
+                          ? () {
+                              controller.drawGiveaway();
+                            }
+                          : null),
+                  button('giveaway-clear', l.giveawayClear,
+                      controller.clearGiveaway),
+                ]),
           ],
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(
-                child: Text(
-                    pageUrl == null
-                        ? l.giveawayPageOff
-                        : l.giveawayPageUrl(pageUrl),
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 11))),
-            if (pageUrl != null)
-              IconButton(
-                  tooltip: l.copyUrl,
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: pageUrl));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.giveawayUrlCopied)));
-                  }),
-          ]),
+          const SizedBox(height: 12),
+          if (pageUrl != null)
+            PageUrlRow(
+                url: pageUrl,
+                onCopy: () async {
+                  await Clipboard.setData(ClipboardData(text: pageUrl));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l.giveawayUrlCopied)));
+                }),
         ]);
   }
 }

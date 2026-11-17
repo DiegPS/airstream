@@ -1,3 +1,4 @@
+import 'settings_controls.dart';
 import 'dart:async';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/subathon_timer.dart';
@@ -6,7 +7,6 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -48,9 +48,21 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
         OverlayServerPhase.ready;
     final page = ready && url != null ? '$url/timer' : null;
     Widget button(String key, String label,
-            SettingsModel Function(SettingsModel, int) action) =>
-        ElevatedButton(
-            key: Key(key), onPressed: () => change(action), child: Text(label));
+            SettingsModel Function(SettingsModel, int) action,
+            {bool primary = false}) =>
+        primary
+            ? SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                    key: Key(key),
+                    style: primarySettingsStyle(),
+                    onPressed: () => change(action),
+                    child: Text(label)))
+            : OutlinedButton(
+                key: Key(key),
+                style: secondarySettingsStyle(),
+                onPressed: () => change(action),
+                child: Text(label));
     Widget field(String key, String label, int value, int min, int max,
             SettingsModel Function(SettingsModel, int) update) =>
         Padding(
@@ -67,46 +79,72 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
         description: l.subathonDescription,
         icon: Icons.timer_rounded,
         children: [
-          Text(SubathonTimer.format(SubathonTimer.remaining(s, now)),
-              key: const Key('subathon-remaining'),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700)),
-          Text(
-              switch (phase) {
-                'running' => l.subathonRunning,
-                'paused' => l.subathonPaused,
-                'ended' => l.subathonEnded,
-                _ => l.subathonIdle
-              },
-              style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 16),
-          field(
-              'subathon-start-minutes',
-              l.subathonStartMinutes,
-              s.subathonStartMinutes,
-              1,
-              10080,
-              (s, n) => s.copyWith(subathonStartMinutes: n)),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            button('subathon-start', l.subathonStart, SubathonTimer.start),
-            if (phase == 'running')
-              button('subathon-pause', l.subathonPause, SubathonTimer.pause),
-            if (phase == 'paused')
-              button('subathon-resume', l.subathonResume, SubathonTimer.resume),
-            button('subathon-reset', l.subathonReset, SubathonTimer.reset),
+          Row(children: [
+            Expanded(
+                child: Text(
+                    SubathonTimer.format(SubathonTimer.remaining(s, now)),
+                    key: const Key('subathon-remaining'),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700))),
+            Chip(
+                label: Text(switch (phase) {
+                  'running' => l.subathonRunning,
+                  'paused' => l.subathonPaused,
+                  'ended' => l.subathonEnded,
+                  _ => l.subathonIdle
+                }),
+                labelStyle: TextStyle(
+                    fontSize: 11,
+                    color: switch (phase) {
+                      'running' => const Color(0xFF53FC18),
+                      'paused' => Colors.amber,
+                      'ended' => const Color(0xFFFF6B6B),
+                      _ => Colors.white54
+                    }),
+                backgroundColor: const Color(0xFF262626)),
           ]),
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+                child: field(
+                    'subathon-start-minutes',
+                    l.subathonStartMinutes,
+                    s.subathonStartMinutes,
+                    1,
+                    10080,
+                    (s, n) => s.copyWith(subathonStartMinutes: n))),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: button(
+                        'subathon-start', l.subathonStart, SubathonTimer.start,
+                        primary: phase != 'running' && phase != 'paused'))),
+          ]),
+          if (phase == 'running')
+            button('subathon-pause', l.subathonPause, SubathonTimer.pause,
+                primary: true),
+          if (phase == 'paused')
+            button('subathon-resume', l.subathonResume, SubathonTimer.resume,
+                primary: true),
           const SizedBox(height: 8),
-          Wrap(spacing: 6, runSpacing: 6, children: [
+          SizedBox(
+              width: double.infinity,
+              child: button(
+                  'subathon-reset', l.subathonReset, SubathonTimer.reset)),
+          const SizedBox(height: 8),
+          Row(spacing: 8, children: [
             for (final (key, label, seconds) in [
               ('sub-5', '−5m', -300),
               ('sub-1', '−1m', -60),
               ('add-1', '+1m', 60),
               ('add-5', '+5m', 300)
             ])
-              button('subathon-$key', label,
-                  (s, now) => SubathonTimer.addSeconds(s, now, seconds)),
+              Expanded(
+                  child: button('subathon-$key', label,
+                      (s, now) => SubathonTimer.addSeconds(s, now, seconds))),
           ]),
           Material(
               color: Colors.transparent,
@@ -145,18 +183,7 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                         10080,
                         (s, n) => s.copyWith(subathonMaxRemainingMinutes: n)),
                   ])),
-          Row(children: [
-            Expanded(
-                child: Text(page ?? l.subathonPageOff,
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 11))),
-            if (page != null)
-              IconButton(
-                  tooltip: l.copyUrl,
-                  icon: const Icon(Icons.copy_rounded, size: 16),
-                  onPressed: () =>
-                      Clipboard.setData(ClipboardData(text: page))),
-          ]),
+          if (page != null) PageUrlRow(url: page),
         ]);
   }
 }
@@ -206,9 +233,9 @@ class _TimerNumberFieldState extends State<_TimerNumberField> {
             controller: controller,
             focusNode: focus,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-                hintText: '${widget.minimum}–${widget.maximum}', isDense: true),
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration:
+                settingsInput(hint: '${widget.minimum}–${widget.maximum}'),
             onChanged: (text) {
               final n = int.tryParse(text);
               if (n != null) {

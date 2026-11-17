@@ -118,7 +118,7 @@
   "noOverlayClientConnected": "No hay clientes de superposición conectados",
   "reloadOverlay": "Recargar superposición",
   "alerts": "Alertas",
-  "alertsDescription": "Los Super Chats de YouTube y los eventos de membresía de YouTube y Kick se muestran en /alerts. Los datos conservan la plataforma de origen.",
+  "alertsDescription": "Muestra Super Chats y membresías de YouTube, Bits, suscripciones, regalos y raids de Twitch, y suscripciones, regalos, hosts y Kicks de Kick en /alerts. Puedes desactivar cada tipo abajo.",
   "alertFontSize": "Tamaño de fuente de alerta",
   "alertDuration": "Duración de alerta",
   "alertAvatars": "Avatares de alerta",
@@ -444,7 +444,7 @@
   "pollClosed": "Resultados finales",
   "pollSecondsLeft": "Quedan {seconds} s",
   "pollVotes": "{count, plural, =1{1 voto} other{{count} votos}}",
-  "pollOverlayOff": "Activa el servidor de superposición para mostrar la encuesta en OBS.",
+  "pollOverlayOff": "Activa el servidor de superposición para mostrarlo en OBS.",
   "pollOverlayUrl": "Añade {url} a OBS como fuente de navegador para mostrarla.",
   "pollOverlayUrlCopied": "URL de la encuesta copiada",
   "copyUrl": "Copiar URL",
@@ -676,7 +676,7 @@
       }
     }
   },
-  "giveawayPageOff": "Activa el servidor de páginas para usar /giveaway en OBS.",
+  "giveawayPageOff": "Activa el servidor de superposición para mostrarlo en OBS.",
   "giveawayPageUrl": "Página para OBS: {url}",
   "@giveawayPageUrl": {
     "placeholders": {
@@ -703,7 +703,7 @@
   "goalsReached": "¡Meta cumplida!",
   "goalsPageTitle": "Metas Airstream",
   "goalsInvalid": "Escribe un título y un objetivo entre 1 y 1 000 000.",
-  "goalsPageOff": "Activa el servidor de páginas para usar /goals en OBS.",
+  "goalsPageOff": "Activa el servidor de superposición para mostrarlo en OBS.",
   "goalsPageUrl": "Página para OBS: {url}",
   "goalsUrlCopied": "URL de la página de metas copiada",
   "@goalsPageUrl": {
@@ -728,7 +728,7 @@
   "subathonRunning": "En marcha",
   "subathonPaused": "En pausa",
   "subathonEnded": "¡Se acabó el tiempo!",
-  "subathonPageOff": "Activa el servidor de páginas para usar /timer en OBS.",
+  "subathonPageOff": "Activa el servidor de superposición para mostrarlo en OBS.",
   "subathonDescription": "Añade tiempo con los apoyos durante tu directo.",
   "subathonUrlCopied": "URL de la página del temporizador copiada",
   "mediaLibraryTitle": "Biblioteca de medios",
@@ -875,5 +875,10 @@
         "type": "int"
       }
     }
-  }
+  },
+  "liveTab": "En directo",
+  "liveServerOff": "Servidor de superposición apagado",
+  "liveOpenObs": "Ir a OBS y superposición",
+  "liveServerNotice": "Para mostrar estas herramientas en OBS, activa el servidor de superposición.",
+  "templatesEmptyGuide": "Empieza con un ejemplo\nPídeselo a un agente de IA\nImporta una plantilla compartida"
 }
