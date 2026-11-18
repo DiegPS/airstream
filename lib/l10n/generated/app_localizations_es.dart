@@ -1722,6 +1722,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String sessionSupportBits(String name, String amount) {
+    return '$name envió $amount';
+  }
+
+  @override
   String sessionSupportMember(String name, int months) {
     String _temp0 = intl.Intl.pluralLogic(
       months,

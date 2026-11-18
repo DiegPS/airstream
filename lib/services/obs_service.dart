@@ -267,6 +267,14 @@ class ObsService {
   }) async {
     final trimmedHost = host.trim();
     if (trimmedHost.isEmpty) {
+      // Clearing the host while connected must close the old connection
+      // too, or its socket, polling and events keep updating the app.
+      final generation = ++_generation;
+      LogSanitizer.forgetSecret(_connectionPassword);
+      _connectionPassword = '';
+      _stopStatsPolling();
+      await _closeCurrentSocket();
+      if (generation != _generation) return;
       _emit(
         _state.copyWith(
           connected: false,

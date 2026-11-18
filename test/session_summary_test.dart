@@ -80,7 +80,11 @@ void main() {
           platform: Platform.kick,
           membership: true,
           kind: MembershipEventKind.gift,
-          gifts: 5));
+          gifts: 5))
+      // Bits are paid messages too, but not Super Chats.
+      ..handleMessage(_chat('Animador',
+          platform: Platform.twitch,
+          superChat: const SuperChat(amount: '100 Bits', color: '#9146FF')));
     final raid = ChatProviderEvent(
       platform: Platform.twitch,
       kind: ChatProviderEventKind.raid,
@@ -108,11 +112,12 @@ void main() {
         'Miembro became a member',
         'Fiel: 12 months subscribed',
         'Generoso gifted 5 subscriptions',
+        'Animador cheered 100 Bits',
         'Amigo raided with 40 viewers',
       ],
     );
-    expect(collector.summary.messages, 1,
-        reason: 'membership events are support, not chat messages');
+    expect(collector.summary.messages, 2,
+        reason: 'membership events are support; the Bits message is chat');
   });
 
   test('uses alert types, support values and session-wide reconnect dedupe',

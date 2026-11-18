@@ -512,6 +512,7 @@
   "sessionSupporters": "Apoyos",
   "sessionNoSupporters": "Esta vez no hubo Super Chats, miembros ni raids.",
   "sessionSupportSuperChat": "{name} envió un Super Chat de {amount}",
+  "sessionSupportBits": "{name} envió {amount}",
   "sessionSupportMember": "{months, plural, =1{{name} se hizo miembro} other{{name}: {months} meses como miembro}}",
   "sessionSupportSubscription": "{months, plural, =1{{name} se suscribió} other{{name}: {months} meses suscrito}}",
   "sessionSupportGift": "{count, plural, =1{{name} regaló una suscripción} other{{name} regaló {count} suscripciones}}",

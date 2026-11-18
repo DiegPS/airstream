@@ -3135,6 +3135,12 @@ abstract class AppLocalizations {
   /// **'{name} sent a Super Chat of {amount}'**
   String sessionSupportSuperChat(String name, String amount);
 
+  /// No description provided for @sessionSupportBits.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} cheered {amount}'**
+  String sessionSupportBits(String name, String amount);
+
   /// No description provided for @sessionSupportMember.
   ///
   /// In en, this message translates to:

@@ -188,6 +188,36 @@ void main() {
     expect(captions.disposed, isTrue);
   });
 
+  test('blocking a user or word drops their queued speech', () async {
+    const base = SettingsModel(
+      ttsEnabled: true,
+      twitchEnabled: true,
+      twitchChannel: 'channel',
+    );
+    coordinator.applySettings(base, connectChats: true);
+    await settleCoordinatorTasks();
+    ChatMessage message(String id, String author, String text) => ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: ChatAuthor(name: author, channelId: author),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.now().toUtc(),
+        );
+    coordinator.handleChatMessage(message('1', 'troll', 'hola'));
+    coordinator.handleChatMessage(message('2', 'viewer', 'spoiler aquí'));
+    coordinator.handleChatMessage(message('3', 'amiga', 'buenas'));
+    expect(tts.spoken, hasLength(3));
+
+    coordinator.applySettings(base.copyWith(blockedUsers: ['troll']),
+        connectChats: true);
+    expect(tts.spoken, ['viewer says: spoiler aquí', 'amiga says: buenas']);
+    coordinator.applySettings(
+        base.copyWith(blockedUsers: ['troll'], blockedWords: ['spoiler']),
+        connectChats: true);
+    expect(tts.spoken, ['amiga says: buenas']);
+    await coordinator.silenceTts();
+  });
+
   test('a moderated message is never read aloud', () async {
     coordinator.applySettings(
       const SettingsModel(

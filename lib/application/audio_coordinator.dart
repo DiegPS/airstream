@@ -10,6 +10,8 @@ import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
@@ -231,6 +233,15 @@ class AudioCoordinator {
     _highlighter = ChatHighlighter.fromSettings(settings);
     _hasHighlightSound = settings.highlightSounds.values
         .any((sound) => sound != HighlightSounds.none);
+    // Blocking someone (or a word) also drops their messages still waiting
+    // to be read aloud, like the chat drops them from the screen.
+    if (previous != null &&
+        (!listEquals(previous.blockedUsers, settings.blockedUsers) ||
+            !listEquals(previous.blockedWords, settings.blockedWords))) {
+      final filter = ChatFilter(settings);
+      _tts.cancelWhere(
+          (tag) => tag is ChatMessage && filter.blocksMessage(tag));
+    }
 
     // Reconfiguring stops, reloads or checks models on disk, so it only
     // happens when a setting those services use changes, not on every

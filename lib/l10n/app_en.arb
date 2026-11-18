@@ -690,6 +690,10 @@
   "sessionSupporters": "Support",
   "sessionNoSupporters": "No Super Chats, members or raids this time.",
   "sessionSupportSuperChat": "{name} sent a Super Chat of {amount}",
+  "sessionSupportBits": "{name} cheered {amount}",
+  "@sessionSupportBits": {
+    "placeholders": { "name": { "type": "String" }, "amount": { "type": "String" } }
+  },
   "@sessionSupportSuperChat": {
     "placeholders": { "name": { "type": "String" }, "amount": { "type": "String" } }
   },

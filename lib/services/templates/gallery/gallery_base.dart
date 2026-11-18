@@ -421,14 +421,14 @@ const screenCopy = {
     thanks: 'Thanks for watching', credits: 'Credits', farewell: 'See you at the next stream.',
     rotating: 'Say hello in chat | Thanks for spending time with us',
     types: {superchat: 'Super Chats', membership: 'Members', bits: 'Bits',
-      subscription: 'Subscribers', gift: 'Gifted subs', raid: 'Raids', kicks: 'Kicks'}
+      subscription: 'Subscribers', gift: 'Gifts', raid: 'Raids & hosts', kicks: 'Kicks'}
   },
   es: {
     chat: 'Chat en vivo', latest: 'Apoyos recientes', topChatters: rankingLabels.es.chatters,
     thanks: 'Gracias por acompañarnos', credits: 'Créditos', farewell: 'Nos vemos en el próximo directo.',
     rotating: 'Saluda en el chat | Gracias por pasar este rato aquí',
     types: {superchat: 'Super Chats', membership: 'Miembros', bits: 'Bits',
-      subscription: 'Suscriptores', gift: 'Regalos', raid: 'Raids', kicks: 'Kicks'}
+      subscription: 'Suscriptores', gift: 'Regalos', raid: 'Raids y hosts', kicks: 'Kicks'}
   }
 };
 let fields = {};

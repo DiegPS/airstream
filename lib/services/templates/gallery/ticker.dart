@@ -74,13 +74,13 @@ const text = {
     title: 'Ticker', demo: 'Welcome to the stream! ✦ | Say hello in chat',
     timer: 'Subathon', goals: {subs: 'Subs goal', bits: 'Bits goal', kicks: 'Kicks goal'},
     latest: {superchat: 'Latest Super Chat', membership: 'Latest membership', bits: 'Latest bits',
-      subscription: 'Latest subscription', gift: 'Latest gift', raid: 'Latest Raid', kicks: 'Latest kicks'}
+      subscription: 'Latest subscription', gift: 'Latest gift', raid: 'Latest Raid', host: 'Latest host', kicks: 'Latest kicks'}
   },
   es: {
     title: 'Barra informativa', demo: '¡Bienvenidos al directo! ✦ | Saluda en el chat',
     timer: 'Subatón', goals: {subs: 'Meta de suscripciones', bits: 'Meta de bits', kicks: 'Meta de kicks'},
     latest: {superchat: 'Último Super Chat', membership: 'Última membresía', bits: 'Últimos bits',
-      subscription: 'Última suscripción', gift: 'Último regalo', raid: 'Último Raid', kicks: 'Últimos kicks'}
+      subscription: 'Última suscripción', gift: 'Último regalo', raid: 'Último Raid', host: 'Último host', kicks: 'Últimos kicks'}
   }
 };
 const n = number;
@@ -110,7 +110,9 @@ function collectItems() {
       const support = Airstream.state.session?.latest?.[type];
       if (!support) continue;
       const detail = type === 'superchat' ? support.amount : supportDescriptions[language][type](support);
-      items.push({label: copy.latest[type] + ': ' + support.name +
+      // Kick hosts share the raid slot but are labelled as hosts.
+      const kind = type === 'raid' && support.platform === 'kick' ? 'host' : type;
+      items.push({label: copy.latest[kind] + ': ' + support.name +
         (detail ? (type === 'superchat' ? ' ' : ' · ') + detail : '')});
     }
   }

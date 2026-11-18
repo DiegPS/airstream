@@ -39,6 +39,28 @@ void main() {
     expect(service.currentState.error, contains('OBS WebSocket host'));
   });
 
+  test('clearing the OBS host while connected closes the old connection',
+      () async {
+    final client = _FakeObsClient();
+    final service = ObsService(
+      connector: (
+              {required url,
+              required password,
+              required onDone,
+              required onEvent}) async =>
+          client,
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    expect(service.currentState.connected, isTrue);
+
+    await service.connect(host: '', password: '');
+
+    expect(client.closeCount, 1);
+    expect(service.currentState.connected, isFalse);
+    expect(service.currentState.statusMessage, 'OBS host required');
+  });
+
   test('a client returned after the OBS connection timeout is closed',
       () async {
     final connection = Completer<ObsClient>();

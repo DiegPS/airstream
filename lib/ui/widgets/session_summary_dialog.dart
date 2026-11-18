@@ -27,6 +27,9 @@ String sessionDurationText(AppLocalizations l, Duration duration) {
 String sessionSupporterText(AppLocalizations l, SessionSupporter supporter) {
   final name = supporter.name;
   return switch (supporter.kind) {
+    // Twitch Bits share the paid-message kind with Super Chats.
+    SupportKind.superChat when supporter.type == 'bits' =>
+      l.sessionSupportBits(name, supporter.amount ?? ''),
     SupportKind.superChat =>
       l.sessionSupportSuperChat(name, supporter.amount ?? ''),
     SupportKind.membership => supporter.platform == Platform.youtube
