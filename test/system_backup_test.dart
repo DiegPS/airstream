@@ -125,6 +125,27 @@ void main() {
     return file.writeAsString(contents);
   }
 
+  test('backup validation lists only templates requesting Internet access',
+      () async {
+    for (final (id, manifest) in [
+      ('online', '{"name":"Online Clock","network":true}'),
+      ('offline', '{"name":"Offline Clock","network":false}'),
+      ('implicit', '{"name":"Implicit Clock"}'),
+      ('wrong-type', '{"name":"Wrong Type","network":"true"}'),
+      ('fallback', '{"network":true}'),
+      ('invalid', '{"network":true'),
+    ]) {
+      await write(templates.root, [id, 'template.json'], manifest);
+      await write(templates.root, [id, 'index.html'], '<p>Sample</p>');
+    }
+    final path = p.join(temp.path, 'permissions.airstream-backup');
+    await backup.export(path, const SettingsModel());
+    final validated = await backup.validate(path);
+    addTearDown(validated.dispose);
+    expect(validated.templates, 6);
+    expect(validated.networkTemplateNames, ['fallback', 'Online Clock']);
+  });
+
   Future<String> makePortable() async {
     await write(
         templates.root, ['original', 'index.html'], '<h1>Original</h1>');

@@ -244,6 +244,13 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                     backup.media, '$date $time')),
                 const SizedBox(height: 12),
                 Text(l.backupRestoreReview),
+                if (backup.networkTemplateNames.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  for (final name in backup.networkTemplateNames)
+                    Text('$name (${l.templatesInternet})',
+                        style: const TextStyle(color: Color(0xFFFFB15C))),
+                  Text(l.backupTemplateTrust),
+                ],
                 if (missingUrls.isNotEmpty)
                   Text(
                       '${l.ruleLabel('kresetHttpUrl')} ${missingUrls.join(', ')}'),

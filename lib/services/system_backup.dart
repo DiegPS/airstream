@@ -27,12 +27,13 @@ const _limits = TemplateArchiveLimits(
 
 class ValidatedSystemBackup {
   ValidatedSystemBackup._(this._staging, this._settings, this.createdAt,
-      this.rules, this.templates, this.media);
+      this.rules, this.templates, this.media, this.networkTemplateNames);
 
   final Directory _staging;
   final String _settings;
   final DateTime createdAt;
   final int rules, templates, media;
+  final List<String> networkTemplateNames;
 
   List<String> rulesMissingHttpUrls(SettingsModel current) =>
       SettingsProfiles.rulesMissingHttpUrls(SettingsProfiles.keepLocalHttpUrls(
@@ -402,8 +403,27 @@ Future<ValidatedSystemBackup> _validate(
         throw const FormatException('media');
       }
     }
-    return ValidatedSystemBackup._(staging, source, createdAt,
-        decoded.settings.rules.length, ids.length, entries.length);
+    final library =
+        TemplateLibrary(Directory(p.join(staging.path, 'templates')));
+    final networkTemplateNames = <String>[];
+    try {
+      for (final id in ids.toList()..sort()) {
+        final manifest = await library.manifestFor(id);
+        if (manifest != null && manifest.network) {
+          networkTemplateNames.add(manifest.name);
+        }
+      }
+    } finally {
+      await library.dispose();
+    }
+    return ValidatedSystemBackup._(
+        staging,
+        source,
+        createdAt,
+        decoded.settings.rules.length,
+        ids.length,
+        entries.length,
+        List.unmodifiable(networkTemplateNames));
   } on ArchiveException {
     throw const FormatException('invalid');
   } finally {

@@ -154,6 +154,46 @@ void main() {
     expect(subscribed, isFalse);
   });
 
+  test('featured delivery follows source activity and falls back by view',
+      () async {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final hidden = _Socket(server)..register('featured', active: false);
+    final alerts = _Socket(server)..register('alerts');
+    final featured = _Socket(server)..register('featured');
+    final pages = [hidden, alerts, featured];
+
+    void expectDelivery(List<_Socket> expected) {
+      for (final page in pages) {
+        page.sink.frames.clear();
+      }
+      final delivery = server.broadcastFeaturedMessage(ChatMessage(
+        platform: Platform.twitch,
+        id: 'featured',
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('Featured text')],
+        timestamp: DateTime.utc(2026),
+      ));
+      expect(delivery.status, FeaturedMessageStatus.sent);
+      for (final page in pages) {
+        expect(page.sink.frames.where((frame) => frame['type'] == 'alert'),
+            hasLength(expected.contains(page) ? 1 : 0));
+      }
+      server.removeFeaturedMessage();
+    }
+
+    expectDelivery([featured]);
+    featured.reportActivity(false);
+    expectDelivery([alerts]);
+    alerts.reportActivity(false);
+    expectDelivery([hidden, featured]);
+    hidden.reportActivity(true);
+    expectDelivery([hidden]);
+    await featured.disconnect();
+    await hidden.disconnect();
+    expectDelivery([alerts]);
+  });
+
   test('unrelated gallery and custom pages do not count as featured receivers',
       () async {
     final root = await Directory.systemTemp.createTemp('featured-receivers-');
@@ -292,10 +332,14 @@ class _Socket implements WebSocketChannel {
 
   Future<void> disconnect() => _incoming.close();
 
-  void register(String view, {String? template}) {
+  void reportActivity(bool active) =>
+      _incoming.add(jsonEncode({'type': 'sourceActivity', 'active': active}));
+
+  void register(String view, {String? template, bool? active}) {
     _incoming.add(jsonEncode({
       'type': 'register',
       'view': view,
+      if (active != null) 'active': active,
       if (template != null) 'template': template,
     }));
     expect(sink.frames.singleWhere((frame) => frame['type'] == 'registered'),

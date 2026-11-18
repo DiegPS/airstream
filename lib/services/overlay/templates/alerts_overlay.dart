@@ -1,3 +1,4 @@
+import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
 
@@ -375,6 +376,7 @@ let hideTimer = 0;
 let featuredShownAt = 0;
 let retryTimer = 0;
 let socket = null;
+$featuredSourceActivityScript
 let shuttingDown = false;
 const acknowledgedFeatured = new WeakSet();
 
@@ -604,7 +606,7 @@ function connect() {
   queueReady = false;
   lastQueueStatus = '';
   connection.addEventListener('open', () => {
-    connection.send(JSON.stringify({ type: 'register', view: 'alerts' }));
+    registerSource(connection, 'alerts');
   });
   connection.addEventListener('message', (event) => {
     try {
@@ -626,7 +628,10 @@ function connect() {
   connection.addEventListener('close', () => {
     if (socket !== connection) return;
     queueReady = false;
-    hideFeatured();
+    queue = [];
+    preloadedId = '';
+    clearPinnedFeatured();
+    finishAlert();
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
   });
   connection.addEventListener('error', () => connection.close());

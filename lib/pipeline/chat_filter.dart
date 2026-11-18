@@ -25,6 +25,21 @@ class ChatFilter {
   bool blocksMessage(ChatMessage message) =>
       _blocks(message.author.name, message.author.channelId, message.plainText);
 
+  ChatMessage redactReply(ChatMessage message) {
+    final reply = message.reply;
+    if (reply == null ||
+        reply.text.isEmpty ||
+        !_blocks(reply.authorName, reply.authorId, reply.text)) {
+      return message;
+    }
+    return message.copyWith(
+        reply: ChatReplyContext(
+      messageId: reply.messageId,
+      authorId: reply.authorId,
+      authorName: reply.authorName,
+    ));
+  }
+
   bool blocksProviderEvent(ChatProviderEvent event) => _blocks(
         event.viewerName ?? event.authorName,
         event.authorChannelId,

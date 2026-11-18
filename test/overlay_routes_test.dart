@@ -223,6 +223,36 @@ void main() {
       await nextFrame('settings');
     });
 
+    test('block changes redact published quotes and filter future quotes',
+        () async {
+      Future<Map<String, dynamic>> send(String id) {
+        messages.add(ChatMessage(
+          id: id,
+          platform: Platform.twitch,
+          author: const ChatAuthor(name: 'Responder', channelId: ''),
+          timestamp: DateTime.utc(2026),
+          items: const [MessageItem.text('Reply')],
+          reply: const ChatReplyContext(
+              messageId: 'parent',
+              authorId: 'blocked-id',
+              text: 'Parent quote'),
+        ));
+        return nextFrame('message');
+      }
+
+      final original = await send('old');
+      expect(original['data']['reply']['text'], 'Parent quote');
+      server.setSettings(settings.copyWith(blockedUsers: ['blocked-id']));
+      expect((await nextFrame('moderation'))['data'], {
+        'scope': 'reply',
+        'replySequences': [original['sequence']],
+      });
+      await nextFrame('settings');
+      final next = await send('new');
+      expect(next['data']['reply']['text'], '');
+      expect(next['data']['reply']['messageId'], 'parent');
+    });
+
     test('blocked reward authors and phrases never reach overlay subscribers',
         () async {
       server.setSettings(settings.copyWith(

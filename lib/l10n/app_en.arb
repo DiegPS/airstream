@@ -1020,6 +1020,7 @@
   "templatesTestEmpty": "Open a template in OBS first",
   "templatesEmpty": "No templates yet",
   "templatesInternet": "Internet access",
+  "backupTemplateTrust": "These templates contain code that runs in OBS. Restore only templates from people you trust.",
   "templatesCopy": "Copy URL",
   "templatesCopied": "URL copied",
   "templatesPreview": "Preview",

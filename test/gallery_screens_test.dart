@@ -117,6 +117,8 @@ void main() {
       () => runGalleryChecks('gallery'));
   test('word cloud removes message, author and platform token batches',
       () => runGalleryChecks('word cloud'));
+  test('chat redacts a published reply quote and keeps the reply on redraw',
+      () => runGalleryChecks('chat reply quote redaction'));
   test('emote wall removes moderated messages, authors and platforms',
       () => runGalleryChecks('emote wall'));
   test('goals cancel and rearm celebrations when reset',
@@ -292,6 +294,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
       getElementById: key => nodes[key] || null,
       querySelector: selector => selector === '.gallery-logo' ? logo : null,
       createElement: tag => new Element(tag),
+      createElementNS: (_, tag) => new Element(tag),
       createDocumentFragment: () => new Element('fragment'),
       createTextNode: text => ({textContent: text})
     },
@@ -328,7 +331,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
   if (html) (socket.open || socket.onopen)();
 
   function send(type, data, replay = false) {
-    (socket.message || socket.onmessage)({data: JSON.stringify({type, data, replay})});
+    (socket.message || socket.onmessage)({data: JSON.stringify({type, data, replay, sequence: data?.sequence})});
     assert.deepEqual(errors, []);
   }
   function advance(ms) {
@@ -551,6 +554,20 @@ function checkPreloadedCredits() {
   assert.equal(roll.hidden, true);
   assert.equal(credits.nodes['credits-page'].textContent, 'Thanks for watching');
 }
+function checkChatReplyModeration() {
+  const view = page('/chat');
+  const body = () => view.nodes.root.textContent;
+  view.send('message', {sequence: 7, platform: 'twitch', author: 'Ana',
+    items: [{kind: 'text', text: 'Reply body'}],
+    reply: {messageId: 'parent', authorName: 'Beto', text: 'old quote'}});
+  assert.match(body(), /old quote/);
+  view.send('moderation', {scope: 'reply', replySequences: [7]});
+  assert.doesNotMatch(body(), /old quote/);
+  assert.match(body(), /↪ Beto/);
+  assert.match(body(), /Reply body/);
+  view.send('settings', {fontSize: 25});
+  assert.doesNotMatch(body(), /old quote/);
+}
 function checkWordCloudModeration() {
   const view = page('word-cloud');
   view.fields({refresh: 1});
@@ -681,6 +698,7 @@ function checkPollTies() {
 const regressions = {
   'poll ties': checkPollTies,
   'word cloud': checkWordCloudModeration,
+  'chat reply quote redaction': checkChatReplyModeration,
   'emote wall': checkEmoteWallModeration,
   goals: checkGoalReset,
   snapshots: checkEmptySnapshots,

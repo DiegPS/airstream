@@ -113,6 +113,16 @@ class LiveCaptionsService {
   String _targetLanguage = 'es';
   bool _denoise = true;
   int _revision = 0;
+  Future<void> _lifecycle = Future.value();
+
+  Future<void> _serialize(Future<void> Function() operation) {
+    final next = _lifecycle.then((_) => operation());
+    _lifecycle = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
+  }
+
+  bool _isCurrent(int revision) =>
+      revision == _revision && _enabled && !_disposed;
 
   Stream<LiveCaptionsState> get states async* {
     yield _state;
@@ -138,21 +148,22 @@ class LiveCaptionsService {
     final changed = nextSource != _sourceLanguage ||
         nextTarget != _targetLanguage ||
         denoise != _denoise;
+    if (changed || enabled != _enabled) _revision++;
     _sourceLanguage = nextSource;
     _targetLanguage = nextTarget;
     _denoise = denoise;
     _enabled = enabled;
-    final revision = ++_revision;
+    final revision = _revision;
     if (!enabled) {
       await stop();
       return;
     }
     // A language change restarts the worker but must not cancel a model
     // download the user started; only disabling captions does that.
-    if (changed) await stop(emitIdle: false, cancelDownload: false);
-    if (revision != _revision) return;
+    if (changed) await _serialize(() => _stop(emitIdle: false));
+    if (!_isCurrent(revision)) return;
     final installation = await _modelCache.installed(model.package);
-    if (revision != _revision) return;
+    if (!_isCurrent(revision)) return;
     if (installation == null) {
       // Settings change constantly while a large model downloads. Keep showing
       // its progress; the download starts captions when it completes.
@@ -165,15 +176,15 @@ class LiveCaptionsService {
       return;
     }
     try {
-      await _start(installation, revision: revision);
+      await _serialize(() => _start(installation, revision: revision));
     } catch (error, stack) {
-      if (revision != _revision || !_enabled || _disposed) return;
+      if (!_isCurrent(revision)) return;
+      _downloadCancellation?.cancel();
       AppLogger.error(
         'Offline captions failed to start',
         error: error,
         stackTrace: stack,
       );
-      await stop(emitIdle: false);
       _emit(LiveCaptionsState(
         phase: LiveCaptionsPhase.error,
         message: 'Offline captions could not start.',
@@ -202,7 +213,10 @@ class LiveCaptionsService {
           totalBytes: progress.totalBytes,
         )),
       );
-      if (_enabled) await _start(installation, revision: _revision);
+      if (_enabled && !cancellation.isCancelled) {
+        final revision = _revision;
+        await _serialize(() => _start(installation, revision: revision));
+      }
     } on TtsDownloadCancelledException {
       if (!_disposed) _emit(const LiveCaptionsState());
     } catch (error, stack) {
@@ -228,7 +242,7 @@ class LiveCaptionsService {
     TtsModelInstallation installation, {
     required int revision,
   }) async {
-    if (_commands != null || _disposed || !_enabled) return;
+    if (_commands != null || !_isCurrent(revision)) return;
     _emit(const LiveCaptionsState(
       phase: LiveCaptionsPhase.loading,
       message: 'Loading offline captions…',
@@ -288,21 +302,13 @@ class LiveCaptionsService {
     } finally {
       ready.close();
     }
-    if (revision != _revision || !_enabled || _disposed) {
-      first.send({'type': 'dispose'});
-      if (identical(_workerGuard, guard)) {
-        _workerGuard = null;
-        _worker = null;
-        _commands = null;
-      }
-      await guard.dispose(expectedExit: true);
-      return;
-    }
+    // Any configuration change queued its cleanup behind this startup.
+    if (!_isCurrent(revision)) return;
     final events = ReceivePort();
     _events = events;
     _commands!.send({'type': 'listen', 'reply': events.sendPort});
     events.listen((dynamic event) {
-      if (event is! Map) return;
+      if (!_isCurrent(revision) || event is! Map) return;
       final text = event['caption'] as String?;
       final detected = event['speechDetected'] == true;
       _emit(LiveCaptionsState(
@@ -316,11 +322,14 @@ class LiveCaptionsService {
       ));
     });
 
-    final stream = await _audioCapture.start();
-    if (revision != _revision || !_enabled || _disposed) {
-      await _audioCapture.stop();
-      return;
+    final Stream<Uint8List> stream;
+    try {
+      stream = await _audioCapture.start();
+    } catch (_) {
+      if (_isCurrent(revision)) await _stop(emitIdle: false);
+      rethrow;
     }
+    if (!_isCurrent(revision)) return;
     _audioSubscription = stream.listen(
       (bytes) => _commands?.send({
         'type': 'audio',
@@ -338,8 +347,13 @@ class LiveCaptionsService {
     ));
   }
 
-  Future<void> stop({bool emitIdle = true, bool cancelDownload = true}) async {
+  Future<void> stop({bool emitIdle = true, bool cancelDownload = true}) {
+    _revision++;
     if (cancelDownload) _downloadCancellation?.cancel();
+    return _serialize(() => _stop(emitIdle: emitIdle));
+  }
+
+  Future<void> _stop({required bool emitIdle}) async {
     await _audioSubscription?.cancel();
     _audioSubscription = null;
     try {
@@ -401,7 +415,7 @@ class LiveCaptionsService {
         message: 'Offline captions stopped unexpectedly.',
         error: error.toString(),
       ));
-      unawaited(_stopCaptureAfterWorkerFailure());
+      unawaited(_serialize(_stopCaptureAfterWorkerFailure));
     }
   }
 

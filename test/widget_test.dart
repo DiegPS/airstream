@@ -7,6 +7,8 @@ import 'package:airstream/ui/widgets/subathon_card.dart';
 import 'package:airstream/ui/widgets/clock_card.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/services/media_library.dart';
+import 'package:airstream/services/system_backup.dart';
+import 'package:airstream/ui/widgets/settings_profiles_card.dart';
 import 'dart:convert';
 import 'package:archive/archive.dart';
 import 'package:airstream/services/templates/template_starters.dart';
@@ -30,6 +32,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:shared_preferences/shared_preferences.dart';
+// ignore: depend_on_referenced_packages
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 import 'package:airstream/main.dart';
 import 'package:airstream/models/chat_session_state.dart';
@@ -44,6 +48,15 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
 import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'package:airstream/window/window_state.dart';
+
+class _BackupTestPaths extends PathProviderPlatform {
+  _BackupTestPaths(this.path);
+
+  final String path;
+
+  @override
+  Future<String> getApplicationSupportPath() async => path;
+}
 
 class _WidgetTestSettings extends SettingsNotifier {
   _WidgetTestSettings([
@@ -62,6 +75,84 @@ class _WidgetTestSettings extends SettingsNotifier {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+      'full restore names Internet-enabled templates before installation',
+      (tester) async {
+    final temp = (await tester.runAsync(
+        () => io.Directory.systemTemp.createTemp('backup-review-widget-')))!;
+    final support = io.Directory('${temp.path}/support');
+    final incoming = TemplateLibrary(io.Directory('${temp.path}/incoming'));
+    final installed = TemplateLibrary(io.Directory('${temp.path}/installed'));
+    final media = MediaLibrary(io.Directory('${temp.path}/media'), () => {});
+    final path = '${temp.path}/restore.airstream-backup';
+    await tester.runAsync(() async {
+      for (final (id, name, network) in [
+        ('online', 'Online Clock', true),
+        ('offline', 'Offline Clock', false),
+      ]) {
+        final dir = await io.Directory('${incoming.root.path}/$id')
+            .create(recursive: true);
+        await io.File('${dir.path}/template.json')
+            .writeAsString(jsonEncode({'name': name, 'network': network}));
+        await io.File('${dir.path}/index.html').writeAsString('<h1>$name</h1>');
+      }
+      await SystemBackup(
+              support: support,
+              templates: incoming,
+              media: media,
+              appVersion: 'test')
+          .export(path, const SettingsModel());
+    });
+    const selector = MethodChannel('plugins.flutter.io/file_selector');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(selector, (_) async => [path]);
+    final previousPaths = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _BackupTestPaths(support.path);
+    addTearDown(() async {
+      messenger.setMockMethodCallHandler(selector, null);
+      PathProviderPlatform.instance = previousPaths;
+      await tester.runAsync(() async {
+        await incoming.dispose();
+        await installed.dispose();
+        await temp.delete(recursive: true);
+      });
+    });
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        templateLibraryProvider.overrideWith((ref) async => installed),
+        mediaLibraryProvider.overrideWith((ref) async => media),
+      ],
+      child: const MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: SettingsBackupCard()),
+      ),
+    ));
+    await tester.tap(find.byKey(const Key('backup-restore-everything')));
+    for (var i = 0; i < 100; i++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      if (find
+          .byKey(const Key('backup-restore-confirm'))
+          .evaluate()
+          .isNotEmpty) {
+        break;
+      }
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)));
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('backup-restore-confirm')), findsOneWidget);
+    expect(find.text('Online Clock (Internet access)'), findsOneWidget);
+    expect(find.textContaining('Offline Clock'), findsNothing);
+    expect(find.textContaining('code that runs in OBS'), findsOneWidget);
+    expect(await tester.runAsync(installed.exists), isFalse);
+    await tester.tap(find.text('Cancel'));
+    await _flushTemplateIO(tester);
+    expect(await tester.runAsync(installed.exists), isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
       'a template field changing from text to number uses its new default',

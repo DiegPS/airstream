@@ -128,6 +128,61 @@ void main() {
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
 
+  test('one Twitch gift batch satisfies minCount five and singles count one',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = RuleOverlay()..feedSeen = true;
+      final app = makeController(twitch, server);
+      app.applySettings(
+          SettingsModel(
+            overlayEnabled: false,
+            rulesEnabled: true,
+            rules: [
+              for (final count in [1, 5])
+                {
+                  ...RuleSchema.newRule('support.gift', id: 'gift_$count'),
+                  'enabled': true,
+                  'trigger': {'type': 'support.gift', 'min': count},
+                  'actions': [
+                    {
+                      'id': 'out',
+                      'type': 'template.trigger',
+                      'name': 'gift',
+                      'data': '{count}'
+                    },
+                  ],
+                }
+            ],
+          ),
+          connectChats: false);
+
+      void gift(String id) => twitch.messageController.add(ChatMessage(
+            platform: Platform.twitch,
+            id: id,
+            timestamp: DateTime.utc(2026),
+            author: const ChatAuthor(name: 'Gifter', channelId: 'gifter'),
+            items: const [],
+            isMembershipEvent: true,
+            membershipEventKind: MembershipEventKind.gift,
+          ));
+
+      for (var i = 0; i < 5; i++) {
+        gift('batch-$i');
+      }
+      fake.elapse(const Duration(seconds: 3));
+      expect(app.rules.history.map((run) => run.event.count), [5, 5]);
+      expect(app.rules.history.map((run) => run.event.eventId).toSet(),
+          hasLength(1));
+
+      gift('single');
+      fake.elapse(const Duration(seconds: 3));
+      expect(app.rules.history.map((run) => run.event.count), [1, 5, 5]);
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test('queue.next skips stream control for every initiating role', () {
     for (final moderator in [false, true]) {
       fakeAsync((fake) {

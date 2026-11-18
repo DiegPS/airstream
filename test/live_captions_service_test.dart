@@ -12,6 +12,75 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('a superseded loading caption worker releases before the next spawns',
+      () async {
+    final root = await Directory.systemTemp.createTemp('airstream-captions-');
+    addTearDown(() => root.delete(recursive: true));
+    final service = LiveCaptionsService(
+      modelCache: _InstalledCache(root),
+      audioCapture: _SilentCapture(),
+      workerEntrypoint: _gatedWorker,
+    );
+    final proceed = File('${root.path}/proceed');
+    addTearDown(() async {
+      await proceed.create();
+      await service.dispose();
+    });
+    final first = service.updateConfig(
+        enabled: true,
+        sourceLanguage: 'es',
+        targetLanguage: 'es',
+        denoise: true);
+    final loading = File('${root.path}/loading');
+    for (var i = 0; i < 500 && !loading.existsSync(); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(loading.existsSync(), isTrue);
+    final second = service.updateConfig(
+        enabled: true,
+        sourceLanguage: 'en',
+        targetLanguage: 'en',
+        denoise: true);
+    // Let an incorrectly concurrent teardown finish while the worker is gated.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await proceed.create();
+    await second;
+    expect(File('${root.path}/worker-order').readAsStringSync(), 'released');
+    await first;
+    expect(service.currentState.phase, LiveCaptionsPhase.listening);
+  });
+
+  test('language changes wait for stale caption startup to release capture',
+      () async {
+    final root = await Directory.systemTemp.createTemp('airstream-captions-');
+    addTearDown(() => root.delete(recursive: true));
+    final capture = _GatedCapture();
+    final service = LiveCaptionsService(
+      modelCache: _InstalledCache(root),
+      audioCapture: capture,
+      workerEntrypoint: _releasingWorker,
+    );
+    addTearDown(service.dispose);
+    final first = service.updateConfig(
+        enabled: true,
+        sourceLanguage: 'es',
+        targetLanguage: 'es',
+        denoise: true);
+    await capture.entered.future;
+    expect(service.currentState.phase, LiveCaptionsPhase.loading);
+    final second = service.updateConfig(
+        enabled: true,
+        sourceLanguage: 'en',
+        targetLanguage: 'en',
+        denoise: true);
+    // Give a wrongly concurrent stop a chance to run before startup returns.
+    await Future<void>.delayed(Duration.zero);
+    capture.release.complete();
+    await Future.wait([first, second]);
+    expect(capture.calls, ['start', 'started', 'stop', 'start', 'started']);
+    expect(service.currentState.phase, LiveCaptionsPhase.listening);
+  });
+
   test('enabling captions never downloads without explicit user action',
       () async {
     final root = await Directory.systemTemp.createTemp('airstream-captions-');
@@ -190,6 +259,29 @@ class _SilentCapture implements SpeechAudioCapture {
   Future<void> dispose() => _audio.close();
 }
 
+class _GatedCapture implements SpeechAudioCapture {
+  final entered = Completer<void>();
+  final release = Completer<void>();
+  final calls = <String>[];
+
+  @override
+  Future<Stream<Uint8List>> start() async {
+    calls.add('start');
+    if (!entered.isCompleted) {
+      entered.complete();
+      await release.future;
+    }
+    calls.add('started');
+    return const Stream.empty();
+  }
+
+  @override
+  Future<void> stop() async => calls.add('stop');
+
+  @override
+  Future<void> dispose() async {}
+}
+
 /// Stands in for the native worker: releasing its model takes a moment, and
 /// leaves a mark so the test can tell it happened.
 void _releasingWorker(Map<String, Object> startup) {
@@ -205,4 +297,31 @@ void _releasingWorker(Map<String, Object> startup) {
       commands.close();
     }
   });
+}
+
+void _gatedWorker(Map<String, Object> startup) {
+  final owner = startup['reply']! as SendPort;
+  final directory = startup['directory']! as String;
+  final old = startup['sourceLanguage'] == 'es';
+  final released = File('$directory/old-worker-released');
+  final commands = ReceivePort();
+  commands.listen((dynamic message) {
+    if (message is Map && message['type'] == 'dispose') {
+      if (old) released.createSync();
+      (message['reply'] as SendPort?)?.send(true);
+      commands.close();
+    }
+  });
+  if (old) {
+    File('$directory/loading').createSync();
+    Timer.periodic(const Duration(milliseconds: 10), (timer) {
+      if (!File('$directory/proceed').existsSync()) return;
+      timer.cancel();
+      owner.send(commands.sendPort);
+    });
+  } else {
+    File('$directory/worker-order')
+        .writeAsStringSync(released.existsSync() ? 'released' : 'overlap');
+    owner.send(commands.sendPort);
+  }
 }

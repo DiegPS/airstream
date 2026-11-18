@@ -120,7 +120,8 @@ int? parseRuleBits(String amount) {
 class RuleEventAdapter {
   int _privateSupportSequence = 0;
 
-  Iterable<RuleEvent> message(ChatMessage m, {bool supportOnly = false}) sync* {
+  Iterable<RuleEvent> message(ChatMessage m,
+      {bool supportOnly = false, int? twitchGiftCount}) sync* {
     final roles = [
       if (m.isOwner) 'owner',
       if (m.isModerator || m.isOwner) 'moderator',
@@ -145,6 +146,10 @@ class RuleEventAdapter {
         count: count,
         months: m.membershipMonths ?? 0,
         message: m);
+    if (twitchGiftCount != null) {
+      yield event('support.gift', count: twitchGiftCount);
+      return;
+    }
     if (!supportOnly) {
       yield event('chat.message');
       if (RegExp(r'^![A-Za-z0-9_]{1,30}(?:\s|$)')
@@ -164,9 +169,9 @@ class RuleEventAdapter {
       }
     }
     if (m.membershipEventKind == MembershipEventKind.gift) {
-      yield event('support.gift',
-          count:
-              m.platform == Platform.twitch ? 1 : (m.membershipGiftCount ?? 1));
+      if (m.platform != Platform.twitch) {
+        yield event('support.gift', count: m.membershipGiftCount ?? 1);
+      }
     } else if (m.membershipEventKind != null ||
         (m.platform == Platform.youtube && m.isMembershipEvent)) {
       yield event('support.membership');

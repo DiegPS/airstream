@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 import 'package:airstream/application/goal_tracker.dart';
+import 'package:airstream/application/twitch_gift_groups.dart';
 
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 
@@ -160,6 +161,15 @@ class AppController {
               in _ruleAdapter.message(message, supportOnly: hiddenVote)) {
             rules.handle(e);
           }
+          if (TwitchGiftGroups.includes(message)) {
+            _ruleGiftGroups.add(message, (first, count) {
+              if (!rules.active) return;
+              for (final event in _ruleAdapter.message(first,
+                  supportOnly: true, twitchGiftCount: count)) {
+                rules.handle(event);
+              }
+            });
+          }
         }
       }),
       _chat.providerEvents.listen((e) {
@@ -207,6 +217,7 @@ class AppController {
   OverlayServer? get templateServer => _overlay.templateServer;
   late final RuleEngine rules;
   final _ruleAdapter = RuleEventAdapter();
+  final _ruleGiftGroups = TwitchGiftGroups();
   Future<void> Function(SettingsModel)? ruleSettingsWriter;
   Future<void> Function(SettingsModel Function(SettingsModel))?
       clockExpiryWriter;
@@ -650,6 +661,7 @@ class AppController {
     }
     _giveaway.restoreHistory(settings.giveawayHistory);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
+    if (!rules.active || restoringBackup) _ruleGiftGroups.clear();
     templateServer?.rulesEngine = rules;
     _trackClock(restoringBackup ? null : previous?.clock, settings.clock);
     if (restoringBackup || previous == null) {
@@ -741,6 +753,7 @@ class AppController {
         _overlay.clearRecentAlerts();
       } else {
         _sessionSummary.stop();
+        _ruleGiftGroups.clear();
         _chatConnected = false;
       }
       templateServer?.sessionChanged();
@@ -787,6 +800,7 @@ class AppController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _ruleGiftGroups.clear();
     _ruleEndTimer?.cancel();
     _clockEndTimer?.cancel();
     final queueDisposed = queue.dispose();

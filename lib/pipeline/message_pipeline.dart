@@ -84,7 +84,7 @@ class MessagePipeline {
 
   /// Applies settings to both future messages and the current buffer.
   ///
-  /// Returns whether existing buffered messages were removed, allowing the
+  /// Returns whether existing buffered messages changed, allowing the
   /// owner to publish an immediate list update without waiting for new chat.
   bool updateSettings(SettingsModel settings) {
     final previous = _settings;
@@ -96,17 +96,27 @@ class MessagePipeline {
       return false;
     }
     final previousLength = _buffer.length;
+    var redacted = false;
     if (filtersChanged) {
       _filter = ChatFilter(settings);
       _buffer.removeWhere(_filter.blocksMessage);
       _session.removeWhere(_filter.blocksMessage);
+      for (var i = 0; i < _buffer.length; i++) {
+        final message = _filter.redactReply(_buffer[i]);
+        if (identical(message, _buffer[i])) continue;
+        _buffer[i] = message;
+        redacted = true;
+      }
+      for (var i = _session.length; i > 0; i--) {
+        _session.addLast(_filter.redactReply(_session.removeFirst()));
+      }
     }
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
     while (_buffer.length > limit) {
       _buffer.removeAt(0);
     }
     _trimSeenKeys();
-    return _buffer.length != previousLength;
+    return redacted || _buffer.length != previousLength;
   }
 
   /// Adds a platform stream to the pipeline. Can be called multiple times.
@@ -138,7 +148,7 @@ class MessagePipeline {
     if (_isDuplicate(incoming)) return;
 
     _rememberMessage(incoming);
-    final msg = _markFirstInSession(incoming);
+    final msg = _markFirstInSession(_filter.redactReply(incoming));
 
     if (_recordingSession) {
       if (_session.length == sessionMessageLimit) {

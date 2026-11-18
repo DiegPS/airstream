@@ -4359,6 +4359,12 @@ abstract class AppLocalizations {
   /// **'Internet access'**
   String get templatesInternet;
 
+  /// No description provided for @backupTemplateTrust.
+  ///
+  /// In en, this message translates to:
+  /// **'These templates contain code that runs in OBS. Restore only templates from people you trust.'**
+  String get backupTemplateTrust;
+
   /// No description provided for @templatesCopy.
   ///
   /// In en, this message translates to:

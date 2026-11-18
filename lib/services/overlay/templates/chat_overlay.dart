@@ -583,14 +583,14 @@ function createMessageBubble(message, animate) {
   }
   content.appendChild(authorRow);
 
-  if (message.reply && (message.reply.authorName || message.reply.text)) {
+  if (message.reply) {
     const reply = document.createElement('div');
     reply.className = 'reply-context';
     const replyAuthor = String(message.reply.authorName || '').trim();
     const replyText = String(message.reply.text || '').trim();
     reply.textContent = replyAuthor && replyText
       ? '↪ ' + replyAuthor + ': ' + replyText
-      : '↪ ' + (replyAuthor || replyText);
+      : (replyAuthor || replyText ? '↪ ' + (replyAuthor || replyText) : '↪');
     content.appendChild(reply);
   }
 
@@ -794,6 +794,22 @@ function addProviderEvent(event) {
 }
 
 function applyModeration(moderation) {
+  if (moderation.scope === 'reply') {
+    if (!Array.isArray(moderation.replySequences)) return;
+    const sequences = new Set(moderation.replySequences);
+    let changed = false;
+    for (const record of records) {
+      if (record.message?.reply?.text && sequences.has(record.sequence)) {
+        record.message.reply.text = '';
+        changed = true;
+      }
+    }
+    if (changed) {
+      renderExistingMessages();
+      scheduleScrollToBottom();
+    }
+    return;
+  }
   const orientationMatches = (message) => !moderation.youtubeStreamOrientation ||
     message.youtubeStreamOrientation === moderation.youtubeStreamOrientation;
   const matches = (record) => {

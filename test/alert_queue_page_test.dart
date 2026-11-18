@@ -6,13 +6,15 @@ import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<void> runPage(String checks) async {
+  Future<void> runPage(String checks, {bool featured = false}) async {
     final dir = await Directory.systemTemp.createTemp('airstream-alert-queue-');
     try {
       final script = File('${dir.path}/test.js');
-      final html = alertsOverlayHtml();
+      final html = featured ? featuredOverlayHtml() : alertsOverlayHtml();
       final js = html.split('<script>').last.split('</script>').first;
-      await script.writeAsString('const page = ${jsonEncode(js)};\n$checks');
+      final view = featured ? 'featured' : 'alerts';
+      await script.writeAsString('const page = ${jsonEncode(js)};\n'
+          'const view = "$view";\n$checks');
       final result = await Process.run('node', [script.path]);
       expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
     } finally {
@@ -29,6 +31,12 @@ void main() {
       () => runPage(_harness + _featuredChecks));
   test('socket close clears timed and pinned featured cards on alerts',
       () => runPage(_harness + _featuredCloseChecks));
+  test('socket close discards waiting alerts and releases active playback',
+      () => runPage(_harness + _queueCloseChecks));
+  test('alerts reports OBS activity on registration and after scene changes',
+      () => runPage(_activityChecks));
+  test('featured reports OBS activity on registration and after scene changes',
+      () => runPage(_activityChecks, featured: true));
   test('font policy switches update live without reloading or clearing cards',
       () => runPage(_harness + _fontChecks));
   test('pinned featured text changes language without rebuilding or retiming',
@@ -48,7 +56,7 @@ void main() {
       'data.amount',
       'data.items',
       'item.isZeroWidth',
-      "type: 'register', view: 'featured'",
+      "registerSource(connection, 'featured')",
       'requestAnimationFrame(() => requestAnimationFrame',
       "type: 'featuredRendered', deliveryId: data.deliveryId",
       "envelope.type === 'featuredHide'",
@@ -159,9 +167,82 @@ const alert = (id, kind = 'bits', option = {}) =>
 const finish = () => timers.get(run('hideTimer'))();
 ''';
 
+const _queueCloseChecks = r'''
+op('resume');
+alert('playing', 'bits', {sound: 'coin'});
+const oldVideo = videos[0];
+alert('waiting');
+assert.equal(stage.firstElementChild.id, 'playing');
+assert.equal(run('queue.length'), 1);
+socket.close();
+assert.equal(run('queue.length'), 0);
+assert.equal(stage.firstElementChild, null);
+assert.ok(sounds[0].released);
+assert.ok(oldVideo.released);
+assert.equal(run('hideTimer'), 0);
+run('connect()');
+const next = run('socket');
+next.dispatchEvent(new Event('open'));
+next.deliver({type: 'alertControl', op: 'resume'});
+assert.equal(stage.firstElementChild, null);
+status(false, 0, false);
+next.deliver({type: 'alert', data: {id: 'new', kind: 'bits'}});
+assert.equal(stage.firstElementChild.id, 'new');
+''';
+
+const _activityChecks = r'''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+function setup(inObs) {
+  const window = new EventTarget();
+  if (inObs) window.obsstudio = {};
+  const node = {style: {setProperty() {}, removeProperty() {}}, appendChild() {}};
+  const document = {
+    visibilityState: 'hidden',
+    documentElement: node,
+    getElementById: () => node,
+    head: node,
+    createElement: () => node,
+  };
+  const sockets = [];
+  class WebSocket extends EventTarget {
+    static OPEN = 1;
+    readyState = 0;
+    frames = [];
+    constructor() { super(); sockets.push(this); }
+    send(data) { this.frames.push(JSON.parse(data)); }
+    open() { this.readyState = 1; this.dispatchEvent(new Event('open')); }
+  }
+  const context = vm.createContext({window, document, WebSocket, console,
+    location: {protocol: 'http:', host: 'localhost'}});
+  vm.runInContext(page, context);
+  return {window, sockets, reconnect: () => vm.runInContext('connect()', context)};
+}
+const browser = setup(false);
+browser.sockets[0].open();
+assert.deepEqual(browser.sockets[0].frames, [{type:'register', view, active:true}]);
+
+const obs = setup(true);
+const first = obs.sockets[0];
+first.open();
+assert.deepEqual(first.frames, [{type:'register', view, active:false}]);
+obs.window.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail:{active:true}}));
+assert.deepEqual(first.frames.at(-1), {type:'sourceActivity', active:true});
+obs.window.obsstudio.onActiveChange(false);
+assert.deepEqual(first.frames.at(-1), {type:'sourceActivity', active:false});
+obs.window.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail:{active:false}}));
+assert.equal(first.frames.length, 3);
+first.readyState = 3;
+obs.window.obsstudio.onActiveChange(true);
+assert.equal(first.frames.length, 3);
+obs.reconnect();
+obs.sockets[1].open();
+assert.deepEqual(obs.sockets[1].frames, [{type:'register', view, active:true}]);
+''';
+
 const _queueChecks = _harness +
     r'''
-assert.deepEqual(frames[0], {type: 'register', view: 'alerts'});
+assert.deepEqual(frames[0], {type: 'register', view: 'alerts', active: true});
 alert('before-sync');
 assert.equal(stage.firstElementChild, null);
 op('pause');
@@ -299,18 +380,18 @@ alert('timed', 'featured');
 alert('waiting');
 socket.close();
 assert.equal(stage.firstElementChild, null);
-assert.equal(run('queue.length'), 1);
-assert.equal(run('queue[0].id'), 'waiting');
+assert.equal(run('queue.length'), 0);
 const reconnect = timers.get(run('retryTimer'));
 reconnect();
 const nextSocket = run('socket');
 nextSocket.deliver({type: 'alertControl', op: 'resume'});
+assert.equal(stage.firstElementChild, null);
 nextSocket.deliver({type: 'settings', data: {featuredSeconds: 0}});
 nextSocket.deliver({type: 'alert', data: {id: 'pinned', kind: 'featured'}});
 assert.equal(featuredStage.firstElementChild.id, 'pinned');
 nextSocket.close();
 assert.equal(featuredStage.firstElementChild, null);
-assert.equal(stage.firstElementChild.id, 'waiting');
+assert.equal(stage.firstElementChild, null);
 ''';
 
 const _fontChecks = r'''

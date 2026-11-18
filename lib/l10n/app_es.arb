@@ -818,6 +818,7 @@
   "templatesTestEmpty": "Abre primero una plantilla en OBS",
   "templatesEmpty": "Aún no hay plantillas",
   "templatesInternet": "Acceso a internet",
+  "backupTemplateTrust": "Estas plantillas contienen código que se ejecuta en OBS. Restaura solo plantillas de personas en las que confíes.",
   "templatesCopy": "Copiar URL",
   "templatesCopied": "URL copiada",
   "templatesPreview": "Vista previa",

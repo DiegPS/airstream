@@ -1,7 +1,9 @@
+import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 
-String featuredOverlayHtml() =>
-    _featuredPage.replaceFirst('/* OVERLAY_FONT */', overlayFontScript);
+String featuredOverlayHtml() => _featuredPage
+    .replaceFirst('/* OVERLAY_FONT */', overlayFontScript)
+    .replaceFirst('/* SOURCE_ACTIVITY */', featuredSourceActivityScript);
 
 const _featuredPage = r'''<!doctype html>
 <html lang="en">
@@ -46,6 +48,7 @@ let seconds = 7;
 let shownAt = 0;
 let hideTimer = 0;
 let socket = null;
+/* SOURCE_ACTIVITY */
 let retryTimer = 0;
 let shuttingDown = false;
 
@@ -143,7 +146,7 @@ function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   const connection = socket = new WebSocket(protocol + location.host + '/ws');
   connection.addEventListener('open', () => {
-    connection.send(JSON.stringify({ type: 'register', view: 'featured' }));
+    registerSource(connection, 'featured');
   });
   connection.addEventListener('message', ({data}) => {
     try {

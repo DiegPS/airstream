@@ -6,6 +6,47 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+      'block lists redact reply quotes in the buffer, session and new messages',
+      () async {
+    final pipeline = MessagePipeline(const SettingsModel())..startSession();
+    final source = StreamController<ChatMessage>(sync: true);
+    pipeline.addSource(source.stream);
+    addTearDown(pipeline.dispose);
+    addTearDown(source.close);
+
+    void send(String id, {String parent = 'Original', String text = 'quote'}) {
+      source.add(ChatMessage(
+        platform: Platform.twitch,
+        id: id,
+        timestamp: DateTime.utc(2026),
+        author: const ChatAuthor(name: 'Replying viewer', channelId: ''),
+        items: const [MessageItem.text('Reply body')],
+        reply: ChatReplyContext(
+            messageId: 'parent', authorName: parent, text: text),
+      ));
+    }
+
+    send('by-author', parent: 'Bad Viewer');
+    send('by-word', text: 'A bad, phrase!');
+    send('safe');
+    expect(
+        pipeline.updateSettings(const SettingsModel(
+            blockedUsers: ['@badviewer'], blockedWords: ['bad phrase'])),
+        isTrue);
+    final next = pipeline.stream.firstWhere((message) => message.id == 'late');
+    send('late', text: 'bad phrase');
+    expect((await next).reply!.text, isEmpty);
+    for (final messages in [pipeline.buffer, pipeline.sessionMessages]) {
+      expect(messages.map((message) => message.reply!.text),
+          ['', '', 'quote', '']);
+      expect(messages.map((message) => message.reply!.messageId),
+          everyElement('parent'));
+      expect(messages.map((message) => message.plainText),
+          everyElement('Reply body'));
+    }
+  });
+
   test('session export drops the oldest past 20000 and resets the limit flag',
       () async {
     final pipeline = MessagePipeline(

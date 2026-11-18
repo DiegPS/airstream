@@ -2487,6 +2487,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get templatesInternet => 'Acceso a internet';
 
   @override
+  String get backupTemplateTrust =>
+      'Estas plantillas contienen código que se ejecuta en OBS. Restaura solo plantillas de personas en las que confíes.';
+
+  @override
   String get templatesCopy => 'Copiar URL';
 
   @override

@@ -1,4 +1,5 @@
 import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/application/twitch_gift_groups.dart';
 import 'package:airstream/application/name_colors.dart';
 import 'package:airstream/services/overlay/rules_api_route.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -38,7 +39,7 @@ class OverlayServer {
   OverlayServer({
     TemplateLibrary? templateLibrary,
     this.featuredAcknowledgementTimeout = const Duration(seconds: 30),
-    this.giftGroupingWindow = const Duration(seconds: 2),
+    this.giftGroupingWindow = TwitchGiftGroups.defaultWindow,
   }) : _templateLibrary = templateLibrary;
 
   RuleEngine? rulesEngine;
@@ -280,6 +281,7 @@ class OverlayServer {
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
   final _views = <WebSocketChannel, String>{};
+  final _inactiveSources = <WebSocketChannel>{};
   // Built-in chat displays at most 500 messages. Keep their inputs so name
   // colors can also update for messages already on screen.
   final _recentChatMessages = <int, ChatMessage>{};
@@ -290,7 +292,7 @@ class OverlayServer {
   int _nextChatSequence = 0;
   final _featured = <String, _PendingFeaturedMessage>{};
   int _nextDelivery = 0;
-  final _giftGroups = <String, _PendingGiftGroup>{};
+  late final _giftGroups = TwitchGiftGroups(window: giftGroupingWindow);
   final _providerAlertIds = <Platform, Set<String>>{};
   final Duration giftGroupingWindow;
 
@@ -775,6 +777,20 @@ class OverlayServer {
         },
       });
     }
+    final replySequences = <int>[];
+    for (final MapEntry(key: sequence, value: message)
+        in _recentChatMessages.entries) {
+      final redacted = _chatFilter.redactReply(message);
+      if (identical(redacted, message)) continue;
+      _recentChatMessages[sequence] = redacted;
+      replySequences.add(sequence);
+    }
+    if (replySequences.isNotEmpty) {
+      _broadcastEnvelope({
+        'type': 'moderation',
+        'data': {'scope': 'reply', 'replySequences': replySequences},
+      });
+    }
     final provider = _recentProviderEvents.entries
         .where((entry) => _chatFilter.blocksProviderEvent(entry.value))
         .toList();
@@ -928,9 +944,6 @@ class OverlayServer {
     clearRecentAlerts();
     _lifecycleGeneration++;
     _providerAlertIds.clear();
-    for (final group in _giftGroups.values) {
-      group.timer?.cancel();
-    }
     _giftGroups.clear();
     await _msgSub?.cancel();
     _msgSub = null;
@@ -939,6 +952,7 @@ class OverlayServer {
     final clients = List<WebSocketChannel>.from(_clients);
     _clients.clear();
     _views.clear();
+    _inactiveSources.clear();
     _alertQueues.clear();
     _emitAlertQueue();
     for (final pending in _featured.values) {
@@ -969,8 +983,9 @@ class OverlayServer {
     await _errorsController.close();
   }
 
-  void _broadcastMessage(ChatMessage msg) {
-    if (_chatFilter.blocksMessage(msg)) return;
+  void _broadcastMessage(ChatMessage incoming) {
+    if (_chatFilter.blocksMessage(incoming)) return;
+    final msg = _chatFilter.redactReply(incoming);
     if (_clients.isNotEmpty) {
       final sequence = ++_nextChatSequence;
       _recentChatMessages[sequence] = msg;
@@ -993,11 +1008,16 @@ class OverlayServer {
     // SDK subscriptions are local to the page. Preserve event delivery,
     // but use only known renderers to determine the delivery status.
     _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
-    final view = _views.containsValue('featured') ? 'featured' : 'alerts';
-    final recipients = _views.entries
-        .where((entry) => entry.value == view)
-        .map((entry) => entry.key)
-        .toSet();
+    final featured = <WebSocketChannel>{};
+    final alerts = <WebSocketChannel>{};
+    for (final MapEntry(key: client, value: view) in _views.entries) {
+      if (view == 'featured') featured.add(client);
+      if (view == 'alerts') alerts.add(client);
+    }
+    final activeFeatured = featured.difference(_inactiveSources);
+    final activeAlerts = alerts.difference(_inactiveSources);
+    final recipients = [activeFeatured, activeAlerts, featured, alerts]
+        .firstWhere((group) => group.isNotEmpty, orElse: () => {});
     if (recipients.isEmpty) {
       return FeaturedMessageDelivery.noReceiver();
     }
@@ -1013,7 +1033,7 @@ class OverlayServer {
       'data': {
         ..._alertData(msg, 'featured'),
         'deliveryId': id,
-        if (view == 'featured')
+        if (featured.contains(recipients.first))
           'items': OverlayPayloadEncoder.messageItems(msg),
       },
     });
@@ -1096,6 +1116,10 @@ class OverlayServer {
             }.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
+          if ((view == 'featured' || view == 'alerts') &&
+              envelope['active'] == false) {
+            _inactiveSources.add(client);
+          }
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
           if (const {'clock', 'timer', 'goals', 'giveaway', 'poll'}
               .contains(view)) {
@@ -1135,6 +1159,14 @@ class OverlayServer {
         _errors[id] = TemplateError(clean(envelope['message'], 300), source,
             envelope['line'] is int ? envelope['line'] as int : null, now);
         _errorsController.add(templateErrors);
+      } else if (envelope['type'] == 'sourceActivity' &&
+          const {'featured', 'alerts'}.contains(_views[client])) {
+        switch (envelope['active']) {
+          case true:
+            _inactiveSources.remove(client);
+          case false:
+            _inactiveSources.add(client);
+        }
       } else if (envelope['type'] == 'alertQueue' &&
           _views[client] == 'alerts') {
         final pending = envelope['pending'];
@@ -1171,25 +1203,11 @@ class OverlayServer {
             supportAlertType(kind, msg.platform, msg.membershipEventKind))) {
       return;
     }
-    if (kind == 'membership' &&
-        msg.platform == Platform.twitch &&
-        msg.membershipEventKind == MembershipEventKind.gift) {
-      final key = msg.author.channelId.isNotEmpty
-          ? msg.author.channelId
-          : msg.author.name.toLowerCase();
-      final group = _giftGroups.putIfAbsent(key, () => _PendingGiftGroup(msg));
-      group.count++;
-      group.timer?.cancel();
-      final generation = _lifecycleGeneration;
-      group.timer = Timer(giftGroupingWindow, () {
-        if (generation != _lifecycleGeneration ||
-            !identical(_giftGroups[key], group)) {
-          return;
-        }
-        _giftGroups.remove(key);
+    if (kind == 'membership' && TwitchGiftGroups.includes(msg)) {
+      _giftGroups.add(msg, (first, count) {
         _sendAutomaticAlert({
-          ..._alertData(group.first, 'membership'),
-          'giftCount': group.count,
+          ..._alertData(first, 'membership'),
+          'giftCount': count,
           'message': '',
         });
       });
@@ -1300,6 +1318,7 @@ class OverlayServer {
   }
 
   void _removeClient(WebSocketChannel client) {
+    _inactiveSources.remove(client);
     if (_views.remove(client) == 'alerts') {
       _alertQueues.remove(client);
       _emitAlertQueue();
@@ -1333,14 +1352,6 @@ class _PendingFeaturedMessage {
     timer?.cancel();
     if (!completion.isCompleted) completion.complete(status);
   }
-}
-
-class _PendingGiftGroup {
-  _PendingGiftGroup(this.first);
-
-  final ChatMessage first;
-  int count = 0;
-  Timer? timer;
 }
 
 class TemplateError {
