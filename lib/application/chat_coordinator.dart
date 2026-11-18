@@ -214,6 +214,10 @@ class ChatCoordinator {
     ]) {
       if (service case final ProviderEventChatClient source) {
         _providerEventSubscriptions.add(source.appEvents.listen((event) {
+          if (!_providerAccountingController.isClosed) {
+            _providerAccountingController.add(event);
+          }
+          if (!_pipeline.allowsProviderEvent(event)) return;
           if (!_providerEventController.isClosed) {
             _providerEventController.add(event);
           }
@@ -262,6 +266,8 @@ class ChatCoordinator {
   final _youtubeMetadataController =
       StreamController<YoutubeLiveMetadataSummary>.broadcast();
   final _providerEventController =
+      StreamController<ChatProviderEvent>.broadcast();
+  final _providerAccountingController =
       StreamController<ChatProviderEvent>.broadcast();
   final _moderationEventController =
       StreamController<ChatModerationEvent>.broadcast();
@@ -325,6 +331,9 @@ class ChatCoordinator {
 
   Stream<ChatProviderEvent> get providerEvents =>
       _providerEventController.stream;
+
+  Stream<ChatProviderEvent> get providerAccountingEvents =>
+      _providerAccountingController.stream;
 
   Stream<ChatModerationEvent> get moderationEvents =>
       _moderationEventController.stream;
@@ -771,6 +780,7 @@ class ChatCoordinator {
     await _youtubeBadgeController.close();
     await _youtubeMetadataController.close();
     await _providerEventController.close();
+    await _providerAccountingController.close();
     await _moderationEventController.close();
     await _platformMetadataController.close();
   }

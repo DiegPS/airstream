@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 
 const _leaveCommands = {'!salir', '!leave'};
 const _moderatorCommands = {
@@ -342,6 +343,28 @@ class ChatQueueController {
     if (command != _command || options.max != _options.max) _schedule();
     _options = options;
     _command = command;
+  }
+
+  void applyFilter(ChatFilter filter) {
+    var changed = false;
+    for (final entries in [_entries, _playing]) {
+      for (var i = entries.length - 1; i >= 0; i--) {
+        final entry = entries[i];
+        final prefix = '${entry.platform.name}:';
+        final id = entry.identity.startsWith(prefix)
+            ? entry.identity.substring(prefix.length)
+            : entry.identity;
+        if (filter.blocksUser(entry.name, id)) {
+          entries.removeAt(i);
+        } else if (filter.blocksText(entry.note)) {
+          entries[i] = entry.withNote('');
+        } else {
+          continue;
+        }
+        changed = true;
+      }
+    }
+    if (changed) _changed();
   }
 
   Map<String, Object?> overlayState([QueueState? state]) =>

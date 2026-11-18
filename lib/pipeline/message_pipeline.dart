@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -43,6 +44,9 @@ class MessagePipeline {
 
   void endSession() => _recordingSession = false;
 
+  bool allowsProviderEvent(ChatProviderEvent event) =>
+      !_filter.blocksProviderEvent(event);
+
   void clear() {
     _buffer.clear();
     _seenIdKeys.clear();
@@ -55,7 +59,9 @@ class MessagePipeline {
     final previousLength = _buffer.length;
     _buffer.removeWhere(event.appliesTo);
     _session.removeWhere(event.appliesTo);
-    return _buffer.length != previousLength;
+    _redactSessionReplies(event.redactReply);
+    return _redactBufferedReplies(event.redactReply) ||
+        _buffer.length != previousLength;
   }
 
   /// Enriches visible messages without replaying them through deduplication.
@@ -101,15 +107,8 @@ class MessagePipeline {
       _filter = ChatFilter(settings);
       _buffer.removeWhere(_filter.blocksMessage);
       _session.removeWhere(_filter.blocksMessage);
-      for (var i = 0; i < _buffer.length; i++) {
-        final message = _filter.redactReply(_buffer[i]);
-        if (identical(message, _buffer[i])) continue;
-        _buffer[i] = message;
-        redacted = true;
-      }
-      for (var i = _session.length; i > 0; i--) {
-        _session.addLast(_filter.redactReply(_session.removeFirst()));
-      }
+      redacted = _redactBufferedReplies(_filter.redactReply);
+      _redactSessionReplies(_filter.redactReply);
     }
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
     while (_buffer.length > limit) {
@@ -117,6 +116,23 @@ class MessagePipeline {
     }
     _trimSeenKeys();
     return redacted || _buffer.length != previousLength;
+  }
+
+  bool _redactBufferedReplies(ChatMessage Function(ChatMessage) redact) {
+    var changed = false;
+    for (var i = 0; i < _buffer.length; i++) {
+      final message = redact(_buffer[i]);
+      if (identical(message, _buffer[i])) continue;
+      _buffer[i] = message;
+      changed = true;
+    }
+    return changed;
+  }
+
+  void _redactSessionReplies(ChatMessage Function(ChatMessage) redact) {
+    for (var i = _session.length; i > 0; i--) {
+      _session.addLast(redact(_session.removeFirst()));
+    }
   }
 
   /// Adds a platform stream to the pipeline. Can be called multiple times.

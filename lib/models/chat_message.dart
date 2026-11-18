@@ -21,6 +21,12 @@ class ChatReplyContext {
   final String authorId;
   final String authorName;
   final String text;
+
+  ChatReplyContext withoutText() => ChatReplyContext(
+        messageId: messageId,
+        authorId: authorId,
+        authorName: authorName,
+      );
 }
 
 class ChatSharedSource {
@@ -77,25 +83,57 @@ class ChatModerationEvent {
   final YoutubeStreamOrientation? youtubeStreamOrientation;
 
   /// Whether this event removes [message].
-  bool appliesTo(ChatMessage message) {
-    if (message.platform != platform ||
-        message.youtubeStreamOrientation != youtubeStreamOrientation) {
+  bool appliesTo(ChatMessage message) => matchesTarget(
+        targetPlatform: message.platform,
+        orientation: message.youtubeStreamOrientation,
+        id: message.id,
+        authorId: message.author.channelId,
+        name: message.author.name,
+      );
+
+  ChatMessage redactReply(ChatMessage message) {
+    final reply = message.reply;
+    if (reply == null ||
+        reply.text.isEmpty ||
+        !matchesTarget(
+          targetPlatform: message.platform,
+          orientation: message.youtubeStreamOrientation,
+          id: reply.messageId,
+          authorId: reply.authorId,
+          name: reply.authorName,
+        )) {
+      return message;
+    }
+    return message.copyWith(reply: reply.withoutText());
+  }
+
+  bool matchesTarget({
+    required Platform? targetPlatform,
+    required YoutubeStreamOrientation? orientation,
+    required String id,
+    required String authorId,
+    required String name,
+  }) {
+    if (targetPlatform != platform || orientation != youtubeStreamOrientation) {
       return false;
     }
     return switch (scope) {
-      ChatModerationScope.message => message.id == messageId,
-      ChatModerationScope.author => matchesAuthor(message.author),
+      ChatModerationScope.message => id == messageId,
+      ChatModerationScope.author => _matchesAuthor(authorId, name),
       ChatModerationScope.platform => true,
     };
   }
 
   /// Whether [author] is the author this event moderates.
-  bool matchesAuthor(ChatAuthor author) {
-    if (authorChannelId.isNotEmpty && author.channelId == authorChannelId) {
+  bool matchesAuthor(ChatAuthor author) =>
+      _matchesAuthor(author.channelId, author.name);
+
+  bool _matchesAuthor(String id, String name) {
+    if (authorChannelId.isNotEmpty && id == authorChannelId) {
       return true;
     }
     return authorName.isNotEmpty &&
-        author.name.toLowerCase() == authorName.toLowerCase();
+        name.toLowerCase() == authorName.toLowerCase();
   }
 }
 

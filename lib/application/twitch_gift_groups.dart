@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:airstream/models/chat_message.dart';
 
-/// Coalesces Twitch's per-recipient notices for alerts and gift automation.
+/// Coalesces Twitch's per-recipient notices into gift batches.
 class TwitchGiftGroups {
   TwitchGiftGroups({this.window = defaultWindow});
 
@@ -36,6 +36,14 @@ class TwitchGiftGroups {
       group.timer?.cancel();
     }
     _pending.clear();
+  }
+
+  void flush(void Function(ChatMessage, int) onGroup) {
+    final groups = _pending.values.toList();
+    clear();
+    for (final group in groups) {
+      onGroup(group.first, group.count);
+    }
   }
 }
 

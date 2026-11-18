@@ -27,6 +27,7 @@ import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
 import 'package:airstream/services/chat_log_writer.dart';
 import 'package:airstream/services/kick_service.dart';
@@ -114,15 +115,17 @@ class AppController {
     _subscriptions.addAll([
       _chat.messages.listen(
           (m) => _emitGoalIncrements(_goalTracker.message(m), message: m)),
-      _chat.providerEvents
+      _chat.providerAccountingEvents
           .listen((e) => _emitGoalIncrements(_goalTracker.event(e))),
       _chat.messages.listen(_chatLog.write),
       _chat.messages.listen((message) {
-        if (_sessionSummary.handleMessage(message)) {
-          templateServer?.sessionChanged();
+        if (TwitchGiftGroups.includes(message)) {
+          if (_chatRunning) _sessionGiftGroups.add(message, _recordSessionGift);
+        } else {
+          _recordSessionMessage(message);
         }
       }),
-      _chat.providerEvents.listen((event) {
+      _chat.providerAccountingEvents.listen((event) {
         if (_sessionSummary.handleProviderEvent(event)) {
           templateServer?.sessionChanged();
         }
@@ -218,6 +221,18 @@ class AppController {
   late final RuleEngine rules;
   final _ruleAdapter = RuleEventAdapter();
   final _ruleGiftGroups = TwitchGiftGroups();
+  final _sessionGiftGroups = TwitchGiftGroups();
+
+  void _recordSessionMessage(ChatMessage message, {int? twitchGiftCount}) {
+    if (_sessionSummary.handleMessage(message,
+        twitchGiftCount: twitchGiftCount)) {
+      templateServer?.sessionChanged();
+    }
+  }
+
+  void _recordSessionGift(ChatMessage first, int count) =>
+      _recordSessionMessage(first, twitchGiftCount: count);
+
   Future<void> Function(SettingsModel)? ruleSettingsWriter;
   Future<void> Function(SettingsModel Function(SettingsModel))?
       clockExpiryWriter;
@@ -654,10 +669,14 @@ class AppController {
     // subsequent rule writes without reapplying chat, OBS or browser settings.
     if (_publishingQueueSettings && previous != null) return;
     queue.configure(settings.queueOptions, settings.appLanguageCode);
-    if (previous == null ||
+    final restoreQueue = previous == null ||
         (restoringBackup &&
-            !identical(previous.queueState, settings.queueState))) {
+            !identical(previous.queueState, settings.queueState));
+    if (restoreQueue) {
       queue.restore(settings.queueState);
+    }
+    if (restoreQueue || !ChatFilter.sameBlockLists(previous, settings)) {
+      queue.applyFilter(ChatFilter(settings));
     }
     _giveaway.restoreHistory(settings.giveawayHistory);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
@@ -762,6 +781,7 @@ class AppController {
         _sessionSummary.start();
         _overlay.clearRecentAlerts();
       } else {
+        _sessionGiftGroups.flush(_recordSessionGift);
         _sessionSummary.stop();
         _ruleGiftGroups.clear();
         _chatConnected = false;
@@ -811,6 +831,7 @@ class AppController {
     if (_disposed) return;
     _disposed = true;
     _ruleGiftGroups.clear();
+    _sessionGiftGroups.clear();
     _ruleEndTimer?.cancel();
     _clockEndTimer?.cancel();
     final queueDisposed = queue.dispose();

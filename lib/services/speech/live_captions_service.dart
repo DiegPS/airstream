@@ -103,6 +103,7 @@ class LiveCaptionsService {
   LiveCaptionsState _state = const LiveCaptionsState();
   StreamSubscription<Uint8List>? _audioSubscription;
   TtsDownloadCancellation? _downloadCancellation;
+  Future<void> _downloadCleanup = Future.value();
   Isolate? _worker;
   SendPort? _commands;
   ReceivePort? _events;
@@ -160,7 +161,7 @@ class LiveCaptionsService {
     }
     // A language change restarts the worker but must not cancel a model
     // download the user started; only disabling captions does that.
-    if (changed) await _serialize(() => _stop(emitIdle: false));
+    if (changed) await _serialize(_stop);
     if (!_isCurrent(revision)) return;
     final installation = await _modelCache.installed(model.package);
     if (!_isCurrent(revision)) return;
@@ -194,42 +195,62 @@ class LiveCaptionsService {
   }
 
   /// Model downloads are only initiated by this explicit UI action.
-  Future<void> prepareModel() async {
-    if (_disposed) return;
-    final model = SpeechModelCatalog.canary;
+  Future<void> prepareModel() {
+    if (_disposed) return Future.value();
     final cancellation = TtsDownloadCancellation();
     _downloadCancellation?.cancel();
     _downloadCancellation = cancellation;
+    // Retries share the partial files, so wait for the cancelled download to
+    // release them before starting the new one.
+    final download = _downloadCleanup.then((_) => _downloadModel(cancellation));
+    _downloadCleanup =
+        download.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return download;
+  }
+
+  Future<void> _downloadModel(TtsDownloadCancellation cancellation) async {
+    bool active() =>
+        identical(_downloadCancellation, cancellation) &&
+        !cancellation.isCancelled;
+    if (!active()) return;
+    final model = SpeechModelCatalog.canary;
     try {
       final installation = await _modelCache.ensureAvailable(
         model.package,
         cancellation: cancellation,
-        onProgress: (progress) => _emit(LiveCaptionsState(
-          phase: progress.phase == TtsInstallPhase.downloading
-              ? LiveCaptionsPhase.downloading
-              : LiveCaptionsPhase.loading,
-          message: progress.message,
-          receivedBytes: progress.receivedBytes,
-          totalBytes: progress.totalBytes,
-        )),
+        onProgress: (progress) {
+          if (!active()) return;
+          _emit(LiveCaptionsState(
+            phase: progress.phase == TtsInstallPhase.downloading
+                ? LiveCaptionsPhase.downloading
+                : LiveCaptionsPhase.loading,
+            message: progress.message,
+            receivedBytes: progress.receivedBytes,
+            totalBytes: progress.totalBytes,
+          ));
+        },
       );
-      if (_enabled && !cancellation.isCancelled) {
+      if (_enabled && active()) {
         final revision = _revision;
-        await _serialize(() => _start(installation, revision: revision));
+        await _serialize(() async {
+          if (active()) await _start(installation, revision: revision);
+        });
       }
     } on TtsDownloadCancelledException {
-      if (!_disposed) _emit(const LiveCaptionsState());
+      // The stop or replacement that cancelled this download owns the state.
     } catch (error, stack) {
       AppLogger.error(
         'Caption model preparation failed',
         error: error,
         stackTrace: stack,
       );
-      _emit(LiveCaptionsState(
-        phase: LiveCaptionsPhase.error,
-        message: 'The caption model could not be prepared.',
-        error: error.toString(),
-      ));
+      if (active()) {
+        _emit(LiveCaptionsState(
+          phase: LiveCaptionsPhase.error,
+          message: 'The caption model could not be prepared.',
+          error: error.toString(),
+        ));
+      }
       rethrow;
     } finally {
       if (identical(_downloadCancellation, cancellation)) {
@@ -326,7 +347,7 @@ class LiveCaptionsService {
     try {
       stream = await _audioCapture.start();
     } catch (_) {
-      if (_isCurrent(revision)) await _stop(emitIdle: false);
+      if (_isCurrent(revision)) await _stop();
       rethrow;
     }
     if (!_isCurrent(revision)) return;
@@ -348,12 +369,18 @@ class LiveCaptionsService {
   }
 
   Future<void> stop({bool emitIdle = true, bool cancelDownload = true}) {
-    _revision++;
-    if (cancelDownload) _downloadCancellation?.cancel();
-    return _serialize(() => _stop(emitIdle: emitIdle));
+    final revision = ++_revision;
+    if (cancelDownload) {
+      _downloadCancellation?.cancel();
+      _downloadCancellation = null;
+    }
+    return _serialize(() async {
+      await _stop();
+      if (emitIdle && revision == _revision) _emit(const LiveCaptionsState());
+    });
   }
 
-  Future<void> _stop({required bool emitIdle}) async {
+  Future<void> _stop() async {
     await _audioSubscription?.cancel();
     _audioSubscription = null;
     try {
@@ -386,7 +413,6 @@ class LiveCaptionsService {
     } else {
       worker?.kill(priority: Isolate.immediate);
     }
-    if (emitIdle) _emit(const LiveCaptionsState());
   }
 
   Future<void> dispose() async {

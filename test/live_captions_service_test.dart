@@ -160,6 +160,34 @@ void main() {
     await expectLater(download, throwsA(anything));
   });
 
+  test(
+      're-enabling captions ignores progress and completion from a cancelled download',
+      () async {
+    final cache = _PendingDownloadCache();
+    final service =
+        LiveCaptionsService(modelCache: cache, audioCapture: _GatedCapture());
+    addTearDown(service.dispose);
+
+    Future<void> configure(bool enabled) => service.updateConfig(
+        enabled: enabled,
+        sourceLanguage: 'es',
+        targetLanguage: 'es',
+        denoise: true);
+
+    await configure(true);
+    final download = service.prepareModel();
+    await cache.started.future;
+    await configure(false);
+    await configure(true);
+    final reenabled = service.currentState.phase;
+    cache.reportProgress();
+    final afterStaleProgress = service.currentState.phase;
+    cache.finish(cancelled: true);
+    await download;
+    expect([reenabled, afterStaleProgress, service.currentState.phase],
+        everyElement(LiveCaptionsPhase.missingModel));
+  });
+
   test('caption model package has verified ASR and VAD artifacts', () {
     final model = SpeechModelCatalog.canary;
 
@@ -210,6 +238,7 @@ class _PendingDownloadCache extends TtsModelCache {
   final started = Completer<void>();
   final _done = Completer<TtsModelInstallation>();
   TtsDownloadCancellation? cancellation;
+  void Function(TtsInstallProgress)? _onProgress;
 
   @override
   Future<TtsModelInstallation?> installed(TtsModelDefinition model) async =>
@@ -222,17 +251,24 @@ class _PendingDownloadCache extends TtsModelCache {
     TtsDownloadCancellation? cancellation,
   }) {
     this.cancellation = cancellation;
-    onProgress?.call(const TtsInstallProgress(
+    _onProgress = onProgress;
+    reportProgress();
+    if (!started.isCompleted) started.complete();
+    return _done.future;
+  }
+
+  void reportProgress() {
+    _onProgress?.call(const TtsInstallProgress(
       phase: TtsInstallPhase.downloading,
       message: 'Downloading',
       receivedBytes: 10,
       totalBytes: 100,
     ));
-    if (!started.isCompleted) started.complete();
-    return _done.future;
   }
 
-  void finish() => _done.completeError(StateError('download stopped'));
+  void finish({bool cancelled = false}) => _done.completeError(cancelled
+      ? const TtsDownloadCancelledException()
+      : StateError('download stopped'));
 }
 
 /// A model cache that reports the caption model as installed in [directory].

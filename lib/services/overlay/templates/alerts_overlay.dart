@@ -498,6 +498,31 @@ function controlQueue(op) {
   showNext();
 }
 
+function redactModeratedAlerts(moderation) {
+  if (Number.isInteger(moderation.sequence)) return;
+  const matches = (alert) => {
+    if (!alert?.message || alert.kind === 'featured' ||
+        alert.platform !== moderation.platform ||
+        (alert.youtubeStreamOrientation ?? null) !==
+          (moderation.youtubeStreamOrientation ?? null)) return false;
+    if (moderation.scope === 'platform') return true;
+    if (moderation.scope === 'message') {
+      return !!moderation.messageId && alert.id === moderation.messageId;
+    }
+    return moderation.scope === 'author' &&
+      ((moderation.authorChannelId && alert.authorChannelId === moderation.authorChannelId) ||
+       (moderation.authorName &&
+        String(alert.author || '').toLowerCase() === moderation.authorName.toLowerCase()));
+  };
+  for (const alert of queue) {
+    if (matches(alert)) alert.message = '';
+  }
+  if (matches(active)) {
+    active.message = '';
+    stage.querySelector('.alert-message')?.remove();
+  }
+}
+
 function hideFeatured() {
   queue = queue.filter(alert => alert.kind !== 'featured');
   clearPinnedFeatured();
@@ -614,6 +639,7 @@ function connect() {
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'alertControl') controlQueue(envelope.op);
+      else if (envelope.type === 'moderation' && envelope.data) redactModeratedAlerts(envelope.data);
       else if (envelope.type === 'featuredHide') hideFeatured();
       else if (envelope.type === 'alert' && envelope.data) {
         envelope.data.deliverySocket = connection;

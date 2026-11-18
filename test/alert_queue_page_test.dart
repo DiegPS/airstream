@@ -29,6 +29,8 @@ void main() {
       () => runPage(_harness + _audioChecks));
   test('alerts advance independently while a featured card is pinned',
       () => runPage(_harness + _featuredChecks));
+  test('moderation redacts active and paused paid alerts without retiming',
+      () => runPage(_harness + _moderationChecks));
   test('socket close clears timed and pinned featured cards on alerts',
       () => runPage(_harness + _featuredCloseChecks));
   test('socket close discards waiting alerts and releases active playback',
@@ -165,6 +167,35 @@ const op = (op) => socket.deliver({type: 'alertControl', op});
 const alert = (id, kind = 'bits', option = {}) =>
   socket.deliver({type: 'alert', data: {id, kind, alertType: 'bits', option}});
 const finish = () => timers.get(run('hideTimer'))();
+''';
+
+const _moderationChecks = r'''
+run('renderAlert = realRenderAlert');
+const pay = (id, orientation) => socket.deliver({type: 'alert', data: {
+  id, kind: 'superchat', platform: 'youtube', youtubeStreamOrientation: orientation,
+  author: 'Viewer', authorChannelId: 'viewer', message: 'Paid message', amount: '$5',
+}});
+const remove = (data) => socket.deliver({type: 'moderation', data: {
+  platform: 'youtube', youtubeStreamOrientation: 'horizontal', ...data,
+}});
+op('resume');
+pay('active', 'horizontal');
+const timerBefore = run('hideTimer');
+assert.equal(stage.querySelector('.alert-message').textContent, 'Paid message');
+op('pause');
+pay('waiting', 'horizontal');
+pay('waiting', 'vertical');
+remove({scope: 'message', messageId: 'active'});
+remove({scope: 'author', authorChannelId: 'viewer'});
+assert.equal(stage.querySelector('.alert-message'), null);
+assert.match(stage.querySelector('.alert-title').textContent, /Viewer/);
+assert.match(stage.querySelector('.alert-title').textContent, /\$5/);
+assert.equal(run('hideTimer'), timerBefore);
+finish();
+op('resume');
+assert.equal(stage.querySelector('.alert-message'), null);
+finish();
+assert.equal(stage.querySelector('.alert-message').textContent, 'Paid message');
 ''';
 
 const _queueCloseChecks = r'''

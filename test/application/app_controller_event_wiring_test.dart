@@ -51,10 +51,16 @@ class _PollOverlay extends RuleOverlay {
   final chat = <String>[];
   final feed = <ChatMessage>[];
   final support = <ChatMessage>[];
+  final providerIds = <String>[];
   FeaturedMessageDelivery? featuredDelivery;
 
   @override
   void broadcastChatSupport(ChatMessage message) => support.add(message);
+
+  @override
+  void broadcastProviderEvent(ChatProviderEvent event,
+          {bool alreadyFiltered = false}) =>
+      providerIds.add(event.id);
 
   @override
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) =>
@@ -128,6 +134,135 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: obs ?? FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test('blocked Kicks events reach accounting but never banners, OBS or speech',
+      () {
+    fakeAsync((fake) {
+      final kick = FakeChannelChatClient();
+      final tts = FakeTtsClient();
+      final server = _PollOverlay();
+      final app = makeController(FakeChannelChatClient(), server,
+          tts: tts,
+          chat: ChatCoordinator(
+              youtube: FakeYouTubeChatClient(),
+              youtubeHorizontal: FakeYouTubeChatClient(),
+              youtubeVertical: FakeYouTubeChatClient(),
+              kick: kick,
+              twitch: FakeChannelChatClient()));
+      final visible = <String>[];
+      final subscription =
+          app.chatProviderEvents.listen((event) => visible.add(event.id));
+      app.applySettings(
+          const SettingsModel(
+            overlayEnabled: false,
+            ttsEnabled: true,
+            ttsAlwaysReadSupport: true,
+            blockedWords: ['blocked phrase'],
+          ),
+          connectChats: true);
+      fake.flushMicrotasks();
+      for (final (id, body) in [
+        ('blocked', 'A blocked, phrase!'),
+        ('safe', 'Thanks for streaming'),
+      ]) {
+        kick.eventController.add(ChatProviderEvent(
+          platform: Platform.kick,
+          kind: ChatProviderEventKind.support,
+          id: id,
+          authorName: 'Supporter',
+          count: 10,
+          text: body,
+          timestamp: DateTime.now().toUtc(),
+        ));
+      }
+      fake.flushMicrotasks();
+      expect(visible, ['safe']);
+      expect(server.providerIds, ['safe']);
+      expect(tts.spoken.single, contains('Thanks for streaming'));
+      expect(app.sessionSummary.supporters, hasLength(2));
+      unawaited(subscription.cancel());
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
+  test(
+      'block-list edits publish and persist sanitized waiting and playing entries',
+      () {
+    fakeAsync((fake) {
+      final app = makeController(FakeChannelChatClient(), _PollOverlay());
+      final saved = <QueueState>[];
+      final published = <QueueState>[];
+      final sub = app.queue.states.listen(published.add);
+      app.queueSettingsWriter = (state) async => saved.add(state);
+      const settings = SettingsModel(overlayEnabled: false);
+      app.applySettings(settings, connectChats: false);
+      app.queue.setStatus(QueueStatus.open);
+      for (final name in ['Playing', 'DropPlaying', 'Waiting', 'DropWaiting']) {
+        app.queue.handleMessage(queueMessage(name, '!join A bad, phrase!'));
+      }
+      app.queue.next(2);
+      fake.elapse(const Duration(milliseconds: 250));
+      expect(saved.single.playing, hasLength(2));
+      saved.clear();
+      published.clear();
+
+      app.applySettings(
+          settings.copyWith(
+              blockedWords: ['bad phrase'],
+              blockedUsers: ['@DropPlaying', '@DropWaiting']),
+          connectChats: false);
+      fake.elapse(const Duration(milliseconds: 250));
+      for (final state in [app.queue.current, saved.single, published.single]) {
+        expect(state.entries.single.name, 'Waiting');
+        expect(state.playing.single.name, 'Playing');
+        expect(state.entries.single.note, isEmpty);
+        expect(state.playing.single.note, isEmpty);
+      }
+      unawaited(sub.cancel());
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
+  test('session latest, recent and rankings count a Twitch gift batch once',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      const settings = SettingsModel(overlayEnabled: false);
+      app.applySettings(settings, connectChats: true);
+      void gift(int i) {
+        twitch.messageController.add(ChatMessage(
+          platform: Platform.twitch,
+          id: 'gift-$i',
+          timestamp: DateTime.utc(2026, 11, 18, 12, 0, i),
+          author: const ChatAuthor(name: 'Gifter', channelId: 'gifter'),
+          items: const [],
+          isMembershipEvent: true,
+          membershipEventKind: MembershipEventKind.gift,
+        ));
+      }
+
+      for (var i = 0; i < 5; i++) {
+        gift(i);
+      }
+      fake.elapse(const Duration(seconds: 3));
+      final state = server.sessionState!.call()!;
+      final latest = (state['latest'] as Map)['gift'] as Map;
+      expect(latest['count'], 5);
+      expect(state['supporters'], [latest]);
+      expect(((state['top'] as Map)['gift'] as List).single['value'], 5);
+      expect(app.sessionSummary.supporters.single.count, 5);
+      gift(5);
+      fake.flushMicrotasks();
+      app.applySettings(settings, connectChats: false);
+      expect(app.sessionSummary.supporters.map((s) => s.count), [5, 1]);
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
 
   test('one Twitch gift batch satisfies minCount five and singles count one',
       () {

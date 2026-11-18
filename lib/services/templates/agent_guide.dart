@@ -85,6 +85,7 @@ type AlertType = 'superchat'|'membership'|'bits'|'subscription'|'gift'|'raid'|'k
 interface Alert {
  platform:Platform; kind:'superchat'|'membership'|'bits'|'raid'|'host'|'kicks'|'featured'; alertType:AlertType|null;
  id:string; author:string; authorAvatarUrl:string|null; authorChannelId:string;
+ youtubeStreamOrientation?:Orientation;
  badgeImageUrl:string|null; badgeLabel:string|null; message:string; amount:string|null;
  color:string|null; stickerUrl:string|null; timestamp:string; membershipKind:MembershipKind|null;
  months:number|null; giftCount:number|null;
@@ -177,7 +178,7 @@ interface Settings {
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; session:Session; queue:Queue; counters:Record<string,number>; caption:Caption; event:ProviderEvent;
- settings:Settings; fields:Fields; connected:null; disconnected:null;
+ settings:Settings; fields:Fields; connected:null; disconnected:null; filters:{words:string[]; users:string[]};
 }
 interface AirstreamAPI {
  readonly version:1; readonly template:string; readonly demo:boolean;
@@ -246,7 +247,7 @@ Every event passes (data, meta). meta.replay and meta.test are booleans. replay 
 Events and WHEN they fire:
 - chat: accepted chat message, Chat below; timestamp is an ISO-8601 string, provider IDs are opaque. For emote images, read items whose kind is emoji and use their url and alt fields. Roles are already resolved. Amounts are presentation strings, never assume numeric currency.
 - delete: moderation deletion, Delete below. For scope message, match sequence when present, otherwise match messageId. Scope author matches authorChannelId/name, scope platform clears the platform, and youtubeStreamOrientation may constrain YouTube deletion. Scope providerEvent matches a provider event by platform, providerEventKind, and messageId (the provider event id). Empty IDs/names can occur.
-- alert: automatic support or provider alert, Alert below. alertType superchat (YouTube money), membership (YouTube membership), bits (Twitch), subscription (Twitch/Kick subscription or renewal), gift (gift memberships/subscriptions), raid (Twitch raid/Kick host), kicks (Kick support). kind is membership for membership/subscription/gift, superchat for superchat, bits for bits, raid or host/kicks for provider alerts. count exists ONLY for raid/host/kicks; no count key on message alerts. message is trimmed chat text; provider raid has empty message, kicks has provider text. amount/color/stickerUrl come from superChat and may be null. authorChannelId is empty for provider alerts. months/giftCount/membershipKind may be null. Use alertType to distinguish celebrations.
+- alert: automatic support or provider alert, Alert below. alertType superchat (YouTube money), membership (YouTube membership), bits (Twitch), subscription (Twitch/Kick subscription or renewal), gift (gift memberships/subscriptions), raid (Twitch raid/Kick host), kicks (Kick support). kind is membership for membership/subscription/gift, superchat for superchat, bits for bits, raid or host/kicks for provider alerts. count exists ONLY for raid/host/kicks; no count key on message alerts. message is trimmed chat text; provider raid has empty message, kicks has provider text. amount/color/stickerUrl come from superChat and may be null. Kicks alerts include authorChannelId when available. months/giftCount/membershipKind may be null. Use alertType to distinguish celebrations.
 - trigger: automation event {name:string, data:string, rule:string}. All fields are plain text. Use textContent; never interpret data as HTML. Templates cannot trigger or edit rules.
 - featured: manually featured chat copy, same Alert fields, kind:'featured', alertType:null; no deliveryId and no confirmation command. May still contain support amount and membership metadata from the selected message.
 - event: provider lifecycle/activity event, ProviderEvent below (including raids, hosts, rewards and provider notices). data is provider-specific, arbitrary JSON; do not assume its keys. This can describe the same activity as an alert: do not celebrate both.
@@ -256,6 +257,7 @@ Events and WHEN they fire:
 - poll: state on connection/change, Poll or null. endsAt is epoch milliseconds or null for untimed. total counts voters in every mode. Default numbered polls retain the original shape. Treat absent mode, hidden and allowed as numbered, false and everyone.
   When hidden is true, options have only label. votes, percent, average, distribution, answers and distinct are omitted until close. Rating results give an average rounded to one decimal (null with no votes) and ten counts in score order (1 through 10). Free answers give the command, up to ten ranked {text,votes} groups and the number of distinct groups. Render questions, labels and answers using textContent.
 - counters: rule counter names mapped to integer values. The latest map replays on registration and changes are coalesced to at most once per second. An absent name has no stored value.
+- The filters event carries normalized blocked phrases and user keys. The built-in Word Cloud receives it on registration and whenever the block lists change.
 - queue: state on registration (replay) and on change, coalesced to at most once every 250 ms. entries are in queue order; playing lists up to ten active players, oldest first. joinedAt is an ISO timestamp. Use id and meta.replay to avoid animating rows already shown, and textContent for names and notes.
 - session: state on registration (replay) and on change, coalesced to at most once per second. Available once chat has been started and retained after it stops until the next start. live means a chat provider is connected. The 50 newest supporters use stable ids; latest covers all seven alert types even when older than that list. top ranks five per category by total, breaking ties by earliest support. Super Chats are grouped by the currency notation in amount, with no conversion; unknown currency has no ranking. Gifts rank by count; bits, kicks and raids expose bits, kicks and viewers as value. topChatters contains up to ten and excludes the channel owner. Render names and amounts with textContent. Use id and meta.replay to avoid animating rows already shown.
   endedAt is the ISO timestamp when chat was stopped, or null while the session is running. supporterCount counts distinct supporters across the full session. superchatCounts counts Super Chat events per known currency across the full session.
@@ -290,6 +292,7 @@ type AlertType = 'superchat'|'membership'|'bits'|'subscription'|'gift'|'raid'|'k
 interface Alert {
  platform:Platform; kind:'superchat'|'membership'|'bits'|'raid'|'host'|'kicks'|'featured'; alertType:AlertType|null;
  id:string; author:string; authorAvatarUrl:string|null; authorChannelId:string;
+ youtubeStreamOrientation?:Orientation;
  badgeImageUrl:string|null; badgeLabel:string|null; message:string; amount:string|null;
  color:string|null; stickerUrl:string|null; timestamp:string; membershipKind:MembershipKind|null;
  months:number|null; giftCount:number|null;
@@ -382,7 +385,7 @@ interface Settings {
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; session:Session; queue:Queue; counters:Record<string,number>; caption:Caption; event:ProviderEvent;
- settings:Settings; fields:Fields; connected:null; disconnected:null;
+ settings:Settings; fields:Fields; connected:null; disconnected:null; filters:{words:string[]; users:string[]};
 }
 interface AirstreamAPI {
  readonly version:1; readonly template:string; readonly demo:boolean;

@@ -90,7 +90,10 @@ Airstream.on('chat', (message, meta) => {
   const words = tokens.filter(word => word.length <= 36 && !stop.has(word));
   if (words.length) {
     const {id, sequence, platform, youtubeStreamOrientation, author, authorChannelId} = message;
-    recent.push({at: now, words, id, sequence, platform, youtubeStreamOrientation, author, authorChannelId});
+    const normalizedText = String(message.text ?? source).toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ').trim();
+    recent.push({at: now, words, id, sequence, platform, youtubeStreamOrientation,
+      author, authorChannelId, normalizedText});
   }
   prune(now);
 });
@@ -103,6 +106,22 @@ Airstream.on('delete', event => {
     }
   }
   if (changed) render();
+});
+Airstream.on('filters', ({words, users}) => {
+  const blockedUsers = new Set(users);
+  const phrases = words.map(word => ' ' + word + ' ');
+  const userKey = value => String(value || '').trim().toLowerCase()
+    .replace(/^@+/, '').replace(/\s+/g, '');
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const message = recent[i];
+    const text = ' ' + message.normalizedText + ' ';
+    if (blockedUsers.has(userKey(message.author)) ||
+        blockedUsers.has(userKey(message.authorChannelId)) ||
+        phrases.some(phrase => text.includes(phrase))) {
+      recent.splice(i, 1);
+    }
+  }
+  render();
 });
 configureWidget(() => {
   widgetTitle(copy[language].title);

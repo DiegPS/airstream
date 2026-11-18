@@ -291,6 +291,7 @@ class OverlayServer {
   static const _recentRecordLimit = 500;
   int _nextChatSequence = 0;
   final _featured = <String, _PendingFeaturedMessage>{};
+  bool _hasFeaturedMessage = false;
   int _nextDelivery = 0;
   late final _giftGroups = TwitchGiftGroups(window: giftGroupingWindow);
   final _providerAlertIds = <Platform, Set<String>>{};
@@ -580,6 +581,10 @@ class OverlayServer {
     if (!ChatFilter.sameBlockLists(previous, settings)) {
       _chatFilter = ChatFilter(settings);
       _removeBlockedRecords();
+      _broadcastEnvelope(
+        _filterEnvelope(),
+        gallery: 'word-cloud',
+      );
     }
     if (previous.appLanguageCode != settings.appLanguageCode) {
       for (final entry in _galleryViews.entries.toList()) {
@@ -752,10 +757,29 @@ class OverlayServer {
 
   void broadcastModeration(ChatModerationEvent event) {
     _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
+    _recentChatMessages.updateAll((_, message) => event.redactReply(message));
+    var alertsChanged = false;
+    for (var i = 0; i < _recentAlerts.length; i++) {
+      final alert = _recentAlerts[i];
+      if (alert['message'] == '' ||
+          !event.matchesTarget(
+            targetPlatform: Platform.values.asNameMap()[alert['platform']],
+            orientation: YoutubeStreamOrientation.values
+                .asNameMap()[alert['youtubeStreamOrientation']],
+            id: alert['id'] as String? ?? '',
+            authorId: alert['authorChannelId'] as String? ?? '',
+            name: alert['author'] as String? ?? '',
+          )) {
+        continue;
+      }
+      _recentAlerts[i] = Map.unmodifiable({...alert, 'message': ''});
+      alertsChanged = true;
+    }
     _broadcastEnvelope({
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
     });
+    if (alertsChanged) _recentAlertsController.add(recentAlertsSnapshot);
   }
 
   void _removeBlockedRecords() {
@@ -877,8 +901,9 @@ class OverlayServer {
     _broadcastEnvelope({'type': 'poll', 'data': poll});
   }
 
-  void broadcastProviderEvent(ChatProviderEvent event) {
-    if (_chatFilter.blocksProviderEvent(event)) return;
+  void broadcastProviderEvent(ChatProviderEvent event,
+      {bool alreadyFiltered = false}) {
+    if (!alreadyFiltered && _chatFilter.blocksProviderEvent(event)) return;
     if (_clients.isNotEmpty) {
       final key = (event.platform, event.kind, event.id);
       _recentProviderEvents.remove(key);
@@ -913,7 +938,7 @@ class OverlayServer {
         'id': event.id,
         'author': event.authorName,
         'authorAvatarUrl': null,
-        'authorChannelId': '',
+        'authorChannelId': kind == 'kicks' ? event.authorChannelId : '',
         'badgeImageUrl': null,
         'badgeLabel': null,
         'message': kind == 'kicks' ? event.text : '',
@@ -959,6 +984,7 @@ class OverlayServer {
       pending.finish(FeaturedMessageStatus.disconnected);
     }
     _featured.clear();
+    _hasFeaturedMessage = false;
     for (final client in clients) {
       try {
         await client.sink.close().timeout(const Duration(seconds: 1));
@@ -1021,6 +1047,16 @@ class OverlayServer {
     if (recipients.isEmpty) {
       return FeaturedMessageDelivery.noReceiver();
     }
+    if (_hasFeaturedMessage) {
+      final hide = jsonEncode({'type': 'featuredHide'});
+      for (final client in {...featured, ...alerts}.difference(recipients)) {
+        try {
+          client.sink.add(hide);
+        } catch (_) {
+          _removeClient(client);
+        }
+      }
+    }
     final id = '$_lifecycleGeneration-${++_nextDelivery}';
     final pending =
         _PendingFeaturedMessage(Set<WebSocketChannel>.from(recipients));
@@ -1044,6 +1080,7 @@ class OverlayServer {
         _removeClient(client);
       }
     }
+    _hasFeaturedMessage = pending.recipients.isNotEmpty;
     return FeaturedMessageDelivery(
       id,
       pending.recipients.isNotEmpty
@@ -1054,6 +1091,7 @@ class OverlayServer {
   }
 
   void removeFeaturedMessage() {
+    _hasFeaturedMessage = false;
     final envelope = {'type': 'featuredHide'};
     _broadcastEnvelope(envelope, view: 'alerts');
     _broadcastEnvelope(envelope, view: 'featured');
@@ -1099,6 +1137,9 @@ class OverlayServer {
             unawaited(_sendFields(client, id));
           } else {
             _sendGalleryFields(client, item);
+            if (id == 'word-cloud') {
+              client.sink.add(jsonEncode(_filterEnvelope(replay: true)));
+            }
           }
           return;
         }
@@ -1226,6 +1267,8 @@ class OverlayServer {
         'author': msg.author.name,
         'authorAvatarUrl': msg.author.avatarUrl,
         'authorChannelId': msg.author.channelId,
+        if (msg.youtubeStreamOrientation case final orientation?)
+          'youtubeStreamOrientation': orientation.name,
         'badgeImageUrl': msg.author.badge?.imageUrl,
         'badgeLabel': msg.author.badge?.label,
         'message': msg.plainText.trim(),
@@ -1284,14 +1327,21 @@ class OverlayServer {
     client.sink.add(jsonEncode({'type': type, 'data': data, 'replay': true}));
   }
 
+  Map<String, Object?> _filterEnvelope({bool replay = false}) => {
+        'type': 'filters',
+        'data': _chatFilter.templateFilters,
+        if (replay) 'replay': true,
+      };
+
   bool _broadcastEnvelope(Map<String, dynamic> envelope,
-      {String? view, String? requireDeliveryTo}) {
+      {String? view, String? requireDeliveryTo, String? gallery}) {
     if (_clients.isEmpty) return false;
     var sent = false;
     final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
       final clientView = _views[client];
       if (view != null && clientView != view) continue;
+      if (gallery != null && _galleryViews[client]?.id != gallery) continue;
       try {
         client.sink.add(json);
         if (requireDeliveryTo == null || clientView == requireDeliveryTo) {

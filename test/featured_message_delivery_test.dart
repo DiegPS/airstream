@@ -234,7 +234,8 @@ void main() {
     expect(await delivery.completed, FeaturedMessageStatus.rendered);
 
     final removed = server.broadcastFeaturedMessage(message);
-    await featured.next();
+    expect((await featured.next())['data']['deliveryId'], removed.id);
+    expect(await alerts.next(), {'type': 'featuredHide'});
     server.removeFeaturedMessage();
     expect(await alerts.next(), {'type': 'featuredHide'});
     expect(await featured.next(), {'type': 'featuredHide'});

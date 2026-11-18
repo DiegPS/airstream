@@ -6,6 +6,53 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('moderation clears parent quotes from the buffer and session', () {
+    final pipeline = MessagePipeline(const SettingsModel())..startSession();
+    final source = StreamController<ChatMessage>(sync: true);
+    pipeline.addSource(source.stream);
+    addTearDown(pipeline.dispose);
+    addTearDown(source.close);
+
+    void reply(String id, String parentId, String authorId,
+        YoutubeStreamOrientation orientation) {
+      source.add(ChatMessage(
+        platform: Platform.youtube,
+        youtubeStreamOrientation: orientation,
+        id: id,
+        timestamp: DateTime.utc(2026),
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('Still here')],
+        reply: ChatReplyContext(
+            messageId: parentId, authorId: authorId, text: 'Original quote'),
+      ));
+    }
+
+    const horizontal = YoutubeStreamOrientation.horizontal;
+    reply('by-id', 'deleted', 'one', horizontal);
+    reply('by-author', 'other', 'banned', horizontal);
+    reply('vertical', 'deleted', 'banned', YoutubeStreamOrientation.vertical);
+    expect(
+        pipeline.applyModeration(const ChatModerationEvent.message(
+          platform: Platform.youtube,
+          youtubeStreamOrientation: horizontal,
+          messageId: 'deleted',
+        )),
+        isTrue);
+    expect(
+        pipeline.applyModeration(const ChatModerationEvent.author(
+          platform: Platform.youtube,
+          youtubeStreamOrientation: horizontal,
+          authorChannelId: 'banned',
+        )),
+        isTrue);
+    for (final messages in [pipeline.buffer, pipeline.sessionMessages]) {
+      expect(messages.map((message) => message.reply!.text),
+          ['', '', 'Original quote']);
+      expect(messages.map((message) => message.plainText),
+          everyElement('Still here'));
+    }
+  });
+
   test(
       'block lists redact reply quotes in the buffer, session and new messages',
       () async {

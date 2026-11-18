@@ -108,7 +108,7 @@ class OverlayServerAdapter implements OverlayClient {
       server.broadcastModeration(event);
   @override
   void broadcastProviderEvent(ChatProviderEvent event) =>
-      server.broadcastProviderEvent(event);
+      server.broadcastProviderEvent(event, alreadyFiltered: true);
   @override
   Future<void> stop() => server.stop();
   @override

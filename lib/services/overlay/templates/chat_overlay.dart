@@ -812,6 +812,10 @@ function applyModeration(moderation) {
   }
   const orientationMatches = (message) => !moderation.youtubeStreamOrientation ||
     message.youtubeStreamOrientation === moderation.youtubeStreamOrientation;
+  const authorMatches = (id, name) =>
+    (moderation.authorChannelId && id === moderation.authorChannelId) ||
+    (moderation.authorName &&
+      String(name || '').toLowerCase() === String(moderation.authorName).toLowerCase());
   const matches = (record) => {
     if (moderation.scope === 'providerEvent') {
       const event = record.event;
@@ -824,19 +828,36 @@ function applyModeration(moderation) {
     if (moderation.scope === 'platform') return true;
     if (moderation.scope === 'message') return !!moderation.messageId && message.id === moderation.messageId;
     if (moderation.scope === 'author') {
-      if (moderation.authorChannelId && message.authorChannelId === moderation.authorChannelId) return true;
-      return !!moderation.authorName &&
-        String(message.author || '').toLowerCase() === String(moderation.authorName).toLowerCase();
+      return authorMatches(message.authorChannelId, message.author);
     }
     return false;
   };
+  const quoteMatches = (message) => {
+    const reply = message?.reply;
+    if (!reply?.text || Number.isInteger(moderation.sequence) ||
+        message.platform !== moderation.platform ||
+        (message.youtubeStreamOrientation ?? null) !==
+          (moderation.youtubeStreamOrientation ?? null)) return false;
+    if (moderation.scope === 'message') {
+      return !!moderation.messageId && reply.messageId === moderation.messageId;
+    }
+    return moderation.scope === 'author' && authorMatches(reply.authorId, reply.authorName);
+  };
   const retained = [];
+  let redacted = false;
   for (const record of records) {
     if (matches(record)) removeRecord(record);
-    else retained.push(record);
+    else {
+      if (quoteMatches(record.message)) {
+        record.message.reply.text = '';
+        redacted = true;
+      }
+      retained.push(record);
+    }
   }
-  if (retained.length !== records.length) {
+  if (redacted || retained.length !== records.length) {
     records = retained;
+    if (redacted) renderExistingMessages();
     scheduleScrollToBottom();
   }
 }

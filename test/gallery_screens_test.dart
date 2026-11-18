@@ -117,6 +117,10 @@ void main() {
       () => runGalleryChecks('gallery'));
   test('word cloud removes message, author and platform token batches',
       () => runGalleryChecks('word cloud'));
+  test('word cloud immediately filters contributions outside server history',
+      () => runGalleryChecks('word cloud filters'));
+  test('chat clears quotes of deleted messages and moderated reply parents',
+      () => runGalleryChecks('chat parent moderation'));
   test('chat redacts a published reply quote and keeps the reply on redraw',
       () => runGalleryChecks('chat reply quote redaction'));
   test('emote wall removes moderated messages, authors and platforms',
@@ -568,6 +572,48 @@ function checkChatReplyModeration() {
   view.send('settings', {fontSize: 25});
   assert.doesNotMatch(body(), /old quote/);
 }
+function checkChatParentModeration() {
+  const view = page('/chat');
+  const body = () => view.nodes.root.textContent;
+  for (const [sequence, id, authorId, orientation, text] of [
+    [1, 'deleted', 'one', 'horizontal', 'ID quote'],
+    [2, 'other', 'banned', 'horizontal', 'Author quote'],
+    [3, 'deleted', 'banned', 'vertical', 'Vertical quote'],
+  ]) {
+    view.send('message', {sequence, platform: 'youtube', author: 'Ana',
+      youtubeStreamOrientation: orientation,
+      items: [{kind: 'text', text: 'Reply ' + sequence}],
+      reply: {messageId: id, authorId, authorName: 'Beto', text}});
+  }
+  assert.match(body(), /ID quote/);
+  assert.match(body(), /Author quote/);
+  const moderate = (data) => view.send('moderation', {
+    platform: 'youtube', youtubeStreamOrientation: 'horizontal', ...data,
+  });
+  moderate({scope: 'message', messageId: 'deleted'});
+  moderate({scope: 'author', authorChannelId: 'banned'});
+  view.send('settings', {fontSize: 25});
+  assert.doesNotMatch(body(), /ID quote|Author quote/);
+  assert.match(body(), /Vertical quote/);
+  for (const i of [1, 2, 3]) assert.match(body(), new RegExp('Reply ' + i));
+}
+function checkWordCloudFilters() {
+  const view = page('word-cloud');
+  view.fields({refresh: 1});
+  function chat(text, author = 'Viewer') {
+    view.send('message', {platform: 'twitch', author, text});
+  }
+  chat('orchid');
+  chat('bad, phrase fern');
+  chat('maple', 'Bad Viewer');
+  view.advance(1000);
+  const words = () => view.nodes.words.children.map(word => word.textContent);
+  assert.deepEqual(words(), ['bad', 'fern', 'maple', 'orchid', 'phrase']);
+  view.send('filters', {words: ['bad phrase'], users: ['badviewer']});
+  assert.deepEqual(words(), ['orchid']);
+  view.send('filters', {words: [], users: []});
+  assert.deepEqual(words(), ['orchid']);
+}
 function checkWordCloudModeration() {
   const view = page('word-cloud');
   view.fields({refresh: 1});
@@ -698,6 +744,8 @@ function checkPollTies() {
 const regressions = {
   'poll ties': checkPollTies,
   'word cloud': checkWordCloudModeration,
+  'word cloud filters': checkWordCloudFilters,
+  'chat parent moderation': checkChatParentModeration,
   'chat reply quote redaction': checkChatReplyModeration,
   'emote wall': checkEmoteWallModeration,
   goals: checkGoalReset,

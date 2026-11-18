@@ -15,6 +15,83 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
+  ChatMessage paid(String id, YoutubeStreamOrientation orientation) =>
+      ChatMessage(
+        platform: Platform.youtube,
+        youtubeStreamOrientation: orientation,
+        id: id,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('Paid message')],
+        superChat: const SuperChat(amount: r'$5', color: ''),
+        timestamp: DateTime.utc(2026),
+      );
+
+  test('moderation redacts recent alert snapshots and replay by source',
+      () async {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final alerts = _Socket(server)..register('alerts');
+    const horizontal = YoutubeStreamOrientation.horizontal;
+    server.broadcastChatSupport(paid('delete-me', horizontal));
+    server.broadcastChatSupport(
+        paid('keep-me', YoutubeStreamOrientation.vertical));
+    final change = server.recentAlerts.skip(1).first;
+    server.broadcastModeration(const ChatModerationEvent.author(
+      platform: Platform.youtube,
+      youtubeStreamOrientation: horizontal,
+      authorChannelId: 'viewer',
+    ));
+    final recent = server.recentAlertsSnapshot;
+    expect(recent.map((alert) => alert['message']), ['Paid message', '']);
+    expect(await change, recent);
+    expect(server.replayRecentAlert('delete-me'), isTrue);
+    final replay = alerts.sink.frames.last['data'] as Map;
+    expect(replay, containsPair('message', ''));
+    expect(replay, containsPair('amount', r'$5'));
+    expect(replay, containsPair('author', 'Viewer'));
+  });
+
+  test('featured replacement clears the pinned card on inactive alerts',
+      () async {
+    final server = OverlayServer()
+      ..setSettings(const SettingsModel(featuredSeconds: 0));
+    addTearDown(server.dispose);
+    final alerts = _Socket(server)..register('alerts');
+    final featured = _Socket(server)..register('featured', active: false);
+    const horizontal = YoutubeStreamOrientation.horizontal;
+    final old = server.broadcastFeaturedMessage(paid('old', horizontal));
+    expect(alerts.sink.frames.last['type'], 'alert');
+    alerts.acknowledgeFeatured(old.id);
+    expect(await old.completed, FeaturedMessageStatus.rendered);
+    alerts.reportActivity(false);
+    featured.reportActivity(true);
+    server.broadcastFeaturedMessage(paid('new', horizontal));
+    expect(featured.sink.frames.last['data']['id'], 'new');
+    expect(alerts.sink.frames.last, {'type': 'featuredHide'});
+  });
+
+  test('block-list updates send a normalized filter signal to the word cloud',
+      () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final cloud = _Socket(server)..register('gallery', template: 'word-cloud');
+    cloud.sink.frames.clear();
+    server.setSettings(const SettingsModel(
+        blockedWords: [' BAD, phrase! '], blockedUsers: [' @Bad Viewer ']));
+    final filtered = {
+      'type': 'filters',
+      'data': {
+        'words': ['bad phrase'],
+        'users': ['badviewer'],
+      }
+    };
+    expect(cloud.sink.frames.where((frame) => frame['type'] == 'filters'),
+        [filtered]);
+    final reconnected = _Socket(server)
+      ..register('gallery', template: 'word-cloud');
+    expect(reconnected.snapshot('filters'), {...filtered, 'replay': true});
+  });
+
   test(
       'custom index redirects with its query and injects the SDK at the target',
       () async {
@@ -334,6 +411,9 @@ class _Socket implements WebSocketChannel {
 
   void reportActivity(bool active) =>
       _incoming.add(jsonEncode({'type': 'sourceActivity', 'active': active}));
+
+  void acknowledgeFeatured(String? id) =>
+      _incoming.add(jsonEncode({'type': 'featuredRendered', 'deliveryId': id}));
 
   void register(String view, {String? template, bool? active}) {
     _incoming.add(jsonEncode({

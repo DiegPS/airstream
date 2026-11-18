@@ -151,7 +151,7 @@ class SessionSummaryCollector {
     if (_running) _endedAt = _clock();
   }
 
-  bool handleMessage(ChatMessage message) {
+  bool handleMessage(ChatMessage message, {int? twitchGiftCount}) {
     if (!_running) return false;
     final kind = messageAlertKind(message);
     if (kind != null && !_seenEvents.add('message:${message.dedupeKey}')) {
@@ -180,7 +180,7 @@ class SessionSummaryCollector {
     final amount = message.superChat?.amount;
     final money = type == 'superchat' ? parseRuleAmount(amount!) : null;
     final bits = type == 'bits' ? parseRuleBits(amount!) : null;
-    final gifts = message.membershipGiftCount;
+    final gifts = twitchGiftCount ?? message.membershipGiftCount;
     final legacy = message.isMembershipEvent
         ? (message.membershipEventKind == MembershipEventKind.gift ||
                 (gifts != null && gifts > 0)

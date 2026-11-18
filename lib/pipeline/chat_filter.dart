@@ -18,6 +18,11 @@ class ChatFilter {
   final Set<String> _users;
   final Set<String> _words;
 
+  Map<String, Object?> get templateFilters => {
+        'users': _users.toList(),
+        'words': _words.toList(),
+      };
+
   static bool sameBlockLists(SettingsModel previous, SettingsModel next) =>
       listEquals(previous.blockedUsers, next.blockedUsers) &&
       listEquals(previous.blockedWords, next.blockedWords);
@@ -32,12 +37,7 @@ class ChatFilter {
         !_blocks(reply.authorName, reply.authorId, reply.text)) {
       return message;
     }
-    return message.copyWith(
-        reply: ChatReplyContext(
-      messageId: reply.messageId,
-      authorId: reply.authorId,
-      authorName: reply.authorName,
-    ));
+    return message.copyWith(reply: reply.withoutText());
   }
 
   bool blocksProviderEvent(ChatProviderEvent event) => _blocks(
@@ -53,15 +53,18 @@ class ChatFilter {
             }),
       );
 
-  bool _blocks(String name, String id, String text) {
-    if (_users.isNotEmpty &&
-        (_users.contains(normalizeUserKey(name)) ||
-            _users.contains(normalizeUserKey(id)))) {
-      return true;
-    }
+  bool _blocks(String name, String id, String text) =>
+      blocksUser(name, id) || blocksText(text);
+
+  bool blocksUser(String name, String id) =>
+      _users.isNotEmpty &&
+      (_users.contains(normalizeUserKey(name)) ||
+          _users.contains(normalizeUserKey(id)));
+
+  bool blocksText(String text) {
     if (_words.isEmpty || text.isEmpty) return false;
-    final paddedText = ' ${WordMatching.normalize(text)} ';
-    return _words.any((word) => paddedText.contains(' $word '));
+    final prepared = WordMatching.prepare(text);
+    return _words.any((word) => WordMatching.containsPhrase(prepared, word));
   }
 
   static String normalizeUserKey(String value) => value
