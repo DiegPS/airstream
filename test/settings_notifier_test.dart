@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:airstream/services/app_logger.dart';
 
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/application/chat_queue.dart';
@@ -263,6 +266,73 @@ void main() {
     );
   });
 
+  test(
+      'an unread OBS credential survives unrelated and explicit settings edits',
+      () async {
+    final secure = _MemorySecureSettingsStore('original')..failReads = true;
+    final notifier = SettingsNotifier(
+      secureStore: secure,
+      settingsRepository: _MemorySettingsRepository('{}'),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await notifier.update(notifier.state.copyWith(fontSize: 24));
+    expect(secure.password, 'original');
+    await notifier.update(notifier.state.copyWith(obsPassword: 'replacement'));
+    expect(secure.password, 'original');
+  });
+
+  test('first-run settings only look up an OBS credential on a password edit',
+      () async {
+    final secure = _MemorySecureSettingsStore('original')..failReads = true;
+    final notifier = SettingsNotifier(
+      secureStore: secure,
+      settingsRepository: _MemorySettingsRepository(),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await notifier.update(notifier.state.copyWith(fontSize: 24));
+    expect(secure.reads, 0);
+    await notifier.update(notifier.state.copyWith(obsPassword: 'replacement'));
+    expect(secure.reads, 1);
+    expect(secure.password, 'original');
+  });
+
+  test('invalid settings log the offset without source, including on recovery',
+      () async {
+    final directory =
+        await Directory.systemTemp.createTemp('invalid-settings-log-');
+    addTearDown(() => directory.delete(recursive: true));
+    await AppLogger.initialize(directory: directory);
+    const source =
+        '{"note":"https://local.invalid/private-source", "bad": NOT_SETTINGS}';
+    for (final backup in [null, '{"fontSize":27}']) {
+      final notifier = SettingsNotifier(
+        secureStore: _MemorySecureSettingsStore(),
+        settingsRepository: _RecoverableMemorySettingsRepository(
+            primary: source, backup: backup),
+      );
+      addTearDown(notifier.dispose);
+      await notifier.ready;
+      if (backup != null) expect(notifier.state.fontSize, 27);
+    }
+    await AppLogger.flush();
+    final log =
+        await File('${directory.path}${Platform.pathSeparator}airstream.log')
+            .readAsString();
+    expect(
+        log,
+        contains(
+            'Persisted settings are invalid; using safe defaults (offset '));
+    expect(
+        log,
+        contains(
+            'Primary settings are invalid; recovering the backup (offset '));
+    expect(log, isNot(contains('private-source')));
+    expect(log, isNot(contains('NOT_SETTINGS')));
+    expect(log, isNot(contains('FormatException')));
+  });
+
   test('updates state immediately while persistence remains asynchronous',
       () async {
     final secureStore = _MemorySecureSettingsStore()
@@ -298,6 +368,24 @@ void main() {
       prefs.getString('AIRSTREAM_SETTINGS'),
       contains('recoverable-secret'),
     );
+  });
+
+  test('a failed startup rewrite still allows later settings to persist',
+      () async {
+    final repository = _MemorySettingsRepository('{"fontSize":21}')
+      ..failWrites = true;
+    final notifier = SettingsNotifier(
+      settingsRepository: repository,
+      secureStore: _MemorySecureSettingsStore('stored'),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    expect(notifier.state.fontSize, 21);
+    expect(notifier.state.obsPassword, 'stored');
+    repository.failWrites = false;
+    await notifier.update(notifier.state.copyWith(fontSize: 22));
+    expect(
+        SettingsDocumentCodec.decode(repository.json!).settings.fontSize, 22);
   });
 
   test('loads and persists through an injected settings repository', () async {
@@ -451,12 +539,14 @@ class _MemorySettingsRepository implements SettingsRepository {
   _MemorySettingsRepository([this.json]);
 
   String? json;
+  bool failWrites = false;
 
   @override
   Future<String?> read() async => json;
 
   @override
   Future<void> write(String json) async {
+    if (failWrites) throw StateError('Settings repository unavailable');
     this.json = json;
   }
 }
@@ -466,6 +556,8 @@ class _MemorySecureSettingsStore implements SecureSettingsStore {
 
   String? password;
   bool failWrites = false;
+  bool failReads = false;
+  int reads = 0;
   Duration writeDelay = Duration.zero;
 
   @override
@@ -474,7 +566,11 @@ class _MemorySecureSettingsStore implements SecureSettingsStore {
   }
 
   @override
-  Future<String?> readObsPassword() async => password;
+  Future<String?> readObsPassword() async {
+    reads++;
+    if (failReads) throw StateError('Secure storage unavailable');
+    return password;
+  }
 
   @override
   Future<void> writeObsPassword(String password) async {

@@ -58,14 +58,19 @@ class SystemBackup {
           String destination, SettingsModel Function() read) =>
       media.withStableFiles(() => export(destination, read()));
 
-  Future<void> export(String destination, SettingsModel settings) {
+  Future<void> export(String destination, SettingsModel settings) =>
+      _writeBackup(destination, SettingsProfiles.export(settings),
+          stripHttpUrls: true);
+
+  Future<void> _writeBackup(String destination, String settings,
+      {required bool stripHttpUrls}) {
     final templatePath = templates.rootPath;
     final mediaPath = media.directory.path;
     final limits = this.limits;
     final version = appVersion;
-    final portable = _portableSettings(SettingsProfiles.export(settings));
+    final document = _scrubSettings(settings, stripHttpUrls: stripHttpUrls);
     return Isolate.run(() => _export(
-        destination, portable, templatePath, mediaPath, limits, version));
+        destination, document, templatePath, mediaPath, limits, version));
   }
 
   Future<ValidatedSystemBackup> validate(String path) async {
@@ -87,7 +92,9 @@ class SystemBackup {
                 if (!await backup._staging.exists()) {
                   throw const FormatException('invalid');
                 }
-                final next = SettingsProfiles.import(backup._settings, current);
+                final next = SettingsProfiles.applyImportedSettings(
+                    SettingsDocumentCodec.decode(backup._settings).settings,
+                    current);
                 await _safetyBackup(current);
                 final oldIds = await _templateIds(templates.root);
                 final newIds = await _templateIds(
@@ -174,22 +181,28 @@ class SystemBackup {
         ? 0
         : int.parse(p.basename(previous.first.path).substring(7, 27));
     final stamp = (now > last ? now : last + 1).toString().padLeft(20, '0');
-    await export(p.join(safety.path, 'safety-$stamp$_extension'), current);
+    await _writeBackup(
+      p.join(safety.path, 'safety-$stamp$_extension'),
+      SettingsDocumentCodec.encode(current,
+          includeWebhookSecret: false, includeQueueState: false),
+      stripHttpUrls: false,
+    );
     for (final old in previous.skip(2)) {
       await old.delete();
     }
   }
 }
 
-/// The rule editor treats HTTP endpoints as private (e.g. Discord webhooks).
-String _portableSettings(String source) {
+/// Removes credentials, including copies in saved profiles.
+String _scrubSettings(String source, {required bool stripHttpUrls}) {
   Object? scrub(Object? value, {bool profileNames = false}) => switch (value) {
         Map() => {
             for (final entry in value.entries)
               if (profileNames ||
                   (entry.key != 'obsPassword' &&
                       entry.key != 'rulesWebhookToken'))
-                entry.key: !profileNames &&
+                entry.key: stripHttpUrls &&
+                        !profileNames &&
                         entry.key == 'url' &&
                         value['type'] == 'http.request'
                     ? ''
@@ -361,8 +374,9 @@ Future<ValidatedSystemBackup> _validate(
     final timestamp = manifest['createdAt'];
     final createdAt = timestamp is String ? DateTime.tryParse(timestamp) : null;
     final counts = manifest['counts'];
-    final source = _portableSettings(
-        File(p.join(staging.path, _settingsName)).readAsStringSync());
+    final source = _scrubSettings(
+        File(p.join(staging.path, _settingsName)).readAsStringSync(),
+        stripHttpUrls: false);
     final decoded = SettingsDocumentCodec.decode(source);
     if (decoded.requiresRewrite ||
         createdAt == null ||
@@ -453,6 +467,25 @@ Future<void> _export(String destination, String settings, String templatePath,
         }
       }
 
+      final backedUpMedia = <String, Map<String, dynamic>>{};
+      for (final entry in model.mediaLibrary.entries) {
+        final name = _mediaName(entry);
+        final asset = File(p.join(mediaPath, p.posix.basename(name)));
+        if (await FileSystemEntity.type(asset.path, followLinks: false) ==
+            FileSystemEntityType.notFound) {
+          continue;
+        }
+        if (await MediaLibrary.inspect(asset) != entry.value['kind'] ||
+            await FileSystemEntity.type(mediaPath, followLinks: false) !=
+                FileSystemEntityType.directory ||
+            !await _inside(mediaRoot, asset) ||
+            await asset.length() != entry.value['bytes']) {
+          throw const FormatException('media');
+        }
+        await addFile(name, asset);
+        backedUpMedia[entry.key] = entry.value;
+      }
+
       add(ArchiveFile.string(
           _manifestName,
           jsonEncode({
@@ -463,28 +496,18 @@ Future<void> _export(String destination, String settings, String templatePath,
             'counts': {
               'rules': model.rules.length,
               'templates': ids.length,
-              'media': model.mediaLibrary.length,
+              'media': backedUpMedia.length,
             },
           })));
-      add(ArchiveFile.string(_settingsName, settings));
+      final document = jsonDecode(settings) as Map<String, dynamic>;
+      (document['settings'] as Map)['mediaLibrary'] = backedUpMedia;
+      add(ArchiveFile.string(_settingsName, jsonEncode(document)));
       for (final id in ids) {
         final folder = Directory(p.join(templatePath, id));
         if (!await _inside(templateRoot, folder)) {
           throw const FormatException('path');
         }
         await addTemplate(folder, 'templates/$id');
-      }
-      for (final entry in model.mediaLibrary.entries) {
-        final name = _mediaName(entry);
-        final asset = File(p.join(mediaPath, p.posix.basename(name)));
-        if (await MediaLibrary.inspect(asset) != entry.value['kind'] ||
-            await FileSystemEntity.type(mediaPath, followLinks: false) !=
-                FileSystemEntityType.directory ||
-            !await _inside(mediaRoot, asset) ||
-            await asset.length() != entry.value['bytes']) {
-          throw const FormatException('media');
-        }
-        await addFile(name, asset);
       }
       encoder.closeSync();
     } finally {

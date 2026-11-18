@@ -4,6 +4,54 @@ import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_evaluator.dart';
 
 void main() {
+  test('stored rules discard only filters their trigger cannot evaluate', () {
+    for (final (type, platform, roles) in [
+      ('poll.ended', false, false),
+      ('clock.ended', false, false),
+      ('obs.sceneChanged', false, false),
+      ('interval', false, false),
+      ('manual', false, false),
+      ('giveaway.winner', true, false),
+      ('support.raid', true, false),
+      ('support.kicks', true, false),
+      ('support.bits', true, true),
+      ('chat.message', true, true),
+      ('queue.joined', true, true),
+    ]) {
+      final rule = RuleSchema.sanitize([
+        {
+          ...RuleSchema.newRule(type, id: 'test'),
+          'enabled': true,
+          'trigger': {
+            ...RuleSchema.newRule(type, id: 'test')['trigger'] as Map,
+            if (type == 'chat.message') 'text': 'hello' else 'text': 'stale'
+          },
+          'conditions': {
+            'platforms': ['twitch'],
+            'roles': ['member'],
+            'onlyWhileStreaming': true
+          },
+        }
+      ]).single;
+      expect(
+          rule['conditions'],
+          {
+            'platforms': platform ? ['twitch'] : [],
+            'roles': roles ? ['member'] : [],
+            'onlyWhileStreaming': true,
+          },
+          reason: type);
+      if (!platform) {
+        expect((rule['trigger'] as Map).containsKey('text'), isFalse);
+        expect(
+            evaluateRule(rule, RuleEvent(type: type),
+                RuleContext(now: DateTime.utc(2026), streaming: true)),
+            isNull,
+            reason: type);
+      }
+    }
+  });
+
   Map<String, dynamic> rule(String type,
           {Map<String, dynamic> params = const {},
           Map<String, dynamic> conditions = const {}}) =>

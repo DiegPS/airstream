@@ -3439,7 +3439,7 @@ class AppLocalizationsEs extends AppLocalizations {
       count,
       locale: localeName,
       other:
-          'La exportación incluye los $count mensajes de chat que se conservan.',
+          'La exportación de chat se limita a los últimos $count mensajes conservados.',
       one: 'La exportación incluye 1 mensaje de chat conservado.',
       zero: 'No hay mensajes de chat conservados.',
     );

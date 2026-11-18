@@ -200,6 +200,54 @@ void main() {
     expect((original.rules, original.templates, original.media), (1, 1, 0));
   });
 
+  test('missing media is skipped in portable and safety backups', () async {
+    final incoming = await makePortable();
+    const missingId = 'fedcba9876543210';
+    await File(p.join(media.directory.path, '$_mediaId.png'))
+        .writeAsBytes(_png);
+    await settings.update(local.copyWith(mediaLibrary: {
+      ...portable.mediaLibrary,
+      missingId: portable.mediaLibrary[_mediaId]!,
+    }));
+    final exported = p.join(temp.path, 'without-missing.airstream-backup');
+    await backup.export(exported, settings.current);
+    final archive = await backup.validate(exported);
+    addTearDown(archive.dispose);
+    expect(archive.media, 1);
+    final validated = await backup.validate(incoming);
+    addTearDown(validated.dispose);
+    await backup.restore(validated, settings);
+    expect(settings.current.mediaLibrary.keys, [_mediaId]);
+    final safety =
+        Directory(p.join(support.path, 'safety-backups')).listSync().single;
+    final saved = await backup.validate(safety.path);
+    addTearDown(saved.dispose);
+    expect(saved.media, 1);
+  });
+
+  test('safety backup restores a removed rule endpoint without credentials',
+      () async {
+    final exported = p.join(temp.path, 'empty.airstream-backup');
+    await backup.export(exported, const SettingsModel());
+    final replacement = await backup.validate(exported);
+    addTearDown(replacement.dispose);
+    await backup.restore(replacement, settings);
+    expect(settings.current.rules, isEmpty);
+
+    final safety =
+        Directory(p.join(support.path, 'safety-backups')).listSync().single;
+    final zip = ZipDecoder().decodeBytes(await File(safety.path).readAsBytes());
+    final document = utf8.decode(zip.findFile('settings.json')!.content);
+    expect(document, contains('private-local-endpoint'));
+    expect(document, isNot(contains('obsPassword')));
+    expect(document, isNot(contains('rulesWebhookToken')));
+    final saved = await backup.validate(safety.path);
+    addTearDown(saved.dispose);
+    await backup.restore(saved, settings);
+    expect((settings.current.rules.single['actions'] as List).single['url'],
+        'https://example.invalid/private-local-endpoint');
+  });
+
   test('settings persistence failure rolls back both library replacements',
       () async {
     final path = await makePortable();

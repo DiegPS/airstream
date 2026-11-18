@@ -3403,8 +3403,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other:
-          'Chat export includes the $count messages still in the chat buffer.',
+      other: 'The chat export is limited to the last $count retained messages.',
       one: 'Chat export includes 1 retained message.',
       zero: 'No chat messages are retained.',
     );

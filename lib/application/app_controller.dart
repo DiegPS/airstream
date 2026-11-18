@@ -133,10 +133,10 @@ class AppController {
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
       ),
-      _chat.messages.listen(_audio.handleChatMessage),
       _chat.providerEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
         if (_poll.hasOpenPoll && _poll.handleMessage(m)) return;
+        _audio.handleChatMessage(m);
         _overlayFeed.add(m);
         queue.handleMessage(m);
         if (rules.active) {
@@ -245,6 +245,7 @@ class AppController {
   Future<void> _winnerNotifications = Future.value();
   int _settingsDepth = 0, _ruleEventSequence = 0;
   Timer? _ruleEndTimer, _clockEndTimer;
+  int? _silentSubathonDeadline;
 
   /// A countdown that ended while the app was closed is marked ended on
   /// launch without running clock.ended rules or the end sound.
@@ -435,9 +436,8 @@ class AppController {
 
   /// What happened since the chat was last started.
   SessionSummary get sessionSummary => _sessionSummary.summary;
-  List<ChatMessage> _stoppedSessionChat = const [];
-  List<ChatMessage> get sessionChat =>
-      _chatRunning ? _chat.bufferedMessages : _stoppedSessionChat;
+  List<ChatMessage> get sessionChat => _chat.sessionMessages;
+  bool get sessionChatTruncated => _chat.sessionMessagesTruncated;
 
   Stream<AlertQueueStatus> get alertQueueStatusStream =>
       _overlay.alertQueueStatusStream;
@@ -547,7 +547,8 @@ class AppController {
   void retryChatConnections() => _chat.retryConnections();
   void retryChatPlatform(String platform) => _chat.retryPlatform(platform);
 
-  void applySettings(SettingsModel settings, {required bool connectChats}) {
+  void applySettings(SettingsModel settings,
+      {required bool connectChats, bool restoringBackup = false}) {
     if (_disposed) return;
     final previous = _lastSettings;
     _lastSettings = settings;
@@ -555,15 +556,26 @@ class AppController {
     // subsequent rule writes without reapplying chat, OBS or browser settings.
     if (_publishingQueueSettings && previous != null) return;
     queue.configure(settings.queueOptions, settings.appLanguageCode);
-    if (previous == null) queue.restore(settings.queueState);
+    if (previous == null ||
+        (restoringBackup &&
+            !identical(previous.queueState, settings.queueState))) {
+      queue.restore(settings.queueState);
+    }
     _giveaway.restoreHistory(settings.giveawayHistory);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
     templateServer?.rulesEngine = rules;
-    _trackClock(previous?.clock, settings.clock);
+    _trackClock(restoringBackup ? null : previous?.clock, settings.clock);
+    if (restoringBackup) {
+      // A deadline that elapsed before the restore is part of its baseline.
+      _silentSubathonDeadline = settings.subathonPhase == 'running' &&
+              settings.subathonEndsAtMs <= DateTime.now().millisecondsSinceEpoch
+          ? settings.subathonEndsAtMs
+          : null;
+    }
     _ruleEndTimer?.cancel();
     _ruleEndTimer = null;
     if (rules.active) {
-      if (previous != null) {
+      if (previous != null && !restoringBackup) {
         for (final e in settings.goals.entries) {
           final old = previous.goals[e.key];
           if (old != null &&
@@ -577,6 +589,7 @@ class AppController {
           }
         }
         if (previous.subathonPhase == 'running' &&
+            previous.subathonEndsAtMs != _silentSubathonDeadline &&
             settings.subathonPhase == 'ended') {
           rules.handle(RuleEvent(
               type: 'subathon.ended',
@@ -585,6 +598,7 @@ class AppController {
         }
       }
       if (settings.subathonPhase == 'running' &&
+          settings.subathonEndsAtMs != _silentSubathonDeadline &&
           rules.rules.any((r) =>
               r['enabled'] == true &&
               (r['trigger'] as Map)['type'] == 'subathon.ended')) {
@@ -601,15 +615,17 @@ class AppController {
         });
       }
     }
+    if (settings.subathonPhase != 'running' ||
+        settings.subathonEndsAtMs != _silentSubathonDeadline) {
+      _silentSubathonDeadline = null;
+    }
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
         _ruleAdapter.startSession();
         _sessionSummary.start();
-        _stoppedSessionChat = const [];
         _overlay.clearRecentAlerts();
       } else {
-        _stoppedSessionChat = _chat.bufferedMessages;
         _sessionSummary.stop();
         _chatConnected = false;
       }
@@ -622,7 +638,8 @@ class AppController {
     }
     _chat.applySettings(settings, connectChats: connectChats);
     _audio.applySettings(settings, connectChats: connectChats);
-    _overlay.broadcastGoals(Goals.payload(settings.goals));
+    _overlay.broadcastGoals(Goals.payload(settings.goals),
+        replay: restoringBackup);
     _overlay.applySettings(
       settings,
       previous: previous,

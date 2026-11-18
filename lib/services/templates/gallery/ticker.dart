@@ -256,9 +256,10 @@ document.fonts?.addEventListener('loadingdone', () => {
 });
 reducedMotion.addEventListener('change', resetMotion);
 Airstream.on('session', refresh);
-Airstream.on('goals', refresh);
-Airstream.on('timer', () => {
-  refresh();
+Airstream.on('goals', (_, meta) => meta.replay && configured ? resetMotion() : refresh());
+Airstream.on('timer', (_, meta) => {
+  if (meta.replay && configured) resetMotion();
+  else refresh();
   if (timeNodes.length && Airstream.state.timer?.phase === 'running') updateClock();
 });
 configureWidget(() => {

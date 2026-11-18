@@ -350,6 +350,10 @@ void main() {
         (jsonDecode(events.current as String) as Map)['type'],
         'settings',
       );
+      socket.sink.add(jsonEncode({'type': 'register', 'view': 'poll'}));
+      expect(await events.moveNext(), isTrue);
+      expect(
+          (jsonDecode(events.current as String) as Map)['type'], 'registered');
       expect(await events.moveNext(), isTrue);
       final envelope =
           jsonDecode(events.current as String) as Map<String, dynamic>;
@@ -393,6 +397,10 @@ void main() {
       events = StreamIterator(socket.stream);
       await events.moveNext();
       expect((jsonDecode(events.current as String) as Map)['type'], 'settings');
+      socket.sink.add(jsonEncode({'type': 'register', 'view': 'goals'}));
+      expect(await events.moveNext(), isTrue);
+      expect(
+          (jsonDecode(events.current as String) as Map)['type'], 'registered');
       await events.moveNext();
       final replay = jsonDecode(events.current as String) as Map;
       expect(replay['type'], 'goals');
@@ -408,7 +416,6 @@ void main() {
           'reached': true
         }
       ]);
-      socket.sink.add(jsonEncode({'type': 'register', 'view': 'goals'}));
       await Future<void>.delayed(const Duration(milliseconds: 20));
     } finally {
       await events?.cancel();
@@ -457,6 +464,10 @@ void main() {
         (jsonDecode(events.current as String) as Map)['type'],
         'settings',
       );
+      socket.sink.add(jsonEncode({'type': 'register', 'view': 'giveaway'}));
+      expect(await events.moveNext(), isTrue);
+      expect(
+          (jsonDecode(events.current as String) as Map)['type'], 'registered');
       expect(await events.moveNext(), isTrue);
       final envelope =
           jsonDecode(events.current as String) as Map<String, dynamic>;

@@ -55,7 +55,13 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   bool _loaded = false;
   Future<void> _updateQueue = Future<void>.value();
   Future<void>? _restoreInProgress;
+  // Null means secure storage could not be read. An empty string means
+  // secure storage was read successfully and had no saved password.
   String? _persistedObsPassword;
+  bool _readObsPasswordOnEdit = false;
+
+  bool _publishingRestore = false;
+  bool get publishingRestore => _publishingRestore;
 
   Future<void> _load() async {
     try {
@@ -66,7 +72,8 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   }
 
   Future<void> _loadPersisted() async {
-    var source = await _settingsRepository.read();
+    final source = await _settingsRepository.read();
+    if (!mounted) return;
     if (source == null) {
       // First run: speak the language Windows uses, when Airstream has it.
       final language = _systemLanguageCode();
@@ -76,68 +83,78 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
         );
       }
     }
+    DecodedSettingsDocument? document;
+    var recoveredFromBackup = false;
     if (source != null) {
       try {
-        DecodedSettingsDocument document;
-        var recoveredFromBackup = false;
         try {
           document = SettingsDocumentCodec.decode(source);
-        } catch (primaryError, primaryStack) {
+        } catch (error) {
           final repository = _settingsRepository;
           final backup = repository is RecoverableSettingsRepository
               ? await repository.readBackup()
               : null;
           if (backup == null || backup == source) rethrow;
-          AppLogger.warning(
-            'Primary settings are invalid; recovering the backup',
-            error: primaryError,
-            stackTrace: primaryStack,
-          );
-          source = backup;
+          AppLogger.warning(_settingsDecodeMessage(
+              'Primary settings are invalid; recovering the backup', error));
           document = SettingsDocumentCodec.decode(backup);
           recoveredFromBackup = true;
         }
-        final decodedSettings = document.settings;
-        final loaded = _localizeBuiltInDefaults(decodedSettings);
-        final localizedDefaultsChanged =
-            loaded.ttsCommandPrefix != decodedSettings.ttsCommandPrefix ||
-                loaded.ttsSeparatorText != decodedSettings.ttsSeparatorText;
-        state = loaded;
-
-        try {
-          var password = await _secureStore.readObsPassword();
-          if (password == null && loaded.obsPassword.isNotEmpty) {
-            await _secureStore.writeObsPassword(loaded.obsPassword);
-            password = loaded.obsPassword;
-          }
-          _persistedObsPassword = password ?? '';
-          state = loaded.copyWith(obsPassword: password ?? '');
-
-          if (document.containsLegacyPassword ||
-              document.requiresRewrite ||
-              recoveredFromBackup ||
-              localizedDefaultsChanged) {
-            await _settingsRepository
-                .write(SettingsDocumentCodec.encode(state));
-          }
-        } catch (error, stack) {
-          // Keep the legacy value and its persisted copy if secure storage is
-          // temporarily unavailable. A future launch can retry the migration.
-          AppLogger.warning(
-            'Secure settings unavailable; preserving recoverable settings',
-            error: error,
-            stackTrace: stack,
-          );
-          state = loaded;
-        }
-      } catch (error, stack) {
-        AppLogger.error(
-          'Persisted settings are invalid; using safe defaults',
-          error: error,
-          stackTrace: stack,
-        );
+      } catch (error) {
+        AppLogger.error(_settingsDecodeMessage(
+            'Persisted settings are invalid; using safe defaults', error));
       }
     }
+
+    if (!mounted) return;
+    if (document == null) {
+      // Keep first-run initialization independent of the secure store. An
+      // explicit password edit still checks the store before touching it.
+      _readObsPasswordOnEdit = true;
+      return;
+    }
+    final decoded = document.settings;
+    final loaded = _localizeBuiltInDefaults(decoded);
+    state = loaded;
+    try {
+      var password = await _secureStore.readObsPassword();
+      _persistedObsPassword = password ?? '';
+      if (password == null && loaded.obsPassword.isNotEmpty) {
+        await _secureStore.writeObsPassword(loaded.obsPassword);
+        password = loaded.obsPassword;
+        _persistedObsPassword = password;
+      }
+      if (!mounted) return;
+      state = loaded.copyWith(obsPassword: password ?? '');
+    } catch (error, stack) {
+      // A future launch can retry a failed read or legacy migration, and an
+      // explicit password edit in this session reads the store again first.
+      _readObsPasswordOnEdit = true;
+      AppLogger.warning(
+        'Could not load or migrate secure settings',
+        error: error,
+        stackTrace: stack,
+      );
+      return;
+    }
+
+    if (document.containsLegacyPassword ||
+        document.requiresRewrite ||
+        recoveredFromBackup ||
+        loaded.ttsCommandPrefix != decoded.ttsCommandPrefix ||
+        loaded.ttsSeparatorText != decoded.ttsSeparatorText) {
+      try {
+        await _settingsRepository.write(SettingsDocumentCodec.encode(state));
+      } catch (error, stack) {
+        AppLogger.warning('Could not rewrite persisted settings',
+            error: error, stackTrace: stack);
+      }
+    }
+  }
+
+  static String _settingsDecodeMessage(String message, Object error) {
+    final offset = error is FormatException ? error.offset : null;
+    return offset == null ? message : '$message (offset $offset)';
   }
 
   Future<void> update(SettingsModel settings) {
@@ -161,11 +178,15 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   }
 
   Future<void> _publishAndPersist(SettingsModel next) {
+    final passwordChanged =
+        (_persistedObsPassword != null || _readObsPasswordOnEdit) &&
+            next.obsPassword != state.obsPassword;
     state = next;
     // Only the latest settings need to reach the disk: a slider produces a
     // change per frame, and writing each one would queue dozens of writes.
     final previousPending = _pendingPersist;
-    final pending = _PendingPersist(next);
+    final pending = _PendingPersist(next,
+        passwordChanged ? next.obsPassword : previousPending?.obsPassword);
     _pendingPersist = pending;
     previousPending?.supersededBy(pending);
     final writeAfter = _updateQueue;
@@ -173,7 +194,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       if (!identical(_pendingPersist, pending)) return;
       _pendingPersist = null;
       try {
-        await _persist(pending.settings);
+        await _persist(pending.settings, pending.obsPassword);
         pending.complete();
       } catch (error, stack) {
         // Keep later writes flowing even if one persistence operation fails.
@@ -229,12 +250,15 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
         // The backup leaves secure storage and the local webhook opt-in alone.
         await _settingsRepository.write(SettingsDocumentCodec.encode(next));
         if (mounted) {
+          _publishingRestore = true;
           try {
             state = next;
           } catch (error, stack) {
             // Listener failures cannot undo a committed settings write.
             AppLogger.warning('Could not notify a listener after restore',
                 error: error, stackTrace: stack);
+          } finally {
+            _publishingRestore = false;
           }
         }
       });
@@ -246,15 +270,27 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   _PendingPersist? _pendingPersist;
 
-  Future<void> _persist(SettingsModel settings) async {
+  Future<void> _persist(SettingsModel settings, String? obsPassword) async {
     await ready;
-    if (settings.obsPassword != _persistedObsPassword) {
-      if (settings.obsPassword.isEmpty) {
+    if (obsPassword != null && _readObsPasswordOnEdit) {
+      try {
+        _persistedObsPassword = await _secureStore.readObsPassword() ?? '';
+      } catch (error, stack) {
+        AppLogger.warning('Could not read the existing OBS credential',
+            error: error, stackTrace: stack);
+      } finally {
+        _readObsPasswordOnEdit = false;
+      }
+    }
+    if (obsPassword != null &&
+        _persistedObsPassword != null &&
+        obsPassword != _persistedObsPassword) {
+      if (obsPassword.isEmpty) {
         await _secureStore.deleteObsPassword();
       } else {
-        await _secureStore.writeObsPassword(settings.obsPassword);
+        await _secureStore.writeObsPassword(obsPassword);
       }
-      _persistedObsPassword = settings.obsPassword;
+      _persistedObsPassword = obsPassword;
     }
     await _settingsRepository.write(SettingsDocumentCodec.encode(settings));
   }
@@ -306,9 +342,10 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 /// A settings write waiting its turn. When a newer change replaces it, it
 /// completes with the newer write, which also stores this change.
 class _PendingPersist {
-  _PendingPersist(this.settings);
+  _PendingPersist(this.settings, this.obsPassword);
 
   final SettingsModel settings;
+  final String? obsPassword;
   final _completer = Completer<void>();
 
   Future<void> get future => _completer.future;

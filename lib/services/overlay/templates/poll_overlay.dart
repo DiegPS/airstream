@@ -84,6 +84,7 @@ ${overlayFontScript(googleFontsAllowed)}
     window.clearInterval(ticker);
     if (!poll) {
       card.classList.remove('visible');
+      card.replaceChildren();
       return;
     }
     const strings = STRINGS[language] || STRINGS.en;

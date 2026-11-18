@@ -72,6 +72,7 @@ function drawPoll() {
   stage.hidden = !poll;
   if (!poll) {
     byId('question').textContent = '';
+    instructions.hidden = true;
     instructions.textContent = '';
     byId('results').replaceChildren();
     status.textContent = '';

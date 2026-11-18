@@ -299,6 +299,8 @@ class ChatCoordinator {
 
   Stream<ChatMessage> get messages => _pipeline.stream;
   List<ChatMessage> get bufferedMessages => _pipeline.buffer;
+  List<ChatMessage> get sessionMessages => _pipeline.sessionMessages;
+  bool get sessionMessagesTruncated => _pipeline.sessionMessagesTruncated;
 
   Stream<List<ChatMessage>> get messageListStream async* {
     yield List<ChatMessage>.from(_pipeline.buffer);
@@ -345,6 +347,8 @@ class ChatCoordinator {
     final connectionChanged = previous == null ||
         _lastConnectChats == null ||
         _lastConnectChats != connectChats;
+    if (connectChats && _lastConnectChats != true) _pipeline.startSession();
+    if (!connectChats && _lastConnectChats == true) _pipeline.endSession();
     _lastConnectChats = connectChats;
 
     final horizontalId = _youtubeVideoIdFromUrl(settings.youtubeHorizontalUrl);

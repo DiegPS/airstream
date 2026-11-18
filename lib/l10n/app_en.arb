@@ -1315,7 +1315,7 @@
   "sessionExportChat": "Export chat (CSV)",
   "sessionExportParticipants": "Export participants (CSV)",
   "sessionExportFailed": "Could not save the CSV file.",
-  "sessionExportChatScope": "{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{Chat export includes the {count} messages still in the chat buffer.}}",
+  "sessionExportChatScope": "{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{The chat export is limited to the last {count} retained messages.}}",
   "@sessionExportChatScope": {
     "placeholders": {
       "count": {

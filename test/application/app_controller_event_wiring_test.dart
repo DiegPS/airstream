@@ -24,6 +24,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'coordinator_fakes.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/secure_settings_store.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/settings_repository.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 
 class RuleOverlay extends OverlayServer {
   final triggers = <Map<String, String>>[];
@@ -86,7 +90,9 @@ void main() {
           FakeChannelChatClient twitch, OverlayServer server,
           {ChatCoordinator? chat,
           DateTime Function()? clock,
-          RuleSoundPlayer? clockSounds}) =>
+          RuleSoundPlayer? clockSounds,
+          FakeTtsClient? tts,
+          FakeAlertSound? alertSound}) =>
       AppController(
           clock: clock,
           clockSounds: clockSounds,
@@ -98,7 +104,9 @@ void main() {
                   kick: FakeChannelChatClient(),
                   twitch: twitch),
           audioCoordinator: AudioCoordinator(
-              tts: FakeTtsClient(), captions: FakeCaptionsClient()),
+              tts: tts ?? FakeTtsClient(),
+              captions: FakeCaptionsClient(),
+              alertSound: alertSound),
           obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
@@ -316,7 +324,8 @@ void main() {
         inInclusiveRange(298, 300));
   });
 
-  test('session chat export keeps the moderated buffer after disconnect',
+  test(
+      'session chat export outlives display trimming and applies moderation after disconnect',
       () async {
     final twitch = FakeChannelChatClient();
     final app = makeController(twitch, RuleOverlay());
@@ -337,31 +346,39 @@ void main() {
     await settleCoordinatorTasks();
     expect(app.sessionSummary.messages, 3);
     expect(app.sessionChat.map((message) => message.plainText),
-        ['removed', 'retained']);
+        ['old', 'removed', 'retained']);
+    app.applySettings(settings, connectChats: false);
+    expect(await app.messageListStream.first, isEmpty);
+    twitch.messageController.add(queueMessage('Late', 'after disconnect'));
     twitch.moderationController.add(ChatModerationEvent.author(
       platform: removed.platform,
       authorChannelId: removed.author.channelId,
       authorName: removed.author.name,
     ));
     await settleCoordinatorTasks();
-    app.applySettings(settings, connectChats: false);
-    expect(await app.messageListStream.first, isEmpty);
-    expect(app.sessionChat.map((message) => message.plainText), ['retained']);
+    expect(app.sessionChat.map((message) => message.plainText),
+        ['old', 'retained']);
     expect(app.sessionSummary.participants.length, 3);
     app.applySettings(settings, connectChats: true);
     expect(app.sessionChat, isEmpty);
     expect(app.sessionSummary.participants, isEmpty);
   });
 
-  test('hidden submissions stay local until poll.ended publishes the winner',
+  test('hidden submissions skip audio, overlay and chat rules until poll.ended',
       () async {
     final twitch = FakeChannelChatClient();
     final server = _PollOverlay();
-    final app = makeController(twitch, server);
+    final tts = FakeTtsClient();
+    final alertSound = FakeAlertSound();
+    final app =
+        makeController(twitch, server, tts: tts, alertSound: alertSound);
     addTearDown(app.dispose);
     app.applySettings(
         SettingsModel(
           overlayEnabled: true,
+          ttsEnabled: true,
+          highlightWords: const ['private', 'ordinary'],
+          highlightSounds: const {HighlightKind.word: 'coin'},
           queueState: const QueueState(status: QueueStatus.open),
           queueOptions: const QueueOptions(command: '!reply'),
           rules: [
@@ -399,10 +416,21 @@ void main() {
         command: '!reply',
         hideResults: true);
     const answer = '<b>Private answer</b>';
-    twitch.messageController.add(queueMessage('Viewer', '!reply $answer'));
-    twitch.messageController.add(queueMessage('Viewer', 'Ordinary chat'));
+    ChatMessage chatMessage(String text) => ChatMessage(
+        platform: Platform.twitch,
+        id: text,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: [MessageItem.text(text)],
+        timestamp: DateTime.now());
+    twitch.messageController.add(chatMessage('!reply $answer'));
+    await settleCoordinatorTasks();
+    expect(tts.spoken, isEmpty);
+    expect(alertSound.sources, isEmpty);
+    twitch.messageController.add(chatMessage('Ordinary chat'));
     await Future<void>.delayed(const Duration(milliseconds: 280));
     expect(server.chat, ['Ordinary chat']);
+    expect(tts.spoken.single, contains('Ordinary chat'));
+    expect(alertSound.sources, ['coin']);
     expect(app.queue.current.entries, isEmpty);
     expect(server.triggers, isEmpty);
     expect(server.polls.last?['total'], 1);
@@ -488,6 +516,64 @@ void main() {
       unawaited(app.dispose());
       async.flushMicrotasks();
     });
+  });
+
+  test(
+      'restoring a crossed goal rebaselines automation and the next crossing fires',
+      () async {
+    final server = RuleOverlay()..feedSeen = true;
+    final app = makeController(FakeChannelChatClient(), server);
+    addTearDown(app.dispose);
+    SettingsModel withProgress(SettingsModel settings, int current) =>
+        settings.copyWith(
+          goals: {
+            'g': {
+              'title': 'Goal',
+              'type': 'manual',
+              'current': current,
+              'target': 10
+            }
+          },
+        );
+    final initial = withProgress(
+        SettingsModel(overlayEnabled: false, rules: [
+          {
+            ...RuleSchema.newRule('goal.reached', id: 'goal'),
+            'enabled': true,
+            'actions': [
+              {
+                'id': 'out',
+                'type': 'template.trigger',
+                'name': 'goal',
+                'data': 'crossed'
+              }
+            ],
+          },
+        ]),
+        5);
+    final notifier = SettingsNotifier(
+      settingsRepository:
+          _RestoreSettingsRepository(SettingsDocumentCodec.encode(initial)),
+      secureStore: _RestoreSecureStore(),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    final unsubscribe = notifier.addListener((settings) => app.applySettings(
+        settings,
+        connectChats: false,
+        restoringBackup: notifier.publishingRestore));
+    addTearDown(unsubscribe);
+    await notifier
+        .restoreBackup((current, commit) => commit(withProgress(current, 10)));
+    await settleCoordinatorTasks();
+    expect(app.rules.history, isEmpty);
+    expect(server.triggers, isEmpty);
+
+    await notifier.update(withProgress(initial, 0));
+    await notifier.update(withProgress(initial, 10));
+    await settleCoordinatorTasks();
+    expect(app.rules.history.single.event.type, 'goal.reached');
+    expect(server.triggers.single['data'], 'crossed');
   });
 
   test('real wiring delivers Bits feed before rule actions and adjusts goal',
@@ -700,4 +786,26 @@ void main() {
     expect(overlay.moderationCount, 1);
     expect(overlay.providerEventCount, 1);
   });
+}
+
+class _RestoreSettingsRepository implements SettingsRepository {
+  _RestoreSettingsRepository(this.source);
+  String source;
+
+  @override
+  Future<String?> read() async => source;
+
+  @override
+  Future<void> write(String json) async => source = json;
+}
+
+class _RestoreSecureStore implements SecureSettingsStore {
+  @override
+  Future<String?> readObsPassword() async => null;
+
+  @override
+  Future<void> writeObsPassword(String password) async {}
+
+  @override
+  Future<void> deleteObsPassword() async {}
 }

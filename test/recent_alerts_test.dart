@@ -163,6 +163,11 @@ void main() {
         id: 'bits',
         payment: const SuperChat(amount: '10 Bits', color: '#ffffff')));
     final payload = await next;
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
     connection.server
         .setSettings(const SettingsModel(alertDisabledTypes: ['bits']));
     final replay = connection.nextAlert();

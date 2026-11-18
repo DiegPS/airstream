@@ -35,6 +35,13 @@ ${overlayFontScript(googleFontsAllowed)}
       row.title.textContent=g.title;row.count.textContent=group(g.current)+' / '+group(g.target);
       row.percent.textContent=Math.round(g.percent)+'%';row.fill.style.width=Math.max(0,Math.min(100,g.percent))+'%';
       row.box.classList.toggle('reached',!!g.reached);row.reached=!!g.reached;
+      if (!g.reached || replay) {
+        row.celebrated = !!g.reached;
+        window.clearTimeout(row.timer);
+        row.timer = 0;
+        row.box.classList.remove('celebrate');
+        row.notice.textContent = '';
+      }
       if(celebrate) {row.celebrated=true;row.box.classList.add('celebrate');row.notice.textContent=strings().reached;row.timer=window.setTimeout(()=>{row.box.classList.remove('celebrate');row.notice.textContent='';row.timer=0;},2000);}
     }
   }

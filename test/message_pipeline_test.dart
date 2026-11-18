@@ -6,6 +6,38 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('session export drops the oldest past 20000 and resets the limit flag',
+      () async {
+    final pipeline = MessagePipeline(
+        const SettingsModel(maxMessages: 1, blockedWords: ['blocked']))
+      ..startSession();
+    final source = StreamController<ChatMessage>(sync: true);
+    pipeline.addSource(source.stream);
+    addTearDown(pipeline.dispose);
+    addTearDown(source.close);
+    final time = DateTime.utc(2026);
+    source.add(_message(id: 'blocked', text: 'blocked', timestamp: time));
+    for (var i = 0; i < 20000; i++) {
+      source.add(_message(id: '$i', text: 'accepted', timestamp: time));
+    }
+    expect(pipeline.sessionMessages, hasLength(20000));
+    expect(pipeline.sessionMessages.first.id, '0');
+    expect(pipeline.sessionMessagesTruncated, isFalse);
+
+    source.add(_message(id: '20000', text: 'accepted', timestamp: time));
+    expect(pipeline.sessionMessages, hasLength(20000));
+    expect(pipeline.sessionMessages.first.id, '1');
+    expect(pipeline.sessionMessagesTruncated, isTrue);
+    pipeline.applyModeration(const ChatModerationEvent.message(
+        platform: Platform.youtube, messageId: '1'));
+    expect(pipeline.sessionMessages.first.id, '2');
+    expect(pipeline.sessionMessagesTruncated, isTrue);
+
+    pipeline.startSession();
+    expect(pipeline.sessionMessages, isEmpty);
+    expect(pipeline.sessionMessagesTruncated, isFalse);
+  });
+
   test('deduplicates repeated messages before they reach the buffer and stream',
       () async {
     final pipeline = MessagePipeline(const SettingsModel(maxMessages: 10));

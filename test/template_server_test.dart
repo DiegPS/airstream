@@ -266,6 +266,10 @@ void main() {
     final template = await connect('custom', 'one');
     final gallery = await connect('gallery', 'poll');
     final publicClients = [page, template, gallery];
+    for (final client in publicClients) {
+      expect(await client.next('poll'),
+          {'type': 'poll', 'data': null, 'replay': true});
+    }
     const answer = '<img src=x onerror=hiddenVote()>';
     for (final (mode, vote, resultKeys) in [
       (PollMode.numbered, '!1', ['votes', 'percent']),

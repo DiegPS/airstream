@@ -436,6 +436,11 @@ void main() {
       providerEvent(Platform.kick, ChatProviderEventKind.support, count: 25),
     ]);
     expect(kicks.last['data']['option'], {'animation': 'fade'});
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
     final replay = connection.nextAlert();
     connection.server.setSettings(const SettingsModel());
     expect(connection.server.replayRecentAlert(gift['id'] as String), isTrue);
@@ -510,6 +515,11 @@ void main() {
 
   test('new test alerts match real payload shapes even when disabled',
       () async {
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
     for (final language in ['en', 'es']) {
       connection.server.setSettings(SettingsModel(
           appLanguageCode: language,
@@ -634,6 +644,11 @@ void main() {
   });
 
   test('all eight test cards have types and featured has null', () async {
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
     for (final kind in [
       'superchat',
       'superchat-empty',
@@ -649,11 +664,6 @@ void main() {
       expect((await next)['alertType'],
           kind == 'superchat-empty' ? 'superchat' : kind);
     }
-    final registered = connection.envelopes.stream
-        .firstWhere((e) => e['type'] == 'registered');
-    connection.socket!.sink
-        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
-    await registered;
     final next = connection.nextAlert();
     final delivery =
         connection.server.broadcastFeaturedMessage(message(Platform.youtube));

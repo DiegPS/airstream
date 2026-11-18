@@ -36,6 +36,10 @@ void main() {
       events = StreamIterator(socket.stream);
       expect(await events.moveNext(), true);
       expect((jsonDecode(events.current as String) as Map)['type'], 'settings');
+      socket.sink.add(jsonEncode({'type': 'register', 'view': 'timer'}));
+      expect(await events.moveNext(), isTrue);
+      expect(
+          (jsonDecode(events.current as String) as Map)['type'], 'registered');
       expect(await events.moveNext(), true);
       final replay = jsonDecode(events.current as String) as Map;
       expect(replay['type'], 'timer');
@@ -48,13 +52,6 @@ void main() {
       final live = jsonDecode(events.current as String) as Map;
       expect(live['type'], 'timer');
       expect(live['data']['addedMs'], 300000);
-      socket.sink.add(jsonEncode({'type': 'register', 'view': 'timer'}));
-      while (await events.moveNext()) {
-        if ((jsonDecode(events.current as String) as Map)['type'] ==
-            'registered') {
-          break;
-        }
-      }
       expect(server.viewCounts['timer'], 1);
     } finally {
       await events?.cancel();

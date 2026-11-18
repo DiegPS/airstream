@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
 import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_profiles.dart';
@@ -105,6 +109,35 @@ void main() {
     expect(imported.obsPassword, 'current');
     expect(() => SettingsProfiles.import('not json', streaming),
         throwsFormatException);
+  });
+
+  test('settings import keeps local media and adds only files already present',
+      () async {
+    final directory = await Directory.systemTemp.createTemp('profiles-media-');
+    addTearDown(() => directory.delete(recursive: true));
+    const localId = '0000000000000001';
+    const presentId = '0000000000000002';
+    const missingId = '0000000000000003';
+    const item = {
+      'name': 'local.png',
+      'kind': 'image',
+      'ext': 'png',
+      'bytes': 8,
+      'addedAt': 0
+    };
+    const current = SettingsModel(mediaLibrary: {localId: item});
+    final renamed = {...item, 'name': 'renamed abroad.png'};
+    final incoming = SettingsModel(mediaLibrary: {
+      localId: renamed,
+      presentId: item,
+      missingId: item,
+    });
+    await File(p.join(directory.path, '$presentId.png'))
+        .writeAsBytes([137, 80, 78, 71, 13, 10, 26, 10]);
+    final restored = SettingsProfiles.import(
+        SettingsProfiles.export(incoming), current,
+        mediaDirectory: directory);
+    expect(restored.mediaLibrary, {localId: item, presentId: item});
   });
 
   test('profiles survive a save and reload, and bad entries are dropped', () {

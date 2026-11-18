@@ -88,8 +88,21 @@ Airstream.on('chat', (message, meta) => {
     .replace(/https?:\/\/\S+/g, ' ').match(/[\p{L}\p{M}]+/gu) || [];
   const now = Date.now();
   const words = tokens.filter(word => word.length <= 36 && !stop.has(word));
-  if (words.length) recent.push({at: now, words});
+  if (words.length) {
+    const {id, platform, youtubeStreamOrientation, author, authorChannelId} = message;
+    recent.push({at: now, words, id, platform, youtubeStreamOrientation, author, authorChannelId});
+  }
   prune(now);
+});
+Airstream.on('delete', event => {
+  let changed = false;
+  for (let i = recent.length - 1; i >= 0; i--) {
+    if (matchesChatDeletion(recent[i], event)) {
+      recent.splice(i, 1);
+      changed = true;
+    }
+  }
+  if (changed) render();
 });
 configureWidget(() => {
   widgetTitle(copy[language].title);

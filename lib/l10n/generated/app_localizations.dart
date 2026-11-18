@@ -5544,7 +5544,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionExportChatScope.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{Chat export includes the {count} messages still in the chat buffer.}}'**
+  /// **'{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{The chat export is limited to the last {count} retained messages.}}'**
   String sessionExportChatScope(int count);
 
   /// No description provided for @clockTitle.

@@ -17,6 +17,24 @@ void main() {
     expect(safe, isNot(contains('secret-value')));
   });
 
+  test('redacts webhook endpoint URLs and escaped JSON credentials', () {
+    final safe = LogSanitizer.sanitize(
+      r'https://discord.invalid/api/v10/webhooks/123/token?wait=true '
+      r'https://local.invalid/api/webhooks https://local.invalid/webhooks/internal '
+      r'{"rulesWebhookToken":"raw-webhook-token","obsPassword":"p\"ass\\word"} '
+      r'https://example.invalid/ordinary',
+    );
+    for (final secret in [
+      'discord.invalid',
+      'local.invalid',
+      'raw-webhook-token',
+      r'p\"ass\\word'
+    ]) {
+      expect(safe, isNot(contains(secret)));
+    }
+    expect(safe, contains('https://example.invalid/ordinary'));
+  });
+
   test('rotates local log files without losing the newest entry', () async {
     final directory = await Directory.systemTemp.createTemp('airstream-logs-');
     addTearDown(() => directory.delete(recursive: true));

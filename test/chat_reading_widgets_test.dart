@@ -122,6 +122,7 @@ void main() {
       final collector = SessionSummaryCollector()..start();
       collector.handleMessage(chat.single);
       final saved = <String, String>{};
+      var truncated = false;
       await tester.pumpWidget(MaterialApp(
         locale: locale,
         localizationsDelegates: appLocalizationsDelegates,
@@ -134,6 +135,7 @@ void main() {
                       builder: (_) => SessionSummaryDialog(
                         summary: collector.summary,
                         chat: chat,
+                        chatTruncated: truncated,
                         listSeparator: () async => ',',
                         saveCsv: (name, bytes) async {
                           expect(bytes.take(3), [0xef, 0xbb, 0xbf]);
@@ -147,7 +149,7 @@ void main() {
       ));
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
-      expect(find.text(l.sessionExportChatScope(1)), findsOneWidget);
+      expect(find.text(l.sessionExportChatScope(1)), findsNothing);
       await tester.tap(find.text(
           language == 'en' ? 'Export chat (CSV)' : 'Exportar chat (CSV)'));
       await tester.pumpAndSettle();
@@ -159,6 +161,12 @@ void main() {
       expect(saved['airstream-participants.csv'],
           contains('Ángela,twitch,id,1,0,'));
       expect(tester.takeException(), isNull);
+      Navigator.of(tester.element(find.byType(SessionSummaryDialog))).pop();
+      await tester.pumpAndSettle();
+      truncated = true;
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text(l.sessionExportChatScope(1)), findsOneWidget);
     });
   }
 }

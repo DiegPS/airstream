@@ -184,6 +184,7 @@ final appControllerProvider = Provider<AppController>((ref) {
     controller.applySettings(
       ref.read(settingsProvider),
       connectChats: ref.read(chatConnectionProvider),
+      restoringBackup: ref.read(settingsProvider.notifier).publishingRestore,
     );
   }
 

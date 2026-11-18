@@ -32,7 +32,7 @@ abstract interface class OverlayClient {
   bool broadcastTestAlert(String kind);
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message);
   void broadcastPoll(Map<String, Object?>? poll);
-  void broadcastGoals(List<Map<String, Object?>> goals);
+  void broadcastGoals(List<Map<String, Object?>> goals, {bool replay = false});
   void broadcastGiveaway(Map<String, Object?>? giveaway);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
@@ -91,8 +91,9 @@ class OverlayServerAdapter implements OverlayClient {
   @override
   void broadcastPoll(Map<String, Object?>? poll) => server.broadcastPoll(poll);
   @override
-  void broadcastGoals(List<Map<String, Object?>> goals) =>
-      server.broadcastGoals(goals);
+  void broadcastGoals(List<Map<String, Object?>> goals,
+          {bool replay = false}) =>
+      server.broadcastGoals(goals, replay: replay);
   @override
   void broadcastGiveaway(Map<String, Object?>? giveaway) =>
       server.broadcastGiveaway(giveaway);
@@ -150,8 +151,9 @@ class OverlayCoordinator {
 
   void broadcastPoll(Map<String, Object?>? poll) =>
       _overlay.broadcastPoll(poll);
-  void broadcastGoals(List<Map<String, Object?>> goals) =>
-      _overlay.broadcastGoals(goals);
+  void broadcastGoals(List<Map<String, Object?>> goals,
+          {bool replay = false}) =>
+      _overlay.broadcastGoals(goals, replay: replay);
   void broadcastGiveaway(Map<String, Object?>? giveaway) =>
       _overlay.broadcastGiveaway(giveaway);
 

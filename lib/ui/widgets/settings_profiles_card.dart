@@ -308,11 +308,14 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
       final file = await openFile(acceptedTypeGroups: const [_jsonType]);
       if (file == null) return;
       try {
-        final imported = SettingsProfiles.import(
-          await file.readAsString(),
-          ref.read(settingsProvider),
-        );
-        await notifier.update(imported);
+        final source = await file.readAsString();
+        final media = await ref.read(mediaLibraryProvider.future);
+        await media
+            .withStableFiles(() => notifier.update(SettingsProfiles.import(
+                  source,
+                  ref.read(settingsProvider),
+                  mediaDirectory: media.directory,
+                )));
         if (context.mounted) notify(l.settingsImported);
       } catch (error, stack) {
         AppLogger.warning('Settings import failed',

@@ -525,13 +525,7 @@ if (chat) {
   Airstream.on('delete', event => {
     for (let i = chatRows.length - 1; i >= 0; i--) {
       const {message, node} = chatRows[i];
-      if (message.platform !== event.platform || (event.youtubeStreamOrientation &&
-          message.youtubeStreamOrientation !== event.youtubeStreamOrientation)) continue;
-      const matches = event.scope === 'platform' ||
-        (event.scope === 'message' && event.messageId && message.id === event.messageId) ||
-        (event.scope === 'author' && ((event.authorChannelId && message.authorChannelId === event.authorChannelId) ||
-          (event.authorName && message.author.toLowerCase() === event.authorName.toLowerCase())));
-      if (matches) {
+      if (matchesChatDeletion(message, event)) {
         node.remove();
         chatRows.splice(i, 1);
       }
@@ -599,6 +593,16 @@ function configureScreen(onFields, onSession = () => {}) {
 
 const galleryScript = r'''
 const byId = id => document.getElementById(id);
+function matchesChatDeletion(message, event) {
+  if (!event || message.platform !== event.platform ||
+      (event.youtubeStreamOrientation &&
+        message.youtubeStreamOrientation !== event.youtubeStreamOrientation)) return false;
+  return event.scope === 'platform' ||
+    (event.scope === 'message' && event.messageId && message.id === event.messageId) ||
+    (event.scope === 'author' &&
+      ((event.authorChannelId && message.authorChannelId === event.authorChannelId) ||
+       (event.authorName && message.author?.toLowerCase() === event.authorName.toLowerCase())));
+}
 const fonts = ['DM Sans', 'Barlow', 'Outfit'];
 const root = document.documentElement;
 const branding = document.querySelector('.gallery-logo');

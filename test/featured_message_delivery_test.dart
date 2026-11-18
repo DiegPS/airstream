@@ -32,6 +32,13 @@ void main() {
     if (view != null) {
       socket.sink.add(jsonEncode({'type': 'register', 'view': view}));
       expect((await connection.next())['type'], 'registered');
+      if (view == 'poll') {
+        expect(await connection.next(), {
+          'type': 'poll',
+          'data': null,
+          'replay': true,
+        });
+      }
       if (view == 'alerts') {
         expect(await connection.next(), {
           'type': 'alertControl',

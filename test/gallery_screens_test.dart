@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:airstream/services/overlay/templates/poll_overlay.dart';
 import 'package:airstream/services/overlay/templates/clock_overlay.dart';
 import 'package:airstream/services/overlay/templates/giveaway_overlay.dart';
+import 'package:airstream/services/overlay/templates/goals_overlay.dart';
+import 'package:airstream/services/overlay/templates/timer_overlay.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -106,51 +108,64 @@ void main() {
     expect(TemplateManifest('custom', {'height': 10}).height, 32);
   });
 
-  test('gallery screens and widgets work with SDK v1 in Node', () async {
-    final temp = await Directory.systemTemp.createTemp('gallery-screens-');
-    try {
-      final script = File('${temp.path}/screens.cjs');
-      final screens = {
-        for (final item in galleryCatalog.values)
-          if (item.kind == GalleryKind.screen)
-            item.id: {
-              'en': item.buildFiles('en'),
-              'es': item.buildFiles('es'),
-              'fields': item.defaults('en'),
-            },
-      };
-      final widgets = {
-        for (final id in [
-          'ticker',
-          'latest-support',
-          'top-supporters',
-          'queue-list',
-          'poll',
-          'scoreboard',
-          'word-cloud',
-          'emote-wall',
-        ])
-          id: {
-            'en': galleryCatalog[id]!.buildFiles('en'),
-            'es': galleryCatalog[id]!.buildFiles('es'),
-            'fields': galleryCatalog[id]!.defaults('en'),
+  test('gallery screens and widgets work with SDK v1 in Node',
+      () => runGalleryChecks('gallery'));
+  test('word cloud removes message, author and platform token batches',
+      () => runGalleryChecks('word cloud'));
+  test('goals cancel and rearm celebrations when reset',
+      () => runGalleryChecks('goals'));
+  test(
+      'poll pages, giveaway, timer and queue clear on empty reconnect snapshots',
+      () => runGalleryChecks('snapshots'));
+}
+
+Future<void> runGalleryChecks(String scenario) async {
+  final temp = await Directory.systemTemp.createTemp('gallery-screens-');
+  try {
+    final script = File('${temp.path}/screens.cjs');
+    final screens = {
+      for (final item in galleryCatalog.values)
+        if (item.kind == GalleryKind.screen)
+          item.id: {
+            'en': item.buildFiles('en'),
+            'es': item.buildFiles('es'),
+            'fields': item.defaults('en'),
           },
-      };
-      await script.writeAsString('const sdk = ${jsonEncode(sdkV1())};\n'
-          'const screens = ${jsonEncode(screens)};\n'
-          'const widgets = ${jsonEncode(widgets)};\n'
-          'const pollPage = ${jsonEncode(pollOverlayHtml())};\n'
-          'const clockPage = ${jsonEncode(clockOverlayHtml())};\n'
-          'const giveawayPage = ${jsonEncode(giveawayOverlayHtml())};\n'
-          '$_nodeChecks');
-      final result =
-          await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
-      stdout.write(result.stdout);
-      expect(result.exitCode, 0, reason: '${result.stderr}');
-    } finally {
-      await temp.delete(recursive: true);
-    }
-  });
+    };
+    final widgets = {
+      for (final id in [
+        'ticker',
+        'latest-support',
+        'top-supporters',
+        'queue-list',
+        'poll',
+        'scoreboard',
+        'word-cloud',
+        'emote-wall',
+      ])
+        id: {
+          'en': galleryCatalog[id]!.buildFiles('en'),
+          'es': galleryCatalog[id]!.buildFiles('es'),
+          'fields': galleryCatalog[id]!.defaults('en'),
+        },
+    };
+    await script.writeAsString('const scenario = ${jsonEncode(scenario)};\n'
+        'const sdk = ${jsonEncode(sdkV1())};\n'
+        'const screens = ${jsonEncode(screens)};\n'
+        'const widgets = ${jsonEncode(widgets)};\n'
+        'const pollPage = ${jsonEncode(pollOverlayHtml())};\n'
+        'const clockPage = ${jsonEncode(clockOverlayHtml())};\n'
+        'const goalsPage = ${jsonEncode(goalsOverlayHtml())};\n'
+        'const timerPage = ${jsonEncode(timerOverlayHtml())};\n'
+        'const giveawayPage = ${jsonEncode(giveawayOverlayHtml())};\n'
+        '$_nodeChecks');
+    final result =
+        await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
+    stdout.write(result.stdout);
+    expect(result.exitCode, 0, reason: '${result.stderr}');
+  } finally {
+    await temp.delete(recursive: true);
+  }
 }
 
 const _nodeChecks = r'''
@@ -165,7 +180,10 @@ class Element extends EventTarget {
     this.dataset = {};
     this.attrs = {};
     const classes = new Set();
-    this.classList = {add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c)};
+    this.classList = {
+      add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c),
+      toggle: (c, force = !classes.has(c)) => force ? classes.add(c) : classes.delete(c),
+    };
     this.style = {setProperty(k, v) { this[k] = String(v); }, removeProperty(k) { delete this[k]; }};
     this.hidden = false;
     this.offsetHeight = 900;
@@ -219,7 +237,7 @@ class Element extends EventTarget {
 }
 
 function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
-  const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage}[id];
+  const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage, '/goals': goalsPage, '/timer': timerPage}[id];
   const item = (screens[id] || widgets[id]);
   const files = html
     ? {'index.html': html, 'script.js': html.split('<script>')[1].split('</script>')[0]}
@@ -303,7 +321,9 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     now = end;
     assert.deepEqual(errors, []);
   }
-  return {nodes, win, errors, advance, send, sent, logo, root: context.document.documentElement,
+  return {nodes, win, errors, advance, send, sent, logo,
+    reconnect: () => { socket.close(); advance(3000); socket.open(); },
+    root: context.document.documentElement,
     fields: values => send('fields', {...item.fields, language: lang, ...values})};
 }
 
@@ -392,6 +412,98 @@ function checkPoll() {
     assert.equal(demo.nodes.stage.hidden, false);
     assert.ok(demo.nodes.results.textContent.includes('Adventure'));
   }
+}
+function checkGoalReset() {
+  const view = page('/goals');
+  const goal = (current) => [{id: 'one', title: 'Goal', current, target: 10,
+    percent: current * 10, reached: current >= 10}];
+  view.send('goals', goal(9), true);
+  const row = view.nodes.goals.children[0];
+  view.send('goals', goal(10));
+  assert.equal(row.classList.contains('celebrate'), true);
+  view.advance(500);
+  view.send('goals', goal(0));
+  assert.equal(row.classList.contains('celebrate'), false);
+  assert.equal(row.children[3].textContent, '');
+  view.send('goals', goal(10));
+  assert.equal(row.classList.contains('celebrate'), true);
+  view.advance(1500);
+  assert.equal(row.classList.contains('celebrate'), true, 'old timer was canceled');
+  view.advance(500);
+  assert.equal(row.classList.contains('celebrate'), false);
+  view.send('goals', goal(0));
+  view.send('goals', goal(10), true);
+  assert.equal(row.classList.contains('celebrate'), false, 'replay is silent');
+}
+function checkEmptySnapshots() {
+  for (const id of ['/poll', 'poll']) {
+    const view = page(id);
+    view.send('poll', {question: 'Old poll', options: [], total: 0, closed: true});
+    const builtIn = id === '/poll';
+    const card = builtIn ? view.nodes.poll : view.nodes.question;
+    assert.match(card.textContent, /Old poll/);
+    view.reconnect();
+    view.send('poll', null, true);
+    assert.equal(card.textContent, '');
+    assert.equal(builtIn ? card.classList.contains('visible') : !view.nodes.stage.hidden, false);
+  }
+
+  const giveaway = page('/giveaway');
+  giveaway.send('giveaway', {phase: 'open', keyword: '!old', entrantCount: 4});
+  assert.match(giveaway.nodes.giveaway.textContent, /!old/);
+  giveaway.reconnect();
+  giveaway.send('giveaway', null, true);
+  assert.equal(giveaway.nodes.giveaway.hidden, true);
+
+  const timer = page('/timer');
+  timer.send('timer', {phase: 'paused', remainingMs: 4000, serverNowMs: 0}, true);
+  assert.equal(timer.nodes.timer.hidden, false);
+  timer.reconnect();
+  timer.send('timer', {phase: 'idle', serverNowMs: 0}, true);
+  assert.equal(timer.nodes.timer.hidden, true);
+
+  const queue = page('queue-list');
+  queue.fields({});
+  const player = {id: '1', platform: 'twitch', name: 'Old player'};
+  const state = {status: 'open', entries: [player], playing: [],
+    max: 50, command: '!join'};
+  queue.send('queue', state, true);
+  assert.equal(queue.nodes.waiting.children.length, 1);
+  queue.reconnect();
+  queue.send('queue', {...state, entries: []}, true);
+  assert.equal(queue.nodes.waiting.children.length, 0);
+}
+function checkWordCloudModeration() {
+  const view = page('word-cloud');
+  view.fields({refresh: 1});
+  function message(id, platform, author, channel, text, youtubeStreamOrientation) {
+    view.send('message', {id, platform, author, authorChannelId: channel, text, youtubeStreamOrientation});
+  }
+  message('1', 'youtube', 'Ana', 'ana', 'orchid', 'horizontal');
+  message('1', 'youtube', 'Ana', 'ana', 'fern', 'vertical');
+  message('2', 'twitch', 'Beto', 'beto', 'moss');
+  message('3', 'twitch', 'Beto', 'beto', 'maple');
+  message('4', 'youtube', 'Carla', 'carla', 'cedar');
+  view.advance(1000);
+  const words = () => view.nodes.words.children.map(word => word.textContent);
+  assert.deepEqual(words(), ['cedar', 'fern', 'maple', 'moss', 'orchid']);
+  view.send('moderation', {scope: 'message', platform: 'youtube', messageId: '1',
+    youtubeStreamOrientation: 'horizontal'});
+  assert.deepEqual(words(), ['cedar', 'fern', 'maple', 'moss']);
+  view.send('moderation', {scope: 'author', platform: 'twitch', authorName: 'BETO'});
+  assert.deepEqual(words(), ['cedar', 'fern']);
+  view.send('moderation', {scope: 'platform', platform: 'youtube'});
+  assert.deepEqual(words(), []);
+  assert.equal(view.nodes.stage.hidden, true);
+}
+const regressions = {
+  'word cloud': checkWordCloudModeration,
+  goals: checkGoalReset,
+  snapshots: checkEmptySnapshots,
+};
+if (scenario !== 'gallery') {
+  regressions[scenario]();
+  process.exit(0);
 }
 checkPoll();
 

@@ -226,7 +226,7 @@ function typeOption(alert) {
   return alert.kind === 'featured' ? {} : alert.option || (settings.alertTypeOptions || {})[alert.alertType] || {};
 }
 
-function renderAlert(alert, animate = true) {
+function renderAlert(alert) {
   const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
   const author = String(alert.author || strings.someone);
@@ -275,7 +275,7 @@ function renderAlert(alert, animate = true) {
   const card = document.createElement('div');
   card.className = 'alert-card' + (settings.alertLayout === 'stacked' ? ' stacked' : '');
   const entrance = typeOption(alert).animation || settings.alertAnimation;
-  card.style.animationName = animate ? (ENTRANCES[entrance] || ENTRANCES.pop) : 'none';
+  card.style.animationName = ENTRANCES[entrance] || ENTRANCES.pop;
   card.style.borderBottom = '5px solid ' + accent;
 
   if (settings.alertShowAvatars && alert.kind !== 'custom') {
@@ -354,7 +354,6 @@ function applySettings(next) {
   document.documentElement.lang = settings.appLanguageCode || 'en';
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
   stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
-  if (active) renderAlert(active, false);
 }
 
 const MAX_PENDING_ALERTS = 20;

@@ -276,6 +276,53 @@ void main() {
     expect(target.calls, isEmpty);
     expect(engine.history, isEmpty);
   });
+  testWidgets('changing triggers clears hidden filters from the draft',
+      (t) async {
+    final rule = {
+      ...RuleSchema.newRule('chat.message', id: 'r'),
+      'trigger': {
+        'type': 'chat.message',
+        'text': 'old text',
+        'match': 'contains'
+      },
+      'conditions': {
+        'platforms': ['twitch'],
+        'roles': ['vip']
+      },
+      'actions': [
+        {
+          'id': 'notice',
+          'type': 'template.trigger',
+          'name': 'notice',
+          'data': 'hi'
+        }
+      ],
+    };
+    settings = MemoryRulesSettings(SettingsModel(
+        rules: RuleSchema.sanitize([rule]), overlayEnabled: false));
+    await mount(t);
+    await t.tap(find.byKey(const Key('rule-menu-r')));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Edit'));
+    await t.pumpAndSettle();
+    final trigger = find.byKey(const Key('rule-trigger'));
+    final dropdown = find.descendant(
+        of: trigger, matching: find.byType(DropdownButton<String>));
+    t.widget<DropdownButton<String>>(dropdown).onChanged!('poll.ended');
+    await t.pump();
+    expect(find.byKey(const Key('rule-trigger-text')), findsNothing);
+    t.widget<DropdownButton<String>>(dropdown).onChanged!('chat.message');
+    await t.pump();
+    expect(
+        t
+            .widget<FilterChip>(find.widgetWithText(FilterChip, 'Twitch'))
+            .selected,
+        isFalse);
+    expect(
+        t.widget<FilterChip>(find.widgetWithText(FilterChip, 'VIPs')).selected,
+        isFalse);
+  });
+
   testWidgets('closing an edited rule asks before discarding', (t) async {
     await mount(t);
     await t.tap(find.byKey(const Key('rules-new')));

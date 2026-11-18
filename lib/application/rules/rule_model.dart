@@ -35,6 +35,21 @@ abstract final class RuleSchema {
   static const goalPattern = r'^[a-zA-Z0-9_-]{1,64}$';
   static const platforms = ['youtube', 'twitch', 'kick'];
   static const roles = ['everyone', 'member', 'moderator', 'vip', 'owner'];
+  static bool supportsRoleFilter(String type) =>
+      type.startsWith('chat.') ||
+      type.startsWith('queue.') ||
+      const {
+        'support.superchat',
+        'support.bits',
+        'support.membership',
+        'support.gift'
+      }.contains(type);
+
+  static bool supportsPlatformFilter(String type) =>
+      supportsRoleFilter(type) ||
+      type.startsWith('support.') ||
+      type == 'giveaway.winner';
+
   static const triggers = <String, Map<String, RuleField>>{
     'chat.message': {
       'match':
@@ -332,8 +347,12 @@ abstract final class RuleSchema {
       'invalid': invalid,
       'trigger': trigger,
       'conditions': {
-        'platforms': subset('platforms', platforms),
-        'roles': subset('roles', roles),
+        'platforms': supportsPlatformFilter(trigger['type'] as String)
+            ? subset('platforms', platforms)
+            : <String>[],
+        'roles': supportsRoleFilter(trigger['type'] as String)
+            ? subset('roles', roles)
+            : <String>[],
         'onlyWhileStreaming': c['onlyWhileStreaming'] == true
       },
       'actions': aa,

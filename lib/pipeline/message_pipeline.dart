@@ -13,6 +13,20 @@ import 'package:airstream/settings/settings_model.dart';
 class MessagePipeline {
   final _controller = StreamController<ChatMessage>.broadcast();
   final _buffer = <ChatMessage>[];
+  static const sessionMessageLimit = 20000;
+  final _session = Queue<ChatMessage>();
+  bool _sessionTruncated = false;
+  bool _recordingSession = false;
+
+  List<ChatMessage> get sessionMessages => List.unmodifiable(_session);
+  bool get sessionMessagesTruncated => _sessionTruncated;
+
+  void startSession() {
+    _recordingSession = true;
+    _session.clear();
+    _sessionTruncated = false;
+  }
+
   final _subscriptions = <StreamSubscription>[];
   final _seenIdKeys = <String>{};
   final _seenContentKeys = <String>{};
@@ -32,6 +46,8 @@ class MessagePipeline {
   /// Current buffered messages (up to settings.maxMessages).
   List<ChatMessage> get buffer => List.unmodifiable(_buffer);
 
+  void endSession() => _recordingSession = false;
+
   void clear() {
     _sessionAuthors.clear();
     _buffer.clear();
@@ -44,6 +60,7 @@ class MessagePipeline {
   bool applyModeration(ChatModerationEvent event) {
     final previousLength = _buffer.length;
     _buffer.removeWhere(event.appliesTo);
+    _session.removeWhere(event.appliesTo);
     return _buffer.length != previousLength;
   }
 
@@ -86,6 +103,10 @@ class MessagePipeline {
     final previousLength = _buffer.length;
     _rebuildFilterCache();
     _buffer.removeWhere(_shouldBlock);
+    if (!listEquals(previous.blockedUsers, settings.blockedUsers) ||
+        !listEquals(previous.blockedWords, settings.blockedWords)) {
+      _session.removeWhere(_shouldBlock);
+    }
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
     while (_buffer.length > limit) {
       _buffer.removeAt(0);
@@ -125,6 +146,13 @@ class MessagePipeline {
     _rememberMessage(incoming);
     final msg = _markFirstInSession(incoming);
 
+    if (_recordingSession) {
+      if (_session.length == sessionMessageLimit) {
+        _session.removeFirst();
+        _sessionTruncated = true;
+      }
+      _session.addLast(msg);
+    }
     _buffer.add(msg);
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
     while (_buffer.length > limit) {

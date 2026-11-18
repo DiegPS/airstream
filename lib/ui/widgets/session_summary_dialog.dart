@@ -75,9 +75,11 @@ Future<void> showSessionSummaryDialog(BuildContext context, WidgetRef ref) {
   final controller = ref.read(appControllerProvider);
   final summary = controller.sessionSummary;
   final chat = controller.sessionChat;
+  final truncated = controller.sessionChatTruncated;
   return showDialog<void>(
     context: context,
-    builder: (context) => SessionSummaryDialog(summary: summary, chat: chat),
+    builder: (context) => SessionSummaryDialog(
+        summary: summary, chat: chat, chatTruncated: truncated),
   );
 }
 
@@ -98,12 +100,14 @@ class SessionSummaryDialog extends StatefulWidget {
     super.key,
     required this.summary,
     required this.chat,
+    this.chatTruncated = false,
     this.saveCsv = _saveSessionCsv,
     this.listSeparator = windowsListSeparator,
   });
 
   final SessionSummary summary;
   final List<ChatMessage> chat;
+  final bool chatTruncated;
   final SaveSessionCsv saveCsv;
 
   /// The column separator Excel expects on this computer.
@@ -157,8 +161,9 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (summary.startedAt != null) ...[
-                Text(l.sessionExportChatScope(widget.chat.length),
-                    style: muted),
+                if (widget.chatTruncated)
+                  Text(l.sessionExportChatScope(widget.chat.length),
+                      style: muted),
                 Wrap(
                   spacing: 8,
                   children: [

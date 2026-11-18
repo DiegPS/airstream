@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/foundation.dart' show mapEquals, visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:airstream/services/media_library.dart';
@@ -396,7 +396,8 @@ class OverlayServer {
   bool replayRecentAlert(String id) {
     for (final alert in _recentAlerts) {
       if (alert['id'] == id) {
-        return _broadcastEnvelope({'type': 'alert', 'data': alert});
+        return _broadcastEnvelope({'type': 'alert', 'data': alert},
+            view: 'alerts');
       }
     }
     return false;
@@ -407,9 +408,8 @@ class OverlayServer {
       required String text,
       String mediaId = '',
       required int seconds}) {
-    if ((viewCounts['alerts'] ?? 0) == 0) return false;
     final medium = _settings.mediaLibrary[mediaId];
-    final payload = jsonEncode({
+    return _broadcastEnvelope({
       'type': 'alert',
       'data': {
         'kind': 'custom',
@@ -420,17 +420,7 @@ class OverlayServer {
           'media': mediaId,
         if (medium != null) 'mediaKind': medium['kind'],
       }
-    });
-    for (final client in List.of(_clients)) {
-      if (_views[client] == 'alerts') {
-        try {
-          client.sink.add(payload);
-        } catch (_) {
-          _removeClient(client);
-        }
-      }
-    }
-    return true;
+    }, view: 'alerts');
   }
 
   void _sendAutomaticAlert(Map<String, Object?> data) {
@@ -499,16 +489,7 @@ class OverlayServer {
       AppLogger.warning('Templates folder unavailable',
           error: error, stackTrace: stack);
     }
-    final wsHandler = webSocketHandler((WebSocketChannel ws, _) {
-      _clients.add(ws);
-      _emitClientCount();
-      _sendSettingsToClient(ws);
-      ws.stream.listen(
-        (dynamic data) => _handleClientMessage(ws, data),
-        onError: (Object _) => _removeClient(ws),
-        onDone: () => _removeClient(ws),
-      );
-    });
+    final wsHandler = webSocketHandler((ws, _) => attachClient(ws));
 
     final handler = buildOverlayRoutes(wsHandler,
         rulesApi: _rulesApi.call,
@@ -596,7 +577,6 @@ class OverlayServer {
   }
 
   bool broadcastTestAlert(String kind) {
-    if (_clients.isEmpty) return false;
     final now = DateTime.now().toIso8601String();
     final spanish = _settings.appLanguageCode == 'es';
     final donorName = spanish ? 'Donante de prueba' : 'Test donor';
@@ -695,8 +675,8 @@ class OverlayServer {
           'timestamp': now,
         },
     };
-    _broadcastEnvelope({'type': 'alert', 'data': _withAlertOption(data)});
-    return true;
+    return _broadcastEnvelope({'type': 'alert', 'data': _withAlertOption(data)},
+        view: 'alerts');
   }
 
   void broadcastCaption(String text) {
@@ -747,10 +727,17 @@ class OverlayServer {
     broadcastGoals(Goals.payload(settings.goals));
   }
 
-  void broadcastGoals(List<Map<String, Object?>> goals) {
+  void broadcastGoals(List<Map<String, Object?>> goals, {bool replay = false}) {
     final next = [
       for (final goal in goals) Map<String, Object?>.unmodifiable(goal)
     ];
+    if (replay) {
+      _goalsTimer?.cancel();
+      _goalsTimer = null;
+      _goals = next;
+      _broadcastEnvelope({'type': 'goals', 'data': next, 'replay': true});
+      return;
+    }
     if (jsonEncode(next) == jsonEncode(_goals)) return;
     _goals = next;
     _goalsTimer ??= Timer(const Duration(milliseconds: 250), () {
@@ -957,18 +944,14 @@ class OverlayServer {
           }
           _emitViewCounts();
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
+          for (final type in const ['timer', 'goals', 'giveaway', 'poll']) {
+            _sendSnapshot(client, type);
+          }
           _sessionClients[client] = null;
           _sendSession(client, replay: true);
           _sendCounters(client, jsonEncode(_settings.ruleCounters),
               replay: true);
-          final queue = queueState?.call();
-          if (queue != null) {
-            client.sink.add(jsonEncode({
-              'type': 'queue',
-              'data': queue,
-              'replay': true,
-            }));
-          }
+          _sendSnapshot(client, 'queue');
           if (item == null) {
             unawaited(_sendFields(client, id));
           } else {
@@ -995,13 +978,9 @@ class OverlayServer {
             !_views.containsKey(client)) {
           _views[client] = view;
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
-          if (view == 'clock') {
-            client.sink.add(jsonEncode({
-              'type': 'clock',
-              'data': _settings.clock
-                  .payload(DateTime.now().millisecondsSinceEpoch),
-              'replay': true,
-            }));
+          if (const {'clock', 'timer', 'goals', 'giveaway', 'poll'}
+              .contains(view)) {
+            _sendSnapshot(client, view);
           }
           if (view == 'alerts') {
             client.sink.add(jsonEncode(_alertControl(_alertsPaused
@@ -1128,42 +1107,43 @@ class OverlayServer {
     });
   }
 
-  void _sendSettingsToClient(WebSocketChannel client) {
+  @visibleForTesting
+  void attachClient(WebSocketChannel client) {
+    _clients.add(client);
+    _emitClientCount();
     try {
       client.sink.add(jsonEncode({
         'type': 'settings',
         'data': OverlayPayloadEncoder.settings(_settings),
       }));
-      if (_timer != null) {
-        final data = {
-          ..._timer!,
-          'addedMs': 0,
-          'serverNowMs': DateTime.now().millisecondsSinceEpoch
-        };
-        if (data['phase'] == 'running') {
-          final ms = (data['endsAtMs'] as int) - (data['serverNowMs'] as int);
-          data['remainingMs'] = ms > 0 ? ms : 0;
-          if (ms <= 0) data['phase'] = 'ended';
-        }
-        client.sink
-            .add(jsonEncode({'type': 'timer', 'data': data, 'replay': true}));
-      }
-      if (_goals.isNotEmpty) {
-        client.sink
-            .add(jsonEncode({'type': 'goals', 'data': _goals, 'replay': true}));
-      }
-      if (_giveaway != null) {
-        client.sink.add(jsonEncode(
-            {'type': 'giveaway', 'data': _giveaway, 'replay': true}));
-      }
-      if (_poll != null) {
-        client.sink
-            .add(jsonEncode({'type': 'poll', 'data': _poll, 'replay': true}));
-      }
     } catch (_) {
-      // A failed send means the browser disconnected before its close event.
       _removeClient(client);
+      return;
     }
+    client.stream.listen(
+      (data) => _handleClientMessage(client, data),
+      onError: (Object _) => _removeClient(client),
+      onDone: () => _removeClient(client),
+    );
+  }
+
+  void _sendSnapshot(WebSocketChannel client, String type) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final data = switch (type) {
+      'clock' => _settings.clock.payload(now),
+      'timer' => SubathonTimer.payload(_settings, now),
+      'goals' => _goals,
+      'giveaway' => _giveaway,
+      'poll' => _poll,
+      'queue' => queueState?.call() ??
+          _settings.queueState.toOverlayJson(
+              _settings.queueOptions.max,
+              _settings.queueOptions
+                  .commandFor(_settings.appLanguageCode)
+                  .toLowerCase()),
+      _ => throw ArgumentError.value(type),
+    };
+    client.sink.add(jsonEncode({'type': type, 'data': data, 'replay': true}));
   }
 
   bool _broadcastEnvelope(Map<String, dynamic> envelope, {String? view}) {

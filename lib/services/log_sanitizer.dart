@@ -3,6 +3,14 @@ class LogSanitizer {
 
   static final Set<String> _registeredSecrets = <String>{};
   static final List<RegExp> _patterns = <RegExp>[
+    RegExp(
+      r'("(?:rulesWebhookToken|obsPassword)"\s*:\s*)"(?:[^"\\]|\\.)*"',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r"""()https?://[^\s/"'<>?#]+(?:/[^\s/"'<>?#]*)*/webhooks(?:/[^\s"'<>]*|\?[^\s"'<>]*)?(?=$|[\s"'<>),;\]}])""",
+      caseSensitive: false,
+    ),
     RegExp(r'(Bearer\s+)[A-Za-z0-9._~+/=-]+', caseSensitive: false),
     RegExp(
       r'((?:password|passwd|token|access_token|refresh_token|api[_-]?key|authorization)\s*[=:]\s*)([^\s,;&]+)',

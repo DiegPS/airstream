@@ -445,6 +445,13 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                         final fresh = widget.engine.newRule(v,
                                             id: draft['id'] as String);
                                         draft['trigger'] = fresh['trigger'];
+                                        if (!RuleSchema.supportsPlatformFilter(
+                                            v)) {
+                                          conditions['platforms'] = <String>[];
+                                        }
+                                        if (!RuleSchema.supportsRoleFilter(v)) {
+                                          conditions['roles'] = <String>[];
+                                        }
                                         if (v == 'manual') {
                                           draft['trigger']['webhook'] =
                                               suggestWebhook(
@@ -461,8 +468,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                 ...params(t, RuleSchema.triggers[type] ?? {},
                                     'trigger'),
                                 section('if'),
-                                if (meaningful ||
-                                    type.startsWith('queue.')) ...[
+                                if (RuleSchema.supportsPlatformFilter(type))
                                   Wrap(spacing: 6, children: [
                                     for (final p in RuleSchema.platforms)
                                       FilterChip(
@@ -483,6 +489,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                                     : list.remove(p);
                                               }))
                                   ]),
+                                if (RuleSchema.supportsRoleFilter(type))
                                   Wrap(spacing: 6, children: [
                                     for (final r in RuleSchema.roles)
                                       FilterChip(
@@ -507,8 +514,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                                       : list.remove(r);
                                                 }
                                               }))
-                                  ])
-                                ],
+                                  ]),
                                 SwitchListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title:

@@ -306,7 +306,9 @@ class FakeOverlayClient implements OverlayClient {
   void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
   final goals = <List<Map<String, Object?>>>[];
   @override
-  void broadcastGoals(List<Map<String, Object?>> value) => goals.add(value);
+  void broadcastGoals(List<Map<String, Object?>> value,
+          {bool replay = false}) =>
+      goals.add(value);
   final giveaways = <Map<String, Object?>?>[];
   @override
   void broadcastGiveaway(Map<String, Object?>? giveaway) =>

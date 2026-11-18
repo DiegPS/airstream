@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
 import 'package:airstream/application/live_clock.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/settings/settings_document.dart';
@@ -129,9 +133,32 @@ abstract final class SettingsProfiles {
 
   /// Settings read from a backup, keeping local credentials, API opt-in and
   /// the HTTP rule URLs this computer already has.
-  static SettingsModel import(String source, SettingsModel current) =>
+  static SettingsModel import(String source, SettingsModel current,
+      {Directory? mediaDirectory}) {
+    final restored = SettingsDocumentCodec.decode(source).settings;
+    final localMedia = {...current.mediaLibrary};
+    if (mediaDirectory != null &&
+        FileSystemEntity.typeSync(mediaDirectory.path, followLinks: false) ==
+            FileSystemEntityType.directory) {
+      for (final entry in restored.mediaLibrary.entries) {
+        if (localMedia.containsKey(entry.key)) continue;
+        final path =
+            p.join(mediaDirectory.path, "${entry.key}.${entry.value['ext']}");
+        if (FileSystemEntity.typeSync(path, followLinks: false) ==
+            FileSystemEntityType.file) {
+          localMedia[entry.key] = entry.value;
+        }
+      }
+    }
+    return applyImportedSettings(
+        restored.copyWith(mediaLibrary: localMedia), current);
+  }
+
+  /// Applies settings from an import after the caller has resolved its media.
+  static SettingsModel applyImportedSettings(
+          SettingsModel restored, SettingsModel current) =>
       keepLocalHttpUrls(
-          SettingsDocumentCodec.decode(source).settings.copyWith(
+          restored.copyWith(
               queueState: current.queueState,
               obsPassword: current.obsPassword,
               rulesWebhookToken: current.rulesWebhookToken,
@@ -139,7 +166,7 @@ abstract final class SettingsProfiles {
           current);
 
   /// Restores each HTTP action's URL from [current] by rule and action id;
-  /// an action this computer does not have keeps an empty URL.
+  /// an action this computer does not have keeps the URL from the backup.
   static SettingsModel keepLocalHttpUrls(
       SettingsModel restored, SettingsModel current) {
     final urls = <(String, String), Object?>{
@@ -161,7 +188,7 @@ abstract final class SettingsProfiles {
                   action['type'] == 'http.request')
                 {
                   ...action,
-                  'url': urls[(rule['id'], action['id'])] ?? '',
+                  'url': urls[(rule['id'], action['id'])] ?? action['url'],
                 }
               else
                 action,

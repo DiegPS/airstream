@@ -6,7 +6,8 @@ import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('alerts queue pauses, drains, skips media and reports page state',
+  test(
+      'alerts queue preserves playing video and its timer across settings broadcasts',
       () async {
     final dir = await Directory.systemTemp.createTemp('airstream-alert-queue-');
     try {
@@ -52,6 +53,7 @@ const sounds = [];
 const timers = new Map();
 const videos = [];
 let timer = 0;
+let lastDelay;
 
 class Media {
   stopped = false;
@@ -77,7 +79,11 @@ class WebSocket extends EventTarget {
   }
 }
 const window = new EventTarget();
-window.setTimeout = (fn) => { timers.set(++timer, fn); return timer; };
+window.setTimeout = (fn, delay) => {
+  lastDelay = delay;
+  timers.set(++timer, fn);
+  return timer;
+};
 window.clearTimeout = (id) => timers.delete(id);
 const document = {
   documentElement: {},
@@ -123,11 +129,21 @@ status(false, 0, true);
 assert.equal(stage.firstElementChild.id, 'second');
 assert.equal(sounds[0].url, '/sounds/coin.wav');
 const playingVideo = videos[0];
+const activeCard = stage.firstElementChild;
+const activeTimer = run('hideTimer');
+socket.deliver({type: 'settings', data: {alertPosition: 'top', alertDisplaySeconds: 20}});
+assert.equal(stage.style.alignItems, 'flex-start');
+assert.equal(stage.firstElementChild, activeCard);
+assert.deepEqual(videos, [playingVideo]);
+assert.equal(playingVideo.stopped, false);
+assert.equal(run('hideTimer'), activeTimer);
+assert.equal(timers.has(activeTimer), true);
 alert('third', 'bits', {sound: 'custom', soundKey: 'abc'});
 op('skip');
 assert.equal(sounds[0].stopped, true);
 assert.equal(playingVideo.stopped, true);
 assert.equal(stage.firstElementChild.id, 'third');
+assert.equal(lastDelay, 20000);
 assert.equal(sounds[1].url, '/sounds/custom/bits?tier=abc');
 for (let i = 0; i < 30; i++) alert('waiting-' + i);
 status(false, 20, true);
