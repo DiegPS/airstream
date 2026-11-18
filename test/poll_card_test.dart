@@ -216,6 +216,14 @@ void main() {
         await click(find.widgetWithText(TextButton, l.pollStart));
         expect(app.polls.current?.mode, PollMode.freeAnswer);
         expect(app.polls.current?.command, '!r');
+        // While that poll is open, a saved poll cannot replace it (and its
+        // votes) by accident.
+        expect(
+            tester
+                .widget<TextButton>(
+                    find.widgetWithText(TextButton, l.pollStart))
+                .onPressed,
+            isNull);
         await click(find.byTooltip(l.pollDeleteSetup));
         expect(find.text('Renamed setup'), findsNothing);
         expect(tester.takeException(), isNull);

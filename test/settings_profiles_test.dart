@@ -1,3 +1,4 @@
+import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_profiles.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,6 +70,24 @@ void main() {
     expect(reset.overlayPort, 18081);
     expect(reset.obsPassword, 'secret');
     expect(reset.profiles.keys, ['Gaming']);
+  });
+
+  test('profiles and reset never erase saved polls', () {
+    final poll = SavedPoll.fromJson({
+      'name': 'Juego',
+      'question': '¿Qué jugamos?',
+      'options': ['A', 'B'],
+      'mode': 'numbered',
+    })!;
+    final withProfile = SettingsProfiles.save(streaming, 'Gaming');
+    // The poll is saved after the profile.
+    final current = withProfile.copyWith(savedPolls: [poll]);
+    expect(SettingsProfiles.capture(current).containsKey('savedPolls'), false);
+    final applied =
+        SettingsProfiles.apply(current, current.profiles['Gaming']!);
+    expect(applied.savedPolls.single.name, 'Juego');
+    expect(SettingsProfiles.resetToDefaults(current).savedPolls.single.name,
+        'Juego');
   });
 
   test('an exported file brings every setting back, without the password', () {

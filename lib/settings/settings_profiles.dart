@@ -30,6 +30,9 @@ abstract final class SettingsProfiles {
     'profiles',
     'goals',
     'queueState',
+    // Saved polls and giveaway rounds are the streamer's data, not a look:
+    // switching profiles or resetting settings must not erase them.
+    'savedPolls',
     'giveawayHistory',
     'rulesEnabled',
     'rulesWebhookEnabled',

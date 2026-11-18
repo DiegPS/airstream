@@ -186,7 +186,9 @@ class _PollCardState extends ConsumerState<PollCard> {
         .launchSavedPoll(setup, language: l.localeName);
   }
 
-  Widget _savedPolls(AppLocalizations l, List<SavedPoll> saved) => Material(
+  Widget _savedPolls(AppLocalizations l, List<SavedPoll> saved,
+          {required bool pollOpen}) =>
+      Material(
         type: MaterialType.transparency,
         child: ExpansionTile(
           key: const Key('saved-polls'),
@@ -217,7 +219,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                       children: [
                         TextButton.icon(
                           key: ValueKey(poll),
-                          onPressed: () => _launch(poll, l),
+                          onPressed: pollOpen ? null : () => _launch(poll, l),
                           icon: const Icon(Icons.play_arrow_rounded),
                           label: Text(l.pollStart),
                         ),
@@ -290,7 +292,9 @@ class _PollCardState extends ConsumerState<PollCard> {
       description: l.pollDescription,
       children: [
         if (poll == null) ..._editor(l) else ..._results(l, poll),
-        _savedPolls(l, saved),
+        // Launching a saved poll would silently replace an open one and its
+        // votes; end the current poll first.
+        _savedPolls(l, saved, pollOpen: poll != null && !poll.closed),
         const SizedBox(height: 10),
         _overlayHint(l),
       ],
