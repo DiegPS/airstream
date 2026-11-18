@@ -18,6 +18,8 @@ import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/support_alert.dart';
 import 'package:airstream/pipeline/chat_filter.dart';
+import 'package:airstream/preview/sample_messages.dart'
+    show previewMessagePrefix;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
@@ -1062,7 +1064,9 @@ class OverlayServer {
         },
       });
     }
-    broadcastChatSupport(msg);
+    // Style preview samples show in the chat only: they must never play
+    // alert sounds, queue support cards or reach Recent Alerts.
+    if (!msg.id.startsWith(previewMessagePrefix)) broadcastChatSupport(msg);
   }
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {

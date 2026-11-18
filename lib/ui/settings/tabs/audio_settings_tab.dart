@@ -302,9 +302,12 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                                 ],
                               );
                               if (selected == null || !context.mounted) return;
-                              await notifier.update(s.copyWith(
-                                ttsReferenceAudioPath: selected.path,
-                              ));
+                              // The picker can stay open while goals, timers
+                              // or counters change: apply only the path to the
+                              // latest settings, not the snapshot from before.
+                              await notifier.updateLatest((latest) =>
+                                  latest.copyWith(
+                                      ttsReferenceAudioPath: selected.path));
                             },
                             icon:
                                 const Icon(Icons.audio_file_rounded, size: 15),

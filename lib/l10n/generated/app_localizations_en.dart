@@ -1747,6 +1747,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionSupportGiftMembership(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name gifted $count memberships',
+      one: '$name gifted a membership',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String sessionSupportRaid(String name, int count) {
     return '$name raided with $count viewers';
   }

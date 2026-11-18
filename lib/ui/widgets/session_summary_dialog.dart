@@ -35,6 +35,9 @@ String sessionSupporterText(AppLocalizations l, SessionSupporter supporter) {
     SupportKind.membership => supporter.platform == Platform.youtube
         ? l.sessionSupportMember(name, supporter.months ?? 1)
         : l.sessionSupportSubscription(name, supporter.months ?? 1),
+    // YouTube gifts memberships; Twitch and Kick gift subscriptions.
+    SupportKind.gift when supporter.platform == Platform.youtube =>
+      l.sessionSupportGiftMembership(name, supporter.count ?? 1),
     SupportKind.gift => l.sessionSupportGift(name, supporter.count ?? 1),
     SupportKind.raid => l.sessionSupportRaid(name, supporter.count ?? 0),
     SupportKind.support => l.sessionSupportOther(name),

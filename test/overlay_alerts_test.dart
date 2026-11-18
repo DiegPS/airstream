@@ -2,6 +2,7 @@ import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:airstream/preview/sample_messages.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay_server.dart';
@@ -344,6 +345,25 @@ void main() {
     expect(connection.alerts[3]['membershipKind'], 'resubscription');
     expect(connection.alerts[4]['membershipKind'], 'gift');
     expect(connection.alerts[4]['giftCount'], 1);
+  });
+
+  test('style preview samples never become support alerts', () async {
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
+    // The chat style preview's Super Chat sample.
+    await connection.send(message(Platform.youtube,
+        id: '${previewMessagePrefix}5',
+        payment: const SuperChat(amount: r'$5.00', color: '#1DE9B6')));
+    expect(connection.alerts, isEmpty);
+    expect(connection.server.recentAlertsSnapshot, isEmpty);
+    // A real one still goes out.
+    final real = connection.nextAlert();
+    await connection.send(message(Platform.youtube,
+        id: 'real', payment: const SuperChat(amount: r'$5', color: '#FFD600')));
+    expect(await real, containsPair('kind', 'superchat'));
   });
 
   test('platform filtering blocks automatic history and delivery only',

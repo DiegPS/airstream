@@ -3159,6 +3159,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{{name} gifted a subscription} other{{name} gifted {count} subscriptions}}'**
   String sessionSupportGift(String name, int count);
 
+  /// No description provided for @sessionSupportGiftMembership.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{name} gifted a membership} other{{name} gifted {count} memberships}}'**
+  String sessionSupportGiftMembership(String name, int count);
+
   /// No description provided for @sessionSupportRaid.
   ///
   /// In en, this message translates to:

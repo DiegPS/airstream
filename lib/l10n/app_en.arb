@@ -709,6 +709,10 @@
   "@sessionSupportGift": {
     "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }
   },
+  "sessionSupportGiftMembership": "{count, plural, =1{{name} gifted a membership} other{{name} gifted {count} memberships}}",
+  "@sessionSupportGiftMembership": {
+    "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }
+  },
   "sessionSupportRaid": "{name} raided with {count} viewers",
   "@sessionSupportRaid": {
     "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }

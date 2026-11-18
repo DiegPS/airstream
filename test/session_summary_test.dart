@@ -81,6 +81,11 @@ void main() {
           membership: true,
           kind: MembershipEventKind.gift,
           gifts: 5))
+      ..handleMessage(_chat('Regalona',
+          platform: Platform.youtube,
+          membership: true,
+          kind: MembershipEventKind.gift,
+          gifts: 3))
       // Bits are paid messages too, but not Super Chats.
       ..handleMessage(_chat('Animador',
           platform: Platform.twitch,
@@ -112,6 +117,7 @@ void main() {
         'Miembro became a member',
         'Fiel: 12 months subscribed',
         'Generoso gifted 5 subscriptions',
+        'Regalona gifted 3 memberships',
         'Animador cheered 100 Bits',
         'Amigo raided with 40 viewers',
       ],
