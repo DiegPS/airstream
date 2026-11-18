@@ -4,6 +4,7 @@ import 'package:airstream/application/session_csv.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/services/windows_list_separator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -101,5 +102,28 @@ void main() {
         '"Beto, ""B""",kick,,0,1,Kicks 40\r\n');
     collector.start();
     expect(collector.summary.participants, isEmpty);
+  });
+
+  test('uses the Windows list separator so Excel splits the columns', () {
+    final csv = utf8.decode(SessionCsv.chat([
+      message('a', name: 'Ana; la de "Lima"', amount: r'$5.00'),
+    ], separator: ';'));
+    final rows = csv.substring(1).split('\r\n');
+    expect(rows.first.split(';'), hasLength(9));
+    // A cell with the separator is quoted; a comma no longer needs it.
+    expect(rows[1], contains('"Ana; la de ""Lima"""'));
+    expect(
+        utf8.decode(
+            SessionCsv.chat([message('b', name: 'Ana, Beto')], separator: ';')),
+        contains(';Ana, Beto;'));
+  });
+
+  test('reads the separator from reg query output, else a comma', () {
+    const sample = '\r\nHKEY_CURRENT_USER International\r\n'
+        '    sList    REG_SZ    ;\r\n\r\n';
+    expect(parseListSeparator(sample), ';');
+    expect(parseListSeparator(sample.replaceFirst(';', ',')), ',');
+    expect(parseListSeparator(sample.replaceFirst(';', 'x')), ',');
+    expect(parseListSeparator(''), ',');
   });
 }

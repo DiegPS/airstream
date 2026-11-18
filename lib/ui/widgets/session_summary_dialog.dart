@@ -2,6 +2,7 @@ import 'dart:io' show File;
 
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/session_csv.dart';
+import 'package:airstream/services/windows_list_separator.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -98,11 +99,15 @@ class SessionSummaryDialog extends StatefulWidget {
     required this.summary,
     required this.chat,
     this.saveCsv = _saveSessionCsv,
+    this.listSeparator = windowsListSeparator,
   });
 
   final SessionSummary summary;
   final List<ChatMessage> chat;
   final SaveSessionCsv saveCsv;
+
+  /// The column separator Excel expects on this computer.
+  final Future<String> Function() listSeparator;
 
   @override
   State<SessionSummaryDialog> createState() => _SessionSummaryDialogState();
@@ -111,11 +116,12 @@ class SessionSummaryDialog extends StatefulWidget {
 class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
   bool _saving = false;
 
-  Future<void> _export(String name, Uint8List Function() buildCsv) async {
+  Future<void> _export(
+      String name, Uint8List Function(String separator) buildCsv) async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await widget.saveCsv(name, buildCsv());
+      await widget.saveCsv(name, buildCsv(await widget.listSeparator()));
     } catch (_) {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
@@ -160,8 +166,10 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
                       key: const Key('session-export-chat'),
                       onPressed: _saving || widget.chat.isEmpty
                           ? null
-                          : () => _export('airstream-chat.csv',
-                              () => SessionCsv.chat(widget.chat)),
+                          : () => _export(
+                              'airstream-chat.csv',
+                              (separator) => SessionCsv.chat(widget.chat,
+                                  separator: separator)),
                       child: Text(l.sessionExportChat),
                     ),
                     TextButton(
@@ -170,8 +178,9 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
                           ? null
                           : () => _export(
                               'airstream-participants.csv',
-                              () => SessionCsv.participants(
-                                  summary.participants)),
+                              (separator) => SessionCsv.participants(
+                                  summary.participants,
+                                  separator: separator)),
                       child: Text(l.sessionExportParticipants),
                     ),
                   ],

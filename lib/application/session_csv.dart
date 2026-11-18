@@ -8,7 +8,9 @@ import 'rules/rule_events.dart';
 import 'session_summary.dart';
 
 abstract final class SessionCsv {
-  static Uint8List chat(Iterable<ChatMessage> messages) => _encode([
+  static Uint8List chat(Iterable<ChatMessage> messages,
+          {String separator = ','}) =>
+      _encode(separator, [
         [
           'time',
           'platform',
@@ -52,8 +54,9 @@ abstract final class SessionCsv {
     ];
   }
 
-  static Uint8List participants(Iterable<SessionParticipant> participants) =>
-      _encode([
+  static Uint8List participants(Iterable<SessionParticipant> participants,
+          {String separator = ','}) =>
+      _encode(separator, [
         [
           'name',
           'platform',
@@ -80,23 +83,23 @@ abstract final class SessionCsv {
       ? value.toString()
       : num.parse(value.toStringAsPrecision(15)).toString();
 
-  static Uint8List _encode(Iterable<List<Object?>> rows) {
+  static Uint8List _encode(String separator, Iterable<List<Object?>> rows) {
     final csv = StringBuffer('\uFEFF');
     for (final row in rows) {
       csv
-        ..write(row.map(_escape).join(','))
+        ..write(row.map((cell) => _escape(cell, separator)).join(separator))
         ..write('\r\n');
     }
     return Uint8List.fromList(utf8.encode(csv.toString()));
   }
 
   static final _formulaStart = RegExp(r'^\s*[=+\-@]');
-  static final _needsQuotes = RegExp(r'[",\r\n]');
+  static final _lineOrQuote = RegExp(r'["\r\n]');
 
-  static String _escape(Object? value) {
+  static String _escape(Object? value, String separator) {
     var cell = value?.toString() ?? '';
     if (_formulaStart.hasMatch(cell)) cell = "'$cell";
-    return _needsQuotes.hasMatch(cell)
+    return _lineOrQuote.hasMatch(cell) || cell.contains(separator)
         ? '"${cell.replaceAll('"', '""')}"'
         : cell;
   }

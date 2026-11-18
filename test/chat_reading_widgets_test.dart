@@ -134,6 +134,7 @@ void main() {
                       builder: (_) => SessionSummaryDialog(
                         summary: collector.summary,
                         chat: chat,
+                        listSeparator: () async => ',',
                         saveCsv: (name, bytes) async {
                           expect(bytes.take(3), [0xef, 0xbb, 0xbf]);
                           saved[name] = utf8.decode(bytes);
