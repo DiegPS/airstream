@@ -3765,6 +3765,12 @@ abstract class AppLocalizations {
   /// **'Test'**
   String get alertTypeTest;
 
+  /// No description provided for @recentAlertsAnonymousViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone'**
+  String get recentAlertsAnonymousViewer;
+
   /// No description provided for @recentAlertsTitle.
   ///
   /// In en, this message translates to:

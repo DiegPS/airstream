@@ -829,6 +829,7 @@
   "alertSoundVolume": "Alert sound volume",
   "alertSoundObsHint": "Sounds play from the alerts page. In OBS, turn on “Control audio via OBS” for that browser source so your viewers hear them.",
   "alertTypeTest": "Test",
+  "recentAlertsAnonymousViewer": "Someone",
   "recentAlertsTitle": "Recent alerts",
   "recentAlertsDescription": "Support events from this session that appeared on stream. Show any of them again.",
   "recentAlertsEmpty": "Alerts from this session will appear here.",

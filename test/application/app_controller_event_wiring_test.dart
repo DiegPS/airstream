@@ -186,6 +186,69 @@ void main() {
     });
   });
 
+  test('public session omits blocked names and keeps support accounting', () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      const settings = SettingsModel(overlayEnabled: false);
+      app.applySettings(settings, connectChats: true);
+      fake.flushMicrotasks();
+
+      void raid(String name, String id) {
+        twitch.eventController.add(ChatProviderEvent(
+          platform: Platform.twitch,
+          kind: ChatProviderEventKind.raid,
+          id: id,
+          authorName: name,
+          authorChannelId: id,
+          count: 10,
+          timestamp: DateTime.utc(2026),
+        ));
+        fake.flushMicrotasks();
+      }
+
+      void cheer(String name, String id, String amount) {
+        twitch.messageController.add(ChatMessage(
+          platform: Platform.twitch,
+          id: 'bits-$id',
+          author: ChatAuthor(name: name, channelId: id),
+          timestamp: DateTime.utc(2026),
+          items: const [MessageItem.text('Hello')],
+          superChat: SuperChat(amount: amount, color: ''),
+        ));
+        fake.flushMicrotasks();
+      }
+
+      raid('Visible', 'visible');
+      raid('Hide by Name', 'other');
+      cheer('Visible', 'visible', '10 Bits');
+      cheer('Hide by Name', 'other', '100 Bits');
+      final before = server.sessionState!()!;
+      expect((before['latest'] as Map)['bits']['name'], 'Hide by Name');
+      app.applySettings(
+          settings.copyWith(blockedUsers: ['@hide by name', 'private-id']),
+          connectChats: true);
+      final afterBlock = server.sessionState!()!;
+      expect((afterBlock['latest'] as Map)['bits']['name'], 'Visible');
+      expect(afterBlock['supporterCount'], before['supporterCount']);
+      raid('Hide by ID', 'private-id');
+
+      final payload = server.sessionState!()!;
+      expect(payload['supporterCount'], (before['supporterCount'] as int) + 1);
+      expect((payload['supporters'] as List).map((row) => row['name']),
+          ['Visible', 'Visible']);
+      expect((payload['latest'] as Map)['raid']['name'], 'Visible');
+      expect(
+          ((payload['top'] as Map)['bits'] as List).single['name'], 'Visible');
+      expect((payload['topChatters'] as List).single['name'], 'Visible');
+      expect(payload.toString(), isNot(contains('Hide by')));
+      expect(app.sessionSummary.supporters, hasLength(5));
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test(
       'block-list edits publish and persist sanitized waiting and playing entries',
       () {

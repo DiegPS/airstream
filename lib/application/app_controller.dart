@@ -675,8 +675,15 @@ class AppController {
     if (restoreQueue) {
       queue.restore(settings.queueState);
     }
-    if (restoreQueue || !ChatFilter.sameBlockLists(previous, settings)) {
-      queue.applyFilter(ChatFilter(settings));
+    final blocksChanged =
+        previous == null || !ChatFilter.sameBlockLists(previous, settings);
+    if (restoreQueue || blocksChanged) {
+      final filter = ChatFilter(settings);
+      queue.applyFilter(filter);
+      if (blocksChanged) {
+        _sessionSummary.applyBlockFilter(filter);
+        templateServer?.sessionChanged();
+      }
     }
     _giveaway.restoreHistory(settings.giveawayHistory);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);

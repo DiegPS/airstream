@@ -107,7 +107,10 @@ class RecentAlertsCard extends ConsumerWidget {
                         child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('${alert['author'] ?? ''}',
+                        Text(
+                            (alert['author'] as String?)?.isNotEmpty == true
+                                ? alert['author'] as String
+                                : l.recentAlertsAnonymousViewer,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

@@ -282,6 +282,7 @@ class OverlayServer {
   final _clients = <WebSocketChannel>{};
   final _views = <WebSocketChannel, String>{};
   final _inactiveSources = <WebSocketChannel>{};
+  final _obsSources = <WebSocketChannel>{};
   // Built-in chat displays at most 500 messages. Keep their inputs so name
   // colors can also update for messages already on screen.
   final _recentChatMessages = <int, ChatMessage>{};
@@ -434,7 +435,7 @@ class OverlayServer {
 
   void _sendAutomaticAlert(Map<String, Object?> data) {
     if (!_settings.alertPlatforms.contains(data['platform'])) return;
-    data = _withAlertOption(data);
+    data = _withAlertOption(_redactBlockedAlert(data));
     final sent = _broadcastEnvelope({'type': 'alert', 'data': data},
         requireDeliveryTo: 'alerts');
     if (!sent) return;
@@ -581,10 +582,10 @@ class OverlayServer {
     if (!ChatFilter.sameBlockLists(previous, settings)) {
       _chatFilter = ChatFilter(settings);
       _removeBlockedRecords();
-      _broadcastEnvelope(
-        _filterEnvelope(),
-        gallery: 'word-cloud',
-      );
+      final filters = _filterEnvelope();
+      _sendCustom(filters);
+      _broadcastEnvelope(filters, view: 'alerts');
+      _broadcastEnvelope(filters, view: 'featured');
     }
     if (previous.appLanguageCode != settings.appLanguageCode) {
       for (final entry in _galleryViews.entries.toList()) {
@@ -758,9 +759,8 @@ class OverlayServer {
   void broadcastModeration(ChatModerationEvent event) {
     _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
     _recentChatMessages.updateAll((_, message) => event.redactReply(message));
-    var alertsChanged = false;
-    for (var i = 0; i < _recentAlerts.length; i++) {
-      final alert = _recentAlerts[i];
+    _removePendingFeatured(event.appliesTo);
+    _updateRecentAlerts((alert) {
       if (alert['message'] == '' ||
           !event.matchesTarget(
             targetPlatform: Platform.values.asNameMap()[alert['platform']],
@@ -770,19 +770,53 @@ class OverlayServer {
             authorId: alert['authorChannelId'] as String? ?? '',
             name: alert['author'] as String? ?? '',
           )) {
-        continue;
+        return alert;
       }
-      _recentAlerts[i] = Map.unmodifiable({...alert, 'message': ''});
-      alertsChanged = true;
-    }
+      return {...alert, 'message': ''};
+    });
     _broadcastEnvelope({
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
     });
-    if (alertsChanged) _recentAlertsController.add(recentAlertsSnapshot);
+  }
+
+  void _updateRecentAlerts(
+      Map<String, Object?> Function(Map<String, Object?>) update) {
+    var changed = false;
+    for (var i = 0; i < _recentAlerts.length; i++) {
+      final alert = _recentAlerts[i];
+      final updated = update(alert);
+      if (identical(updated, alert)) continue;
+      _recentAlerts[i] = Map.unmodifiable(updated);
+      changed = true;
+    }
+    if (changed) _recentAlertsController.add(recentAlertsSnapshot);
+  }
+
+  Map<String, Object?> _redactBlockedAlert(Map<String, Object?> alert) {
+    final blockedAuthor = _chatFilter.blocksUser(
+        alert['author'] as String? ?? '',
+        alert['authorChannelId'] as String? ?? '');
+    if (!blockedAuthor &&
+        !_chatFilter.blocksText(alert['message'] as String? ?? '')) {
+      return alert;
+    }
+    return {
+      ...alert,
+      'message': '',
+      if (blockedAuthor) ...{
+        'author': '',
+        'authorChannelId': '',
+        'authorAvatarUrl': null,
+        'badgeLabel': null,
+        'badgeImageUrl': null,
+      },
+    };
   }
 
   void _removeBlockedRecords() {
+    _removePendingFeatured(_chatFilter.blocksMessage);
+    _updateRecentAlerts(_redactBlockedAlert);
     final chat = _recentChatMessages.entries
         .where((entry) => _chatFilter.blocksMessage(entry.value))
         .toList();
@@ -938,7 +972,7 @@ class OverlayServer {
         'id': event.id,
         'author': event.authorName,
         'authorAvatarUrl': null,
-        'authorChannelId': kind == 'kicks' ? event.authorChannelId : '',
+        'authorChannelId': event.authorChannelId,
         'badgeImageUrl': null,
         'badgeLabel': null,
         'message': kind == 'kicks' ? event.text : '',
@@ -978,6 +1012,7 @@ class OverlayServer {
     _clients.clear();
     _views.clear();
     _inactiveSources.clear();
+    _obsSources.clear();
     _alertQueues.clear();
     _emitAlertQueue();
     for (final pending in _featured.values) {
@@ -1031,6 +1066,9 @@ class OverlayServer {
   }
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
+    if (_chatFilter.blocksMessage(msg)) {
+      return FeaturedMessageDelivery.noReceiver();
+    }
     // SDK subscriptions are local to the page. Preserve event delivery,
     // but use only known renderers to determine the delivery status.
     _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
@@ -1042,8 +1080,16 @@ class OverlayServer {
     }
     final activeFeatured = featured.difference(_inactiveSources);
     final activeAlerts = alerts.difference(_inactiveSources);
-    final recipients = [activeFeatured, activeAlerts, featured, alerts]
-        .firstWhere((group) => group.isNotEmpty, orElse: () => {});
+    final recipients = [
+      activeFeatured.intersection(_obsSources),
+      activeAlerts.intersection(_obsSources),
+      featured.intersection(_obsSources),
+      alerts.intersection(_obsSources),
+      activeFeatured,
+      activeAlerts,
+      featured,
+      alerts,
+    ].firstWhere((group) => group.isNotEmpty, orElse: () => {});
     if (recipients.isEmpty) {
       return FeaturedMessageDelivery.noReceiver();
     }
@@ -1059,7 +1105,7 @@ class OverlayServer {
     }
     final id = '$_lifecycleGeneration-${++_nextDelivery}';
     final pending =
-        _PendingFeaturedMessage(Set<WebSocketChannel>.from(recipients));
+        _PendingFeaturedMessage(msg, Set<WebSocketChannel>.from(recipients));
     _featured[id] = pending;
     pending.timer = Timer(featuredAcknowledgementTimeout, () {
       _featured.remove(id)?.finish(FeaturedMessageStatus.sent);
@@ -1088,6 +1134,14 @@ class OverlayServer {
           : FeaturedMessageStatus.noReceiver,
       pending.completion.future,
     );
+  }
+
+  void _removePendingFeatured(bool Function(ChatMessage) matches) {
+    _featured.removeWhere((_, pending) {
+      if (!matches(pending.message)) return false;
+      pending.finish(FeaturedMessageStatus.removed);
+      return true;
+    });
   }
 
   void removeFeaturedMessage() {
@@ -1137,10 +1191,8 @@ class OverlayServer {
             unawaited(_sendFields(client, id));
           } else {
             _sendGalleryFields(client, item);
-            if (id == 'word-cloud') {
-              client.sink.add(jsonEncode(_filterEnvelope(replay: true)));
-            }
           }
+          client.sink.add(jsonEncode(_filterEnvelope(replay: true)));
           return;
         }
         if (view is String &&
@@ -1157,9 +1209,9 @@ class OverlayServer {
             }.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
-          if ((view == 'featured' || view == 'alerts') &&
-              envelope['active'] == false) {
-            _inactiveSources.add(client);
+          if (view == 'featured' || view == 'alerts') {
+            if (envelope['active'] == false) _inactiveSources.add(client);
+            if (envelope['inObs'] == true) _obsSources.add(client);
           }
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
           if (const {'clock', 'timer', 'goals', 'giveaway', 'poll'}
@@ -1334,14 +1386,13 @@ class OverlayServer {
       };
 
   bool _broadcastEnvelope(Map<String, dynamic> envelope,
-      {String? view, String? requireDeliveryTo, String? gallery}) {
+      {String? view, String? requireDeliveryTo}) {
     if (_clients.isEmpty) return false;
     var sent = false;
     final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
       final clientView = _views[client];
       if (view != null && clientView != view) continue;
-      if (gallery != null && _galleryViews[client]?.id != gallery) continue;
       try {
         client.sink.add(json);
         if (requireDeliveryTo == null || clientView == requireDeliveryTo) {
@@ -1369,6 +1420,7 @@ class OverlayServer {
 
   void _removeClient(WebSocketChannel client) {
     _inactiveSources.remove(client);
+    _obsSources.remove(client);
     if (_views.remove(client) == 'alerts') {
       _alertQueues.remove(client);
       _emitAlertQueue();
@@ -1392,8 +1444,9 @@ class OverlayServer {
 }
 
 class _PendingFeaturedMessage {
-  _PendingFeaturedMessage(this.recipients);
+  _PendingFeaturedMessage(this.message, this.recipients);
 
+  final ChatMessage message;
   final Set<WebSocketChannel> recipients;
   final completion = Completer<FeaturedMessageStatus>();
   Timer? timer;

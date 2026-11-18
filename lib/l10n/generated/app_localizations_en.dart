@@ -2078,6 +2078,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertTypeTest => 'Test';
 
   @override
+  String get recentAlertsAnonymousViewer => 'Someone';
+
+  @override
   String get recentAlertsTitle => 'Recent alerts';
 
   @override

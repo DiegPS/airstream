@@ -1,9 +1,11 @@
+import 'alert_moderation.dart';
 import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 
 String featuredOverlayHtml() => _featuredPage
     .replaceFirst('/* OVERLAY_FONT */', overlayFontScript)
-    .replaceFirst('/* SOURCE_ACTIVITY */', featuredSourceActivityScript);
+    .replaceFirst('/* SOURCE_ACTIVITY */', featuredSourceActivityScript)
+    .replaceFirst('/* MODERATION */', alertModerationScript);
 
 const _featuredPage = r'''<!doctype html>
 <html lang="en">
@@ -49,10 +51,13 @@ let shownAt = 0;
 let hideTimer = 0;
 let socket = null;
 /* SOURCE_ACTIVITY */
+/* MODERATION */
+let displayed = null;
 let retryTimer = 0;
 let shuttingDown = false;
 
 function hideFeatured() {
+  displayed = null;
   clearTimeout(hideTimer);
   stage.replaceChildren();
 }
@@ -132,6 +137,7 @@ function renderFeatured(data, connection) {
   }
   if (message.hasChildNodes()) card.append(message);
   stage.replaceChildren(card);
+  displayed = data;
   shownAt = Date.now();
   scheduleHide();
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -154,7 +160,12 @@ function connect() {
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') location.reload();
       else if (envelope.type === 'featuredHide') hideFeatured();
-      else if (envelope.type === 'alert' && envelope.data?.kind === 'featured') {
+      else if (envelope.type === 'moderation' && envelope.data && matchesAlertModeration(displayed, envelope.data)) {
+        hideFeatured();
+      } else if (envelope.type === 'filters' && displayed && envelope.data) {
+        const {blocksAuthor, blocksText} = alertBlockMatcher(envelope.data);
+        if (blocksAuthor(displayed) || blocksText(displayed)) hideFeatured();
+      } else if (envelope.type === 'alert' && envelope.data?.kind === 'featured') {
         renderFeatured(envelope.data, connection);
       }
     } catch (error) {

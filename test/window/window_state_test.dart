@@ -93,6 +93,29 @@ void main() {
     expect(calls.where((call) => call.method == 'setClickThrough'), isEmpty);
   });
 
+  test('a failed capture exclusion cannot retry after a newer choice',
+      () async {
+    final failed = Completer<bool>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return calls.length == 1 ? await failed.future : true;
+    });
+
+    final notifier = WindowStateNotifier();
+    addTearDown(notifier.dispose);
+    final enabling = notifier.setExcludeFromCapture(true);
+    await notifier.setExcludeFromCapture(false);
+    failed.complete(false);
+    await enabling;
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+
+    expect(calls.map((call) => call.arguments), [
+      {'enabled': true},
+      {'enabled': false},
+    ]);
+  });
+
   test('serializes rapid toggles instead of applying the same state twice',
       () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

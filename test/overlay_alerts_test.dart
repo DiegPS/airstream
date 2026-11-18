@@ -176,13 +176,17 @@ void main() {
   });
 
   ChatProviderEvent providerEvent(Platform platform, ChatProviderEventKind kind,
-          {String id = 'provider', int? count, String text = ''}) =>
+          {String id = 'provider',
+          String authorChannelId = '',
+          int? count,
+          String text = ''}) =>
       ChatProviderEvent(
         platform: platform,
         kind: kind,
         id: id,
         timestamp: DateTime.utc(2026, 11, 15),
         authorName: 'Ana',
+        authorChannelId: authorChannelId,
         count: count,
         text: text,
       );
@@ -204,7 +208,7 @@ void main() {
       () async {
     final received = await sendProviders([
       providerEvent(Platform.twitch, ChatProviderEventKind.raid,
-          count: 42, text: 'System message'),
+          authorChannelId: 'ana', count: 42, text: 'System message'),
     ]);
     expect(received.map((e) => e['type']), ['providerEvent', 'alert']);
     expect(received.first['data'], containsPair('text', 'System message'));
@@ -215,7 +219,7 @@ void main() {
       'id': 'provider',
       'author': 'Ana',
       'authorAvatarUrl': null,
-      'authorChannelId': '',
+      'authorChannelId': 'ana',
       'badgeImageUrl': null,
       'badgeLabel': null,
       'message': '',

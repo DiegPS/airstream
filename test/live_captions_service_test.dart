@@ -81,6 +81,36 @@ void main() {
     expect(service.currentState.phase, LiveCaptionsPhase.listening);
   });
 
+  test('retry releases and restarts capture after a microphone stream error',
+      () async {
+    final root = await Directory.systemTemp.createTemp('airstream-captions-');
+    addTearDown(() => root.delete(recursive: true));
+    final capture = _FailingCapture();
+    final service = LiveCaptionsService(
+      modelCache: _InstalledCache(root),
+      audioCapture: capture,
+      workerEntrypoint: _releasingWorker,
+    );
+    addTearDown(service.dispose);
+    Future<void> start() => service.updateConfig(
+          enabled: true,
+          sourceLanguage: 'es',
+          targetLanguage: 'es',
+          denoise: true,
+        );
+    await start();
+    final failure = service.states
+        .firstWhere((state) => state.phase == LiveCaptionsPhase.error);
+    await Future<void>.delayed(Duration.zero);
+    capture.stream.addError(StateError('Device disconnected'));
+    expect((await failure).message, 'Microphone capture stopped.');
+    await start();
+
+    expect(capture.starts, 2);
+    expect(File('${root.path}/released').existsSync(), isTrue);
+    expect(service.currentState.phase, LiveCaptionsPhase.listening);
+  });
+
   test('enabling captions never downloads without explicit user action',
       () async {
     final root = await Directory.systemTemp.createTemp('airstream-captions-');
@@ -293,6 +323,24 @@ class _SilentCapture implements SpeechAudioCapture {
 
   @override
   Future<void> dispose() => _audio.close();
+}
+
+class _FailingCapture implements SpeechAudioCapture {
+  late StreamController<Uint8List> stream;
+  int starts = 0;
+
+  @override
+  Future<Stream<Uint8List>> start() async {
+    starts++;
+    stream = StreamController<Uint8List>();
+    return stream.stream;
+  }
+
+  @override
+  Future<void> stop() => stream.close();
+
+  @override
+  Future<void> dispose() async {}
 }
 
 class _GatedCapture implements SpeechAudioCapture {

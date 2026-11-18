@@ -51,6 +51,94 @@ void main() {
     expect(replay, containsPair('author', 'Viewer'));
   });
 
+  test('block lists sanitize recent paid alerts and every replay', () async {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final alerts = _Socket(server)..register('alerts');
+    const horizontal = YoutubeStreamOrientation.horizontal;
+    server.broadcastChatSupport(paid('words', horizontal));
+    server.broadcastProviderEvent(ChatProviderEvent(
+      platform: Platform.kick,
+      kind: ChatProviderEventKind.support,
+      id: 'user',
+      authorName: 'Other Viewer',
+      authorChannelId: 'blocked-id',
+      text: 'Thank you',
+      count: 100,
+      timestamp: DateTime.utc(2026),
+    ));
+    final updated = server.recentAlerts.skip(1).first;
+    server.setSettings(const SettingsModel(
+      blockedWords: ['paid, message'],
+      blockedUsers: ['@Blocked-ID'],
+    ));
+    final recent = server.recentAlertsSnapshot;
+    expect(recent.map((alert) => alert['message']), ['', '']);
+    expect(recent.map((alert) => alert['author']), ['', 'Viewer']);
+    expect(recent.first['authorChannelId'], '');
+    expect(recent.first['count'], 100);
+    expect(recent.last['amount'], r'$5');
+    expect(await updated, recent);
+
+    server.setSettings(const SettingsModel());
+    for (final alert in recent) {
+      expect(server.replayRecentAlert(alert['id'] as String), isTrue);
+      expect(alerts.sink.frames.last['data'], alert);
+    }
+  });
+
+  test('installed and gallery templates receive live and replayed filters',
+      () async {
+    final root = await Directory.systemTemp.createTemp('custom-filters-');
+    addTearDown(() => root.delete(recursive: true));
+    final server = OverlayServer(templateLibrary: TemplateLibrary(root));
+    addTearDown(server.dispose);
+    const settings = SettingsModel(blockedWords: ['hello there']);
+    server.setSettings(settings);
+    final installed = _Socket(server)
+      ..register('custom', template: 'word-cloud');
+    final other = _Socket(server)..register('gallery', template: 'credits');
+    for (final page in [installed, other]) {
+      expect(page.snapshot('filters')['data'], {
+        'users': [],
+        'words': ['hello there']
+      });
+    }
+    server.setSettings(settings.copyWith(blockedUsers: [' @Bad Viewer ']));
+    for (final page in [installed, other]) {
+      final live = page.sink.frames.singleWhere(
+          (frame) => frame['type'] == 'filters' && frame['replay'] != true);
+      expect(live['data'], {
+        'users': ['badviewer'],
+        'words': ['hello there']
+      });
+    }
+  });
+
+  test('active OBS then inactive OBS outrank browser previews', () async {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final browser = _Socket(server)..register('featured', inObs: false);
+    final hidden = _Socket(server)
+      ..register('featured', active: false, inObs: true);
+    final alerts = _Socket(server)..register('alerts', inObs: true);
+
+    Future<void> checkRecipient(_Socket recipient) async {
+      final delivery = server.broadcastFeaturedMessage(
+          paid('featured', YoutubeStreamOrientation.horizontal));
+      expect(recipient.sink.frames.last['data']['deliveryId'], delivery.id);
+      recipient.acknowledgeFeatured(delivery.id);
+      expect(await delivery.completed, FeaturedMessageStatus.rendered);
+    }
+
+    await checkRecipient(alerts);
+    alerts.reportActivity(false);
+    await checkRecipient(hidden);
+    await alerts.disconnect();
+    await hidden.disconnect();
+    await checkRecipient(browser);
+  });
+
   test('featured replacement clears the pinned card on inactive alerts',
       () async {
     final server = OverlayServer()
@@ -415,11 +503,12 @@ class _Socket implements WebSocketChannel {
   void acknowledgeFeatured(String? id) =>
       _incoming.add(jsonEncode({'type': 'featuredRendered', 'deliveryId': id}));
 
-  void register(String view, {String? template, bool? active}) {
+  void register(String view, {String? template, bool? active, bool? inObs}) {
     _incoming.add(jsonEncode({
       'type': 'register',
       'view': view,
       if (active != null) 'active': active,
+      if (inObs != null) 'inObs': inObs,
       if (template != null) 'template': template,
     }));
     expect(sink.frames.singleWhere((frame) => frame['type'] == 'registered'),

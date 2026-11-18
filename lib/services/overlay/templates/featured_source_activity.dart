@@ -25,7 +25,9 @@ function setObsSourceActive(active) {
 function registerSource(connection, view) {
   registeredSourceSocket = connection;
   lastReportedSourceActivity = sourceIsActive();
-  connection.send(JSON.stringify({type: 'register', view, active: lastReportedSourceActivity}));
+  connection.send(JSON.stringify({
+    type: 'register', view, active: lastReportedSourceActivity, inObs: Boolean(obsStudio),
+  }));
 }
 
 window.addEventListener('obsSourceActiveChanged', event => {

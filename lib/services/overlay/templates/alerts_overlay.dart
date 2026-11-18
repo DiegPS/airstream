@@ -1,3 +1,4 @@
+import 'alert_moderation.dart';
 import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
@@ -36,6 +37,9 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
   }
   .has-pinned-featured .featured-stage { display: flex; }
   .has-pinned-featured .featured-stage.above-alerts { grid-row: 1; }
+  #root.featured-centered { grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .featured-centered .featured-stage { grid-row: 2; }
+  .featured-centered.alerts-below-featured .alert-stage:not(.featured-stage) { grid-row: 3; }
   .has-pinned-featured .alert-card {
     min-width: min(360px, 100%);
     max-height: 100%;
@@ -137,6 +141,8 @@ const DEFAULT_SETTINGS = {
   alertFontSize: 28,
   alertDisplaySeconds: 7,
   featuredSeconds: 7,
+  featuredPosition: 'bottom',
+  featuredFontScale: 100,
   alertShowAvatars: true,
   alertPosition: 'center',
   alertLayout: 'row',
@@ -253,11 +259,7 @@ function featuredText(alert, strings) {
   };
 }
 
-function renderAlert(alert, target = stage) {
-  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
-  const accent = alertAccent(alert);
-  const author = String(alert.author || strings.someone);
-  const message = String(alert.message || '').trim();
+function alertLabels(alert, strings, author) {
   let title = alert.kind === 'superchat'
     ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
     : author + ' ' + strings.becameMember;
@@ -293,6 +295,15 @@ function renderAlert(alert, target = stage) {
     kicker = platformLabel(alert.platform) + ' · ' + strings.subscription;
   }
   if (alert.kind === 'custom') { title = String(alert.title || ''); kicker = ''; }
+  return {title, kicker};
+}
+
+function renderAlert(alert, target = stage) {
+  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+  const accent = alertAccent(alert);
+  const author = String(alert.author || strings.someone);
+  const message = String(alert.message || '').trim();
+  const {title, kicker} = alertLabels(alert, strings, author);
   const avatarUrl = normalizeUrl(alert.authorAvatarUrl);
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
@@ -377,6 +388,7 @@ let featuredShownAt = 0;
 let retryTimer = 0;
 let socket = null;
 $featuredSourceActivityScript
+$alertModerationScript
 let shuttingDown = false;
 const acknowledgedFeatured = new WeakSet();
 
@@ -408,11 +420,27 @@ function applySettings(next) {
     if (avatar) avatar.alt = title;
   }
   localizePage(settings.appLanguageCode || 'en');
-  stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
-  featuredStage.style.fontSize = stage.style.fontSize;
+  applyAlertStyle();
+}
+
+function applyAlertStyle() {
+  const align = position => ({top: 'flex-start', bottom: 'flex-end'})[position] || 'center';
+  const fontSize = Number(settings.alertFontSize) || DEFAULT_SETTINGS.alertFontSize;
+  const scale = Math.min(200, Math.max(80, Number(settings.featuredFontScale))) / 100;
+  const timedFeature = active?.kind === 'featured';
+  stage.style.fontSize = (timedFeature ? fontSize * scale : fontSize) + 'px';
+  stage.style.alignItems = align(timedFeature ? settings.featuredPosition : settings.alertPosition);
+  featuredStage.style.fontSize = fontSize * scale + 'px';
+  featuredStage.style.alignItems = align(settings.featuredPosition);
   featuredStage.className = 'alert-stage featured-stage' +
-    (settings.alertPosition === 'bottom' ? ' above-alerts' : '');
-  stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
+    (settings.featuredPosition === 'top' ? ' above-alerts' : '');
+  if (pinnedFeatured) {
+    root.className = 'has-pinned-featured';
+    if (settings.featuredPosition === 'center') {
+      root.className += ' featured-centered';
+      if (settings.alertPosition === 'bottom') root.className += ' alerts-below-featured';
+    }
+  }
 }
 
 const MAX_PENDING_ALERTS = 20;
@@ -479,6 +507,7 @@ function finishAlert() {
   hideTimer = 0;
   stopActiveSound();
   active = null;
+  applyAlertStyle();
   clearMedia();
   stage.replaceChildren();
   showNext();
@@ -498,29 +527,53 @@ function controlQueue(op) {
   showNext();
 }
 
+function removeMatchingFeatured(matches) {
+  queue = queue.filter(alert => alert.kind !== 'featured' || !matches(alert));
+  if (pinnedFeatured && matches(pinnedFeatured)) clearPinnedFeatured();
+  if (active?.kind === 'featured' && matches(active)) finishAlert();
+  preloadNextImage();
+  reportQueue();
+}
+
 function redactModeratedAlerts(moderation) {
+  const matches = alert => matchesAlertModeration(alert, moderation);
+  removeMatchingFeatured(matches);
   if (Number.isInteger(moderation.sequence)) return;
-  const matches = (alert) => {
-    if (!alert?.message || alert.kind === 'featured' ||
-        alert.platform !== moderation.platform ||
-        (alert.youtubeStreamOrientation ?? null) !==
-          (moderation.youtubeStreamOrientation ?? null)) return false;
-    if (moderation.scope === 'platform') return true;
-    if (moderation.scope === 'message') {
-      return !!moderation.messageId && alert.id === moderation.messageId;
-    }
-    return moderation.scope === 'author' &&
-      ((moderation.authorChannelId && alert.authorChannelId === moderation.authorChannelId) ||
-       (moderation.authorName &&
-        String(alert.author || '').toLowerCase() === moderation.authorName.toLowerCase()));
-  };
   for (const alert of queue) {
-    if (matches(alert)) alert.message = '';
+    if (alert.kind !== 'featured' && matches(alert)) alert.message = '';
   }
-  if (matches(active)) {
+  if (active?.kind !== 'featured' && matches(active)) {
     active.message = '';
     stage.querySelector('.alert-message')?.remove();
   }
+}
+
+function applyAlertFilters(filters) {
+  const {blocksAuthor, blocksText} = alertBlockMatcher(filters);
+  for (const alert of [...queue, active]) {
+    if (!alert || alert.kind === 'featured' || alert.kind === 'custom') continue;
+    const hideAuthor = blocksAuthor(alert);
+    if (!hideAuthor && !blocksText(alert)) continue;
+    alert.message = '';
+    if (hideAuthor) {
+      Object.assign(alert, {author: '', authorChannelId: '', authorAvatarUrl: null,
+        badgeLabel: null, badgeImageUrl: null});
+    }
+    if (alert !== active) continue;
+    stage.querySelector('.alert-message')?.remove();
+    if (hideAuthor) {
+      const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+      stage.querySelector('.alert-title').textContent = alertLabels(alert, strings, strings.someone).title;
+      const avatar = stage.querySelector('.alert-avatar');
+      if (avatar) {
+        const fallback = document.createElement('div');
+        fallback.className = 'alert-avatar alert-avatar-fallback';
+        fallback.textContent = initials(strings.someone);
+        avatar.replaceWith(fallback);
+      }
+    }
+  }
+  removeMatchingFeatured(alert => blocksAuthor(alert) || blocksText(alert));
 }
 
 function hideFeatured() {
@@ -554,7 +607,7 @@ function schedulePinnedHide() {
 function showPinnedFeatured(alert, shownAt = Date.now()) {
   pinnedFeatured = alert;
   pinnedShownAt = shownAt;
-  root.className = 'has-pinned-featured';
+  applyAlertStyle();
   renderAlert(alert, featuredStage);
   schedulePinnedHide();
   acknowledgeFeatured(alert, featuredStage, () => pinnedFeatured);
@@ -595,6 +648,7 @@ function showNext() {
     return;
   }
   active = queue.shift();
+  applyAlertStyle();
   renderAlert(active);
   preloadNextImage();
   const sound = typeOption(active).sound;
@@ -640,6 +694,7 @@ function connect() {
       else if (envelope.type === 'reload') window.location.reload();
       else if (envelope.type === 'alertControl') controlQueue(envelope.op);
       else if (envelope.type === 'moderation' && envelope.data) redactModeratedAlerts(envelope.data);
+      else if (envelope.type === 'filters' && envelope.data) applyAlertFilters(envelope.data);
       else if (envelope.type === 'featuredHide') hideFeatured();
       else if (envelope.type === 'alert' && envelope.data) {
         envelope.data.deliverySocket = connection;

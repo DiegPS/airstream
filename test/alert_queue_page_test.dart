@@ -2,17 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
+import 'package:airstream/services/overlay/templates/chat_overlay.dart';
 import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Future<void> runPage(String checks, {bool featured = false}) async {
+  Future<void> runPage(String checks, {String view = 'alerts'}) async {
     final dir = await Directory.systemTemp.createTemp('airstream-alert-queue-');
     try {
       final script = File('${dir.path}/test.js');
-      final html = featured ? featuredOverlayHtml() : alertsOverlayHtml();
+      final html = switch (view) {
+        'chat' => chatOverlayHtml(),
+        'featured' => featuredOverlayHtml(),
+        _ => alertsOverlayHtml(),
+      };
       final js = html.split('<script>').last.split('</script>').first;
-      final view = featured ? 'featured' : 'alerts';
       await script.writeAsString('const page = ${jsonEncode(js)};\n'
           'const view = "$view";\n$checks');
       final result = await Process.run('node', [script.path]);
@@ -31,6 +35,18 @@ void main() {
       () => runPage(_harness + _featuredChecks));
   test('moderation redacts active and paused paid alerts without retiming',
       () => runPage(_harness + _moderationChecks));
+  test(
+      'featured page clears only matching moderated or newly blocked cards',
+      () =>
+          runPage(_pageHarness + _featuredModerationChecks, view: 'featured'));
+  test('alerts moderation clears matching timed, pinned and queued features',
+      () => runPage(_harness + _alertsFeaturedModerationChecks));
+  test('block lists redact active and waiting paid alerts in place',
+      () => runPage(_harness + _blockedPaidChecks));
+  test('chat disconnect clears existing records before receiving new ones',
+      () => runPage(_pageHarness + _chatDisconnectChecks, view: 'chat'));
+  test('timed and pinned features follow their own position and font scale',
+      () => runPage(_harness + _featuredStyleChecks));
   test('socket close clears timed and pinned featured cards on alerts',
       () => runPage(_harness + _featuredCloseChecks));
   test('socket close discards waiting alerts and releases active playback',
@@ -38,7 +54,7 @@ void main() {
   test('alerts reports OBS activity on registration and after scene changes',
       () => runPage(_activityChecks));
   test('featured reports OBS activity on registration and after scene changes',
-      () => runPage(_activityChecks, featured: true));
+      () => runPage(_activityChecks, view: 'featured'));
   test('font policy switches update live without reloading or clearing cards',
       () => runPage(_harness + _fontChecks));
   test('pinned featured text changes language without rebuilding or retiming',
@@ -68,7 +84,7 @@ void main() {
   });
 }
 
-const _harness = r'''
+const _pageHarness = r'''
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const frames = [];
@@ -98,13 +114,21 @@ class Audio extends Media {
 }
 const stages = [];
 function element() { return {
-  style: {}, children: [],
+  style: {
+    setProperty(name, value) { this[name] = value; },
+    removeProperty(name) { delete this[name]; },
+  }, children: [],
+  hasChildNodes() { return Boolean(this.textContent || this.children.length); },
   get firstElementChild() { return this.children[0] ?? null; },
   set firstElementChild(child) { this.replaceChildren(...(child ? [child] : [])); },
   appendChild(child) { child.parent = this; this.children.push(child); },
   append(...children) { children.forEach(child => this.appendChild(child)); },
   addEventListener() {},
   remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); },
+  replaceWith(next) {
+    this.parent.children[this.parent.children.indexOf(this)] = next;
+    next.parent = this.parent;
+  },
   querySelector(selector) {
     const [tag, className] = selector.split('.');
     return this.children.flatMap(child =>
@@ -114,7 +138,8 @@ function element() { return {
   querySelectorAll: () => videos.splice(0),
   replaceChildren(...children) { this.children = []; this.append(...children); },
 }; }
-const root = { className: '', appendChild(child) { stages.push(child); } };
+const root = view === 'alerts'
+  ? { className: '', appendChild(child) { stages.push(child); } } : element();
 class WebSocket extends EventTarget {
   static OPEN = 1;
   readyState = WebSocket.OPEN;
@@ -131,6 +156,9 @@ window.setTimeout = (fn, delay) => {
   return timer;
 };
 window.clearTimeout = (id) => timers.delete(id);
+window.setInterval = window.setTimeout;
+window.requestAnimationFrame = fn => paints.push(fn);
+window.cancelAnimationFrame = () => {};
 const document = {
   documentElement: {style: {
     setProperty(name, value) { this[name] = value; },
@@ -149,10 +177,15 @@ const context = vm.createContext({
   window, document, WebSocket, Audio, videos, Media, console,
   location: {protocol: 'http:', host: 'localhost:8080', reload() { reloads++; }},
   requestAnimationFrame(fn) { paints.push(fn); },
+  setTimeout: window.setTimeout, clearTimeout: window.clearTimeout,
   Date: { now: () => 1000 },
 });
 vm.runInContext(page, context);
 const run = (code) => vm.runInContext(code, context);
+''';
+
+const _harness = _pageHarness +
+    r'''
 const [stage, featuredStage] = stages;
 run(`const realRenderAlert = renderAlert;
 renderAlert = (alert, target = stage) => {
@@ -167,6 +200,131 @@ const op = (op) => socket.deliver({type: 'alertControl', op});
 const alert = (id, kind = 'bits', option = {}) =>
   socket.deliver({type: 'alert', data: {id, kind, alertType: 'bits', option}});
 const finish = () => timers.get(run('hideTimer'))();
+''';
+
+const _featuredModerationChecks = r'''
+const socket = run('socket');
+const show = (message = 'All good') => socket.deliver({type: 'alert', data: {
+  id: 'shared', kind: 'featured', platform: 'youtube',
+  youtubeStreamOrientation: 'vertical', author: 'Viewer', authorChannelId: 'viewer',
+  message,
+}});
+const remove = (scope, extra) => socket.deliver({type: 'moderation', data: {
+  platform: 'youtube', scope, ...extra,
+}});
+show();
+remove('message', {messageId: 'shared', youtubeStreamOrientation: 'horizontal'});
+assert.ok(root.firstElementChild);
+remove('message', {messageId: 'shared', youtubeStreamOrientation: 'vertical'});
+assert.equal(root.firstElementChild, null);
+show('A forbidden, phrase!');
+socket.deliver({type: 'filters', data: {users: [], words: ['forbidden phrase']}});
+assert.equal(root.firstElementChild, null);
+show();
+socket.deliver({type: 'filters', data: {users: ['viewer'], words: []}});
+assert.equal(root.firstElementChild, null);
+''';
+
+const _alertsFeaturedModerationChecks = r'''
+const show = () => socket.deliver({type: 'alert', data: {
+  id: 'feature', kind: 'featured', platform: 'youtube',
+  youtubeStreamOrientation: 'horizontal', author: 'Viewer', authorChannelId: 'viewer',
+}});
+const remove = (extra) => socket.deliver({type: 'moderation', data: {
+  platform: 'youtube', scope: 'message', messageId: 'feature',
+  youtubeStreamOrientation: 'horizontal', ...extra,
+}});
+op('resume');
+alert('paid');
+show();
+remove({youtubeStreamOrientation: 'vertical'});
+assert.equal(run('queue.length'), 1);
+remove({sequence: 123});
+assert.equal(run('queue.length'), 0);
+assert.equal(stage.firstElementChild.id, 'paid');
+
+finish();
+show();
+remove({scope: 'platform'});
+assert.equal(stage.firstElementChild, null);
+socket.deliver({type: 'settings', data: {featuredSeconds: 0}});
+show();
+assert.ok(featuredStage.firstElementChild);
+socket.deliver({type: 'filters', data: {users: ['viewer'], words: []}});
+assert.equal(featuredStage.firstElementChild, null);
+''';
+
+const _blockedPaidChecks = r'''
+run('renderAlert = realRenderAlert');
+const pay = (id, author, message) => socket.deliver({type: 'alert', data: {
+  id, kind: 'superchat', author, authorChannelId: id, message, amount: '$5',
+}});
+op('resume');
+pay('blocked-id', 'Personal Name', 'Thanks');
+const card = stage.firstElementChild;
+const timerBefore = run('hideTimer');
+op('pause');
+pay('waiting', 'Kept Name', 'A Bad, Phrase!');
+pay('safe', 'Another Viewer', 'bad phrases');
+socket.deliver({type: 'filters', data: {users: ['blocked-id'], words: ['bad phrase']}});
+assert.equal(stage.firstElementChild, card);
+assert.equal(run('hideTimer'), timerBefore);
+assert.equal(stage.querySelector('.alert-message'), null);
+assert.equal(stage.querySelector('.alert-title').textContent, 'Someone sent $5');
+assert.equal(stage.querySelector('.alert-avatar-fallback').textContent, 'SO');
+finish();
+op('resume');
+assert.equal(stage.querySelector('.alert-message'), null);
+assert.equal(stage.querySelector('.alert-title').textContent, 'Kept Name sent $5');
+finish();
+assert.equal(stage.querySelector('.alert-message').textContent, 'bad phrases');
+''';
+
+const _chatDisconnectChecks = r'''
+run('createMessageBubble = (message) => Object.assign(document.createElement("div"), {id: message.id})');
+const show = (id) => run('socket').deliver({type: 'message', sequence: 1,
+  data: {id, platform: 'youtube'}});
+const chat = run('chatOverlay');
+show('before restart');
+assert.equal(chat.firstElementChild.id, 'before restart');
+run('socket').close();
+assert.equal(run('records.length'), 0);
+assert.equal(chat.firstElementChild, null);
+timers.get(run('retryTimer'))();
+show('after restart');
+assert.deepEqual(chat.children.map(row => row.id), ['after restart']);
+''';
+
+const _featuredStyleChecks = r'''
+run('renderAlert = realRenderAlert');
+op('resume');
+const configure = data => socket.deliver({type: 'settings', data});
+configure({alertPosition: 'bottom', alertFontSize: 20, featuredPosition: 'top',
+  featuredFontScale: 150});
+alert('timed', 'featured');
+assert.equal(stage.style.alignItems, 'flex-start');
+assert.equal(stage.style.fontSize, '30px');
+const card = stage.firstElementChild;
+const timerBefore = run('hideTimer');
+configure({featuredPosition: 'center', featuredFontScale: 125});
+assert.equal(stage.style.alignItems, 'center');
+assert.equal(stage.style.fontSize, '25px');
+assert.equal(stage.firstElementChild, card);
+assert.equal(run('hideTimer'), timerBefore);
+configure({featuredSeconds: 0, featuredPosition: 'bottom'});
+assert.equal(featuredStage.style.alignItems, 'flex-end');
+assert.equal(featuredStage.style.fontSize, '25px');
+assert.equal(stage.style.fontSize, '20px');
+alert('paid');
+assert.equal(stage.style.alignItems, 'flex-end');
+configure({featuredPosition: 'center'});
+assert.match(root.className, /featured-centered alerts-below-featured/);
+assert.equal(featuredStage.style.alignItems, 'center');
+configure({featuredPosition: 'top', featuredFontScale: 180});
+assert.match(featuredStage.className, /above-alerts/);
+assert.equal(featuredStage.style.alignItems, 'flex-start');
+assert.equal(featuredStage.style.fontSize, '36px');
+assert.equal(stage.style.fontSize, '20px');
 ''';
 
 const _moderationChecks = r'''
@@ -251,12 +409,12 @@ function setup(inObs) {
 }
 const browser = setup(false);
 browser.sockets[0].open();
-assert.deepEqual(browser.sockets[0].frames, [{type:'register', view, active:true}]);
+assert.deepEqual(browser.sockets[0].frames, [{type:'register', view, active:true, inObs:false}]);
 
 const obs = setup(true);
 const first = obs.sockets[0];
 first.open();
-assert.deepEqual(first.frames, [{type:'register', view, active:false}]);
+assert.deepEqual(first.frames, [{type:'register', view, active:false, inObs:true}]);
 obs.window.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail:{active:true}}));
 assert.deepEqual(first.frames.at(-1), {type:'sourceActivity', active:true});
 obs.window.obsstudio.onActiveChange(false);
@@ -268,12 +426,12 @@ obs.window.obsstudio.onActiveChange(true);
 assert.equal(first.frames.length, 3);
 obs.reconnect();
 obs.sockets[1].open();
-assert.deepEqual(obs.sockets[1].frames, [{type:'register', view, active:true}]);
+assert.deepEqual(obs.sockets[1].frames, [{type:'register', view, active:true, inObs:true}]);
 ''';
 
 const _queueChecks = _harness +
     r'''
-assert.deepEqual(frames[0], {type: 'register', view: 'alerts', active: true});
+assert.deepEqual(frames[0], {type: 'register', view: 'alerts', active: true, inObs: false});
 alert('before-sync');
 assert.equal(stage.firstElementChild, null);
 op('pause');

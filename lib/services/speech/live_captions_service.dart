@@ -352,15 +352,23 @@ class LiveCaptionsService {
     }
     if (!_isCurrent(revision)) return;
     _audioSubscription = stream.listen(
-      (bytes) => _commands?.send({
-        'type': 'audio',
-        'bytes': TransferableTypedData.fromList([bytes]),
-      }),
-      onError: (Object error) => _emit(LiveCaptionsState(
-        phase: LiveCaptionsPhase.error,
-        message: 'Microphone capture stopped.',
-        error: error.toString(),
-      )),
+      (bytes) {
+        if (!_isCurrent(revision)) return;
+        _commands?.send({
+          'type': 'audio',
+          'bytes': TransferableTypedData.fromList([bytes]),
+        });
+      },
+      onError: (Object error) {
+        if (!_isCurrent(revision)) return;
+        ++_revision;
+        unawaited(_serialize(_stop));
+        _emit(LiveCaptionsState(
+          phase: LiveCaptionsPhase.error,
+          message: 'Microphone capture stopped.',
+          error: error.toString(),
+        ));
+      },
     );
     _emit(const LiveCaptionsState(
       phase: LiveCaptionsPhase.listening,
@@ -381,13 +389,7 @@ class LiveCaptionsService {
   }
 
   Future<void> _stop() async {
-    await _audioSubscription?.cancel();
-    _audioSubscription = null;
-    try {
-      await _audioCapture.stop();
-    } catch (_) {
-      // Capture may already be stopped after a device or worker failure.
-    }
+    await _stopCapture();
     final commands = _commands;
     _commands = null;
     _events?.close();
@@ -441,14 +443,18 @@ class LiveCaptionsService {
         message: 'Offline captions stopped unexpectedly.',
         error: error.toString(),
       ));
-      unawaited(_serialize(_stopCaptureAfterWorkerFailure));
+      unawaited(_serialize(_stopCapture));
     }
   }
 
-  Future<void> _stopCaptureAfterWorkerFailure() async {
+  Future<void> _stopCapture() async {
     final subscription = _audioSubscription;
     _audioSubscription = null;
-    await subscription?.cancel();
+    try {
+      await subscription?.cancel();
+    } catch (_) {
+      // A failed device stream may already be closed.
+    }
     try {
       await _audioCapture.stop();
     } catch (_) {

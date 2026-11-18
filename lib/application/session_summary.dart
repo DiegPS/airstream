@@ -1,6 +1,7 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/support_alert.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/settings/alert_type_options.dart';
 
 import 'rules/rule_events.dart';
@@ -131,7 +132,16 @@ class SessionSummaryCollector {
       <({SessionSupporter supporter, String identity, bool inSummary})>[];
   int _nextSupporter = 0;
   Map<String, Object?>? _templateSupports;
+  ChatFilter? _publicFilter;
   final _seenEvents = <String>{};
+
+  void applyBlockFilter(ChatFilter filter) {
+    _publicFilter = filter;
+    _templateSupports = null;
+  }
+
+  bool _isPublic(String name, String channelId) =>
+      _publicFilter?.blocksUser(name, channelId) != true;
 
   bool get _running => _startedAt != null && _endedAt == null;
 
@@ -265,7 +275,9 @@ class SessionSummaryCollector {
       'chatters': _chatters.length,
       ...(_templateSupports ??= _buildTemplateSupports()),
       'topChatters': [
-        for (final (_, chatter) in chatters.take(10))
+        for (final (_, chatter) in chatters
+            .where((entry) => _isPublic(entry.$2.name, entry.$2.channelId))
+            .take(10))
           {
             'platform': chatter.platform.name,
             'name': chatter.name,
@@ -295,19 +307,23 @@ class SessionSummaryCollector {
     };
     final currencies = <String, Map<String, _SupportTotal>>{};
     final superchatCounts = <String, int>{};
-    final recent = supports.reversed.take(50).toList();
+    final publicSupports = <SessionSupporter>[];
 
     for (final entry in supports) {
       final supporter = entry.supporter;
       final type = supporter.type!;
-      latest[type] = supporter;
+      final isPublic = _isPublic(supporter.name, supporter.channelId);
+      if (isPublic) {
+        latest[type] = supporter;
+        publicSupports.add(supporter);
+      }
       final currency = supporter.currency;
       if (type == 'superchat' && currency != null) {
         superchatCounts.update(currency, (count) => count + 1,
             ifAbsent: () => 1);
       }
       final value = type == 'gift' ? supporter.count : supporter.value;
-      if (value == null) continue;
+      if (!isPublic || value == null) continue;
       final totals = type == 'superchat' && currency != null
           ? currencies.putIfAbsent(currency, () => {})
           : rankings[type];
@@ -321,7 +337,8 @@ class SessionSummaryCollector {
       'supporterCount': supports.map((entry) => entry.identity).toSet().length,
       'superchatCounts': superchatCounts,
       'supporters': [
-        for (final entry in recent) entry.supporter.toTemplateJson()
+        for (final supporter in publicSupports.reversed.take(50))
+          supporter.toTemplateJson()
       ],
       'latest': {
         for (final entry in latest.entries)

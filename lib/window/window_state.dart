@@ -50,6 +50,8 @@ class WindowStateNotifier extends StateNotifier<WindowState>
 
   Future<void> _clickThroughQueue = Future.value();
   bool _hotKeyRegistered = false;
+  Timer? _captureRetry;
+  int _captureRevision = 0;
 
   /// Reserves Ctrl+Shift+C system-wide.
   ///
@@ -156,11 +158,14 @@ class WindowStateNotifier extends StateNotifier<WindowState>
       setExcludeFromCapture(!state.excludeFromCapture);
 
   Future<void> setExcludeFromCapture(bool value) async {
+    final revision = ++_captureRevision;
+    _captureRetry?.cancel();
     state = state.copyWith(excludeFromCapture: value);
+    if (!mounted || revision != _captureRevision) return;
     final applied = await airWindow.setExcludeFromCapture(value);
-    if (!applied && value) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        airWindow.setExcludeFromCapture(value);
+    if (!applied && value && mounted && revision == _captureRevision) {
+      _captureRetry = Timer(const Duration(milliseconds: 300), () {
+        unawaited(airWindow.setExcludeFromCapture(true));
       });
     }
   }
@@ -174,6 +179,7 @@ class WindowStateNotifier extends StateNotifier<WindowState>
 
   @override
   void dispose() {
+    _captureRetry?.cancel();
     airWindow.removeListener(this);
     unawaited(_unregisterGlobalClickThroughHotKey());
     super.dispose();
