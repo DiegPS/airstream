@@ -598,6 +598,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ChatSessionPhase.partiallyConnected =>
                     l.chatPartiallyConnected,
                   ChatSessionPhase.failed => l.chatConnectionsFailed,
+                  ChatSessionPhase.ended => l.youtubeBroadcastEnded,
                   ChatSessionPhase.idle => l.channelsSavedStartPrompt,
                 }
               : l.noChannelsConfigured;

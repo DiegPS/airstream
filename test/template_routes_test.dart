@@ -102,10 +102,10 @@ void main() {
   });
 
   test(
-      'values returns resolved defaults without disk file and sanitizes saved values',
+      'values.json defaults missing and incompatible values and clamps compatible ones',
       () async {
     await put('one/template.json',
-        '{"fields":[{"key":"title","type":"text","default":"Hello"}]}');
+        '{"fields":[{"key":"title","type":"text","default":"Hello","maxLength":8}]}');
     final (response, body) = await get('/custom/one/values.json');
     expect(response.statusCode, 200);
     expect(jsonDecode(body), {'title': 'Hello'});
@@ -114,8 +114,11 @@ void main() {
     expect(response.headers.value('cache-control'), 'no-store');
     expect(response.headers.value('x-content-type-options'), 'nosniff');
     await put('one/values.json', '{"title":42,"extra":"ignored"}');
-    expect(
-        jsonDecode((await get('/custom/one/values.json')).$2), {'title': ''});
+    expect(jsonDecode((await get('/custom/one/values.json')).$2),
+        {'title': 'Hello'});
+    await put('one/values.json', '{"title":"Goodbye! for now"}');
+    expect(jsonDecode((await get('/custom/one/values.json')).$2),
+        {'title': 'Goodbye!'});
     final (head, empty) = await get('/custom/one/values.json', method: 'HEAD');
     expect(head.statusCode, 200);
     expect(empty, isEmpty);

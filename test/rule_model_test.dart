@@ -163,7 +163,7 @@ void main() {
       ('support.bits', <String>[], true),
       ('support.superchat', ['everyone'], true),
       ('support.raid', ['owner'], false),
-      ('poll.ended', <String>[], false),
+      ('poll.ended', <String>[], true),
     ]) {
       final rule = RuleSchema.newRule(trigger, id: 'test')
         ..['actions'] = [

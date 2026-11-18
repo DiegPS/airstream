@@ -455,18 +455,22 @@ class ChatCoordinator {
   void retryConnections() {
     final settings = _lastSettings;
     if (settings == null || _lastConnectChats != true) return;
-    if (_isPlatformConfigured('youtube') &&
-        (_platformStatus['youtube']?.$1 == ServiceStatus.error ||
-            _platformStatus['youtube']?.$2 == youtubeWaitingForLiveStatus)) {
+    bool canRetryYoutube(String key) {
+      final status = _platformStatus[key];
+      return _isPlatformConfigured(key) &&
+          (status?.$1 == ServiceStatus.error ||
+              status?.$1 == ServiceStatus.ended ||
+              status?.$2 == youtubeWaitingForLiveStatus);
+    }
+
+    if (canRetryYoutube('youtube')) {
       unawaited(_connectYoutube(settings, _nextGeneration('youtube')));
     }
     for (final entry in [
       ('youtubeHorizontal', _youtubeHorizontal, settings.youtubeHorizontalUrl),
       ('youtubeVertical', _youtubeVertical, settings.youtubeVerticalUrl),
     ]) {
-      if (_isPlatformConfigured(entry.$1) &&
-          (_platformStatus[entry.$1]?.$1 == ServiceStatus.error ||
-              _platformStatus[entry.$1]?.$2 == youtubeWaitingForLiveStatus)) {
+      if (canRetryYoutube(entry.$1)) {
         unawaited(_connectYoutubeStream(
           service: entry.$2,
           statusKey: entry.$1,

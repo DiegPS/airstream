@@ -6,7 +6,8 @@ enum ChatSessionPhase {
   connecting,
   connected,
   partiallyConnected,
-  failed
+  failed,
+  ended,
 }
 
 bool shouldAcceptServiceStatus({
@@ -62,10 +63,33 @@ ChatSessionPhase resolveChatSessionPhase({
   if (states.any((status) => status == ServiceStatus.connecting)) {
     return ChatSessionPhase.connecting;
   }
-  if (states.every((status) => status == ServiceStatus.error)) {
+  if (states.every((status) => status == ServiceStatus.ended)) {
+    return ChatSessionPhase.ended;
+  }
+  if (states.every((status) =>
+      status == ServiceStatus.error || status == ServiceStatus.ended)) {
     return ChatSessionPhase.failed;
   }
   return ChatSessionPhase.connecting;
+}
+
+(ServiceStatus, String?) combineYoutubeChatStatuses(
+  (ServiceStatus, String?)? horizontal,
+  (ServiceStatus, String?)? vertical,
+) {
+  final statuses = [horizontal?.$1, vertical?.$1];
+  if (statuses.every((status) => status == ServiceStatus.ended)) {
+    return (ServiceStatus.ended, null);
+  }
+  if (statuses.every((status) =>
+      status == ServiceStatus.connected || status == ServiceStatus.ended)) {
+    return (ServiceStatus.connected, null);
+  }
+  if (statuses.every((status) =>
+      status == ServiceStatus.error || status == ServiceStatus.ended)) {
+    return (ServiceStatus.error, horizontal?.$2 ?? vertical?.$2);
+  }
+  return (ServiceStatus.connecting, null);
 }
 
 /// Whether [settings] name at least one enabled chat that can be started.

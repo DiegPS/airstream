@@ -413,7 +413,7 @@ Widget _platformStatusBadge(
     ServiceStatus.connected => const Color(0xFF53FC18),
     ServiceStatus.connecting => Colors.amber,
     ServiceStatus.error => const Color(0xFFFF6B6B),
-    ServiceStatus.idle => Colors.white38,
+    ServiceStatus.idle || ServiceStatus.ended => Colors.white38,
   };
 
   return Container(

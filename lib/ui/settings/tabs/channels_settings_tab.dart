@@ -82,16 +82,13 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                       _form.ytHandle,
                       l.youtubeInputHint,
                       focusNode: _form.ytFocus,
-                      onChanged: (_) {
-                        _editedYoutubeTargets.add(_form.ytHandle);
-                        _channelEdited();
-                      },
-                      onSubmitted: (_) => _saveTextSettings(),
+                      onChanged: (_) => _channelEdited(),
+                      onSubmitted: (_) =>
+                          _saveTextSettings(onlyChannel: _form.ytHandle),
                       onClear: () {
                         _form.ytHandle.clear();
-                        _editedYoutubeTargets.add(_form.ytHandle);
                         _mutate(() {});
-                        _saveTextSettings();
+                        _saveTextSettings(onlyChannel: _form.ytHandle);
                       },
                     ),
                   ),
@@ -141,11 +138,12 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     l.channelNameHint,
                     focusNode: _form.twitchFocus,
                     onChanged: (_) => _channelEdited(),
-                    onSubmitted: (_) => _saveTextSettings(),
+                    onSubmitted: (_) =>
+                        _saveTextSettings(onlyChannel: _form.twitch),
                     onClear: () {
                       _form.twitch.clear();
                       _mutate(() {});
-                      _saveTextSettings();
+                      _saveTextSettings(onlyChannel: _form.twitch);
                     },
                   ),
                 ),
@@ -180,11 +178,12 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     l.channelIdentifierHint,
                     focusNode: _form.kickFocus,
                     onChanged: (_) => _channelEdited(),
-                    onSubmitted: (_) => _saveTextSettings(),
+                    onSubmitted: (_) =>
+                        _saveTextSettings(onlyChannel: _form.kick),
                     onClear: () {
                       _form.kick.clear();
                       _mutate(() {});
-                      _saveTextSettings();
+                      _saveTextSettings(onlyChannel: _form.kick);
                     },
                   ),
                 ),

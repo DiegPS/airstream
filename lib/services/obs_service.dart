@@ -298,14 +298,27 @@ class ObsService {
     );
 
     ObsClient? connectingObs;
+    var expired = false;
     try {
       connectingObs = await _connector(
         url: _normalizeConnectUrl(trimmedHost),
         password: password.trim().isEmpty ? null : password,
         onDone: () => _handleSocketDone(generation, connectingObs),
-        onEvent: (event) => _handleFallbackEvent(event, generation),
-      ).timeout(_connectionTimeout);
+        onEvent: (event) {
+          if (!expired) _handleFallbackEvent(event, generation);
+        },
+      ).then<ObsClient?>((client) async {
+        if (expired) {
+          await _closeSocket(client);
+          return null;
+        }
+        return client;
+      }).timeout(_connectionTimeout, onTimeout: () {
+        expired = true;
+        throw TimeoutException('OBS connection timed out', _connectionTimeout);
+      });
       final obs = connectingObs;
+      if (obs == null) return;
 
       if (generation != _generation) {
         await obs.close();

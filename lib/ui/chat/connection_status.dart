@@ -55,7 +55,7 @@ class _ConnectionDots extends ConsumerWidget {
       child: Row(
         children: platforms.where((p) => p.$2).map((p) {
           final s = p.$3 == 'youtube' && settings.youtubeDualStreamEnabled
-              ? _combinedStatus(
+              ? combineYoutubeChatStatuses(
                   statusMap['youtubeHorizontal'],
                   statusMap['youtubeVertical'],
                 )
@@ -65,7 +65,7 @@ class _ConnectionDots extends ConsumerWidget {
             ServiceStatus.connected => const Color(0xFF53FC18),
             ServiceStatus.connecting => Colors.amber,
             ServiceStatus.error => Colors.red,
-            ServiceStatus.idle => Colors.white24,
+            ServiceStatus.idle || ServiceStatus.ended => Colors.white24,
           };
           return Tooltip(
             message: switch (serviceStatus) {
@@ -75,6 +75,7 @@ class _ConnectionDots extends ConsumerWidget {
                   : l.platformStatusConnecting(p.$4),
               ServiceStatus.error => l.platformConnectionFailed(p.$4),
               ServiceStatus.idle => l.platformStatusIdle(p.$4),
+              ServiceStatus.ended => l.youtubeBroadcastEnded,
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -130,26 +131,5 @@ class _ConnectionDots extends ConsumerWidget {
         }).toList(),
       ),
     );
-  }
-
-  static (ServiceStatus, String?) _combinedStatus(
-    (ServiceStatus, String?)? first,
-    (ServiceStatus, String?)? second,
-  ) {
-    final statuses = [first, second];
-    if (statuses.every((status) => status?.$1 == ServiceStatus.error)) {
-      return (
-        ServiceStatus.error,
-        statuses
-            .map((status) => status?.$2)
-            .whereType<String>()
-            .where((error) => error.isNotEmpty)
-            .join('\n'),
-      );
-    }
-    if (statuses.every((status) => status?.$1 == ServiceStatus.connected)) {
-      return (ServiceStatus.connected, null);
-    }
-    return (ServiceStatus.connecting, null);
   }
 }

@@ -36,6 +36,8 @@ import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/secure_settings_store.dart';
+import 'package:airstream/settings/settings_repository.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/obs_service.dart';
@@ -1232,6 +1234,102 @@ void main() {
     expect(settings.state.twitchChannel, 'creator');
     expect(settings.state.youtubeHandle, isEmpty);
     expect(settings.state.youtubeLiveId, 'abcdefghijk');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+      'tabbing between channels commits the blurred field and keeps dirty text',
+      (tester) async {
+    final settings = _RecordingSettings(const SettingsModel(
+      overlayEnabled: false,
+      youtubeEnabled: true,
+      youtubeHandle: '@old',
+      twitchEnabled: true,
+      twitchChannel: 'old',
+    ));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => settings),
+        chatConnectionProvider.overrideWith((ref) => true),
+        settingsInitializationProvider
+            .overrideWith((ref) => Completer<void>().future),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    final youtube =
+        find.widgetWithText(TextField, '@handle · channel ID · video ID');
+    final twitch = find.widgetWithText(TextField, 'channel_name');
+    await tester.enterText(youtube, '@new');
+    await settings.update(settings.state.copyWith(fontSize: 24));
+    await tester.pump();
+    expect(tester.widget<TextField>(youtube).controller!.text, '@new');
+    await tester.tap(twitch);
+    await tester.pump();
+    expect(settings.state.youtubeHandle, '@new');
+    await tester.enterText(twitch, 'new_creator');
+    await settings.update(settings.state.copyWith(fontSize: 25));
+    await tester.pump();
+    expect(tester.widget<TextField>(twitch).controller!.text, 'new_creator');
+    expect(settings.state.twitchChannel, 'old');
+    await tester.tap(youtube);
+    await tester.pump();
+    expect(settings.state.twitchChannel, 'new_creator');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a finished YouTube broadcast is shown as ended', (tester) async {
+    final settings = _RecordingSettings(const SettingsModel(
+      overlayEnabled: false,
+      youtubeEnabled: true,
+      youtubeHandle: '@creator',
+    ));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => settings),
+        chatConnectionProvider.overrideWith((ref) => true),
+        settingsInitializationProvider
+            .overrideWith((ref) => Completer<void>().future),
+        connectionStatusProvider.overrideWith(
+            (ref) => Stream.value({'youtube': (ServiceStatus.ended, null)})),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    expect(find.byTooltip('YouTube broadcast ended'), findsOneWidget);
+    expect(find.text('YouTube broadcast ended'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('OBS settings show a failed password save and Retry saves it',
+      (tester) async {
+    final secure = _FailingObsPasswordStore();
+    final settings = SettingsNotifier(
+      secureStore: secure,
+      settingsRepository: _ObsWidgetSettingsRepository(),
+      systemLanguageCode: () => 'en',
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [settingsProvider.overrideWith((ref) => settings)],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    await tester.tap(find.byTooltip('OBS & Overlay'));
+    await tester.pump();
+    final warning = find.text('OBS password not saved');
+    expect(warning, findsNothing);
+    final password = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.obscureText);
+    await tester.enterText(password, 'new-secret');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(warning, findsOneWidget);
+    expect(secure.password, isNull);
+
+    secure.failWrites = false;
+    await tester.tap(find.widgetWithText(TextButton, 'Retry'));
+    await tester.pump();
+    expect(secure.password, 'new-secret');
+    expect(warning, findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -2587,6 +2685,32 @@ void main() {
     expect(find.byKey(const Key('templates-test')), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+}
+
+class _ObsWidgetSettingsRepository implements SettingsRepository {
+  @override
+  Future<String?> read() async =>
+      '{"obsEnabled":true,"overlayEnabled":false,"appLanguageCode":"en"}';
+
+  @override
+  Future<void> write(String json) async {}
+}
+
+class _FailingObsPasswordStore implements SecureSettingsStore {
+  String? password;
+  bool failWrites = true;
+
+  @override
+  Future<void> deleteObsPassword() async => password = null;
+
+  @override
+  Future<String?> readObsPassword() async => password;
+
+  @override
+  Future<void> writeObsPassword(String value) async {
+    if (failWrites) throw StateError('Secure storage unavailable');
+    password = value;
+  }
 }
 
 /// Applies updates immediately, without the persisted settings load.

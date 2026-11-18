@@ -6,22 +6,27 @@ import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test(
-      'alerts queue preserves playing video and its timer across settings broadcasts',
-      () async {
+  Future<void> runPage(String checks) async {
     final dir = await Directory.systemTemp.createTemp('airstream-alert-queue-');
     try {
       final script = File('${dir.path}/test.js');
       final html = alertsOverlayHtml();
       final js = html.split('<script>').last.split('</script>').first;
-      await script
-          .writeAsString('const page = ${jsonEncode(js)};\n$_queueChecks');
+      await script.writeAsString('const page = ${jsonEncode(js)};\n$checks');
       final result = await Process.run('node', [script.path]);
       expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
     } finally {
       await dir.delete(recursive: true);
     }
-  });
+  }
+
+  test(
+      'alerts queue preserves playing video and its timer across settings broadcasts',
+      () => runPage(_queueChecks));
+  test('expiry, skip, clear and hide release the active alert sound',
+      () => runPage(_harness + _audioChecks));
+  test('alerts fallback uses featured duration and replaces pinned cards',
+      () => runPage(_harness + _featuredChecks));
 
   test('featured page applies settings and sends a paint acknowledgement', () {
     final html = featuredOverlayHtml();
@@ -45,7 +50,7 @@ void main() {
   });
 }
 
-const _queueChecks = r'''
+const _harness = r'''
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const frames = [];
@@ -58,8 +63,8 @@ let lastDelay;
 class Media {
   stopped = false;
   pause() { this.stopped = true; }
-  removeAttribute(name) { assert.equal(name, 'src'); }
-  load() {}
+  removeAttribute(name) { assert.equal(name, 'src'); this.released = true; }
+  load() { this.reloaded = true; }
   play() { return Promise.resolve(); }
 }
 class Audio extends Media {
@@ -74,6 +79,7 @@ class WebSocket extends EventTarget {
   static OPEN = 1;
   readyState = WebSocket.OPEN;
   send(data) { frames.push(JSON.parse(data)); }
+  close() { this.dispatchEvent(new Event('close')); }
   deliver(envelope) {
     this.dispatchEvent(new MessageEvent('message', {data: JSON.stringify(envelope)}));
   }
@@ -94,6 +100,7 @@ const context = vm.createContext({
   window, document, WebSocket, Audio, stage, videos, Media, console,
   location: {protocol: 'http:', host: 'localhost:8080'},
   requestAnimationFrame() {},
+  Date: { now: () => 1000 },
 });
 vm.runInContext(page, context);
 const run = (code) => vm.runInContext(code, context);
@@ -109,6 +116,10 @@ const op = (op) => socket.deliver({type: 'alertControl', op});
 const alert = (id, kind = 'bits', option = {}) =>
   socket.deliver({type: 'alert', data: {id, kind, alertType: 'bits', option}});
 const finish = () => timers.get(run('hideTimer'))();
+''';
+
+const _queueChecks = _harness +
+    r'''
 assert.deepEqual(frames[0], {type: 'register', view: 'alerts'});
 alert('before-sync');
 assert.equal(stage.firstElementChild, null);
@@ -166,4 +177,64 @@ assert.equal(stage.firstElementChild.id, 'picked');
 finish();
 assert.equal(stage.firstElementChild, null);
 status(true, 1, false);
+''';
+
+const _audioChecks = r'''
+op('resume');
+alert('first', 'bits', {sound: 'coin'});
+alert('second', 'bits', {sound: 'coin'});
+finish();
+assert.equal(stage.firstElementChild.id, 'second');
+for (const key of ['stopped', 'released', 'reloaded']) {
+  assert.equal(sounds[0][key], true);
+}
+op('skip');
+for (const key of ['stopped', 'released', 'reloaded']) {
+  assert.equal(sounds[1][key], true);
+}
+alert('third', 'bits', {sound: 'coin'});
+alert('waiting');
+op('clear');
+assert.equal(stage.firstElementChild.id, 'third');
+status(false, 0, true);
+for (const key of ['stopped', 'released', 'reloaded']) {
+  assert.equal(sounds[2][key], true);
+}
+finish();
+alert('fourth', 'bits', {sound: 'coin'});
+window.dispatchEvent(new Event('beforeunload'));
+for (const key of ['stopped', 'released', 'reloaded']) {
+  assert.equal(sounds[3][key], true);
+}
+''';
+
+const _featuredChecks = r'''
+op('resume');
+socket.deliver({type: 'settings', data: {alertDisplaySeconds: 20, featuredSeconds: 11}});
+alert('timed', 'featured');
+assert.equal(lastDelay, 11000);
+finish();
+socket.deliver({type: 'settings', data: {featuredSeconds: 0}});
+alert('pinned', 'featured');
+assert.equal(timers.size, 0);
+alert('regular');
+op('skip');
+assert.equal(stage.firstElementChild.id, 'pinned');
+status(false, 1, true);
+alert('replacement', 'featured');
+assert.equal(stage.firstElementChild.id, 'replacement');
+assert.equal(timers.size, 0);
+socket.deliver({type: 'featuredHide'});
+assert.equal(stage.firstElementChild.id, 'regular');
+assert.equal(lastDelay, 20000);
+alert('older', 'featured');
+alert('newest', 'featured');
+status(false, 1, true);
+finish();
+assert.equal(stage.firstElementChild.id, 'newest');
+assert.equal(timers.size, 0);
+socket.deliver({type: 'settings', data: {featuredSeconds: 8}});
+assert.equal(lastDelay, 8000);
+finish();
+assert.equal(stage.firstElementChild, null);
 ''';

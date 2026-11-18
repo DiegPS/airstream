@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
 import 'package:fake_async/fake_async.dart';
 import 'package:airstream/application/rules/rule_model.dart';
+import 'package:airstream/application/rules/rule_validation.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -294,6 +295,100 @@ void main() {
     expect(target.calls, isEmpty);
     expect(engine.history, isEmpty);
   });
+  test(
+      'only allowlisted triggers and privileged viewer filters control the stream',
+      () {
+    const always = {
+      'manual',
+      'interval',
+      'clock.ended',
+      'obs.streamStarted',
+      'obs.streamStopped',
+      'obs.recordingStarted',
+      'obs.recordingStopped',
+    };
+    const viewerTriggers = {
+      'chat.message',
+      'chat.command',
+      'chat.firstMessage',
+      'queue.joined',
+      'support.superchat',
+      'support.bits',
+      'support.membership',
+      'support.gift',
+      'support.raid',
+      'support.kicks',
+    };
+    for (final type in RuleSchema.triggers.keys) {
+      for (final (roles, privileged) in [
+        (<String>[], false),
+        if (RuleSchema.supportsRoleFilter(type)) ...[
+          (['owner'], true),
+          (['moderator'], true),
+          (['owner', 'moderator'], true),
+          (['owner', 'member'], false),
+          (['everyone'], false),
+        ],
+      ]) {
+        final allowed = always.contains(type) ||
+            (viewerTriggers.contains(type) && privileged);
+        final scenario = '$type with $roles';
+        final definition = rule(type: type, actions: [
+          {'id': 'stream', 'type': 'obs.stream', 'state': 'start'},
+        ]);
+        definition['conditions']['roles'] = roles;
+        expect(ruleProblems(definition)['action-0-state'],
+            allowed ? isNull : 'publicStreamControl',
+            reason: scenario);
+        final event = RuleEvent(
+          type: type,
+          author: const RuleAuthor(roles: ['owner', 'moderator', 'member']),
+          text: (definition['trigger']['command'] ??
+              definition['trigger']['text'] ??
+              '') as String,
+          amount: 1000000,
+          count: 1000000000,
+          months: 1200,
+        );
+        fakeAsync((time) => setup(time, (engine, target) {
+              if (type == 'manual') {
+                expect(engine.fireManual('r'), isNull, reason: scenario);
+              } else if (type == 'interval') {
+                engine.updateEnvironment(chatConnected: true);
+                time.elapse(const Duration(minutes: 5));
+              } else {
+                expect(engine.handle(event)['r'], isNull, reason: scenario);
+              }
+              time.elapse(Duration.zero);
+              expect(engine.history.single.results.single.reason,
+                  allowed ? isNull : 'publicStreamControl',
+                  reason: scenario);
+              expect(target.calls, allowed ? ['obs.stream'] : isEmpty,
+                  reason: scenario);
+            }, rules: [definition]));
+      }
+    }
+    final unknown = rule(actions: [
+      {'id': 'stream', 'type': 'obs.stream', 'state': 'start'},
+    ])
+      ..['trigger'] = {'type': 'future.trigger'};
+    expect(ruleProblems(unknown)['action-0-state'], 'publicStreamControl');
+    final unknownChat = {
+      ...unknown,
+      'trigger': {'type': 'chat.future'},
+      'conditions': {
+        'roles': ['owner']
+      },
+    };
+    expect(ruleProblems(unknownChat)['action-0-state'], 'publicStreamControl');
+    fakeAsync((time) => setup(time, (engine, target) {
+          expect(engine.runNow('r', const RuleEvent(type: 'manual')),
+              'invalidRule');
+          time.elapse(Duration.zero);
+          expect(target.calls, isEmpty);
+        }, rules: [unknown]));
+  });
+
   test('viewer stream control skips member, VIP and mixed roles at runtime',
       () {
     for (final (roles, blocked) in [

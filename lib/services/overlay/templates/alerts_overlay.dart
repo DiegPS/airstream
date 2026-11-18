@@ -119,6 +119,7 @@ const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   alertFontSize: 28,
   alertDisplaySeconds: 7,
+  featuredSeconds: 7,
   alertShowAvatars: true,
   alertPosition: 'center',
   alertLayout: 'row',
@@ -346,13 +347,18 @@ let paused = false;
 let queueReady = false;
 let lastQueueStatus = '';
 let hideTimer = 0;
+let featuredShownAt = 0;
 let retryTimer = 0;
 let socket = null;
 let shuttingDown = false;
 
 function applySettings(next) {
   applyOverlayFont(next);
+  const previousFeaturedSeconds = settings.featuredSeconds;
   settings = { ...settings, ...next };
+  if (active?.kind === 'featured' && settings.featuredSeconds !== previousFeaturedSeconds) {
+    scheduleFeaturedHide();
+  }
   localizePage(settings.appLanguageCode || 'en');
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
   stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
@@ -362,6 +368,7 @@ const MAX_PENDING_ALERTS = 20;
 
 function enqueueAlert(alert) {
   if (alert.kind === 'featured') {
+    queue = queue.filter(pending => pending.kind !== 'featured');
     queue.unshift(alert);
     if (queue.length > MAX_PENDING_ALERTS) {
       const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
@@ -375,16 +382,17 @@ function enqueueAlert(alert) {
     }
     queue.push(alert);
   }
+  if (alert.kind === 'featured' && active?.kind === 'featured') finishAlert();
   if (active) preloadNextImage();
 }
 
-function releaseVideo(video) {
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
+function releaseMedia(media) {
+  media.pause();
+  media.removeAttribute('src');
+  media.load();
 }
 function clearMedia() {
-  stage.querySelectorAll('video').forEach(releaseVideo);
+  stage.querySelectorAll('video').forEach(releaseMedia);
 }
 let preloadedId = '';
 function preloadNextImage() {
@@ -404,14 +412,15 @@ function reportQueue() {
   }
 }
 
-function finishAlert(interrupted = false) {
-  window.clearTimeout(hideTimer);
-  if (interrupted && activeSound) {
-    activeSound.pause();
-    activeSound.removeAttribute('src');
-    activeSound.load();
-  }
+function stopActiveSound() {
+  if (activeSound) releaseMedia(activeSound);
   activeSound = null;
+}
+
+function finishAlert() {
+  window.clearTimeout(hideTimer);
+  hideTimer = 0;
+  stopActiveSound();
   active = null;
   clearMedia();
   stage.replaceChildren();
@@ -422,11 +431,13 @@ function controlQueue(op) {
   if (op === 'pause' || op === 'resume') {
     paused = op === 'pause';
     queueReady = true;
-  } else if (op === 'skip' && active) {
-    finishAlert(true);
+  } else if (op === 'skip' && active &&
+      (active.kind !== 'featured' || hideTimer !== 0)) {
+    finishAlert();
     return;
   } else if (op === 'clear') {
     queue = [];
+    stopActiveSound();
     preloadNextImage();
   }
   showNext();
@@ -435,8 +446,15 @@ function controlQueue(op) {
 function hideFeatured() {
   queue = queue.filter(alert => alert.kind !== 'featured');
   preloadNextImage();
-  if (active?.kind === 'featured') finishAlert(true);
+  if (active?.kind === 'featured') finishAlert();
   else reportQueue();
+}
+
+function scheduleFeaturedHide() {
+  window.clearTimeout(hideTimer);
+  const seconds = Number(settings.featuredSeconds ?? DEFAULT_SETTINGS.featuredSeconds);
+  hideTimer = seconds > 0 ? window.setTimeout(
+    finishAlert, Math.max(0, seconds * 1000 - (Date.now() - featuredShownAt))) : 0;
 }
 
 function showNext() {
@@ -477,10 +495,15 @@ function showNext() {
       }));
     }
   }));
-  const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
-  const duration = active.kind !== 'featured' && active.kind !== 'custom' && queue.length >= 5
-    ? Math.max(2, seconds / 2) : seconds;
-  hideTimer = window.setTimeout(finishAlert, duration * 1000);
+  if (active.kind === 'featured') {
+    featuredShownAt = Date.now();
+    scheduleFeaturedHide();
+  } else {
+    const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
+    const duration = active.kind !== 'custom' && queue.length >= 5
+      ? Math.max(2, seconds / 2) : seconds;
+    hideTimer = window.setTimeout(finishAlert, duration * 1000);
+  }
   reportQueue();
 }
 
@@ -523,6 +546,7 @@ window.addEventListener('beforeunload', () => {
   shuttingDown = true;
   window.clearTimeout(hideTimer);
   window.clearTimeout(retryTimer);
+  stopActiveSound();
   clearMedia();
   if (socket) socket.close();
 });

@@ -66,6 +66,7 @@ const diagnosticEnglish = <String, String>{
   'connected': 'Connected',
   'connecting': 'Connecting / reconnecting',
   'waiting': 'Waiting for live stream',
+  'ended': 'Broadcast ended',
   'failed': 'Failed (private details omitted)',
   'portBusy': 'Port is already in use',
   'authentication': 'Authentication failed',
@@ -131,13 +132,10 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
     };
     var state = snapshot.connections[platform] ?? (ServiceStatus.idle, null);
     if (platform == 'youtube' && s.youtubeDualStreamEnabled) {
-      final a = snapshot.connections['youtubeHorizontal'];
-      final b = snapshot.connections['youtubeVertical'];
-      state = [a, b].every((v) => v?.$1 == ServiceStatus.connected)
-          ? (ServiceStatus.connected, null)
-          : [a, b].every((v) => v?.$1 == ServiceStatus.error)
-              ? (ServiceStatus.error, a?.$2 ?? b?.$2)
-              : (ServiceStatus.connecting, null);
+      state = combineYoutubeChatStatuses(
+        snapshot.connections['youtubeHorizontal'],
+        snapshot.connections['youtubeVertical'],
+      );
     }
     final active = enabled && configured;
     final status = !active
@@ -146,7 +144,7 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
             ServiceStatus.connected => DiagnosticStatus.ok,
             ServiceStatus.connecting => DiagnosticStatus.warning,
             ServiceStatus.error => DiagnosticStatus.error,
-            ServiceStatus.idle => DiagnosticStatus.off,
+            ServiceStatus.idle || ServiceStatus.ended => DiagnosticStatus.off,
           };
     final message = !active
         ? t('off')
@@ -157,6 +155,7 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
                     ? 'waiting'
                     : 'connecting'),
             ServiceStatus.error => err(state.$2),
+            ServiceStatus.ended => t('ended'),
             ServiceStatus.idle => t(
                 snapshot.chatPhase == ChatSessionPhase.connecting
                     ? 'connecting'

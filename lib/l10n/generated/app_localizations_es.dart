@@ -614,6 +614,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get retry => 'Reintentar';
 
   @override
+  String get obsPasswordNotSaved => 'Contraseña de OBS sin guardar';
+
+  @override
+  String get youtubeBroadcastEnded => 'La transmisión de YouTube terminó';
+
+  @override
   String retryPlatform(String platform) {
     return 'Reintentar $platform';
   }
@@ -2168,6 +2174,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'connected': 'Conectado',
         'connecting': 'Conectando / reconectando',
         'waiting': 'Esperando la transmisión en vivo',
+        'ended': 'Transmisión terminada',
         'failed': 'Error (detalles privados omitidos)',
         'portBusy': 'El puerto ya está en uso',
         'authentication': 'Error de autenticación',
@@ -2966,7 +2973,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kbody': 'Cuerpo',
         'kstreamAlready': 'La emisión ya está en ese estado',
         'kpublicStreamControl':
-            'Para iniciar o detener la emisión, permite solo a moderadores o al dueño, o elige otro disparador',
+            'Los espectadores no pueden iniciar ni detener la emisión. Elige un disparador manual, de temporizador, de emisión o de grabación, o limita los disparadores de chat, ingreso a la lista o aportes a moderadores o al propietario.',
         'kreplayOff': 'El búfer de repetición está apagado',
         'kreplayAlready': 'El búfer de repetición ya está en ese estado',
         'knotBrowserSource': 'No es una fuente de navegador',

@@ -177,18 +177,21 @@ class YouTubeService {
     });
     if (chat case final YouTubeLifecycleTransport lifecycle) {
       _lifecycleSub = lifecycle.lifecycle.listen((state) {
-        if (generation != _generation || _chat != chat) return;
-        _liveEnded = state == yt.YoutubeLiveLifecycle.ended;
-        if (_liveEnded) {
-          _emit(ServiceStatus.idle, null);
-          if (!_appEventController.isClosed) {
-            _appEventController.add(ChatProviderEvent(
-              platform: Platform.youtube,
-              kind: ChatProviderEventKind.streamOffline,
-              id: 'stream-ended:${chat.liveId}',
-              timestamp: DateTime.now().toUtc(),
-            ));
-          }
+        if (generation != _generation ||
+            _chat != chat ||
+            _liveEnded ||
+            state != yt.YoutubeLiveLifecycle.ended) {
+          return;
+        }
+        _liveEnded = true;
+        _emit(ServiceStatus.ended, null);
+        if (!_appEventController.isClosed) {
+          _appEventController.add(ChatProviderEvent(
+            platform: Platform.youtube,
+            kind: ChatProviderEventKind.streamOffline,
+            id: 'stream-ended:${chat.liveId}',
+            timestamp: DateTime.now().toUtc(),
+          ));
         }
       });
     }
@@ -207,7 +210,7 @@ class YouTubeService {
       }
       _emit(ServiceStatus.connected, null);
     } catch (e, stack) {
-      if (generation == _generation && _chat == chat) {
+      if (generation == _generation && _chat == chat && !_liveEnded) {
         await _closeCurrent();
         if (isYoutubeNotLiveError(e)) {
           // Not a failure: the stream has not started yet.
@@ -294,6 +297,7 @@ class YouTubeService {
   }
 
   void _emit(ServiceStatus status, String? error) {
+    if (_liveEnded && status != ServiceStatus.ended) return;
     _lastStatus = status;
     if (!_statusController.isClosed) {
       _statusController.add((status, error));

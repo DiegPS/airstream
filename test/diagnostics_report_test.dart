@@ -40,7 +40,7 @@ void main() {
         expect(
             row.status,
             switch (state) {
-              ServiceStatus.idle => DiagnosticStatus.off,
+              ServiceStatus.idle || ServiceStatus.ended => DiagnosticStatus.off,
               ServiceStatus.connecting => DiagnosticStatus.warning,
               ServiceStatus.connected => DiagnosticStatus.ok,
               ServiceStatus.error => DiagnosticStatus.error
@@ -49,6 +49,7 @@ void main() {
             row.summary,
             contains(switch (state) {
               ServiceStatus.idle => 'Not connected',
+              ServiceStatus.ended => 'Broadcast ended',
               ServiceStatus.connecting => 'Connecting',
               ServiceStatus.connected => 'Connected',
               ServiceStatus.error => 'Connection refused'

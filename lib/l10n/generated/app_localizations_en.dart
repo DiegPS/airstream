@@ -610,6 +610,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retry => 'Retry';
 
   @override
+  String get obsPasswordNotSaved => 'OBS password not saved';
+
+  @override
+  String get youtubeBroadcastEnded => 'YouTube broadcast ended';
+
+  @override
   String retryPlatform(String platform) {
     return 'Retry $platform';
   }
@@ -2153,6 +2159,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'connected': 'Connected',
         'connecting': 'Connecting / reconnecting',
         'waiting': 'Waiting for live stream',
+        'ended': 'Broadcast ended',
         'failed': 'Failed (private details omitted)',
         'portBusy': 'Port is already in use',
         'authentication': 'Authentication failed',
@@ -2941,7 +2948,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kbody': 'Body',
         'kstreamAlready': 'Stream is already in that state',
         'kpublicStreamControl':
-            'To start or stop the stream, allow only moderators or the owner, or choose another trigger',
+            'Viewers cannot start or stop the stream. Choose a manual, timer or stream/recording trigger, or limit a chat, queue join or support trigger to moderators or the owner.',
         'kreplayOff': 'The replay buffer is off',
         'kreplayAlready': 'Replay buffer is already in that state',
         'knotBrowserSource': 'Not a browser source',

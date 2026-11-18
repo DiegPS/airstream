@@ -13,24 +13,31 @@ class TemplateField {
   TemplateField(this.key, this.label, this.type, this.options);
   final String key, label, type;
   final Map<String, dynamic> options;
-  Object? get defaultValue => sanitize(options['default']);
+  static final _colorPattern = RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$');
+  static final _mediaPattern = RegExp(r'^[0-9a-f]{16}$');
 
-  Object? resolveEditorValue(Object? value) {
+  Object? get defaultValue => _sanitize(options['default']);
+
+  Object? resolveValue(Object? value) {
     final compatible = switch (type) {
       'number' => value is num && value.isFinite,
       'boolean' => value is bool,
-      _ => value is String,
+      'color' => value is String && _colorPattern.hasMatch(value),
+      'select' => (options['options'] as List).contains(value),
+      'media' =>
+        value is String && (value.isEmpty || _mediaPattern.hasMatch(value)),
+      'text' => value is String,
+      _ => false,
     };
-    return compatible ? sanitize(value) : defaultValue;
+    return compatible ? _sanitize(value) : defaultValue;
   }
 
-  Object? sanitize(Object? value) {
+  Object? _sanitize(Object? value) {
     switch (type) {
       case 'text':
         return _text(value, options['maxLength'] as int);
       case 'color':
-        return value is String &&
-                RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(value)
+        return value is String && _colorPattern.hasMatch(value)
             ? value.toLowerCase()
             : '#ffffff';
       case 'number':
@@ -49,9 +56,7 @@ class TemplateField {
             ? value
             : (options['options'] as List).first;
       case 'media':
-        return value is String && RegExp(r'^[0-9a-f]{16}$').hasMatch(value)
-            ? value
-            : '';
+        return value is String && _mediaPattern.hasMatch(value) ? value : '';
     }
     return null;
   }
@@ -140,9 +145,7 @@ class TemplateManifest {
   final TemplateGalleryVersion? gallery;
   final fields = <TemplateField>[];
   Map<String, Object?> values(Map raw) => {
-        for (final f in fields)
-          f.key:
-              raw.containsKey(f.key) ? f.sanitize(raw[f.key]) : f.defaultValue
+        for (final f in fields) f.key: f.resolveValue(raw[f.key]),
       };
 }
 
@@ -420,11 +423,7 @@ class TemplateLibrary {
   }
 
   Future<Map<String, Object?>> editorValues(TemplateInfo info) async {
-    final raw = await _readFieldValues(info.id);
-    return {
-      for (final field in info.manifest.fields)
-        field.key: field.resolveEditorValue(raw[field.key]),
-    };
+    return info.manifest.values(await _readFieldValues(info.id));
   }
 
   Future<Map> _readFieldValues(String id) async {

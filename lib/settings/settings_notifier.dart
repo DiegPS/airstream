@@ -2,7 +2,6 @@ import 'package:airstream/application/rules/rules_webhook.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' show PlatformDispatcher;
 import 'dart:io' show Directory;
 
 import 'package:airstream/services/app_logger.dart';
@@ -12,6 +11,7 @@ import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_profiles.dart';
 import 'package:airstream/settings/settings_repository.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── providers ────────────────────────────────────────────────────────────────
@@ -63,6 +63,14 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   bool _readObsPasswordOnEdit = false;
   String? _unmigratedObsPassword;
   String? _obsPasswordToRetry;
+  final _obsPasswordNotSaved = ValueNotifier(false);
+  ValueListenable<bool> get obsPasswordNotSaved => _obsPasswordNotSaved;
+
+  @override
+  void dispose() {
+    _obsPasswordNotSaved.dispose();
+    super.dispose();
+  }
 
   bool _publishingRestore = false;
   bool get publishingRestore => _publishingRestore;
@@ -137,6 +145,9 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       // A future launch can retry a failed read or legacy migration, and an
       // explicit password edit in this session reads the store again first.
       _readObsPasswordOnEdit = _persistedObsPassword == null;
+      if (mounted && _obsPasswordToRetry != null) {
+        _obsPasswordNotSaved.value = true;
+      }
       AppLogger.warning(
         'Could not load or migrate secure settings',
         error: error,
@@ -291,24 +302,45 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   Future<void> _persist(SettingsModel settings, String? obsPassword) async {
     await ready;
     if (obsPassword != null) _obsPasswordToRetry = obsPassword;
-    if (_obsPasswordToRetry != null && _readObsPasswordOnEdit) {
-      try {
+    await _savePendingObsPassword();
+    await _writeSettings(settings);
+  }
+
+  Future<void> retryObsPassword() {
+    final restore = _restoreInProgress;
+    if (restore != null) return restore.then((_) => retryObsPassword());
+    return _updateQueue = _updateQueue.then((_) async {
+      final hadLegacyPassword = _unmigratedObsPassword != null;
+      await _savePendingObsPassword();
+      if (mounted && hadLegacyPassword && _unmigratedObsPassword == null) {
+        try {
+          await _writeSettings(state);
+        } catch (error, stack) {
+          AppLogger.warning('Could not remove the legacy OBS credential',
+              error: error, stackTrace: stack);
+        }
+      }
+    });
+  }
+
+  Future<void> _savePendingObsPassword() async {
+    final password = _obsPasswordToRetry;
+    if (password == null) return;
+    try {
+      if (_readObsPasswordOnEdit) {
         _persistedObsPassword = await _secureStore.readObsPassword() ?? '';
         _readObsPasswordOnEdit = false;
-      } catch (error, stack) {
-        AppLogger.warning('Could not read the existing OBS credential',
-            error: error, stackTrace: stack);
       }
-    }
-    final password = _obsPasswordToRetry;
-    if (password != null && _persistedObsPassword != null) {
       if (password != _persistedObsPassword) {
         await _writeObsPassword(password);
       }
       _obsPasswordToRetry = null;
       _unmigratedObsPassword = null;
+    } catch (error, stack) {
+      AppLogger.warning('Could not save the OBS credential',
+          error: error, stackTrace: stack);
     }
-    await _writeSettings(settings);
+    if (mounted) _obsPasswordNotSaved.value = _obsPasswordToRetry != null;
   }
 
   Future<void> _writeObsPassword(String password) async {

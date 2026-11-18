@@ -52,6 +52,28 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 onChanged: (_) => _queueTextSettingsSave(),
                 onSubmitted: (_) => _saveTextSettings(),
               ),
+              ValueListenableBuilder<bool>(
+                valueListenable: notifier.obsPasswordNotSaved,
+                builder: (context, notSaved, _) {
+                  if (!notSaved) return const SizedBox.shrink();
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l.obsPasswordNotSaved,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.amber),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: notifier.retryObsPassword,
+                        child: Text(l.retry),
+                      ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,

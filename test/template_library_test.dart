@@ -159,11 +159,11 @@ void main() {
         }));
     expect(await library.resolvedValues('one'), {
       'title': 'xyzz',
-      'color': '#ffffff',
+      'color': '#ab12ff88',
       'count': 2,
-      'flag': false,
+      'flag': true,
       'choice': 'B',
-      'media': ''
+      'media': '0123456789abcdef'
     });
     await library.writeValues(
         'one', {'title': ' safe text ', 'count': 999, 'unknown': 'discard'});
@@ -179,6 +179,46 @@ void main() {
             .where((v) => v.path.endsWith('.tmp'))
             .length,
         0);
+  });
+  test(
+      'changed field types resolve identically for editor, delivery and writes',
+      () async {
+    await put('one/index.html', '');
+    await put(
+        'one/template.json',
+        jsonEncode({
+          'fields': [
+            {'key': 'count', 'type': 'number', 'default': 7},
+            {'key': 'enabled', 'type': 'boolean', 'default': true},
+            {'key': 'title', 'type': 'text', 'default': 'Default title'},
+            {
+              'key': 'choice',
+              'type': 'select',
+              'options': ['A', 'B'],
+              'default': 'B'
+            },
+            {'key': 'media', 'type': 'media', 'default': '0123456789abcdef'},
+          ],
+        }));
+    const old = {
+      'count': 'old text',
+      'enabled': 2,
+      'title': false,
+      'choice': 'old text',
+      'media': ''
+    };
+    const expected = {
+      'count': 7,
+      'enabled': true,
+      'title': 'Default title',
+      'choice': 'B',
+      'media': ''
+    };
+    final file = await put('one/values.json', jsonEncode(old));
+    expect(await library.editorValues((await library.get('one'))!), expected);
+    expect(await library.resolvedValues('one'), expected);
+    await library.writeValues('one', old);
+    expect(jsonDecode(await file.readAsString()), expected);
   });
   test('invalid and oversized JSON fall back and unchanged manifest is cached',
       () async {

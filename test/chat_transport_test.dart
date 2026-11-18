@@ -265,9 +265,6 @@ void main() {
     addTearDown(service.dispose);
     final statuses = <(ServiceStatus, String?)>[];
     service.statusStream.listen(statuses.add);
-    final status = service.statusStream.firstWhere(
-      (value) => value.$1 == ServiceStatus.idle,
-    );
     final event = service.appEvents.firstWhere(
       (value) => value.kind == ChatProviderEventKind.streamOffline,
     );
@@ -275,11 +272,11 @@ void main() {
 
     chat.lifecycleController.add(yt.YoutubeLiveLifecycle.ended);
 
-    expect((await status).$1, ServiceStatus.idle);
     expect((await event).platform, app.Platform.youtube);
+    expect(statuses.last.$1, ServiceStatus.ended);
     chat.pollController.add(DateTime.now().toUtc());
     await Future<void>.delayed(Duration.zero);
-    expect(statuses.last.$1, ServiceStatus.idle);
+    expect(statuses.last.$1, ServiceStatus.ended);
   });
 
   test('YouTube converts and deduplicates gifted membership events', () async {

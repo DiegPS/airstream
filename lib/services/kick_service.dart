@@ -6,7 +6,7 @@ import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/chat/kick_transport.dart';
 
-enum ServiceStatus { idle, connecting, connected, error }
+enum ServiceStatus { idle, connecting, connected, error, ended }
 
 class KickService {
   KickService({

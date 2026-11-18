@@ -195,6 +195,71 @@ void main() {
     expect(adapter.observe(state.copyWith(connected: false)), isEmpty);
     expect(adapter.observe(state.copyWith(recordingActive: true)), isEmpty);
   });
+  test('late OBS recording event keeps viewer origin and blocks stream control',
+      () {
+    fakeAsync((fake) {
+      final start = DateTime.utc(2026);
+      final transitions =
+          RuleObsTransitions(clock: () => start.add(fake.elapsed));
+      const baseline = ObsState(connected: true);
+      transitions.observe(baseline);
+      final target = Target();
+      final engine = RuleEngine(target: target);
+      engine.updateSettings(enabled: true, rules: [
+        rule(type: 'obs.recordingStarted', actions: [
+          {'id': 'stream', 'type': 'obs.stream', 'state': 'start'},
+        ]),
+      ]);
+      RuleEventOrigin(viewer: true, roles: [])
+          .run(() => transitions.expect('obs.recordingStarted', 1));
+      fake.elapse(const Duration(seconds: 12));
+      final event =
+          transitions.observe(baseline.copyWith(recordingActive: true)).single;
+      expect(event.chainDepth, 1);
+      engine.handle(event);
+      fake.elapse(Duration.zero);
+      expect(
+          engine.history.single.results.single.reason, 'publicStreamControl');
+      expect(target.calls, isEmpty);
+      transitions.observe(baseline);
+      engine.handle(
+          transitions.observe(baseline.copyWith(recordingActive: true)).single);
+      fake.elapse(Duration.zero);
+      expect(target.calls, ['obs.stream']);
+      unawaited(engine.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+  test('overlapping OBS requests preserve an unprivileged viewer origin', () {
+    fakeAsync((time) {
+      final start = DateTime.utc(2026);
+      final transitions =
+          RuleObsTransitions(clock: () => start.add(time.elapsed));
+      const stopped = ObsState(connected: true);
+      final recording = stopped.copyWith(recordingActive: true);
+      transitions.observe(stopped);
+      transitions.expect('obs.recordingStarted', 1);
+      RuleEventOrigin(viewer: true, roles: [])
+          .run(() => transitions.expect('obs.recordingStarted', 2));
+
+      final first = transitions.observe(recording).single;
+      expect(first.origin.isUnprivilegedViewer, isTrue);
+      expect(first.chainDepth, 2);
+      transitions.observe(stopped);
+      final second = transitions.observe(recording).single;
+      expect(second.origin.isUnprivilegedViewer, isTrue);
+      transitions.observe(stopped);
+      expect(transitions.observe(recording).single.origin.viewer, isFalse);
+
+      transitions.observe(stopped);
+      RuleEventOrigin(viewer: true, roles: [])
+          .run(() => transitions.expect('obs.recordingStarted', 1));
+      time.elapse(const Duration(seconds: 60));
+      final expired = transitions.observe(recording).single;
+      expect(expired.chainDepth, 0);
+      expect(expired.origin.viewer, isFalse);
+    });
+  });
   test('rule scene feedback stops two-rule loop at chain limit', () {
     fakeAsync((a) {
       final target = Target(), transitions = RuleObsTransitions();

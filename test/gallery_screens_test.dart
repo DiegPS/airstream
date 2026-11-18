@@ -90,15 +90,15 @@ void main() {
         if (item.id == 'queue-list') {
           final count = manifest.fields.singleWhere((f) => f.key == 'count');
           expect(count.defaultValue, 10);
-          expect(count.sanitize(0), 5);
-          expect(count.sanitize(50), 30);
+          expect(count.resolveValue(0), 5);
+          expect(count.resolveValue(50), 30);
           expect(defaults['hideWhenClosed'], false);
         }
         if (item.id == 'ticker') {
           final speed = manifest.fields.singleWhere((f) => f.key == 'speed');
           expect(speed.defaultValue, 80);
-          expect(speed.sanitize(0), 30);
-          expect(speed.sanitize(300), 200);
+          expect(speed.resolveValue(0), 30);
+          expect(speed.resolveValue(300), 200);
         }
         if (language == 'es') {
           final forbidden =

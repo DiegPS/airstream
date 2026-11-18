@@ -79,6 +79,14 @@ class _SettingsFormControllers {
   final FocusNode highlightWordsFocus = FocusNode();
   final FocusNode ttsIgnoredUsersFocus = FocusNode();
 
+  Map<FocusNode, TextEditingController> get channelFields => {
+        ytFocus: ytHandle,
+        ytHorizontalFocus: ytHorizontalUrl,
+        ytVerticalFocus: ytVerticalUrl,
+        twitchFocus: twitch,
+        kickFocus: kick,
+      };
+
   List<FocusNode> get focusNodes => [
         ytFocus,
         ytHorizontalFocus,

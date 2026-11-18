@@ -480,9 +480,7 @@ void main() {
       }
 
       await add('obs.stream', ['state'], 0);
-      final streamError = find.text(language == 'es'
-          ? 'Para iniciar o detener la emisión, permite solo a moderadores o al dueño, o elige otro disparador'
-          : 'To start or stop the stream, allow only moderators or the owner, or choose another trigger');
+      final streamError = find.text(ruleText(l, 'publicStreamControl'));
       expect(streamError.hitTestable(), findsOneWidget);
       final moderators =
           find.widgetWithText(FilterChip, ruleText(l, 'moderator'));

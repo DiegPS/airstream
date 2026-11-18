@@ -217,13 +217,14 @@ final chatGiveawayProvider = StreamProvider<ChatGiveaway?>(
 
 final goalTrackingProvider = Provider<void>((ref) {
   final sub =
-      ref.watch(appControllerProvider).goalIncrements.listen((increments) {
+      ref.watch(appControllerProvider).goalIncrements.listen((contribution) {
+    final (increments, origin) = contribution;
     final settings = ref.read(settingsProvider);
     if (!settings.goals.values.any((g) => (increments[g['type']] ?? 0) > 0)) {
       return;
     }
-    unawaited(ref.read(settingsProvider.notifier).update(
-        settings.copyWith(goals: Goals.advance(settings.goals, increments))));
+    unawaited(origin.run(() => ref.read(settingsProvider.notifier).update(
+        settings.copyWith(goals: Goals.advance(settings.goals, increments)))));
   });
   ref.onDispose(() {
     unawaited(sub.cancel());
@@ -252,12 +253,14 @@ final subathonTrackingProvider = Provider<void>((ref) {
     }
   }));
   final sub =
-      ref.watch(appControllerProvider).goalIncrements.listen((increments) {
+      ref.watch(appControllerProvider).goalIncrements.listen((contribution) {
+    final (increments, origin) = contribution;
     final s = ref.read(settingsProvider);
     final result = SubathonTimer.applyIncrements(
         s, DateTime.now().millisecondsSinceEpoch, increments);
     if (!identical(result.settings, s)) {
-      unawaited(ref.read(settingsProvider.notifier).update(result.settings));
+      unawaited(origin.run(
+          () => ref.read(settingsProvider.notifier).update(result.settings)));
     }
   });
   ref.onDispose(() {

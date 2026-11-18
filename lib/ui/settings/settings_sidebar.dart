@@ -31,6 +31,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   final _staleTabs = <int>{};
 
   late final _SettingsFormControllers _form;
+  final _lastSyncedText = <TextEditingController, String>{};
+  final _focusListeners = <FocusNode, VoidCallback>{};
   Timer? _textSettingsDebounce;
 
   @override
@@ -38,8 +40,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     super.initState();
     _form = _SettingsFormControllers(ref.read(settingsProvider));
 
+    for (final controller in _form.textControllers) {
+      _lastSyncedText[controller] = controller.text;
+    }
     for (final node in _form.focusNodes) {
-      node.addListener(_handleFocusChange);
+      void listener() => _handleFocusChange(node);
+      _focusListeners[node] = listener;
+      node.addListener(listener);
     }
     ref.listenManual<SettingsModel>(
       settingsProvider,
@@ -55,8 +62,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     _highlightedSection.dispose();
     _search.dispose();
 
-    for (final node in _form.focusNodes) {
-      node.removeListener(_handleFocusChange);
+    for (final entry in _focusListeners.entries) {
+      entry.key.removeListener(entry.value);
     }
 
     _form.dispose();
@@ -66,14 +73,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     super.dispose();
   }
 
-  void _handleFocusChange() {
-    final anyHasFocus = _form.focusNodes.any((n) => n.hasFocus);
-
-    if (!anyHasFocus) {
-      _saveTextSettings();
-      // Show the saved (normalized) values once editing ends.
-      _syncControllers(ref.read(settingsProvider));
+  void _handleFocusChange(FocusNode node) {
+    if (node.hasFocus) return;
+    if (!_form.focusNodes.any((other) => other.hasFocus)) {
+      unawaited(_saveTextSettings());
+      return;
     }
+    final channel = _form.channelFields[node];
+    if (channel != null) unawaited(_saveTextSettings(onlyChannel: channel));
   }
 
   void _queueTextSettingsSave() {
@@ -85,8 +92,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     });
   }
 
-  final _editedYoutubeTargets = <TextEditingController>{};
-
   void _channelEdited() {
     _mutate(() {});
     // A running chat reconnects on every saved change, so it only picks up
@@ -94,63 +99,67 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     if (!ref.read(chatConnectionProvider)) _queueTextSettingsSave();
   }
 
-  Future<void> _saveTextSettings() async {
-    _textSettingsDebounce?.cancel();
+  Future<void> _saveTextSettings({TextEditingController? onlyChannel}) async {
+    if (onlyChannel == null) _textSettingsDebounce?.cancel();
     final notifier = ref.read(settingsProvider.notifier);
     final current = ref.read(settingsProvider);
-    final normalizedTwitch =
-        SettingsInputNormalizer.platformChannel(_form.twitch.text);
-    final normalizedKick =
-        SettingsInputNormalizer.platformChannel(_form.kick.text);
-    final blockedUsers = SettingsInputNormalizer.filterList(
-      _form.blockedUsers.text,
-    );
-    final blockedWords = SettingsInputNormalizer.filterList(
-      _form.blockedWords.text,
-    );
-    final highlightWords =
-        SettingsInputNormalizer.filterList(_form.highlightWords.text);
-    final ttsIgnoredUsers =
-        SettingsInputNormalizer.filterList(_form.ttsIgnoredUsers.text);
-    final primaryEdited = _editedYoutubeTargets.remove(_form.ytHandle);
-    final horizontalEdited =
-        _editedYoutubeTargets.remove(_form.ytHorizontalUrl);
-    final verticalEdited = _editedYoutubeTargets.remove(_form.ytVerticalUrl);
+
+    String? takeEdit(TextEditingController controller) {
+      if (onlyChannel != null && controller != onlyChannel) return null;
+      final value = controller.text;
+      if (value == _lastSyncedText[controller]) return null;
+      _lastSyncedText[controller] = value;
+      return value;
+    }
+
+    String? platformChannel(TextEditingController controller) {
+      final value = takeEdit(controller);
+      return value == null
+          ? null
+          : SettingsInputNormalizer.platformChannel(value);
+    }
+
+    List<String>? filterList(TextEditingController controller) {
+      final value = takeEdit(controller);
+      return value == null ? null : SettingsInputNormalizer.filterList(value);
+    }
+
+    String? hexColor(TextEditingController controller, String fallback) {
+      final value = takeEdit(controller);
+      return value == null
+          ? null
+          : SettingsInputNormalizer.hexColor(value, fallback: fallback);
+    }
+
+    final youtube = takeEdit(_form.ytHandle);
+    final port = takeEdit(_form.port);
     final next = current.copyWith(
-      youtubeHandle: primaryEdited ? _form.ytHandle.text.trim() : null,
-      youtubeLiveId: primaryEdited ? '' : null,
-      youtubeHorizontalUrl:
-          horizontalEdited ? _form.ytHorizontalUrl.text.trim() : null,
-      youtubeVerticalUrl:
-          verticalEdited ? _form.ytVerticalUrl.text.trim() : null,
-      twitchChannel: normalizedTwitch,
-      kickSlug: normalizedKick,
-      blockedUsers: blockedUsers,
-      blockedWords: blockedWords,
-      highlightWords: highlightWords,
-      ttsIgnoredUsers: ttsIgnoredUsers,
-      overlayPort: SettingsInputNormalizer.overlayPort(
-        _form.port.text,
-        fallback: current.overlayPort,
-      ),
-      overlayChromaColor: SettingsInputNormalizer.hexColor(
-        _form.overlayChromaColor.text,
-        fallback: current.overlayChromaColor,
-      ),
-      overlayTextStrokeColor: SettingsInputNormalizer.hexColor(
-        _form.overlayTextStrokeColor.text,
-        fallback: current.overlayTextStrokeColor,
-      ),
-      overlaySuperChatBarColor: SettingsInputNormalizer.hexColor(
-        _form.overlaySuperChatBarColor.text,
-        fallback: current.overlaySuperChatBarColor,
-      ),
-      obsHost: _form.obsHost.text.trim(),
-      obsPassword: _form.obsPassword.text,
-      ttsCommandPrefix: _form.ttsPrefix.text,
-      ttsSeparatorText: _form.ttsSeparator.text,
-      ttsReferenceText: _form.ttsReferenceText.text,
-      voiceCommandsWakeWord: _form.voiceWakeWord.text.trim(),
+      youtubeHandle: youtube?.trim(),
+      youtubeLiveId: youtube == null ? null : '',
+      youtubeHorizontalUrl: takeEdit(_form.ytHorizontalUrl)?.trim(),
+      youtubeVerticalUrl: takeEdit(_form.ytVerticalUrl)?.trim(),
+      twitchChannel: platformChannel(_form.twitch),
+      kickSlug: platformChannel(_form.kick),
+      blockedUsers: filterList(_form.blockedUsers),
+      blockedWords: filterList(_form.blockedWords),
+      highlightWords: filterList(_form.highlightWords),
+      ttsIgnoredUsers: filterList(_form.ttsIgnoredUsers),
+      overlayPort: port == null
+          ? null
+          : SettingsInputNormalizer.overlayPort(port,
+              fallback: current.overlayPort),
+      overlayChromaColor:
+          hexColor(_form.overlayChromaColor, current.overlayChromaColor),
+      overlayTextStrokeColor: hexColor(
+          _form.overlayTextStrokeColor, current.overlayTextStrokeColor),
+      overlaySuperChatBarColor: hexColor(
+          _form.overlaySuperChatBarColor, current.overlaySuperChatBarColor),
+      obsHost: takeEdit(_form.obsHost)?.trim(),
+      obsPassword: takeEdit(_form.obsPassword),
+      ttsCommandPrefix: takeEdit(_form.ttsPrefix),
+      ttsSeparatorText: takeEdit(_form.ttsSeparator),
+      ttsReferenceText: takeEdit(_form.ttsReferenceText),
+      voiceCommandsWakeWord: takeEdit(_form.voiceWakeWord)?.trim(),
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
@@ -181,10 +190,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         current.ttsSeparatorText == next.ttsSeparatorText &&
         current.ttsReferenceText == next.ttsReferenceText &&
         current.voiceCommandsWakeWord == next.voiceCommandsWakeWord) {
+      _syncControllers(current);
       return;
     }
 
-    await notifier.update(next);
+    final persisted = notifier.update(next);
+    _syncControllers(ref.read(settingsProvider));
+    await persisted;
   }
 
   Future<void> _startChat() async {
@@ -200,12 +212,16 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     ref.read(chatConnectionProvider.notifier).state = false;
   }
 
-  static void _syncController(
+  void _syncController(
     TextEditingController controller,
     FocusNode focusNode,
     String value,
   ) {
-    if (focusNode.hasFocus || controller.text == value) return;
+    if (focusNode.hasFocus || controller.text != _lastSyncedText[controller]) {
+      return;
+    }
+    _lastSyncedText[controller] = value;
+    if (controller.text == value) return;
     controller.value = controller.value.copyWith(
       text: value,
       selection: TextSelection.collapsed(offset: value.length),
@@ -224,26 +240,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       _form.ytHorizontalUrl.text,
       _form.ytVerticalUrl.text,
     );
-  }
-
-  static (ServiceStatus, String?) _combinedYoutubeStatus(
-    (ServiceStatus, String?)? horizontal,
-    (ServiceStatus, String?)? vertical,
-  ) {
-    final statuses = [
-      horizontal?.$1 ?? ServiceStatus.connecting,
-      vertical?.$1 ?? ServiceStatus.connecting,
-    ];
-    if (statuses.every((status) => status == ServiceStatus.connected)) {
-      return (ServiceStatus.connected, null);
-    }
-    if (statuses.every((status) => status == ServiceStatus.error)) {
-      return (
-        ServiceStatus.error,
-        horizontal?.$2 ?? vertical?.$2,
-      );
-    }
-    return (ServiceStatus.connecting, null);
   }
 
   String? _youtubeStreamUrlError(
@@ -362,16 +358,12 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 AppLocalizations.of(context)!.youtubeStreamUrlHint,
                 focusNode: focusNode,
                 errorText: errorText,
-                onChanged: (_) {
-                  _editedYoutubeTargets.add(controller);
-                  _mutate(() {});
-                },
-                onSubmitted: (_) => _saveTextSettings(),
+                onChanged: (_) => _mutate(() {}),
+                onSubmitted: (_) => _saveTextSettings(onlyChannel: controller),
                 onClear: () {
                   controller.clear();
-                  _editedYoutubeTargets.add(controller);
                   _mutate(() {});
-                  _saveTextSettings();
+                  _saveTextSettings(onlyChannel: controller);
                 },
               ),
             ],
@@ -732,7 +724,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       connectionStatus,
     );
     if (s.youtubeDualStreamEnabled) {
-      displayConnectionStatus['youtube'] = _combinedYoutubeStatus(
+      displayConnectionStatus['youtube'] = combineYoutubeChatStatuses(
         connectionStatus['youtubeHorizontal'],
         connectionStatus['youtubeVertical'],
       );
@@ -770,7 +762,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ChatSessionPhase.partiallyConnected => Colors.amber,
             ChatSessionPhase.connecting => Colors.amber,
             ChatSessionPhase.failed => const Color(0xFFFF6B6B),
-            ChatSessionPhase.idle => null,
+            ChatSessionPhase.idle || ChatSessionPhase.ended => null,
           },
         ),
         SidebarTabItem(

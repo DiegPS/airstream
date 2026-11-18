@@ -94,6 +94,7 @@ class AppController {
         ObsCoordinator(obs: ObsServiceAdapter(obs ?? ObsService()));
 
     rules = RuleEngine(
+        clock: _clockNow,
         target: RuleActions(
             settings: () => _lastSettings ?? const SettingsModel(),
             writeSettings: _writeRuleSettings,
@@ -110,8 +111,8 @@ class AppController {
     templateServer?.sessionState = () =>
         _sessionSummary.templateState(live: _chatRunning && _chatConnected);
     _subscriptions.addAll([
-      _chat.messages
-          .listen((m) => _emitGoalIncrements(_goalTracker.message(m))),
+      _chat.messages.listen(
+          (m) => _emitGoalIncrements(_goalTracker.message(m), message: m)),
       _chat.providerEvents
           .listen((e) => _emitGoalIncrements(_goalTracker.event(e))),
       _chat.messages.listen(_chatLog.write),
@@ -136,11 +137,11 @@ class AppController {
       _chat.providerEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
         final hiddenVote = _poll.hasOpenPoll && _poll.handleMessage(m);
-        if (hiddenVote && m.platform == Platform.twitch) {
-          if (m.id.isNotEmpty) _withheldTwitchVoteIds.add(m.id);
-          final sourceId = m.sharedSource?.messageId;
-          if (sourceId != null && sourceId.isNotEmpty) {
-            _withheldTwitchVoteIds.add(sourceId);
+        if (hiddenVote) {
+          for (final id in [m.id, m.sharedSource?.messageId]) {
+            if (id != null && id.isNotEmpty) {
+              _withheldVoteIds.add((m.platform, id));
+            }
           }
         }
         final publicMessage = _withoutPrivateReplyText(m);
@@ -380,20 +381,29 @@ class AppController {
   late final ObsCoordinator _obs;
   final _subscriptions = <StreamSubscription<Object?>>[];
   final _goalTracker = GoalTracker();
-  final _goalIncrements = StreamController<Map<String, int>>.broadcast();
-  Stream<Map<String, int>> get goalIncrements => _goalIncrements.stream;
-  void _emitGoalIncrements(Map<String, int> increments) {
-    if (increments.values.any((n) => n > 0)) _goalIncrements.add(increments);
+  final _goalIncrements =
+      StreamController<(Map<String, int>, RuleEventOrigin)>.broadcast();
+  Stream<(Map<String, int>, RuleEventOrigin)> get goalIncrements =>
+      _goalIncrements.stream;
+  void _emitGoalIncrements(Map<String, int> increments,
+      {ChatMessage? message}) {
+    if (!increments.values.any((n) => n > 0)) return;
+    _goalIncrements.add((
+      increments,
+      RuleEventOrigin(viewer: true, roles: [
+        if (message?.isOwner == true) 'owner',
+        if (message?.isModerator == true) 'moderator',
+      ]),
+    ));
   }
 
   final _poll = ChatPollController();
-  final _withheldTwitchVoteIds = <String>{};
+  final _withheldVoteIds = <(Platform, String)>{};
 
   ChatMessage _withoutPrivateReplyText(ChatMessage message) {
     final reply = message.reply;
-    if (message.platform != Platform.twitch ||
-        reply == null ||
-        !_withheldTwitchVoteIds.contains(reply.messageId)) {
+    if (reply == null ||
+        !_withheldVoteIds.contains((message.platform, reply.messageId))) {
       return message;
     }
     return message.copyWith(
@@ -426,7 +436,10 @@ class AppController {
   int _noticeId = 0;
   bool _disposed = false;
 
-  Stream<List<ChatMessage>> get messageListStream => _chat.messageListStream;
+  Stream<List<ChatMessage>> get messageListStream =>
+      _chat.messageListStream.map((messages) => _withheldVoteIds.isEmpty
+          ? messages
+          : messages.map(_withoutPrivateReplyText).toList());
   Stream<Map<String, (ServiceStatus, String?)>> get connectionStatusStream =>
       _chat.connectionStatusStream;
   Stream<String?> get youtubeBadgeValueStream => _chat.youtubeBadgeValueStream;
@@ -667,7 +680,7 @@ class AppController {
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
-        if (!_poll.hasOpenPoll) _withheldTwitchVoteIds.clear();
+        if (!_poll.hasOpenPoll) _withheldVoteIds.clear();
         _sessionSummary.start();
         _overlay.clearRecentAlerts();
       } else {

@@ -17,12 +17,23 @@ bool isPublicChatRule(Map<String, dynamic> rule) {
       _everyone(rule);
 }
 
-/// Viewer-originated stream control requires an owner or moderator filter.
+/// Stream control is restricted to explicit triggers and privileged chat roles.
 bool blocksPublicStreamControl(Map action, Map<String, dynamic> rule) {
   if (action['type'] != 'obs.stream') return false;
   final type = _triggerType(rule);
-  if (!isViewerRuleEvent(type)) {
+  if (const {
+    'manual',
+    'interval',
+    'clock.ended',
+    'obs.streamStarted',
+    'obs.streamStopped',
+    'obs.recordingStarted',
+    'obs.recordingStopped',
+  }.contains(type)) {
     return false;
+  }
+  if (!RuleSchema.triggers.containsKey(type) || !isViewerRuleEvent(type)) {
+    return true;
   }
   final roles = (rule['conditions'] as Map)['roles'] as List;
   return roles.isEmpty ||

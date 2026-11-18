@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:airstream/application/app_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_sound_player.dart';
@@ -19,6 +21,7 @@ import '../chat_queue_test.dart' show queueMessage;
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -125,7 +128,7 @@ void main() {
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
 
-  test('queue.next stream control uses the initiating viewer roles', () {
+  test('queue.next skips stream control for every initiating role', () {
     for (final moderator in [false, true]) {
       fakeAsync((fake) {
         final twitch = FakeChannelChatClient();
@@ -164,65 +167,99 @@ void main() {
         final run = app.rules.history.first;
         expect(run.event.type, 'queue.next');
         expect(run.event.author.name, 'Entrant');
-        expect(run.results.single.reason,
-            moderator ? isNull : 'publicStreamControl');
-        expect(obs.ruleControls, moderator ? ['stream:true'] : isEmpty);
+        expect(run.results.single.reason, 'publicStreamControl');
+        expect(obs.ruleControls, isEmpty);
         unawaited(app.dispose());
         fake.flushMicrotasks();
       });
     }
   });
 
-  test('Twitch replies keep the author but omit a withheld poll answer',
-      () async {
-    final twitch = FakeChannelChatClient();
-    final server = _PollOverlay();
-    final app = makeController(twitch, server);
-    addTearDown(app.dispose);
-    app.applySettings(const SettingsModel(overlayEnabled: true),
-        connectChats: false);
-    app.startPoll(
-        question: 'Q',
-        mode: PollMode.freeAnswer,
-        command: '!vote',
-        hideResults: true);
+  for (final platform in [Platform.twitch, Platform.kick]) {
+    test(
+        '${platform.name} replies keep the author but omit a withheld poll answer',
+        () async {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      addTearDown(app.dispose);
+      app.applySettings(const SettingsModel(overlayEnabled: true),
+          connectChats: false);
+      app.startPoll(
+          question: 'Q',
+          mode: PollMode.freeAnswer,
+          command: '!vote',
+          hideResults: true);
 
-    void send(String id, String text, {ChatReplyContext? reply}) {
-      twitch.messageController.add(ChatMessage(
-        platform: Platform.twitch,
-        id: id,
-        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
-        items: [MessageItem.text(text)],
-        timestamp: DateTime.utc(2026),
-        reply: reply,
+      void send(String id, String text,
+          {ChatReplyContext? reply, Platform? from}) {
+        twitch.messageController.add(ChatMessage(
+          platform: from ?? platform,
+          id: id,
+          author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.utc(2026),
+          reply: reply,
+        ));
+      }
+
+      final lists = <List<ChatMessage>>[];
+      final subscription = app.messageListStream.listen(lists.add);
+      addTearDown(subscription.cancel);
+      await settleCoordinatorTasks();
+      send('vote', '!vote secret');
+      send('immediate-reply', 'Reply during the poll',
+          reply:
+              const ChatReplyContext(messageId: 'vote', text: '!vote secret'));
+      await settleCoordinatorTasks();
+      app.endPoll();
+      send('reply', 'Ordinary chat',
+          reply: const ChatReplyContext(
+            messageId: 'vote',
+            authorId: 'viewer',
+            authorName: 'Viewer',
+            text: '!vote secret',
+          ));
+      send('public-reply', 'Another message',
+          reply: const ChatReplyContext(
+            messageId: 'reply',
+            authorName: 'Viewer',
+            text: 'Ordinary chat',
+          ));
+      send('other-platform-reply', 'Cross-platform ID collision',
+          from: platform == Platform.twitch ? Platform.kick : Platform.twitch,
+          reply:
+              const ChatReplyContext(messageId: 'vote', text: 'Public text'));
+      await settleCoordinatorTasks();
+
+      expect(server.chat, [
+        'Reply during the poll',
+        'Ordinary chat',
+        'Another message',
+        'Cross-platform ID collision',
+      ]);
+      expect(server.feed.first.reply?.text, isEmpty);
+      final preview = server.feed[1].reply!;
+      expect((
+        preview.messageId,
+        preview.authorId,
+        preview.authorName,
+        preview.text
+      ), (
+        'vote',
+        'viewer',
+        'Viewer',
+        ''
       ));
-    }
-
-    send('vote', '!vote secret');
-    await settleCoordinatorTasks();
-    app.endPoll();
-    send('reply', 'Ordinary chat',
-        reply: const ChatReplyContext(
-          messageId: 'vote',
-          authorId: 'viewer',
-          authorName: 'Viewer',
-          text: '!vote secret',
-        ));
-    send('public-reply', 'Another message',
-        reply: const ChatReplyContext(
-          messageId: 'reply',
-          authorName: 'Viewer',
-          text: 'Ordinary chat',
-        ));
-    await settleCoordinatorTasks();
-
-    expect(server.chat, ['Ordinary chat', 'Another message']);
-    final preview = server.feed.first.reply!;
-    expect(
-        (preview.messageId, preview.authorId, preview.authorName, preview.text),
-        ('vote', 'viewer', 'Viewer', ''));
-    expect(server.feed.last.reply?.text, 'Ordinary chat');
-  });
+      expect(server.feed[2].reply?.text, 'Ordinary chat');
+      expect(server.feed.last.reply?.text, 'Public text');
+      final previews = lists.expand((messages) => messages).where((message) =>
+          message.platform == platform && message.reply?.messageId == 'vote');
+      expect(previews, isNotEmpty);
+      expect(previews.map((message) => message.reply!.text),
+          everyElement(isEmpty));
+    });
+  }
 
   test('a reloaded countdown fires clock.ended once then persists the result',
       () {
@@ -818,6 +855,141 @@ void main() {
       expect(server.triggers.single['data'], 'crossed');
     });
   }
+
+  for (final dual in [false, true]) {
+    test(
+        '${dual ? 'dual' : 'single'} YouTube chat runs intervals until the last broadcast ends',
+        () {
+      fakeAsync((time) {
+        final primary = FakeYouTubeChatClient();
+        final horizontal = FakeYouTubeChatClient();
+        final vertical = FakeYouTubeChatClient();
+        final twitch = FakeChannelChatClient();
+        final obs = FakeObsClient()..state = const ObsState(connected: true);
+        final baseline = DateTime.utc(2026);
+        final app = makeController(twitch, RuleOverlay(),
+            clock: () => baseline.add(time.elapsed),
+            obs: obs,
+            chat: ChatCoordinator(
+              youtube: primary,
+              youtubeHorizontal: horizontal,
+              youtubeVertical: vertical,
+              kick: FakeChannelChatClient(),
+              twitch: twitch,
+            ));
+        final states = <Map<String, (ServiceStatus, String?)>>[];
+        final subscription = app.connectionStatusStream.listen(states.add);
+        app.applySettings(
+            SettingsModel(
+              overlayEnabled: false,
+              obsEnabled: true,
+              youtubeHandle: '@creator',
+              youtubeDualStreamEnabled: dual,
+              youtubeHorizontalUrl: 'https://youtu.be/abcdefghijk',
+              youtubeVerticalUrl: 'https://youtu.be/12345678901',
+              rules: [
+                {
+                  ...RuleSchema.newRule('interval', id: 'timer'),
+                  'enabled': true,
+                  'actions': [
+                    {'id': 'record', 'type': 'obs.recording', 'state': 'start'}
+                  ],
+                }
+              ],
+            ),
+            connectChats: true);
+        time.flushMicrotasks();
+
+        final first = dual ? horizontal : primary;
+        final firstKey = dual ? 'youtubeHorizontal' : 'youtube';
+        first.statusController.add((ServiceStatus.connected, null));
+        if (dual) {
+          vertical.statusController.add((ServiceStatus.connected, null));
+        }
+        time.flushMicrotasks();
+        expect(app.rules.intervalTimerActive, isTrue);
+
+        first.statusController.add((ServiceStatus.idle, null));
+        time.flushMicrotasks();
+        expect(states.last[firstKey]?.$1, ServiceStatus.connected);
+        const period = Duration(minutes: 5);
+        time.elapse(period);
+        expect(app.rules.history, hasLength(1));
+
+        first.statusController.add((ServiceStatus.ended, null));
+        time.flushMicrotasks();
+        expect(states.last[firstKey]?.$1, ServiceStatus.ended);
+        if (dual) {
+          expect(app.rules.intervalTimerActive, isTrue);
+          time.elapse(period);
+          expect(app.rules.history, hasLength(2));
+          vertical.statusController.add((ServiceStatus.ended, null));
+          time.flushMicrotasks();
+          expect(states.last['youtubeVertical']?.$1, ServiceStatus.ended);
+        }
+
+        expect(app.rules.intervalTimerActive, isFalse);
+        time.elapse(period);
+        expect(app.rules.history, hasLength(dual ? 2 : 1));
+        unawaited(subscription.cancel());
+        unawaited(app.dispose());
+        time.flushMicrotasks();
+      });
+    });
+  }
+
+  test('a viewer-funded goal does not start the stream', () async {
+    final twitch = FakeChannelChatClient();
+    final obs = FakeObsClient()..state = const ObsState(connected: true);
+    final app = makeController(twitch, RuleOverlay(), obs: obs);
+    addTearDown(app.dispose);
+    final notifier = SettingsNotifier(
+      secureStore: _RestoreSecureStore(),
+      settingsRepository: _RestoreSettingsRepository('{}'),
+    );
+    await notifier.ready;
+    await notifier.update(SettingsModel(
+      overlayEnabled: false,
+      obsEnabled: true,
+      goals: {
+        'bits': {'title': 'Bits', 'type': 'bits', 'current': 0, 'target': 1}
+      },
+      rules: [
+        {
+          ...RuleSchema.newRule('goal.reached', id: 'goal'),
+          'enabled': true,
+          'trigger': {'type': 'goal.reached', 'goalId': 'bits'},
+          'actions': [
+            {'id': 'stream', 'type': 'obs.stream', 'state': 'start'}
+          ],
+        }
+      ],
+    ));
+    final container = ProviderContainer(overrides: [
+      appControllerProvider.overrideWithValue(app),
+      settingsProvider.overrideWith((ref) => notifier),
+    ]);
+    addTearDown(container.dispose);
+    final unsubscribe = notifier
+        .addListener((next) => app.applySettings(next, connectChats: false));
+    addTearDown(unsubscribe);
+    container.read(goalTrackingProvider);
+    twitch.messageController.add(ChatMessage(
+      platform: Platform.twitch,
+      id: 'cheer',
+      author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+      items: const [MessageItem.text('Cheer!')],
+      timestamp: DateTime.utc(2026),
+      superChat: const SuperChat(amount: '1 Bits', color: '#ffffff'),
+    ));
+    await settleCoordinatorTasks();
+    await settleCoordinatorTasks();
+    expect(notifier.state.goals['bits']?['current'], 1);
+    final run = app.rules.history.single;
+    expect(run.results.single.reason, 'publicStreamControl');
+    expect(run.event.origin.isUnprivilegedViewer, isTrue);
+    expect(obs.ruleControls, isEmpty);
+  });
 
   test('real wiring delivers Bits feed before rule actions and adjusts goal',
       () async {

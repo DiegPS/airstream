@@ -15,18 +15,21 @@ class RuleObsTransitions {
     RuleEventOrigin? origin,
     DateTime expires
   })>[];
+  // OBS may publish the output transition after the command has returned.
+  static const _transitionWindow = Duration(seconds: 60);
   int _sequence = 0;
   void Function() expectScene(String scene, int depth) =>
       expect('obs.sceneChanged', depth, scene: normalizeVoiceText(scene));
 
   void Function() expect(String type, int depth, {String scene = ''}) {
-    _expected.removeWhere((e) => !e.expires.isAfter(_clock()));
+    final now = _clock();
+    _expected.removeWhere((e) => !e.expires.isAfter(now));
     final event = (
       type: type,
       scene: scene,
       depth: depth,
       origin: RuleEventOrigin.current,
-      expires: _clock().add(const Duration(seconds: 5))
+      expires: now.add(_transitionWindow)
     );
     _expected.add(event);
     return () => _expected.remove(event);
@@ -44,10 +47,22 @@ class RuleObsTransitions {
     final events = <RuleEvent>[];
     _expected.removeWhere((e) => !e.expires.isAfter(_clock()));
     void add(String type, {String scene = ''}) {
-      final expected = _expected
-          .where((e) => e.type == type && e.scene == scene)
+      final matches =
+          _expected.where((e) => e.type == type && e.scene == scene);
+      // OBS does not identify which command caused a transition. If multiple
+      // commands could have caused it, keep the viewer expectation available
+      // in case the other command caused this event and the viewer's is late.
+      final viewer = matches
+          .where((e) => e.origin?.isUnprivilegedViewer == true)
           .firstOrNull;
-      if (expected != null) _expected.remove(expected);
+      final consumed = viewer == null
+          ? matches.firstOrNull
+          : matches
+                  .where((e) => e.origin?.isUnprivilegedViewer != true)
+                  .firstOrNull ??
+              viewer;
+      if (consumed != null) _expected.remove(consumed);
+      final expected = viewer ?? consumed;
       events.add(RuleEvent(
         type: type,
         scene: state.currentScene,

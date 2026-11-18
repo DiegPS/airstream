@@ -302,12 +302,14 @@ void main() {
     await notifier.ready;
     await notifier.update(notifier.state.copyWith(obsPassword: 'replacement'));
     expect(notifier.state.obsPassword, 'replacement');
+    expect(notifier.obsPasswordNotSaved.value, isTrue);
     expect(secure.password, 'original');
     expect(secure.reads, 2);
 
     secure.failReads = false;
     await notifier.update(notifier.state.copyWith(fontSize: 24));
     expect(secure.reads, 3);
+    expect(notifier.obsPasswordNotSaved.value, isFalse);
     expect(secure.password, 'replacement');
     expect(notifier.state.obsPassword, 'replacement');
   });
@@ -321,15 +323,39 @@ void main() {
     );
     addTearDown(notifier.dispose);
     await notifier.ready;
-    await expectLater(
-      notifier.update(notifier.state.copyWith(obsPassword: 'new')),
-      throwsStateError,
-    );
+    await notifier.update(notifier.state.copyWith(obsPassword: 'new'));
+    expect(notifier.obsPasswordNotSaved.value, isTrue);
     expect(notifier.state.obsPassword, 'new');
     expect(secure.password, 'original');
     secure.failWrites = false;
     await notifier.update(notifier.state.copyWith(fontSize: 22));
     expect(secure.password, 'new');
+    expect(notifier.obsPasswordNotSaved.value, isFalse);
+  });
+
+  test('Retry saves the latest pending OBS credential without a settings edit',
+      () async {
+    final secure = _MemorySecureSettingsStore('original')..failWrites = true;
+    final repository = _MemorySettingsRepository('{}');
+    final notifier =
+        SettingsNotifier(secureStore: secure, settingsRepository: repository);
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await notifier.update(notifier.state.copyWith(obsPassword: 'first'));
+    final update = notifier
+        .update(notifier.state.copyWith(obsPassword: 'latest', fontSize: 23));
+    final retry = notifier.retryObsPassword();
+    await Future.wait([update, retry]);
+    expect(notifier.obsPasswordNotSaved.value, isTrue);
+    expect(secure.password, 'original');
+    expect(
+        SettingsDocumentCodec.decode(repository.json!).settings.fontSize, 23);
+    expect(repository.json, isNot(contains('latest')));
+
+    secure.failWrites = false;
+    await notifier.retryObsPassword();
+    expect(secure.password, 'latest');
+    expect(notifier.obsPasswordNotSaved.value, isFalse);
   });
 
   test('first-run settings only look up an OBS credential on a password edit',
@@ -418,10 +444,8 @@ void main() {
       prefs.getString('AIRSTREAM_SETTINGS'),
       contains('recoverable-secret'),
     );
-    await expectLater(
-      notifier.update(notifier.state.copyWith(fontSize: 22)),
-      throwsStateError,
-    );
+    await notifier.update(notifier.state.copyWith(fontSize: 22));
+    expect(notifier.obsPasswordNotSaved.value, isTrue);
     expect(
         prefs.getString('AIRSTREAM_SETTINGS'), contains('recoverable-secret'));
     secure.failWrites = false;

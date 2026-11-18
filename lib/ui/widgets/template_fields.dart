@@ -72,7 +72,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
 
   void _change(TemplateField field, Object? value) {
     setState(() {
-      _values[field.key] = field.sanitize(value);
+      _values[field.key] = field.resolveValue(value);
       _pending[field.key] = _values[field.key];
     });
     _timer?.cancel();
@@ -124,7 +124,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
 
   Widget _field(TemplateField f) {
     final key = Key('template-field-${widget.info.id}-${f.key}');
-    final value = f.resolveEditorValue(_values[f.key]);
+    final value = f.resolveValue(_values[f.key]);
     final l = AppLocalizations.of(context)!;
     if (f.type == 'boolean') {
       return SwitchListTile(

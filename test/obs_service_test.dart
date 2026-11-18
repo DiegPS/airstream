@@ -39,6 +39,28 @@ void main() {
     expect(service.currentState.error, contains('OBS WebSocket host'));
   });
 
+  test('a client returned after the OBS connection timeout is closed',
+      () async {
+    final connection = Completer<ObsClient>();
+    final client = _FakeObsClient();
+    final service = ObsService(
+      connectionTimeout: Duration.zero,
+      connector: (
+              {required url,
+              required password,
+              required onDone,
+              required onEvent}) =>
+          connection.future,
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    expect(service.currentState.statusMessage, 'Connection failed');
+    connection.complete(client);
+    await Future<void>.delayed(Duration.zero);
+    expect(client.closeCount, 1);
+    expect(service.currentState.connected, isFalse);
+  });
+
   test('OBS state carries recording status and metrics', () {
     final state = const ObsState().copyWith(
       recordingActive: true,

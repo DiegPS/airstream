@@ -51,6 +51,28 @@ void main() {
     );
   });
 
+  test('YouTube ending resolves the session without masking a live platform',
+      () {
+    const ended = (ServiceStatus.ended, null);
+    const connected = (ServiceStatus.connected, null);
+    expect(
+        resolveChatSessionPhase(
+          requested: true,
+          settings: youtubeSettings,
+          statuses: {'youtube': ended},
+        ),
+        ChatSessionPhase.ended);
+    expect(
+        resolveChatSessionPhase(
+          requested: true,
+          settings: multiPlatformSettings,
+          statuses: {'youtube': ended, 'twitch': connected},
+        ),
+        ChatSessionPhase.connected);
+    expect(combineYoutubeChatStatuses(ended, ended), ended);
+    expect(combineYoutubeChatStatuses(ended, connected), connected);
+  });
+
   test('starts as connecting before the first status event arrives', () {
     expect(
       resolveChatSessionPhase(
