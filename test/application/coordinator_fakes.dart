@@ -1,3 +1,5 @@
+import 'package:airstream/services/overlay_server.dart';
+
 import 'dart:async';
 
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
@@ -222,6 +224,16 @@ class FakeCaptionsClient implements CaptionsClient {
 }
 
 class FakeOverlayClient implements OverlayClient {
+  final alertQueueOperations = <AlertQueueOperation>[];
+  int featuredRemoveCount = 0;
+  @override
+  Stream<AlertQueueStatus> get alertQueueStatusStream => const Stream.empty();
+  @override
+  void controlAlertQueue(AlertQueueOperation op) =>
+      alertQueueOperations.add(op);
+  @override
+  void removeFeaturedMessage() => featuredRemoveCount++;
+
   final recent = <Map<String, Object?>>[];
   final replayed = <String>[];
   int clearRecentCount = 0;

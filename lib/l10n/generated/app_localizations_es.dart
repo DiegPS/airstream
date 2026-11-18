@@ -1466,7 +1466,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messageNoAlertsOverlay =>
-      'La página de alertas no está abierta en OBS. Añade su URL como fuente de navegador.';
+      'Abre la página de destacados o de alertas como fuente de navegador en OBS.';
 
   @override
   String get messageOverlayUnconfirmed =>
@@ -3289,4 +3289,79 @@ class AppLocalizationsEs extends AppLocalizations {
   String galleryQueueMore(String count) {
     return '+$count más';
   }
+
+  @override
+  String get alertQueuePause => 'Pausar alertas';
+
+  @override
+  String get alertQueueResume => 'Reanudar alertas';
+
+  @override
+  String get alertQueueSkip => 'Saltar alerta actual';
+
+  @override
+  String get alertQueueClear => 'Vaciar alertas en espera';
+
+  @override
+  String alertQueueWaiting(int count) {
+    return '$count en espera';
+  }
+
+  @override
+  String get alertQueueWaitingHint =>
+      'Cola más larga entre las páginas de alertas abiertas';
+
+  @override
+  String get alertQueueNoPage =>
+      'Abre la página de alertas para controlar la cola.';
+
+  @override
+  String get alertPlatformFilter => 'Alertas automáticas por plataforma';
+
+  @override
+  String get alertTiers => 'Tramos por importe';
+
+  @override
+  String get alertTierCurrency =>
+      'Los Super Chats usan la moneda original sin conversión.';
+
+  @override
+  String get alertTierFrom => 'Desde';
+
+  @override
+  String get alertTierInvalid => 'Escribe un número mayor que cero.';
+
+  @override
+  String get alertTierAdd => 'Añadir tramo';
+
+  @override
+  String get alertTierRemove => 'Quitar tramo';
+
+  @override
+  String get alertTierInherit => 'Usar ajuste del tipo';
+
+  @override
+  String get alertTierAudioOn => 'Reproducir audio';
+
+  @override
+  String get alertTierAudioOff => 'Silenciar audio';
+
+  @override
+  String get featuredTitle => 'Mensaje destacado';
+
+  @override
+  String get featuredDescription =>
+      'Muestra los mensajes que destacas en directo.';
+
+  @override
+  String get featuredUrlCopied => 'Enlace de la página de destacados copiado';
+
+  @override
+  String get featuredRemove => 'Quitar destacado';
+
+  @override
+  String get featuredFontScale => 'Tamaño del texto destacado';
+
+  @override
+  String get featuredKeepVisible => 'Mantener visible hasta quitarlo';
 }

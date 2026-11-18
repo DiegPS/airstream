@@ -24,6 +24,8 @@ const defaultProviderEventBannerKinds = <String>[
   'unknown',
 ];
 
+const allAlertPlatforms = {'youtube', 'twitch', 'kick'};
+
 /// All persisted settings for the app.
 class SettingsModel {
   final bool rulesEnabled;
@@ -159,6 +161,10 @@ class SettingsModel {
   final double overlayScale;
   final double alertFontSize;
   final int alertDisplaySeconds;
+  final Set<String> alertPlatforms;
+  final String featuredPosition;
+  final int featuredFontScale;
+  final int featuredSeconds;
   final bool alertShowAvatars;
   final List<String> alertDisabledTypes;
   final String alertPosition;
@@ -313,6 +319,10 @@ class SettingsModel {
     this.overlayScale = 1.0,
     this.alertFontSize = 28.0,
     this.alertDisplaySeconds = 7,
+    this.alertPlatforms = allAlertPlatforms,
+    this.featuredPosition = 'bottom',
+    this.featuredFontScale = 100,
+    this.featuredSeconds = 7,
     this.alertShowAvatars = true,
     this.alertDisabledTypes = const [],
     this.alertPosition = 'center',
@@ -467,6 +477,10 @@ class SettingsModel {
     double? overlayScale,
     double? alertFontSize,
     int? alertDisplaySeconds,
+    Set<String>? alertPlatforms,
+    String? featuredPosition,
+    int? featuredFontScale,
+    int? featuredSeconds,
     bool? alertShowAvatars,
     List<String>? alertDisabledTypes,
     String? alertPosition,
@@ -645,6 +659,10 @@ class SettingsModel {
         overlayScale: overlayScale ?? this.overlayScale,
         alertFontSize: alertFontSize ?? this.alertFontSize,
         alertDisplaySeconds: alertDisplaySeconds ?? this.alertDisplaySeconds,
+        alertPlatforms: alertPlatforms ?? this.alertPlatforms,
+        featuredPosition: featuredPosition ?? this.featuredPosition,
+        featuredFontScale: featuredFontScale ?? this.featuredFontScale,
+        featuredSeconds: featuredSeconds ?? this.featuredSeconds,
         alertShowAvatars: alertShowAvatars ?? this.alertShowAvatars,
         alertDisabledTypes: alertDisabledTypes ?? this.alertDisabledTypes,
         alertPosition: alertPosition ?? this.alertPosition,

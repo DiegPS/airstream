@@ -32,6 +32,12 @@ void main() {
     if (view != null) {
       socket.sink.add(jsonEncode({'type': 'register', 'view': view}));
       expect((await connection.next())['type'], 'registered');
+      if (view == 'alerts') {
+        expect(await connection.next(), {
+          'type': 'alertControl',
+          'op': server.alertQueueStatus.paused ? 'pause' : 'resume',
+        });
+      }
     }
     return connection;
   }
@@ -141,6 +147,100 @@ void main() {
     expect(await delivery.completed, FeaturedMessageStatus.disconnected);
     await connect('alerts');
     expect(server.clientCount, 1);
+  });
+
+  test('queue controls target alerts and report the largest connected queue',
+      () async {
+    final first = await connect('alerts');
+    final otherView = await connect('featured');
+    server.controlAlertQueue(AlertQueueOperation.pause);
+    expect(await first.next(), {'type': 'alertControl', 'op': 'pause'});
+    final second = await connect('alerts');
+    expect(server.alertQueueStatus.pages, 2);
+    expect(server.alertQueueStatus.paused, isTrue);
+
+    Future<AlertQueueStatus> statusWhere(
+            bool Function(AlertQueueStatus) match) =>
+        server.alertQueueStatusStream
+            .firstWhere(match)
+            .timeout(const Duration(seconds: 3));
+    void report(_OverlayConnection client, int pending, {bool active = false}) {
+      client.socket.sink.add(jsonEncode({
+        'type': 'alertQueue',
+        'paused': false,
+        'pending': pending,
+        'active': active,
+      }));
+    }
+
+    report(otherView, 20);
+    report(first, 4, active: true);
+    expect(await statusWhere((s) => s.pending == 4),
+        (paused: true, pending: 4, active: true, pages: 2));
+    report(second, 7);
+    expect(await statusWhere((s) => s.pending == 7),
+        (paused: true, pending: 7, active: true, pages: 2));
+    await second.close();
+    expect(await statusWhere((s) => s.pages == 1),
+        (paused: true, pending: 4, active: true, pages: 1));
+
+    for (final op in [
+      AlertQueueOperation.skip,
+      AlertQueueOperation.clear,
+      AlertQueueOperation.resume
+    ]) {
+      server.controlAlertQueue(op);
+      expect(await first.next(), {'type': 'alertControl', 'op': op.name});
+    }
+    expect(server.alertQueueStatus.paused, isFalse);
+    server.broadcastCaption('barrier');
+    expect((await otherView.next())['type'], 'caption');
+  });
+
+  test('dedicated featured page is preferred, acknowledges and hides',
+      () async {
+    final alerts = await connect('alerts');
+    final featured = await connect('featured');
+    expect(server.viewCounts['featured'], 1);
+    final delivery = server.broadcastFeaturedMessage(message);
+    final data = (await featured.next())['data'] as Map;
+    expect(data['deliveryId'], delivery.id);
+    expect(data['items'], [
+      {'kind': 'text', 'text': 'Which game next?'}
+    ]);
+
+    void ack(_OverlayConnection connection, String? id) {
+      connection.socket.sink.add(jsonEncode({
+        'type': 'featuredRendered',
+        'deliveryId': id,
+      }));
+    }
+
+    ack(alerts, delivery.id);
+    var completed = false;
+    unawaited(delivery.completed.then((_) => completed = true));
+    server.broadcastCaption('barrier');
+    expect((await alerts.next())['type'], 'caption');
+    expect((await featured.next())['type'], 'caption');
+    expect(completed, isFalse);
+    ack(featured, delivery.id);
+    expect(await delivery.completed, FeaturedMessageStatus.rendered);
+
+    final removed = server.broadcastFeaturedMessage(message);
+    await featured.next();
+    server.removeFeaturedMessage();
+    expect(await alerts.next(), {'type': 'featuredHide'});
+    expect(await featured.next(), {'type': 'featuredHide'});
+    expect(await removed.completed, FeaturedMessageStatus.removed);
+
+    final disconnected =
+        server.viewCountsStream.firstWhere((c) => c['featured'] == 0);
+    await featured.close();
+    await disconnected.timeout(const Duration(seconds: 3));
+    final fallback = server.broadcastFeaturedMessage(message);
+    expect((await alerts.next())['data']['deliveryId'], fallback.id);
+    ack(alerts, fallback.id);
+    expect(await fallback.completed, FeaturedMessageStatus.rendered);
   });
 
   test('missing render receipt expires as sent, never as rendered', () async {

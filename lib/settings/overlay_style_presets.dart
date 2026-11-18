@@ -117,6 +117,8 @@ abstract final class OverlayStylePresets {
         overlayRotateZ: previous.overlayRotateZ,
         overlaySkewX: previous.overlaySkewX,
         overlayScale: previous.overlayScale,
+        featuredPosition: previous.featuredPosition,
+        featuredFontScale: previous.featuredFontScale,
         alertFontSize: previous.alertFontSize,
         alertShowAvatars: previous.alertShowAvatars,
       );
@@ -174,6 +176,8 @@ abstract final class OverlayStylePresets {
         s.overlayRotateZ,
         s.overlaySkewX,
         s.overlayScale,
+        s.featuredPosition,
+        s.featuredFontScale,
         s.alertFontSize,
         s.alertShowAvatars,
       ];

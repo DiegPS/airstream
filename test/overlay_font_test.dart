@@ -8,6 +8,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shelf/shelf.dart';
 
 void main() {
+  test('featured settings reach the shared page payload', () {
+    final payload = OverlayPayloadEncoder.settings(const SettingsModel(
+      featuredPosition: 'top',
+      featuredFontScale: 160,
+      featuredSeconds: 0,
+    ));
+    expect(payload['featuredPosition'], 'top');
+    expect(payload['featuredFontScale'], 160);
+    expect(payload['featuredSeconds'], 0);
+  });
+
   test('text and name settings round trip in settings and profiles', () {
     const model = SettingsModel(
       chatFontFamily: 'My Local-Font 2',
@@ -107,6 +118,7 @@ void main() {
     for (final page in [
       'chat',
       'alerts',
+      'featured',
       'poll',
       'giveaway',
       'goals',
@@ -133,8 +145,8 @@ void main() {
       expect(html, contains("document.createElement('link')"));
       expect(
           html,
-          contains(
-              RegExp(r'applyOverlayFont\((?:next|envelope\.data|e\.data)\)')));
+          contains(RegExp(
+              r'applyOverlayFont\((?:next|settings|envelope\.data|e\.data)\)')));
       expect(html, isNot(contains('<link rel="stylesheet"')));
       if (page == 'chat') {
         expect(html, contains('author.style.color = message.nameColor'));

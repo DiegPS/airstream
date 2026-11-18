@@ -223,7 +223,7 @@ const ENTRANCES = {
 
 function typeOption(alert) {
   if (alert.kind === 'custom') return { seconds: alert.seconds, media: alert.media, mediaKind: alert.mediaKind };
-  return alert.kind === 'featured' ? {} : (settings.alertTypeOptions || {})[alert.alertType] || {};
+  return alert.kind === 'featured' ? {} : alert.option || (settings.alertTypeOptions || {})[alert.alertType] || {};
 }
 
 function renderAlert(alert, animate = true) {
@@ -339,6 +339,10 @@ root.appendChild(stage);
 let settings = { ...DEFAULT_SETTINGS };
 let queue = [];
 let active = null;
+let activeSound = null;
+let paused = false;
+let queueReady = false;
+let lastQueueStatus = '';
 let hideTimer = 0;
 let retryTimer = 0;
 let socket = null;
@@ -388,8 +392,57 @@ function preloadNextImage() {
   if (id && id !== preloadedId) { const image = new Image(); image.src = '/media/' + encodeURIComponent(id); }
   preloadedId = id;
 }
+function reportQueue() {
+  if (!queueReady || socket?.readyState !== WebSocket.OPEN) return;
+  const status = JSON.stringify({
+    type: 'alertQueue', paused, pending: queue.length, active: active !== null,
+  });
+  if (status !== lastQueueStatus) {
+    socket.send(status);
+    lastQueueStatus = status;
+  }
+}
+
+function finishAlert(interrupted = false) {
+  window.clearTimeout(hideTimer);
+  if (interrupted && activeSound) {
+    activeSound.pause();
+    activeSound.removeAttribute('src');
+    activeSound.load();
+  }
+  activeSound = null;
+  active = null;
+  clearMedia();
+  stage.replaceChildren();
+  showNext();
+}
+
+function controlQueue(op) {
+  if (op === 'pause' || op === 'resume') {
+    paused = op === 'pause';
+    queueReady = true;
+  } else if (op === 'skip' && active) {
+    finishAlert(true);
+    return;
+  } else if (op === 'clear') {
+    queue = [];
+    preloadNextImage();
+  }
+  showNext();
+}
+
+function hideFeatured() {
+  queue = queue.filter(alert => alert.kind !== 'featured');
+  preloadNextImage();
+  if (active?.kind === 'featured') finishAlert(true);
+  else reportQueue();
+}
+
 function showNext() {
-  if (active || queue.length === 0) return;
+  if (!queueReady || paused || active || queue.length === 0) {
+    reportQueue();
+    return;
+  }
   active = queue.shift();
   renderAlert(active);
   preloadNextImage();
@@ -399,11 +452,11 @@ function showNext() {
     const url = ['chime', 'coin', 'fanfare'].includes(sound)
       ? '/sounds/' + sound + '.wav'
       : sound === 'custom'
-        ? '/sounds/custom/' + encodeURIComponent(active.alertType) + '?k=' + encodeURIComponent(typeOption(active).soundKey || '')
+        ? '/sounds/custom/' + encodeURIComponent(active.alertType) + (active.option ? '?tier=' : '?k=') + encodeURIComponent(typeOption(active).soundKey || '')
         : sound === 'library' && typeOption(active).soundMediaId
           ? '/media/' + encodeURIComponent(typeOption(active).soundMediaId) : null;
     if (url) {
-      const audio = new Audio(url);
+      const audio = activeSound = new Audio(url);
       audio.volume = Math.min(100, volume) / 100;
       audio.play().catch(() => {});
     }
@@ -423,26 +476,25 @@ function showNext() {
   const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
   const duration = active.kind !== 'featured' && active.kind !== 'custom' && queue.length >= 5
     ? Math.max(2, seconds / 2) : seconds;
-  hideTimer = window.setTimeout(() => {
-    active = null;
-    clearMedia();
-    stage.replaceChildren();
-    showNext();
-  }, duration * 1000);
+  hideTimer = window.setTimeout(finishAlert, duration * 1000);
+  reportQueue();
 }
 
 function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-  socket = new WebSocket(protocol + location.host + '/ws');
-  socket.addEventListener('open', () => {
-    socket.send(JSON.stringify({ type: 'register', view: 'alerts' }));
+  const connection = socket = new WebSocket(protocol + location.host + '/ws');
+  queueReady = false;
+  lastQueueStatus = '';
+  connection.addEventListener('open', () => {
+    connection.send(JSON.stringify({ type: 'register', view: 'alerts' }));
   });
-  const connection = socket;
   socket.addEventListener('message', (event) => {
     try {
       const envelope = JSON.parse(event.data);
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
+      else if (envelope.type === 'alertControl') controlQueue(envelope.op);
+      else if (envelope.type === 'featuredHide') hideFeatured();
       else if (envelope.type === 'alert' && envelope.data) {
         envelope.data.deliverySocket = connection;
         // A message the streamer chose goes before waiting alerts.
@@ -458,7 +510,7 @@ function connect() {
     queue = queue.filter((alert) => alert.kind !== 'featured');
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
   });
-  socket.addEventListener('error', () => socket.close());
+  connection.addEventListener('error', () => connection.close());
 }
 
 applySettings(DEFAULT_SETTINGS);

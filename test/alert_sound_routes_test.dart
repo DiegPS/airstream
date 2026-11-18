@@ -2,6 +2,7 @@ import 'support/empty_template_library.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,6 +83,21 @@ void main() {
     final (updated, bytes) = await get('/sounds/custom/raid');
     expect(updated.headers.contentType?.mimeType, 'audio/ogg');
     expect(bytes, [4, 5]);
+    server.setSettings(SettingsModel(alertTypeOptions: {
+      'bits': {
+        'tiers': [
+          {'from': 100, 'sound': 'custom', 'soundPath': replacement.path},
+        ],
+      },
+    }));
+    final key = OverlayPayloadEncoder.alertSoundKey(replacement.path);
+    final (tier, tierBytes) = await get('/sounds/custom/bits?tier=$key');
+    expect(tier.statusCode, 200);
+    expect(tierBytes, [4, 5]);
+    expect((await get('/sounds/custom/bits')).$1.statusCode, 404);
+    expect((await get('/sounds/custom/bits?tier=unknown')).$1.statusCode, 404);
+    expect((await get('/sounds/custom/raid?tier=$key')).$1.statusCode, 404);
+
     final alerts = (await get('/alerts')).$1;
     final chat = (await get('/')).$1;
     expect(alerts.headers.value('content-security-policy'),

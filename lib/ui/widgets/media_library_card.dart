@@ -1,3 +1,4 @@
+import 'package:airstream/settings/alert_type_options.dart';
 import 'settings_controls.dart';
 import 'dart:io';
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -63,9 +64,8 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
     try {
       await (await ref.read(mediaLibraryProvider.future)).delete(id);
       final s = ref.read(settingsProvider);
-      final options = <String, Map<String, dynamic>>{};
-      for (final e in s.alertTypeOptions.entries) {
-        final v = {...e.value};
+      final options = AlertTypeOptions.sanitize(s.alertTypeOptions);
+      void detach(Map<String, dynamic> v) {
         if (v['media'] == id) {
           v.remove('media');
           v.remove('mediaAudio');
@@ -74,11 +74,17 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
           v.remove('soundMediaId');
           if (v['sound'] == 'library') v.remove('sound');
         }
-        if (v.isNotEmpty) options[e.key] = v;
+      }
+
+      for (final option in options.values) {
+        detach(option);
+        for (final tier in AlertTypeOptions.tiers(option)) {
+          detach(tier);
+        }
       }
       await ref.read(settingsProvider.notifier).update(s.copyWith(
           mediaLibrary: {...s.mediaLibrary}..remove(id),
-          alertTypeOptions: options));
+          alertTypeOptions: AlertTypeOptions.sanitize(options)));
     } catch (_) {
       if (mounted) _errors.add(AppLocalizations.of(context)!.mediaRejectType);
     } finally {

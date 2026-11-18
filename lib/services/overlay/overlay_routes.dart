@@ -12,6 +12,7 @@ import 'package:airstream/settings/alert_type_options.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
+import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:airstream/services/overlay/templates/captions_overlay.dart';
 import 'package:airstream/services/overlay/templates/chat_overlay.dart';
 import 'package:airstream/services/overlay/templates/poll_overlay.dart';
@@ -21,6 +22,7 @@ import 'package:shelf/shelf.dart';
 
 Handler buildOverlayRoutes(Handler webSocketHandler,
     {File? Function(String alertType)? customSound,
+    File? Function(String alertType, String key)? tierSound,
     Future<MediaLibrary> Function()? mediaLibrary,
     Future<TemplateLibrary> Function()? templates,
     String Function()? galleryLanguage,
@@ -66,7 +68,9 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
       }
       for (final type in alertTypeIds) {
         if (path != 'sounds/custom/$type') continue;
-        final configured = customSound?.call(type);
+        final key = request.url.queryParameters['tier'];
+        final configured =
+            key == null ? customSound?.call(type) : tierSound?.call(type, key);
         final file =
             configured == null ? null : AlertSounds.customFile(configured.path);
         if (file == null) return Response.notFound('', headers: headers);
@@ -96,6 +100,7 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
         null;
     final page = switch (path) {
       'alerts' => alertsOverlayHtml,
+      'featured' => featuredOverlayHtml,
       'captions' => captionsOverlayHtml,
       'timer' => timerOverlayHtml,
       'goals' => goalsOverlayHtml,

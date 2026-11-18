@@ -1,3 +1,5 @@
+import 'package:airstream/application/rules/rule_events.dart';
+
 import 'chat_message.dart';
 import 'chat_provider_event.dart';
 
@@ -29,5 +31,14 @@ String? supportAlertType(
           when membershipKind == MembershipEventKind.subscription ||
               membershipKind == MembershipEventKind.resubscription =>
         'subscription',
+      _ => null,
+    };
+
+num? supportAlertAmount(Map<String, Object?> data) =>
+    switch (data['alertType']) {
+      'superchat' => parseRuleAmount(data['amount'] as String? ?? '').amount,
+      'bits' => parseRuleBits(data['amount'] as String? ?? ''),
+      'gift' => data['giftCount'] as num?,
+      'kicks' => data['count'] as num?,
       _ => null,
     };

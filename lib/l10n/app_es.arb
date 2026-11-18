@@ -441,7 +441,7 @@
   "messageShowOnStreamNeedsOverlay": "Activa el servidor de superposición y añade la URL de alertas a OBS",
   "messageSentToOverlay": "Enviado a la página de alertas de OBS",
   "messageOverlayDisconnected": "OBS cerró la página de alertas antes de mostrar el mensaje",
-  "messageNoAlertsOverlay": "La página de alertas no está abierta en OBS. Añade su URL como fuente de navegador.",
+  "messageNoAlertsOverlay": "Abre la página de destacados o de alertas como fuente de navegador en OBS.",
   "messageOverlayUnconfirmed": "Enviado, pero OBS no confirmó que se mostrara",
   "messageShownOnStream": "Mostrado en el directo",
   "messageCopy": "Copiar mensaje",
@@ -1061,5 +1061,28 @@
         "type": "String"
       }
     }
-  }
+  },
+  "alertQueuePause": "Pausar alertas",
+  "alertQueueResume": "Reanudar alertas",
+  "alertQueueSkip": "Saltar alerta actual",
+  "alertQueueClear": "Vaciar alertas en espera",
+  "alertQueueWaiting": "{count} en espera",
+  "alertQueueWaitingHint": "Cola más larga entre las páginas de alertas abiertas",
+  "alertQueueNoPage": "Abre la página de alertas para controlar la cola.",
+  "alertPlatformFilter": "Alertas automáticas por plataforma",
+  "alertTiers": "Tramos por importe",
+  "alertTierCurrency": "Los Super Chats usan la moneda original sin conversión.",
+  "alertTierFrom": "Desde",
+  "alertTierInvalid": "Escribe un número mayor que cero.",
+  "alertTierAdd": "Añadir tramo",
+  "alertTierRemove": "Quitar tramo",
+  "alertTierInherit": "Usar ajuste del tipo",
+  "alertTierAudioOn": "Reproducir audio",
+  "alertTierAudioOff": "Silenciar audio",
+  "featuredTitle": "Mensaje destacado",
+  "featuredDescription": "Muestra los mensajes que destacas en directo.",
+  "featuredUrlCopied": "Enlace de la página de destacados copiado",
+  "featuredRemove": "Quitar destacado",
+  "featuredFontScale": "Tamaño del texto destacado",
+  "featuredKeepVisible": "Mantener visible hasta quitarlo"
 }

@@ -1453,7 +1453,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messageNoAlertsOverlay =>
-      'The alerts page is not open in OBS. Add its URL as a browser source.';
+      'Open the featured or alerts page as a browser source in OBS.';
 
   @override
   String get messageOverlayUnconfirmed =>
@@ -3256,4 +3256,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String galleryQueueMore(String count) {
     return '+$count more';
   }
+
+  @override
+  String get alertQueuePause => 'Pause alerts';
+
+  @override
+  String get alertQueueResume => 'Resume alerts';
+
+  @override
+  String get alertQueueSkip => 'Skip current alert';
+
+  @override
+  String get alertQueueClear => 'Clear waiting alerts';
+
+  @override
+  String alertQueueWaiting(int count) {
+    return '$count waiting';
+  }
+
+  @override
+  String get alertQueueWaitingHint => 'Largest queue across open alerts pages';
+
+  @override
+  String get alertQueueNoPage => 'Open the alerts page to control its queue.';
+
+  @override
+  String get alertPlatformFilter => 'Automatic alerts by platform';
+
+  @override
+  String get alertTiers => 'Tiers by amount';
+
+  @override
+  String get alertTierCurrency =>
+      'Super Chats use the original currency without conversion.';
+
+  @override
+  String get alertTierFrom => 'From amount';
+
+  @override
+  String get alertTierInvalid => 'Enter a number greater than zero.';
+
+  @override
+  String get alertTierAdd => 'Add tier';
+
+  @override
+  String get alertTierRemove => 'Remove tier';
+
+  @override
+  String get alertTierInherit => 'Use alert type setting';
+
+  @override
+  String get alertTierAudioOn => 'Play audio';
+
+  @override
+  String get alertTierAudioOff => 'Mute audio';
+
+  @override
+  String get featuredTitle => 'Featured message';
+
+  @override
+  String get featuredDescription => 'Shows messages you feature on stream.';
+
+  @override
+  String get featuredUrlCopied => 'Featured page URL copied';
+
+  @override
+  String get featuredRemove => 'Remove featured';
+
+  @override
+  String get featuredFontScale => 'Featured text size';
+
+  @override
+  String get featuredKeepVisible => 'Keep visible until removed';
 }

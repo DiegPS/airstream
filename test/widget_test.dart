@@ -1624,9 +1624,10 @@ void main() {
     await tester.tap(find.byTooltip('Live'));
     await tester.pump();
     final start = find.byKey(const Key('giveaway-start'));
-    await tester.ensureVisible(start);
     await tester.enterText(
         find.byKey(const Key('giveaway-keyword')), '!sorteo');
+    await tester.pump();
+    await Scrollable.ensureVisible(tester.element(start), alignment: 0.5);
     await tester.pump();
     await tester.tap(start);
     await tester.pump();
@@ -2072,10 +2073,15 @@ void main() {
         addTearDown(() => tester.binding.defaultBinaryMessenger
             .setMockMethodCallHandler(
                 const MethodChannel('window_manager'), null));
+        final overlay = FakeOverlayClient();
+        final app = AppController(
+            overlayCoordinator: OverlayCoordinator(overlay: overlay));
+        late _RecordingSettings settings;
+        final queue = StreamController<AlertQueueStatus>.broadcast();
         final overrides = [
-          settingsProvider.overrideWith((ref) => _WidgetTestSettings(
-              language,
-              '',
+          appControllerProvider.overrideWithValue(app),
+          alertQueueStatusProvider.overrideWith((ref) => queue.stream),
+          settingsProvider.overrideWith((ref) => settings = _RecordingSettings(
               SettingsModel(appLanguageCode: language, overlayEnabled: ready))),
           overlayUrlProvider
               .overrideWithValue(ready ? 'http://localhost:9456' : null),
@@ -2107,12 +2113,65 @@ void main() {
         final live = language == 'en' ? 'Live' : 'En directo';
         final obs = language == 'en' ? 'OBS & Overlay' : 'OBS y superposición';
         await tester.tap(find.byTooltip(obs));
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(find.byType(PollCard), findsNothing);
         expect(find.byType(GiveawayCard), findsNothing);
         expect(find.byType(GoalsCard), findsNothing);
         expect(find.byType(SubathonCard), findsNothing);
         expect(find.byType(RecentAlertsCard), findsNothing);
+        final l = lookupAppLocalizations(Locale(language));
+        if (ready) {
+          final url = find.byWidgetPredicate((w) =>
+              w is PageUrlRow && w.url == 'http://localhost:9456/featured');
+          expect(url, findsOneWidget,
+              reason:
+                  'OBS URLs: ${tester.widgetList<PageUrlRow>(find.byType(PageUrlRow)).map((row) => row.url).toList()}');
+          final featuredCopy =
+              find.descendant(of: url, matching: find.byType(IconButton));
+          String? copyValue;
+          tester.binding.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copyValue = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          });
+          await tester.ensureVisible(featuredCopy);
+          await tester.tap(featuredCopy);
+          await tester.pump();
+          expect(copyValue, 'http://localhost:9456/featured');
+          tester.binding.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+          final platform = find.byKey(const Key('alert-platform-youtube'));
+          await tester.ensureVisible(platform);
+          await tester.tap(platform);
+          await tester.pump();
+          expect(settings.state.alertPlatforms, {'twitch', 'kick'});
+
+          final options = find.byKey(const Key('alert-type-options-superchat'));
+          await tester.ensureVisible(options);
+          await tester.tap(options);
+          await tester.pumpAndSettle();
+          expect(find.text(l.alertTiers.toUpperCase()), findsOneWidget);
+          expect(find.text(l.alertTierCurrency), findsOneWidget);
+          final add = find.byKey(const Key('add-alert-tier-superchat'));
+          await tester.ensureVisible(add);
+          await tester.tap(add);
+          await tester.pumpAndSettle();
+          final amount = find.byKey(const Key('alert-tier-from-superchat-0'));
+          await tester.ensureVisible(amount);
+          await tester.enterText(amount, '12,5');
+          await tester.pump();
+          expect(settings.state.alertTypeOptions['superchat']!['tiers'], [
+            {'from': 12.5}
+          ]);
+          final remove = find.byTooltip(l.alertTierRemove);
+          await tester.ensureVisible(remove);
+          await tester.tap(remove);
+          await tester.pumpAndSettle();
+          expect(settings.state.alertTypeOptions['superchat'], isNull);
+          expect(tester.takeException(), isNull);
+        }
         expect(tester.takeException(), isNull);
         await tester.tap(find.byTooltip(live));
         await tester.pump();
@@ -2127,6 +2186,39 @@ void main() {
         }
         expect(find.byKey(const Key('live-server-notice')),
             ready ? findsNothing : findsOneWidget);
+        final pause = find.widgetWithIcon(IconButton, Icons.pause_rounded);
+        expect(tester.widget<IconButton>(pause).onPressed, isNull);
+        expect(find.text(l.alertQueueNoPage), findsOneWidget);
+        if (ready) {
+          queue.add((paused: false, pending: 3, active: true, pages: 2));
+          await tester.pump();
+          expect(find.text(l.alertQueueWaiting(3)), findsOneWidget);
+          await tester.ensureVisible(pause);
+          await tester.tap(pause);
+          queue.add((paused: true, pending: 3, active: true, pages: 2));
+          await tester.pump();
+          for (final label in [
+            l.alertQueueResume,
+            l.alertQueueSkip,
+            l.alertQueueClear
+          ]) {
+            final button = find.byTooltip(label);
+            await tester.ensureVisible(button);
+            await tester.tap(button);
+            await tester.pump();
+          }
+          final remove = find.text(l.featuredRemove);
+          await tester.ensureVisible(remove);
+          await tester.tap(remove);
+          await tester.pump();
+          expect(overlay.alertQueueOperations, [
+            AlertQueueOperation.pause,
+            AlertQueueOperation.resume,
+            AlertQueueOperation.skip,
+            AlertQueueOperation.clear,
+          ]);
+          expect(overlay.featuredRemoveCount, 1);
+        }
         if (ready) {
           final rows = find.descendant(
               of: find.byType(PollCard), matching: find.byType(PageUrlRow));
@@ -2204,6 +2296,8 @@ void main() {
         expect(find.byKey(const Key('gallery-item-poll')), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
+        await queue.close();
+        unawaited(app.dispose());
       });
     }
   }

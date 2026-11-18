@@ -47,6 +47,10 @@ final chatPollProvider = StreamProvider<ChatPoll?>((ref) {
   return ref.watch(appControllerProvider).pollStream;
 });
 
+final alertQueueStatusProvider = StreamProvider<AlertQueueStatus>((ref) {
+  return ref.watch(appControllerProvider).alertQueueStatusStream;
+});
+
 final recentAlertsProvider = StreamProvider<List<Map<String, Object?>>>((ref) {
   return ref.watch(appControllerProvider).recentAlerts;
 });

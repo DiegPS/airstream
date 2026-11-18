@@ -339,6 +339,12 @@ class AppController {
   /// What happened since the chat was last started.
   SessionSummary get sessionSummary => _sessionSummary.summary;
 
+  Stream<AlertQueueStatus> get alertQueueStatusStream =>
+      _overlay.alertQueueStatusStream;
+  void controlAlertQueue(AlertQueueOperation op) =>
+      _overlay.controlAlertQueue(op);
+  void removeFeaturedMessage() => _overlay.removeFeaturedMessage();
+
   Stream<List<Map<String, Object?>>> get recentAlerts => _overlay.recentAlerts;
   bool replayRecentAlert(String id) => _overlay.replayRecentAlert(id);
 

@@ -19,12 +19,17 @@ import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'package:airstream/settings/alert_type_options.dart';
+import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+enum AlertQueueOperation { pause, resume, skip, clear }
+
+typedef AlertQueueStatus = ({bool paused, int pending, bool active, int pages});
 
 /// Serves the OBS overlay HTML page and broadcasts chat messages over WebSocket.
 class OverlayServer {
@@ -269,6 +274,7 @@ class OverlayServer {
         for (final view in const [
           'chat',
           'alerts',
+          'featured',
           'poll',
           'captions',
           'giveaway',
@@ -290,6 +296,49 @@ class OverlayServer {
   Stream<int> get clientCountStream async* {
     yield _clients.length;
     yield* _clientCountController.stream;
+  }
+
+  bool _alertsPaused = false;
+  final _alertQueues = <WebSocketChannel, ({int pending, bool active})>{};
+  final _alertQueueController = StreamController<AlertQueueStatus>.broadcast();
+
+  AlertQueueStatus get alertQueueStatus => (
+        paused: _alertsPaused,
+        pending: _alertQueues.values
+            .fold(0, (max, queue) => queue.pending > max ? queue.pending : max),
+        active: _alertQueues.values.any((queue) => queue.active),
+        pages: _views.values.where((view) => view == 'alerts').length,
+      );
+
+  Stream<AlertQueueStatus> get alertQueueStatusStream =>
+      Stream.multi((listener) {
+        final sub = _alertQueueController.stream
+            .listen(listener.addSync, onDone: listener.closeSync);
+        listener.addSync(alertQueueStatus);
+        listener.onCancel = sub.cancel;
+      }, isBroadcast: true);
+
+  Map<String, Object?> _alertControl(AlertQueueOperation op) =>
+      {'type': 'alertControl', 'op': op.name};
+
+  void controlAlertQueue(AlertQueueOperation op) {
+    switch (op) {
+      case AlertQueueOperation.pause:
+        _alertsPaused = true;
+      case AlertQueueOperation.resume:
+        _alertsPaused = false;
+      case AlertQueueOperation.skip:
+      case AlertQueueOperation.clear:
+        break;
+    }
+    _broadcastEnvelope(_alertControl(op), view: 'alerts');
+    _emitAlertQueue();
+  }
+
+  void _emitAlertQueue() {
+    if (!_alertQueueController.isClosed) {
+      _alertQueueController.add(alertQueueStatus);
+    }
   }
 
   final _recentAlerts = <Map<String, Object?>>[];
@@ -355,11 +404,41 @@ class OverlayServer {
   }
 
   void _sendAutomaticAlert(Map<String, Object?> data) {
+    if (!_settings.alertPlatforms.contains(data['platform'])) return;
+    data = _withAlertOption(data);
     final sent = _broadcastEnvelope({'type': 'alert', 'data': data});
     if (!sent) return;
     _recentAlerts.insert(0, Map.unmodifiable(data));
     if (_recentAlerts.length > 30) _recentAlerts.removeLast();
     _recentAlertsController.add(recentAlertsSnapshot);
+  }
+
+  Map<String, Object?> _withAlertOption(Map<String, Object?> data) {
+    if (!_settings.alertTypeOptions.containsKey(data['alertType'])) return data;
+    final option = AlertTypeOptions.sanitize(
+        _settings.alertTypeOptions)[data['alertType']];
+    if (option == null || AlertTypeOptions.tiers(option).isEmpty) return data;
+    final resolved = AlertTypeOptions.resolve(option, supportAlertAmount(data));
+    AlertTypeOptions.validateMedia(
+        resolved, MediaLibraryEntries.sanitize(_settings.mediaLibrary));
+    return {
+      ...data,
+      'option': OverlayPayloadEncoder.alertOption(resolved, _settings)
+    };
+  }
+
+  File? _tierSound(String type, String key) {
+    final options = AlertTypeOptions.sanitize(_settings.alertTypeOptions)[type];
+    for (final option in [
+      if (options != null) options,
+      ...AlertTypeOptions.tiers(options)
+    ]) {
+      final path = option['soundPath'] as String?;
+      if (path != null && OverlayPayloadEncoder.alertSoundKey(path) == key) {
+        return AlertSounds.customFile(path);
+      }
+    }
+    return null;
   }
 
   String get overlayUrl => 'http://localhost:$_port';
@@ -407,6 +486,7 @@ class OverlayServer {
         galleryLanguage: () => _settings.appLanguageCode,
         settings: () => _settings,
         mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
+        tierSound: _tierSound,
         customSound: (type) {
           final option = AlertTypeOptions.of(_settings, type);
           return option.sound == 'custom'
@@ -576,7 +656,7 @@ class OverlayServer {
           'timestamp': now,
         },
     };
-    _broadcastEnvelope({'type': 'alert', 'data': data});
+    _broadcastEnvelope({'type': 'alert', 'data': _withAlertOption(data)});
     return true;
   }
 
@@ -662,6 +742,7 @@ class OverlayServer {
     });
     final kind = providerAlertKind(event);
     if (kind == null ||
+        !_settings.alertPlatforms.contains(event.platform.name) ||
         _settings.alertDisabledTypes
             .contains(supportAlertType(kind, event.platform, null))) {
       return;
@@ -717,6 +798,8 @@ class OverlayServer {
     final clients = List<WebSocketChannel>.from(_clients);
     _clients.clear();
     _views.clear();
+    _alertQueues.clear();
+    _emitAlertQueue();
     for (final pending in _featured.values) {
       pending.finish(FeaturedMessageStatus.disconnected);
     }
@@ -739,6 +822,7 @@ class OverlayServer {
     await _clientCountController.close();
     await _viewCountsController.close();
     await _recentAlertsController.close();
+    await _alertQueueController.close();
     await _templateLibrary?.dispose();
     await _templateCounts.close();
     await _errorsController.close();
@@ -762,8 +846,9 @@ class OverlayServer {
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
     _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
+    final view = _views.containsValue('featured') ? 'featured' : 'alerts';
     final recipients = _views.entries
-        .where((entry) => entry.value == 'alerts')
+        .where((entry) => entry.value == view)
         .map((entry) => entry.key)
         .toSet();
     if (recipients.isEmpty) return FeaturedMessageDelivery.noReceiver();
@@ -776,7 +861,12 @@ class OverlayServer {
     });
     final envelope = jsonEncode({
       'type': 'alert',
-      'data': {..._alertData(msg, 'featured'), 'deliveryId': id},
+      'data': {
+        ..._alertData(msg, 'featured'),
+        'deliveryId': id,
+        if (view == 'featured')
+          'items': OverlayPayloadEncoder.messageItems(msg),
+      },
     });
     for (final client in recipients) {
       try {
@@ -792,6 +882,16 @@ class OverlayServer {
           : FeaturedMessageStatus.sent,
       pending.completion.future,
     );
+  }
+
+  void removeFeaturedMessage() {
+    final envelope = {'type': 'featuredHide'};
+    _broadcastEnvelope(envelope, view: 'alerts');
+    _broadcastEnvelope(envelope, view: 'featured');
+    for (final pending in _featured.values) {
+      pending.finish(FeaturedMessageStatus.removed);
+    }
+    _featured.clear();
   }
 
   void _handleClientMessage(WebSocketChannel client, dynamic data) {
@@ -843,6 +943,7 @@ class OverlayServer {
             const {
               'chat',
               'alerts',
+              'featured',
               'poll',
               'captions',
               'giveaway',
@@ -851,8 +952,14 @@ class OverlayServer {
             }.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
-          _emitViewCounts();
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
+          if (view == 'alerts') {
+            client.sink.add(jsonEncode(_alertControl(_alertsPaused
+                ? AlertQueueOperation.pause
+                : AlertQueueOperation.resume)));
+            _emitAlertQueue();
+          }
+          _emitViewCounts();
         }
       } else if (envelope['type'] == 'templateError' &&
           _templates.containsKey(client)) {
@@ -880,8 +987,21 @@ class OverlayServer {
         _errors[id] = TemplateError(clean(envelope['message'], 300), source,
             envelope['line'] is int ? envelope['line'] as int : null, now);
         _errorsController.add(templateErrors);
-      } else if (envelope['type'] == 'featuredRendered' &&
+      } else if (envelope['type'] == 'alertQueue' &&
           _views[client] == 'alerts') {
+        final pending = envelope['pending'];
+        final active = envelope['active'];
+        if (pending is int &&
+            pending >= 0 &&
+            active is bool &&
+            envelope['paused'] is bool) {
+          final status = (pending: pending, active: active);
+          if (_alertQueues[client] != status) {
+            _alertQueues[client] = status;
+            _emitAlertQueue();
+          }
+        }
+      } else if (envelope['type'] == 'featuredRendered') {
         final id = envelope['deliveryId'];
         final pending = _featured[id];
         if (pending != null && pending.recipients.contains(client)) {
@@ -897,6 +1017,7 @@ class OverlayServer {
   void _broadcastAlert(ChatMessage msg) {
     final kind = messageAlertKind(msg);
     if (kind == null ||
+        !_settings.alertPlatforms.contains(msg.platform.name) ||
         _settings.alertDisabledTypes.contains(
             supportAlertType(kind, msg.platform, msg.membershipEventKind))) {
       return;
@@ -1025,7 +1146,10 @@ class OverlayServer {
   }
 
   void _removeClient(WebSocketChannel client) {
-    _views.remove(client);
+    if (_views.remove(client) == 'alerts') {
+      _alertQueues.remove(client);
+      _emitAlertQueue();
+    }
     _templates.remove(client);
     _galleryViews.remove(client);
     if (_sessionClients.containsKey(client)) {

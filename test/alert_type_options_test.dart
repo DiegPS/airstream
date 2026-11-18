@@ -77,6 +77,66 @@ void main() {
             .alertTypeOptions,
         isEmpty);
   });
+  test('highest reached tier overrides only the fields it sets', () {
+    final options = AlertTypeOptions.sanitize({
+      'superchat': {
+        'seconds': 8,
+        'animation': 'pop',
+        'sound': 'custom',
+        'soundPath': 'private.wav',
+        'tiers': [
+          {'from': 50, 'seconds': 12, 'mediaAudio': false},
+          {'from': 5.5, 'animation': 'fade', 'sound': 'coin'},
+          {'from': 50, 'seconds': 20},
+        ],
+      }
+    })['superchat']!;
+    final base = {...options}..remove('tiers');
+    expect(AlertTypeOptions.resolve(options, null), base);
+    expect(AlertTypeOptions.resolve(options, 5.49), base);
+    expect(AlertTypeOptions.resolve(options, 5.5),
+        {...base, 'animation': 'fade', 'sound': 'coin'});
+    expect(AlertTypeOptions.resolve(options, 49.99),
+        {...base, 'animation': 'fade', 'sound': 'coin'});
+    expect(AlertTypeOptions.resolve(options, 50),
+        {...base, 'seconds': 12, 'mediaAudio': false});
+    expect(AlertTypeOptions.resolve(options, 100),
+        {...base, 'seconds': 12, 'mediaAudio': false});
+    expect(options['seconds'], 8);
+  });
+
+  test('invalid rows are dropped before limiting tiers to five', () {
+    final settings = SettingsModel.fromJson({
+      'alertTypeOptions': {
+        'bits': {
+          'tiers': [
+            false,
+            {},
+            {'from': '9'},
+            {'from': 0},
+            {'from': -5},
+            {'from': double.nan},
+            {'from': double.infinity},
+            {'from': 1, 'seconds': 30, 'sound': 'unknown'},
+            for (var i = 2; i <= 7; i++) {'from': i, 'seconds': 12},
+          ],
+        },
+        'raid': {
+          'tiers': [
+            {'from': 1}
+          ],
+        },
+      }
+    });
+    final tiers = AlertTypeOptions.tiers(settings.alertTypeOptions['bits']);
+    expect(tiers.map((row) => row['from']), [1, 2, 3, 4, 5]);
+    expect(tiers.first, {'from': 1});
+    expect(settings.alertTypeOptions.keys, ['bits']);
+    expect(
+        SettingsModel.fromJsonString(settings.toJsonString()).alertTypeOptions,
+        settings.alertTypeOptions);
+  });
+
   test('sound options sanitize paths and preserve existing overrides', () {
     for (final sound in ['chime', 'coin', 'fanfare', 'custom']) {
       final sanitized = AlertTypeOptions.sanitize({

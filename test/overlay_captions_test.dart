@@ -24,6 +24,7 @@ void main() {
     expect(counts.current, {
       'chat': 0,
       'alerts': 0,
+      'featured': 0,
       'poll': 0,
       'captions': 0,
       'giveaway': 0,
@@ -51,6 +52,7 @@ void main() {
       expect(server.viewCounts, {
         'chat': 0,
         'alerts': 1,
+        'featured': 0,
         'poll': 1,
         'captions': 0,
         'giveaway': 0,

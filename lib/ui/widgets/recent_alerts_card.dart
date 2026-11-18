@@ -1,6 +1,7 @@
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
+import 'package:airstream/services/overlay_server.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -11,12 +12,64 @@ class RecentAlertsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final alerts = ref.watch(recentAlertsProvider).valueOrNull ?? const [];
+    final queue = ref.watch(alertQueueStatusProvider).valueOrNull;
+    final alertsOpen = (queue?.pages ?? 0) > 0;
+    final featuredOpen =
+        (ref.watch(overlayViewCountsProvider).valueOrNull?['featured'] ?? 0) >
+            0;
+    final paused = queue?.paused ?? false;
+    final controller = ref.read(appControllerProvider);
+    void control(AlertQueueOperation op) => controller.controlAlertQueue(op);
     return UiCard(
       key: const Key('recent-alerts-card'),
       title: l.recentAlertsTitle,
       icon: Icons.history_rounded,
       description: l.recentAlertsDescription,
       children: [
+        Wrap(
+          spacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            IconButton(
+              tooltip: paused ? l.alertQueueResume : l.alertQueuePause,
+              onPressed: alertsOpen
+                  ? () => control(paused
+                      ? AlertQueueOperation.resume
+                      : AlertQueueOperation.pause)
+                  : null,
+              icon:
+                  Icon(paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+            ),
+            IconButton(
+              tooltip: l.alertQueueSkip,
+              onPressed: alertsOpen && queue?.active == true
+                  ? () => control(AlertQueueOperation.skip)
+                  : null,
+              icon: const Icon(Icons.skip_next_rounded),
+            ),
+            IconButton(
+              tooltip: l.alertQueueClear,
+              onPressed: alertsOpen && (queue?.pending ?? 0) > 0
+                  ? () => control(AlertQueueOperation.clear)
+                  : null,
+              icon: const Icon(Icons.playlist_remove_rounded),
+            ),
+            Tooltip(
+              message: l.alertQueueWaitingHint,
+              child: Text(l.alertQueueWaiting(queue?.pending ?? 0)),
+            ),
+          ],
+        ),
+        if (!alertsOpen) Text(l.alertQueueNoPage),
+        if (alertsOpen || featuredOpen)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: controller.removeFeaturedMessage,
+              child: Text(l.featuredRemove),
+            ),
+          ),
+        const SizedBox(height: 8),
         if (alerts.isEmpty)
           Text(l.recentAlertsEmpty,
               style: const TextStyle(color: Colors.white70))

@@ -1,4 +1,4 @@
-enum FeaturedMessageStatus { noReceiver, sent, rendered, disconnected }
+enum FeaturedMessageStatus { noReceiver, sent, rendered, disconnected, removed }
 
 class FeaturedMessageDelivery {
   FeaturedMessageDelivery(this.id, this.status, this.completed);

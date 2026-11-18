@@ -342,6 +342,106 @@ void main() {
     expect(connection.alerts[4]['giftCount'], 1);
   });
 
+  test('platform filtering blocks automatic history and delivery only',
+      () async {
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
+    final automatic = connection.nextAlert();
+    await connection.send(message(Platform.youtube,
+        payment: const SuperChat(amount: r'$5', color: '#FFD600')));
+    final recent = await automatic;
+
+    connection.server.setSettings(const SettingsModel(alertPlatforms: {}));
+    await connection.send(message(Platform.youtube,
+        id: 'blocked',
+        payment: const SuperChat(amount: r'$5', color: '#FFD600')));
+    await connection
+        .send(message(Platform.twitch, membership: MembershipEventKind.gift));
+    final received = await sendProviders([
+      providerEvent(Platform.kick, ChatProviderEventKind.support, count: 100),
+    ]);
+    expect(received.where((e) => e['type'] == 'alert'), isEmpty);
+    expect(connection.server.recentAlertsSnapshot, [recent]);
+    expect(connection.alerts, [recent]);
+
+    final rule = connection.nextAlert();
+    expect(
+        connection.server
+            .broadcastRuleAlert(title: 'Rule', text: 'Hello', seconds: 3),
+        isTrue);
+    expect(await rule, containsPair('kind', 'custom'));
+    final testAlert = connection.nextAlert();
+    expect(connection.server.broadcastTestAlert('superchat'), isTrue);
+    expect(await testAlert, containsPair('kind', 'superchat'));
+    final replay = connection.nextAlert();
+    expect(connection.server.replayRecentAlert(recent['id'] as String), isTrue);
+    expect(await replay, recent);
+    expect(connection.server.recentAlertsSnapshot, [recent]);
+  });
+
+  test(
+      'server resolves currency units, counts and grouped gifts into alert data',
+      () async {
+    connection.server.setSettings(const SettingsModel(alertTypeOptions: {
+      'superchat': {
+        'sound': 'coin',
+        'tiers': [
+          {'from': 5.5, 'animation': 'zoom'}
+        ],
+      },
+      'bits': {
+        'tiers': [
+          {'from': 100, 'seconds': 12}
+        ]
+      },
+      'kicks': {
+        'tiers': [
+          {'from': 25, 'animation': 'fade'}
+        ]
+      },
+      'gift': {
+        'tiers': [
+          {'from': 2, 'animation': 'pop'}
+        ]
+      },
+    }));
+    for (final (msg, option) in [
+      (
+        message(Platform.youtube,
+            payment: const SuperChat(amount: 'EUR 5,50', color: '#FFD600')),
+        {'sound': 'coin', 'animation': 'zoom'}
+      ),
+      (
+        message(Platform.twitch,
+            payment: const SuperChat(amount: '100 Bits', color: '#9146FF')),
+        {'seconds': 12}
+      ),
+    ]) {
+      final next = connection.nextAlert();
+      await connection.send(msg);
+      expect((await next)['option'], option);
+    }
+    final nextGift = connection.nextAlert();
+    await connection.send(message(Platform.twitch,
+        id: 'gift1', membership: MembershipEventKind.gift));
+    await connection.send(message(Platform.twitch,
+        id: 'gift2', membership: MembershipEventKind.gift));
+    final gift = await nextGift;
+    expect(gift['giftCount'], 2);
+    expect(gift['option'], {'animation': 'pop'});
+    final kicks = await sendProviders([
+      providerEvent(Platform.kick, ChatProviderEventKind.support, count: 25),
+    ]);
+    expect(kicks.last['data']['option'], {'animation': 'fade'});
+    final replay = connection.nextAlert();
+    connection.server.setSettings(const SettingsModel());
+    expect(connection.server.replayRecentAlert(gift['id'] as String), isTrue);
+    expect((await replay)['option'], gift['option']);
+  });
+
   test('disabled bits still allow Kick subscriptions', () async {
     connection.server
         .setSettings(const SettingsModel(alertDisabledTypes: ['bits']));

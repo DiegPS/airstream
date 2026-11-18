@@ -89,6 +89,8 @@ interface Alert {
  months:number|null; giftCount:number|null;
  // Only provider alerts (raid/host/kicks) have count. Null is possible.
  count?:number|null;
+ // Resolved visual and sound choices when the alert type has tiers.
+ option?:AlertOptions;
 }
 interface QueueEntry { id:string; platform:Platform; name:string; note:string; priority:boolean; joinedAt:string; }
 interface Queue { status:'closed'|'open'|'paused'; entries:QueueEntry[]; playing:QueueEntry[]; max:number; command:string; }
@@ -167,6 +169,9 @@ interface Settings {
  alertAnimation:string;
  alertSoundVolume:number;
  alertTypeOptions:Partial<Record<AlertType,AlertOptions>>;
+ featuredPosition?:'top'|'center'|'bottom';
+ featuredFontScale?:number;
+ featuredSeconds?:number;
 }
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
@@ -287,6 +292,8 @@ interface Alert {
  months:number|null; giftCount:number|null;
  // Only provider alerts (raid/host/kicks) have count. Null is possible.
  count?:number|null;
+ // Resolved visual and sound choices when the alert type has tiers.
+ option?:AlertOptions;
 }
 interface QueueEntry { id:string; platform:Platform; name:string; note:string; priority:boolean; joinedAt:string; }
 interface Queue { status:'closed'|'open'|'paused'; entries:QueueEntry[]; playing:QueueEntry[]; max:number; command:string; }
@@ -365,6 +372,9 @@ interface Settings {
  alertAnimation:string;
  alertSoundVolume:number;
  alertTypeOptions:Partial<Record<AlertType,AlertOptions>>;
+ featuredPosition?:'top'|'center'|'bottom';
+ featuredFontScale?:number;
+ featuredSeconds?:number;
 }
 interface Events {
  trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;

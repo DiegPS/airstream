@@ -253,6 +253,19 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 const SizedBox(height: 8),
                 _overlayUrlCard(
                   l: l,
+                  title: l.featuredTitle,
+                  overlayUrl: '$overlayCopyUrl/featured',
+                  description: l.featuredDescription,
+                  onCopy: () async {
+                    await Clipboard.setData(
+                        ClipboardData(text: '$overlayCopyUrl/featured'));
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.featuredUrlCopied)));
+                  },
+                ),
+                _overlayUrlCard(
+                  l: l,
                   title: l.giveawayTitle,
                   overlayUrl: '$overlayCopyUrl/giveaway',
                   description: l.giveawayDescription,
@@ -399,6 +412,35 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               Text(l.alertSoundObsHint,
                   style: const TextStyle(color: Colors.white38, fontSize: 10)),
               const SizedBox(height: 8),
+              _section(l.alertPlatformFilter),
+              Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  children: [
+                    for (final (id, label) in const [
+                      ('youtube', 'YouTube'),
+                      ('twitch', 'Twitch'),
+                      ('kick', 'Kick'),
+                    ])
+                      CheckboxListTile(
+                        key: Key('alert-platform-$id'),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(label),
+                        value: s.alertPlatforms.contains(id),
+                        onChanged: (enabled) => notifier.update(s.copyWith(
+                          alertPlatforms: {
+                            ...s.alertPlatforms
+                                .where((platform) => platform != id),
+                            if (enabled == true) id,
+                          },
+                        )),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
               _section(l.alertTypes),
               for (final (id, label) in [
                 ('superchat', l.alertTypeSuperChat),
@@ -439,6 +481,49 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   );
                 },
               ),
+              const SizedBox(height: 12),
+              _section(l.featuredTitle),
+              _dropdownRow(
+                l.alertPosition,
+                s.featuredPosition,
+                const ['top', 'center', 'bottom'],
+                (v) => notifier.update(s.copyWith(featuredPosition: v)),
+                optionLabel: (v) => {
+                  'top': l.alertPositionTop,
+                  'center': l.alertPositionCenter,
+                  'bottom': l.alertPositionBottom,
+                }[v]!,
+              ),
+              StyledSliderRow(
+                wrapLabel: true,
+                label: l.featuredFontScale,
+                value: s.featuredFontScale.toDouble(),
+                min: 80,
+                max: 200,
+                unit: '%',
+                formatValue: (v) => '${v.round()}%',
+                onChanged: (v) =>
+                    notifier.update(s.copyWith(featuredFontScale: v.round())),
+              ),
+              _switchRow(
+                  l.featuredKeepVisible,
+                  s.featuredSeconds == 0,
+                  (v) => notifier.update(s.copyWith(
+                        featuredSeconds:
+                            v ? 0 : s.alertDisplaySeconds.clamp(5, 120),
+                      ))),
+              if (s.featuredSeconds != 0)
+                StyledSliderRow(
+                  wrapLabel: true,
+                  label: l.alertDuration,
+                  value: s.featuredSeconds.toDouble(),
+                  min: 5,
+                  max: 120,
+                  unit: 's',
+                  divisions: 115,
+                  onChanged: (v) =>
+                      notifier.update(s.copyWith(featuredSeconds: v.round())),
+                ),
               const SizedBox(height: 12),
               const MediaLibraryCard(),
               _section(l.overlayMode),
@@ -825,7 +910,10 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
         if (option.seconds != 0 ||
             option.animation.isNotEmpty ||
             option.sound.isNotEmpty ||
-            option.media.isNotEmpty)
+            option.media.isNotEmpty ||
+            AlertTypeOptions.tiers(
+              AlertTypeOptions.sanitize(s.alertTypeOptions)[id],
+            ).isNotEmpty)
           Tooltip(
               message: l.alertTypeCustomized,
               child: const Icon(Icons.circle, size: 6, color: Colors.white70)),
@@ -955,6 +1043,9 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
             Text(l.alertSoundInvalid,
                 style: const TextStyle(color: Color(0xFFFFB15C), fontSize: 11)),
         ],
+        if (amountAlertTypeIds.contains(id))
+          _AlertTierSettings(
+              type: id, settings: s, onChanged: widget.onChanged),
         Align(
             alignment: Alignment.centerRight,
             child: TextButton(

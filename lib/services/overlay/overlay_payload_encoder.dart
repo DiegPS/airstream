@@ -27,21 +27,7 @@ abstract final class OverlayPayloadEncoder {
         'color': msg.author.color,
         'nameColor': nameColorHex(resolveNameColor(msg, settings)),
         'text': msg.plainText,
-        'items': msg.items
-            .map((item) => item.isEmoji
-                ? {
-                    'kind': 'emoji',
-                    'url': item.emoji!.url,
-                    'alt': item.emoji!.alt,
-                    'isAnimated': item.emoji!.isAnimated,
-                    'isCustom': item.emoji!.isCustom,
-                    'isZeroWidth': item.emoji!.isZeroWidth,
-                  }
-                : {
-                    'kind': 'text',
-                    'text': item.text,
-                  })
-            .toList(),
+        'items': messageItems(msg),
         'isSuperChat': msg.superChat != null,
         'superChatAmount': msg.superChat?.amount,
         'superChatColor': msg.superChat?.color,
@@ -155,23 +141,46 @@ abstract final class OverlayPayloadEncoder {
         'alertAnimation': settings.alertAnimation,
         'alertTypeOptions': {
           for (final entry in AlertTypeOptions.resolved(settings).entries)
-            entry.key: {
-              for (final key in ['seconds', 'animation', 'sound'])
-                if (entry.value.containsKey(key)) key: entry.value[key],
-              if (entry.value['media'] != null) ...{
-                'media': entry.value['media'],
-                'mediaKind': MediaLibraryEntries.sanitize(
-                    settings.mediaLibrary)[entry.value['media']]!['kind'],
-                'mediaAudio': entry.value['mediaAudio'] == true,
-              },
-              if (entry.value['sound'] == 'library')
-                'soundMediaId': entry.value['soundMediaId'],
-              if (entry.value['sound'] == 'custom')
-                'soundKey': (entry.value['soundPath'] as String? ?? '')
-                    .hashCode
-                    .toRadixString(16),
-            },
+            entry.key: alertOption(entry.value, settings),
         },
+        'featuredPosition': settings.featuredPosition,
+        'featuredFontScale': settings.featuredFontScale,
+        'featuredSeconds': settings.featuredSeconds,
         'alertSoundVolume': settings.alertSoundVolume,
+      };
+
+  static List<Map<String, Object?>> messageItems(ChatMessage msg) => msg.items
+      .map((item) => item.isEmoji
+          ? {
+              'kind': 'emoji',
+              'url': item.emoji!.url,
+              'alt': item.emoji!.alt,
+              'isAnimated': item.emoji!.isAnimated,
+              'isCustom': item.emoji!.isCustom,
+              'isZeroWidth': item.emoji!.isZeroWidth,
+            }
+          : {
+              'kind': 'text',
+              'text': item.text,
+            })
+      .toList();
+
+  static String alertSoundKey(String path) => path.hashCode.toRadixString(16);
+
+  static Map<String, Object?> alertOption(
+          Map<String, dynamic> option, SettingsModel settings) =>
+      {
+        for (final key in ['seconds', 'animation', 'sound'])
+          if (option.containsKey(key)) key: option[key],
+        if (option['media'] != null) ...{
+          'media': option['media'],
+          'mediaKind': MediaLibraryEntries.sanitize(
+              settings.mediaLibrary)[option['media']]!['kind'],
+          'mediaAudio': option['mediaAudio'] == true,
+        },
+        if (option['sound'] == 'library')
+          'soundMediaId': option['soundMediaId'],
+        if (option['sound'] == 'custom')
+          'soundKey': alertSoundKey(option['soundPath'] as String? ?? ''),
       };
 }

@@ -11,6 +11,9 @@ import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 abstract interface class OverlayClient {
+  Stream<AlertQueueStatus> get alertQueueStatusStream;
+  void controlAlertQueue(AlertQueueOperation op);
+  void removeFeaturedMessage();
   Stream<List<Map<String, Object?>>> get recentAlerts;
   List<Map<String, Object?>> get recentAlertsSnapshot;
   bool replayRecentAlert(String id);
@@ -42,6 +45,15 @@ class OverlayServerAdapter implements OverlayClient {
   OverlayServerAdapter(this.server);
 
   final OverlayServer server;
+
+  @override
+  Stream<AlertQueueStatus> get alertQueueStatusStream =>
+      server.alertQueueStatusStream;
+  @override
+  void controlAlertQueue(AlertQueueOperation op) =>
+      server.controlAlertQueue(op);
+  @override
+  void removeFeaturedMessage() => server.removeFeaturedMessage();
 
   @override
   Stream<List<Map<String, Object?>>> get recentAlerts => server.recentAlerts;
@@ -109,6 +121,12 @@ class OverlayCoordinator {
   OverlayServerState _state = const OverlayServerState();
   int _generation = 0;
   bool _disposed = false;
+
+  Stream<AlertQueueStatus> get alertQueueStatusStream =>
+      _overlay.alertQueueStatusStream;
+  void controlAlertQueue(AlertQueueOperation op) =>
+      _overlay.controlAlertQueue(op);
+  void removeFeaturedMessage() => _overlay.removeFeaturedMessage();
 
   Stream<int> get clientCountStream => _overlay.clientCountStream;
   Stream<Map<String, int>> get viewCountsStream => _overlay.viewCountsStream;

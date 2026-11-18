@@ -74,6 +74,7 @@ part 'settings/settings_components.dart';
 part 'settings/settings_form_controllers.dart';
 part 'settings/settings_dialogs.dart';
 part 'settings/tabs/obs_settings_tab.dart';
+part 'settings/tabs/alert_tier_settings.dart';
 part 'settings/tabs/style_settings_tab.dart';
 part 'settings/text_and_names_card.dart';
 part 'settings/tabs/audio_settings_tab.dart';
@@ -796,10 +797,17 @@ class _ChatMessageEntry extends ConsumerWidget {
     );
     if (!context.mounted || action == null) return;
     final messenger = ScaffoldMessenger.of(context);
-    void notify(String text) => messenger
+    final controller = ref.read(appControllerProvider);
+    void notify(String text, {bool canRemove = false}) => messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
         content: Text(text),
+        action: canRemove
+            ? SnackBarAction(
+                label: l.featuredRemove,
+                onPressed: controller.removeFeaturedMessage,
+              )
+            : null,
         duration: const Duration(milliseconds: 1600),
       ));
     switch (action) {
@@ -810,11 +818,11 @@ class _ChatMessageEntry extends ConsumerWidget {
           notify(l.messageNoAlertsOverlay);
           return;
         }
-        notify(l.messageSentToOverlay);
+        notify(l.messageSentToOverlay, canRemove: true);
         final status = await delivery.completed;
         if (!context.mounted) return;
         if (status == FeaturedMessageStatus.rendered) {
-          notify(l.messageShownOnStream);
+          notify(l.messageShownOnStream, canRemove: true);
         } else if (status == FeaturedMessageStatus.disconnected) {
           notify(l.messageOverlayDisconnected);
         } else if (status == FeaturedMessageStatus.sent) {

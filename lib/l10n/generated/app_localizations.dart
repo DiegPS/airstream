@@ -2712,7 +2712,7 @@ abstract class AppLocalizations {
   /// No description provided for @messageNoAlertsOverlay.
   ///
   /// In en, this message translates to:
-  /// **'The alerts page is not open in OBS. Add its URL as a browser source.'**
+  /// **'Open the featured or alerts page as a browser source in OBS.'**
   String get messageNoAlertsOverlay;
 
   /// No description provided for @messageOverlayUnconfirmed.
@@ -5276,6 +5276,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+{count} more'**
   String galleryQueueMore(String count);
+
+  /// No description provided for @alertQueuePause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause alerts'**
+  String get alertQueuePause;
+
+  /// No description provided for @alertQueueResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume alerts'**
+  String get alertQueueResume;
+
+  /// No description provided for @alertQueueSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip current alert'**
+  String get alertQueueSkip;
+
+  /// No description provided for @alertQueueClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear waiting alerts'**
+  String get alertQueueClear;
+
+  /// No description provided for @alertQueueWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting'**
+  String alertQueueWaiting(int count);
+
+  /// No description provided for @alertQueueWaitingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest queue across open alerts pages'**
+  String get alertQueueWaitingHint;
+
+  /// No description provided for @alertQueueNoPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the alerts page to control its queue.'**
+  String get alertQueueNoPage;
+
+  /// No description provided for @alertPlatformFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic alerts by platform'**
+  String get alertPlatformFilter;
+
+  /// No description provided for @alertTiers.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiers by amount'**
+  String get alertTiers;
+
+  /// No description provided for @alertTierCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Super Chats use the original currency without conversion.'**
+  String get alertTierCurrency;
+
+  /// No description provided for @alertTierFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From amount'**
+  String get alertTierFrom;
+
+  /// No description provided for @alertTierInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number greater than zero.'**
+  String get alertTierInvalid;
+
+  /// No description provided for @alertTierAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tier'**
+  String get alertTierAdd;
+
+  /// No description provided for @alertTierRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove tier'**
+  String get alertTierRemove;
+
+  /// No description provided for @alertTierInherit.
+  ///
+  /// In en, this message translates to:
+  /// **'Use alert type setting'**
+  String get alertTierInherit;
+
+  /// No description provided for @alertTierAudioOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Play audio'**
+  String get alertTierAudioOn;
+
+  /// No description provided for @alertTierAudioOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute audio'**
+  String get alertTierAudioOff;
+
+  /// No description provided for @featuredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured message'**
+  String get featuredTitle;
+
+  /// No description provided for @featuredDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows messages you feature on stream.'**
+  String get featuredDescription;
+
+  /// No description provided for @featuredUrlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured page URL copied'**
+  String get featuredUrlCopied;
+
+  /// No description provided for @featuredRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove featured'**
+  String get featuredRemove;
+
+  /// No description provided for @featuredFontScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured text size'**
+  String get featuredFontScale;
+
+  /// No description provided for @featuredKeepVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep visible until removed'**
+  String get featuredKeepVisible;
 }
 
 class _AppLocalizationsDelegate

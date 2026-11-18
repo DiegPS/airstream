@@ -1,7 +1,44 @@
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_profiles.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('live alert settings migrate, sanitize and persist in profiles', () {
+    final legacy = SettingsModel.fromJson({'alertDisplaySeconds': 12});
+    expect(legacy.alertPlatforms, allAlertPlatforms);
+    expect(legacy.featuredPosition, 'bottom');
+    expect(legacy.featuredFontScale, 100);
+    expect(legacy.featuredSeconds, 12);
+    final custom = SettingsModel.fromJson({
+      'alertPlatforms': ['kick', 'kick', 'unknown', 7],
+      'featuredPosition': 'top',
+      'featuredFontScale': 250,
+      'featuredSeconds': 0,
+      'alertTypeOptions': {
+        'gift': {
+          'tiers': [
+            {'from': 5, 'sound': 'coin'}
+          ]
+        }
+      },
+    });
+    for (final settings in [
+      SettingsModel.fromJsonString(custom.toJsonString()),
+      SettingsProfiles.apply(legacy, SettingsProfiles.capture(custom)),
+    ]) {
+      expect(settings.alertPlatforms, {'kick'});
+      expect(settings.featuredPosition, 'top');
+      expect(settings.featuredFontScale, 200);
+      expect(settings.featuredSeconds, 0);
+      expect(settings.alertTypeOptions, custom.alertTypeOptions);
+    }
+    expect(
+        SettingsModel.fromJson({'alertPlatforms': []}).alertPlatforms, isEmpty);
+    expect(SettingsModel.fromJson({'featuredSeconds': 1}).featuredSeconds, 5);
+    expect(
+        SettingsModel.fromJson({'featuredSeconds': 200}).featuredSeconds, 120);
+  });
+
   test('sanitizes corrupt values without discarding valid preferences', () {
     final restored = SettingsModel.fromJson({
       'appLanguageCode': 'fr',

@@ -128,6 +128,11 @@ abstract final class SettingsModelCodec {
         'overlayScale': model.overlayScale,
         'alertFontSize': model.alertFontSize,
         'alertDisplaySeconds': model.alertDisplaySeconds,
+        'alertPlatforms':
+            allAlertPlatforms.where(model.alertPlatforms.contains).toList(),
+        'featuredPosition': model.featuredPosition,
+        'featuredFontScale': model.featuredFontScale,
+        'featuredSeconds': model.featuredSeconds,
         'alertShowAvatars': model.alertShowAvatars,
         'alertDisabledTypes': model.alertDisabledTypes,
         'alertPosition': model.alertPosition,
@@ -332,6 +337,14 @@ abstract final class SettingsModelCodec {
       overlayScale: (j['overlayScale'] as num?)?.toDouble() ?? 1.0,
       alertFontSize: (j['alertFontSize'] as num?)?.toDouble() ?? 28.0,
       alertDisplaySeconds: (j['alertDisplaySeconds'] as num?)?.round() ?? 7,
+      alertPlatforms: j['alertPlatforms'] is List
+          ? allAlertPlatforms
+              .where((j['alertPlatforms'] as List).contains)
+              .toSet()
+          : allAlertPlatforms,
+      featuredPosition: j['featuredPosition'] as String,
+      featuredFontScale: j['featuredFontScale'] as int,
+      featuredSeconds: j['featuredSeconds'] as int,
       alertShowAvatars: j['alertShowAvatars'] as bool? ?? true,
       alertDisabledTypes:
           List<String>.from(j['alertDisabledTypes'] as List? ?? []),
@@ -373,6 +386,12 @@ abstract final class SettingsModelCodec {
       final value = entry.value;
       if (entry.key == 'mediaLibrary') {
         sanitized[entry.key] = MediaLibraryEntries.sanitize(value);
+        continue;
+      }
+      if (entry.key == 'featuredSeconds') {
+        if (value is num && value.isFinite) {
+          sanitized[entry.key] = value == 0 ? 0 : value.round().clamp(5, 120);
+        }
         continue;
       }
       if (entry.key == 'rules' || entry.key == 'ruleCounters') {
@@ -480,6 +499,10 @@ abstract final class SettingsModelCodec {
     clampInt('ttsUserCooldownSeconds', 0, 60);
     clampInt('ttsMaxCharacters', 40, ttsMaxCharactersLimit);
     clampInt('alertDisplaySeconds', 3, 20);
+    allow('featuredPosition', const {'top', 'center', 'bottom'}, 'bottom');
+    clampInt('featuredFontScale', 80, 200);
+    sanitized['featuredSeconds'] ??=
+        (sanitized['alertDisplaySeconds'] as int).clamp(5, 20);
     clampInt('alertSoundVolume', 0, 100);
 
     clampDouble('fontSize', 10, 28);
