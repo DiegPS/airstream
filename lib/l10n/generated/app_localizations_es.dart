@@ -3557,6 +3557,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get giveawayNoWinners => 'Sin ganadores';
 
   @override
+  String giveawayAllWinners(int count) {
+    return 'Todos los ganadores de esta ronda ($count)';
+  }
+
+  @override
   String get galleryScoreboard => 'Marcador';
 
   @override

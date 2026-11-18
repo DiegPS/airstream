@@ -172,6 +172,20 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                     style:
                         const TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
+              // A batch draw names several people; the big row shows only
+              // the latest, so the whole round is listed below it.
+              if (state.winners.length > 1) ...[
+                const SizedBox(height: 10),
+                Text(l.giveawayAllWinners(state.winners.length),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 4),
+                for (final (i, each) in state.winners.indexed)
+                  Text('${i + 1}. ${each.name} · ${each.platform.name}',
+                      key: Key('giveaway-winner-$i'),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 13)),
+              ],
             ],
             const SizedBox(height: 12),
             Column(

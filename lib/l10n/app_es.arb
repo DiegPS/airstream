@@ -1148,6 +1148,7 @@
   "giveawayStartedAt": "Inicio {date}",
   "giveawayEndedAt": "Fin {date}",
   "giveawayNoWinners": "Sin ganadores",
+  "giveawayAllWinners": "Todos los ganadores de esta ronda ({count})",
   "galleryScoreboard": "Marcador",
   "galleryScoreboardDescription": "Muestra los valores actuales de los contadores de reglas que elijas.",
   "galleryScoreboardCounters": "Nombres de los contadores separados por comas (hasta 8)",

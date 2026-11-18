@@ -3521,6 +3521,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get giveawayNoWinners => 'No winners';
 
   @override
+  String giveawayAllWinners(int count) {
+    return 'All winners this round ($count)';
+  }
+
+  @override
   String get galleryScoreboard => 'Scoreboard';
 
   @override

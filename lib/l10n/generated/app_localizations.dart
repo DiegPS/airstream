@@ -5751,6 +5751,12 @@ abstract class AppLocalizations {
   /// **'No winners'**
   String get giveawayNoWinners;
 
+  /// No description provided for @giveawayAllWinners.
+  ///
+  /// In en, this message translates to:
+  /// **'All winners this round ({count})'**
+  String giveawayAllWinners(int count);
+
   /// No description provided for @galleryScoreboard.
   ///
   /// In en, this message translates to:

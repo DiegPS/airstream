@@ -1357,6 +1357,7 @@
   "giveawayStartedAt": "Started {date}",
   "giveawayEndedAt": "Ended {date}",
   "giveawayNoWinners": "No winners",
+  "giveawayAllWinners": "All winners this round ({count})",
   "galleryScoreboard": "Scoreboard",
   "galleryScoreboardDescription": "Show selected rule counters and their current values.",
   "galleryScoreboardCounters": "Counter names, separated by commas (up to 8)",
@@ -1372,6 +1373,13 @@
   "galleryEmoteWallMax": "Maximum emotes on screen",
   "galleryEmoteWallSize": "Emote size (pixels)",
   "galleryEmoteWallLifetime": "Time on screen (seconds)",
+  "@giveawayAllWinners": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@giveawayDrawMany": {
     "placeholders": {
       "count": {

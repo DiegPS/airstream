@@ -118,6 +118,10 @@ void main() {
       await click(find.text('2').last);
       await click(find.text(l.giveawayDrawMany(2)));
       expect(app.giveaway.current!.winners, hasLength(2));
+      // The card names both winners of the batch, not just the latest.
+      expect(find.text(l.giveawayAllWinners(2)), findsOneWidget);
+      expect(find.byKey(const Key('giveaway-winner-0')), findsOneWidget);
+      expect(find.byKey(const Key('giveaway-winner-1')), findsOneWidget);
       await click(find.text(l.giveawayHistory));
       expect(find.textContaining('Ana (kick)'), findsOneWidget);
       expect(find.textContaining('Beto (twitch)'), findsOneWidget);
