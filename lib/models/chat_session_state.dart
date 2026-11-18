@@ -71,6 +71,11 @@ ChatSessionPhase resolveChatSessionPhase({
   (ServiceStatus, String?)? vertical,
 ) {
   final statuses = [horizontal?.$1, vertical?.$1];
+  // Stopped (or never started): idle, not "connecting".
+  if (statuses
+      .every((status) => status == null || status == ServiceStatus.idle)) {
+    return (ServiceStatus.idle, null);
+  }
   if (statuses.every((status) => status == ServiceStatus.ended)) {
     return (ServiceStatus.ended, null);
   }

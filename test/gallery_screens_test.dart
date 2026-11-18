@@ -117,6 +117,8 @@ void main() {
       () => runGalleryChecks('gallery'));
   test('word cloud removes message, author and platform token batches',
       () => runGalleryChecks('word cloud'));
+  test('emote wall removes moderated messages, authors and platforms',
+      () => runGalleryChecks('emote wall'));
   test('goals cancel and rearm celebrations when reset',
       () => runGalleryChecks('goals'));
   test(
@@ -576,6 +578,31 @@ function checkWordCloudModeration() {
   assert.deepEqual(words(), []);
   assert.equal(view.nodes.stage.hidden, true);
 }
+function checkEmoteWallModeration() {
+  const view = page('emote-wall');
+  view.fields({lifetime: 20});
+  function emote(id, platform, author, channel, youtubeStreamOrientation) {
+    view.send('message', {id, platform, author, authorChannelId: channel,
+      youtubeStreamOrientation,
+      items: [{kind: 'emoji', url: 'https://example.invalid/' + id + author, alt: id + author}]});
+  }
+  emote('1', 'youtube', 'Ana', 'ana', 'horizontal');
+  emote('1', 'youtube', 'Ana', 'ana', 'vertical');
+  emote('2', 'twitch', 'Beto', 'beto');
+  emote('3', 'twitch', 'Beto', 'beto');
+  emote('4', 'youtube', 'Carla', 'carla');
+  const shown = () => view.nodes.emotes.children.map(img => img.alt).sort();
+  assert.deepEqual(shown(), ['1Ana', '1Ana', '2Beto', '3Beto', '4Carla']);
+  // Removed long before their 20 s lifetime ends.
+  view.send('moderation', {scope: 'message', platform: 'youtube', messageId: '1',
+    youtubeStreamOrientation: 'horizontal'});
+  assert.deepEqual(shown(), ['1Ana', '2Beto', '3Beto', '4Carla']);
+  view.send('moderation', {scope: 'author', platform: 'twitch', authorName: 'BETO'});
+  assert.deepEqual(shown(), ['1Ana', '4Carla']);
+  view.send('moderation', {scope: 'platform', platform: 'youtube'});
+  assert.deepEqual(shown(), []);
+  assert.equal(view.nodes.stage.hidden, true);
+}
 function checkMixedGiveawayDraws() {
   const view = page('/giveaway');
   const draw = (drawId, name, batchDraw) => ({
@@ -654,6 +681,7 @@ function checkPollTies() {
 const regressions = {
   'poll ties': checkPollTies,
   'word cloud': checkWordCloudModeration,
+  'emote wall': checkEmoteWallModeration,
   goals: checkGoalReset,
   snapshots: checkEmptySnapshots,
   'page language': checkPageLanguage,

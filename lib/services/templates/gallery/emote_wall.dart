@@ -59,7 +59,7 @@ function remove(entry) {
   entry.img.remove();
   stage.hidden = active.length === 0;
 }
-function spawn(item) {
+function spawn(item, source) {
   while (active.length >= max) remove(active[0]);
   const img = document.createElement('img');
   img.className = 'wall-emote';
@@ -71,7 +71,8 @@ function spawn(item) {
   }
   img.style.setProperty('--y1', Math.round(Math.random() * (540 - size)) + 'px');
   img.style.setProperty('--y2', (540 - size) + 'px');
-  const entry = {img, timer: setTimeout(() => remove(entry), lifetime * 1000)};
+  // The source message identity lets moderation remove its emotes at once.
+  const entry = {img, source, timer: setTimeout(() => remove(entry), lifetime * 1000)};
   active.push(entry);
   img.addEventListener('error', () => remove(entry), {once: true});
   img.src = item.url;
@@ -82,7 +83,20 @@ Airstream.on('chat', (message, meta) => {
   if (!ready || meta.replay || !Array.isArray(message?.items)) return;
   const images = message.items.filter(item => item.kind === 'emoji' &&
     typeof item.url === 'string' && /^(https?:\/\/|data:image\/)/i.test(item.url));
-  for (const item of images.slice(0, max)) spawn(item);
+  const source = {
+    id: message.id, sequence: message.sequence,
+    platform: message.platform,
+    youtubeStreamOrientation: message.youtubeStreamOrientation,
+    author: message.author, authorChannelId: message.authorChannelId,
+  };
+  for (const item of images.slice(0, max)) spawn(item, source);
+});
+// A deleted message, or a banned or blocked viewer, takes their emotes
+// off the wall now instead of after their lifetime.
+Airstream.on('delete', event => {
+  for (const entry of active.slice()) {
+    if (matchesChatDeletion(entry.source, event)) remove(entry);
+  }
 });
 configureWidget(() => {
   widgetTitle(copy[language].title);

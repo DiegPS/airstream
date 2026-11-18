@@ -416,6 +416,58 @@ void main() {
     });
   });
 
+  test('removing the last seconds of a countdown ends it with sound and rules',
+      () {
+    fakeAsync((fake) {
+      final server = RuleOverlay()..feedSeen = true;
+      DateTime now() => DateTime.utc(2026).add(fake.elapsed);
+      final sounds = _ClockSounds();
+      final app = makeController(FakeChannelChatClient(), server,
+          clock: now, clockSounds: sounds);
+      final rule = {
+        ...RuleSchema.newRule('clock.ended', id: 'finish'),
+        'enabled': true,
+        'actions': [
+          {
+            'id': 'send',
+            'type': 'template.trigger',
+            'name': 'finish',
+            'data': 'done'
+          }
+        ],
+      };
+      var current = SettingsModel(
+        clock: const LiveClock(durationSeconds: 30, sound: 'chime'),
+        overlayEnabled: false,
+        rulesEnabled: true,
+        rules: [rule],
+      );
+      app.ruleSettingsWriter = (settings) async {
+        current = settings;
+        app.applySettings(settings, connectChats: false);
+      };
+      app.applySettings(current, connectChats: false);
+      unawaited(app.operateClock('start'));
+      fake.flushMicrotasks();
+      fake.elapse(const Duration(seconds: 5));
+      // −1 min with 25 s left takes the countdown straight to zero.
+      unawaited(app.operateClock('add', seconds: -60));
+      fake.flushMicrotasks();
+      fake.elapse(const Duration(seconds: 1));
+      fake.flushMicrotasks();
+      expect(current.clock.phase, ClockPhase.ended);
+      expect(server.triggers.single['name'], 'finish');
+      expect(sounds.played, hasLength(1));
+      // Nothing else fires later.
+      fake.elapse(const Duration(minutes: 1));
+      fake.flushMicrotasks();
+      expect(server.triggers, hasLength(1));
+      expect(sounds.played, hasLength(1));
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test('rules can operate the clock and draw winners with optional count', () {
     fakeAsync((fake) {
       DateTime now() => DateTime.utc(2026).add(fake.elapsed);

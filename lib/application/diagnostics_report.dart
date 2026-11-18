@@ -64,6 +64,7 @@ const diagnosticEnglish = <String, String>{
   'off': 'Off',
   'idle': 'Not connected',
   'connected': 'Connected',
+  'partial': 'Connected, but one of the two YouTube streams failed',
   'connecting': 'Connecting / reconnecting',
   'waiting': 'Waiting for live stream',
   'ended': 'Broadcast ended',
@@ -137,9 +138,16 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
       );
     }
     final active = enabled && configured;
+    // Dual YouTube with one stream up and the other failed (the title bar
+    // shows it in orange): a warning here too, not a plain "Connected".
+    final partial = platform == 'youtube' &&
+        s.youtubeDualStreamEnabled &&
+        state.$1 == ServiceStatus.connected &&
+        state.$2 != null;
     final status = !active
         ? DiagnosticStatus.off
         : switch (state.$1) {
+            ServiceStatus.connected when partial => DiagnosticStatus.warning,
             ServiceStatus.connected => DiagnosticStatus.ok,
             ServiceStatus.connecting => DiagnosticStatus.warning,
             ServiceStatus.error => DiagnosticStatus.error,
@@ -148,6 +156,7 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
     final message = !active
         ? t('off')
         : switch (state.$1) {
+            ServiceStatus.connected when partial => t('partial'),
             ServiceStatus.connected => t('connected'),
             ServiceStatus.connecting => t(
                 state.$2 == youtubeWaitingForLiveStatus

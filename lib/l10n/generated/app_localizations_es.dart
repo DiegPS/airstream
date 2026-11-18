@@ -2176,6 +2176,8 @@ class AppLocalizationsEs extends AppLocalizations {
         'off': 'Apagado',
         'idle': 'Sin conexión',
         'connected': 'Conectado',
+        'partial':
+            'Conectado, pero una de las dos transmisiones de YouTube falló',
         'connecting': 'Conectando / reconectando',
         'waiting': 'Esperando la transmisión en vivo',
         'ended': 'Transmisión terminada',

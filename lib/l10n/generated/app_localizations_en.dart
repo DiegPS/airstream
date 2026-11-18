@@ -2161,6 +2161,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'off': 'Off',
         'idle': 'Not connected',
         'connected': 'Connected',
+        'partial': 'Connected, but one of the two YouTube streams failed',
         'connecting': 'Connecting / reconnecting',
         'waiting': 'Waiting for live stream',
         'ended': 'Broadcast ended',

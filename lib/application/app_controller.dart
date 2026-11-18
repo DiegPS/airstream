@@ -310,8 +310,20 @@ class AppController {
       return;
     }
     final next = current.perform(op, now, seconds: seconds);
-    if (!identical(next, current)) {
+    if (identical(next, current)) return;
+    // Taking the last seconds off a running or paused countdown ends it: that
+    // end gets the same one-time sound and clock.ended rules as running out.
+    final endsNow = next.phase == ClockPhase.ended &&
+        current.mode == ClockMode.countdown &&
+        (current.phase == ClockPhase.running ||
+            current.phase == ClockPhase.paused);
+    if (endsNow) _pendingClockEnd = (next, depth);
+    try {
       await _writeRuleSettings(settings.copyWith(clock: next), depth);
+    } finally {
+      if (endsNow && identical(_pendingClockEnd?.$1, next)) {
+        _pendingClockEnd = null;
+      }
     }
   }
 

@@ -93,6 +93,27 @@ void main() {
             _ => DiagnosticStatus.warning
           });
     }
+    // One stream up, the other failed: a warning saying so, matching the
+    // orange title-bar badge.
+    final partial = item(
+        DiagnosticsSnapshot(
+            settings: settings.copyWith(
+                youtubeDualStreamEnabled: true,
+                youtubeHorizontalUrl: 'https://youtu.be/dQw4w9WgXcQ',
+                youtubeVerticalUrl: 'https://youtu.be/aqz-KE-bpKQ'),
+            connections: {
+              'youtubeHorizontal': (ServiceStatus.connected, null),
+              'youtubeVertical': (ServiceStatus.error, 'Video not found'),
+            }),
+        'youtube');
+    expect(partial.status, DiagnosticStatus.warning);
+    expect(partial.summary, contains('one of the two YouTube streams'));
+    // Stopped dual chat is idle, not connecting.
+    expect(combineYoutubeChatStatuses(null, null), (ServiceStatus.idle, null));
+    expect(
+        combineYoutubeChatStatuses(
+            (ServiceStatus.idle, null), (ServiceStatus.idle, null)),
+        (ServiceStatus.idle, null));
   });
   test('OBS connection, failure, streaming metrics and drop threshold', () {
     final cases = <ObsState, DiagnosticStatus>{
