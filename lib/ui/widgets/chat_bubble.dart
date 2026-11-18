@@ -1,3 +1,5 @@
+import 'package:airstream/application/name_colors.dart';
+import 'package:airstream/settings/chat_fonts.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_media.dart';
@@ -39,14 +41,8 @@ class ChatBubble extends ConsumerWidget {
     final bubbleOpacity = s.messageOpacity.clamp(0.0, 1.0);
     final isSuperChat = message.superChat != null;
     final isMembershipEvent = message.isMembershipEvent;
-    final baseBubbleColor = _bubbleColor(
-      showBubble: s.showBubble,
-      platform: message.platform,
-      bubbleOpacity: bubbleOpacity,
-      superChatColor:
-          isSuperChat ? _parseColor(message.superChat!.color) : null,
-      isMembershipEvent: isMembershipEvent,
-    );
+    final baseBubbleColor = chatBubbleBackground(message, s);
+    final fontFamily = ChatFonts.normalize(s.chatFontFamily);
     final bubbleColor = highlighted && s.showBubble
         ? Color.alphaBlend(
             chatHighlightColor.withValues(alpha: 0.14 * bubbleOpacity),
@@ -86,6 +82,7 @@ class ChatBubble extends ConsumerWidget {
     final contentCrossAxisAlignment =
         _contentCrossAxisAlignment(s.chatTextAlign);
     final contentTextStyle = _chatTextStyle(
+      fontFamily: fontFamily,
       color: Colors.white,
       fontSize: s.fontSize,
       lineHeight: s.chatLineHeight,
@@ -93,6 +90,7 @@ class ChatBubble extends ConsumerWidget {
       textShadow: s.chatTextShadow,
     );
     final textStrokeStyle = _strokeTextStyle(
+      fontFamily: fontFamily,
       color: Colors.black,
       fontSize: s.fontSize,
       lineHeight: s.chatLineHeight,
@@ -158,6 +156,8 @@ class ChatBubble extends ConsumerWidget {
                                 children: [
                                   _AuthorRow(
                                     message: message,
+                                    nameColor: resolveNameColor(message, s),
+                                    fontFamily: fontFamily,
                                     fontSize: s.fontSize,
                                     lineHeight: s.chatLineHeight,
                                     fontWeight: s.chatFontWeight,
@@ -217,6 +217,7 @@ class ChatBubble extends ConsumerWidget {
                                         _membershipFlair(l, message),
                                         textAlign: textAlign,
                                         style: _chatTextStyle(
+                                          fontFamily: fontFamily,
                                           color: Colors.white
                                               .withValues(alpha: 0.9),
                                           fontSize: s.fontSize * 0.92,
@@ -225,6 +226,7 @@ class ChatBubble extends ConsumerWidget {
                                           textShadow: s.chatTextShadow,
                                         ).copyWith(fontStyle: FontStyle.italic),
                                         strokeStyle: _strokeTextStyle(
+                                          fontFamily: fontFamily,
                                           color: Colors.black,
                                           fontSize: s.fontSize * 0.92,
                                           lineHeight: s.chatLineHeight,
@@ -292,34 +294,6 @@ class ChatBubble extends ConsumerWidget {
         );
       },
     );
-  }
-
-  static Color _bubbleColor({
-    required bool showBubble,
-    required Platform platform,
-    required double bubbleOpacity,
-    required bool isMembershipEvent,
-    Color? superChatColor,
-  }) {
-    if (!showBubble || bubbleOpacity <= 0) return Colors.transparent;
-
-    Color baseColor = const Color(0xFF000000);
-    if (isMembershipEvent) {
-      baseColor = const Color(0xFF0F9D58);
-    } else if (superChatColor != null) {
-      baseColor = Color.alphaBlend(
-        superChatColor.withValues(alpha: 0.3),
-        const Color(0xFF111111),
-      );
-    } else {
-      baseColor = switch (platform) {
-        Platform.youtube => const Color(0xFF111111),
-        Platform.twitch => const Color(0xFF17111F),
-        Platform.kick => const Color(0xFF10160D),
-      };
-    }
-
-    return baseColor.withAlpha((255 * bubbleOpacity).round().clamp(0, 255));
   }
 
   static Border? _bubbleBorder({
@@ -420,12 +394,15 @@ class ChatBubble extends ConsumerWidget {
 
   static TextStyle _chatTextStyle({
     required Color color,
+    required String fontFamily,
     required double fontSize,
     required double lineHeight,
     required double fontWeight,
     required bool textShadow,
   }) {
     return TextStyle(
+      fontFamily: fontFamily,
+      fontFamilyFallback: const [ChatFonts.defaultFamily],
       color: color,
       fontSize: fontSize,
       fontWeight: _fontWeight(fontWeight),
@@ -436,6 +413,7 @@ class ChatBubble extends ConsumerWidget {
 
   static TextStyle? _strokeTextStyle({
     required Color color,
+    required String fontFamily,
     required double fontSize,
     required double lineHeight,
     required double fontWeight,
@@ -444,6 +422,8 @@ class ChatBubble extends ConsumerWidget {
   }) {
     if (strokeWidth <= 0) return null;
     return TextStyle(
+      fontFamily: fontFamily,
+      fontFamilyFallback: const [ChatFonts.defaultFamily],
       fontSize: fontSize,
       fontWeight: _fontWeight(fontWeight),
       height: lineHeight,
@@ -459,6 +439,8 @@ class ChatBubble extends ConsumerWidget {
 class _AuthorRow extends StatelessWidget {
   const _AuthorRow({
     required this.message,
+    required this.nameColor,
+    required this.fontFamily,
     required this.fontSize,
     required this.lineHeight,
     required this.fontWeight,
@@ -474,6 +456,8 @@ class _AuthorRow extends StatelessWidget {
   });
 
   final ChatMessage message;
+  final Color nameColor;
+  final String fontFamily;
   final double fontSize;
   final double lineHeight;
   final double fontWeight;
@@ -491,14 +475,6 @@ class _AuthorRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final isMembershipEvent = message.isMembershipEvent;
-    final authorColor = message.author.color != null
-        ? ChatBubble._parseColor(message.author.color!)
-        : switch (message.platform) {
-            Platform.twitch => const Color(0xFFAF84FF),
-            Platform.kick => const Color(0xFFB7FF8D),
-            Platform.youtube => Colors.white,
-          };
-
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 8,
@@ -513,13 +489,15 @@ class _AuthorRow extends StatelessWidget {
           message.author.name,
           textAlign: textAlign,
           style: ChatBubble._chatTextStyle(
-            color: message.isModerator ? const Color(0xFF7EA4FF) : authorColor,
+            fontFamily: fontFamily,
+            color: nameColor,
             fontSize: fontSize * 0.95,
             lineHeight: lineHeight,
             fontWeight: 700,
             textShadow: textShadow,
           ),
           strokeStyle: ChatBubble._strokeTextStyle(
+            fontFamily: fontFamily,
             color: Colors.black,
             fontSize: fontSize * 0.95,
             lineHeight: lineHeight,
@@ -609,6 +587,7 @@ class _AuthorRow extends StatelessWidget {
               _formatTime(message.timestamp),
               textAlign: textAlign,
               style: ChatBubble._chatTextStyle(
+                fontFamily: fontFamily,
                 color: Colors.white.withValues(alpha: 0.6),
                 fontSize: fontSize * 0.8,
                 lineHeight: lineHeight,
@@ -616,6 +595,7 @@ class _AuthorRow extends StatelessWidget {
                 textShadow: textShadow,
               ),
               strokeStyle: ChatBubble._strokeTextStyle(
+                fontFamily: fontFamily,
                 color: Colors.black,
                 fontSize: fontSize * 0.8,
                 lineHeight: lineHeight,

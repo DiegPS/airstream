@@ -1,4 +1,6 @@
-String chatOverlayHtml() => '''<!DOCTYPE html>
+import 'overlay_font.dart';
+
+String chatOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -10,7 +12,7 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     background: transparent;
     overflow: hidden;
     height: 100vh;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: var(--overlay-font-family, 'Segoe UI', sans-serif);
   }
   #root { height: 100%; }
   .overlay-shell {
@@ -67,9 +69,6 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     font-weight: 700;
     line-height: 1.1;
   }
-  .author-name.owner { color: #FFD700; }
-  .author-name.mod { color: #7EA4FF; }
-  .author-name.vip { color: #FF69D4; }
   .badge {
     display: inline-flex;
     align-items: center;
@@ -229,6 +228,7 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
 <body>
 <div id="root"></div>
 <script>
+${overlayFontScript(googleFontsAllowed)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   chromaMode: false,
@@ -523,8 +523,8 @@ function createMessageBubble(message, animate) {
   }
 
   const author = document.createElement('span');
-  author.className = 'author-name' + (message.isOwner ? ' owner' : '') + (message.isModerator ? ' mod' : '') + (message.isVip ? ' vip' : '');
-  if (message.color) author.style.color = message.color;
+  author.className = 'author-name';
+  if (message.nameColor) author.style.color = message.nameColor;
   author.textContent = message.author || '';
   authorRow.appendChild(author);
 
@@ -741,6 +741,7 @@ function renderExistingMessages() {
 }
 
 function applySettings(next) {
+  applyOverlayFont(next);
   settings = { ...settings, ...next };
   applyShellSettings();
   pruneMessages();
@@ -748,9 +749,10 @@ function applySettings(next) {
   scheduleScrollToBottom();
 }
 
-function addMessage(message) {
+function addMessage(message, sequence) {
   const record = {
     message: message,
+    sequence: sequence,
     receivedAt: Date.now(),
     element: createMessageBubble(message, true),
   };
@@ -759,6 +761,16 @@ function addMessage(message) {
   if (resizeObserver) resizeObserver.observe(record.element);
   pruneMessages();
   scheduleScrollToBottom();
+}
+
+function applyNameColors(colors) {
+  for (const record of records) {
+    const color = colors[record.sequence];
+    if (record.message && color) {
+      record.message.nameColor = color;
+      record.element.querySelector('.author-name').style.color = color;
+    }
+  }
 }
 
 function addProviderEvent(event) {
@@ -816,7 +828,8 @@ function connect() {
       const envelope = JSON.parse(event.data);
       if (envelope.type === 'settings') applySettings(envelope.data || {});
       else if (envelope.type === 'reload') window.location.reload();
-      else if (envelope.type === 'message' && envelope.data) addMessage(envelope.data);
+      else if (envelope.type === 'message' && envelope.data) addMessage(envelope.data, envelope.sequence);
+      else if (envelope.type === 'nameColors' && envelope.data) applyNameColors(envelope.data);
       else if (envelope.type === 'moderation' && envelope.data) applyModeration(envelope.data);
       else if (envelope.type === 'providerEvent' && envelope.data) addProviderEvent(envelope.data);
     } catch (error) {

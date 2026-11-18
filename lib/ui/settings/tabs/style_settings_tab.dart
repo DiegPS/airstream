@@ -12,12 +12,14 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _previewCard(ref, l),
+        _TextAndNamesCard(settings: s, onChanged: notifier.update),
         UiCard(
           title: l.appearance,
           icon: Icons.format_size_rounded,
           children: [
             StyledSliderRow(
               label: l.fontSize,
+              wrapLabel: true,
               value: s.fontSize,
               min: 10,
               max: 28,
@@ -26,6 +28,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.lineHeight,
+              wrapLabel: true,
               value: s.chatLineHeight,
               min: 1,
               max: 2,
@@ -33,6 +36,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.fontWeight,
+              wrapLabel: true,
               value: s.chatFontWeight,
               min: 100,
               max: 900,
@@ -48,6 +52,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.maxMessageWidth,
+              wrapLabel: true,
               value: s.chatMaxMessageWidth,
               min: 0.4,
               max: 1.0,
@@ -57,6 +62,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.horizontalPadding,
+              wrapLabel: true,
               value: s.chatHorizontalPadding,
               min: 0,
               max: 64,
@@ -72,6 +78,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
           children: [
             StyledSliderRow(
               label: l.backgroundOpacity,
+              wrapLabel: true,
               value: s.bgOpacity,
               min: 0,
               max: 1,
@@ -80,6 +87,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.bubbleOpacity,
+              wrapLabel: true,
               value: s.messageOpacity,
               min: 0,
               max: 1,
@@ -88,6 +96,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.borderRadius,
+              wrapLabel: true,
               value: s.borderRadius,
               min: 0,
               max: 24,
@@ -96,6 +105,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.messageGap,
+              wrapLabel: true,
               value: s.messageGap,
               min: 0,
               max: 16,
@@ -119,6 +129,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
             ),
             StyledSliderRow(
               label: l.textOutline,
+              wrapLabel: true,
               value: s.chatTextStroke,
               min: 0,
               max: 4,

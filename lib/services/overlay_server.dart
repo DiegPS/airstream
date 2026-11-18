@@ -1,4 +1,5 @@
 import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/application/name_colors.dart';
 import 'package:airstream/services/overlay/rules_api_route.dart';
 import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
@@ -220,7 +221,7 @@ class OverlayServer {
         timestamp: now);
     final sent = _sendCustom({
       'type': 'message',
-      'data': OverlayPayloadEncoder.message(msg),
+      'data': OverlayPayloadEncoder.message(msg, _settings),
       'test': true
     });
     _sendCustom({
@@ -244,6 +245,10 @@ class OverlayServer {
   HttpServer? _server;
   final _clients = <WebSocketChannel>{};
   final _views = <WebSocketChannel, String>{};
+  // Built-in chat displays at most 500 messages. Keep their inputs so name
+  // colors can also update for messages already on screen.
+  final _recentChatMessages = <int, ChatMessage>{};
+  int _nextChatSequence = 0;
   final _featured = <String, _PendingFeaturedMessage>{};
   int _nextDelivery = 0;
   final _giftGroups = <String, _PendingGiftGroup>{};
@@ -400,6 +405,7 @@ class OverlayServer {
         rulesApi: _rulesApi.call,
         templates: () => templateLibrary,
         galleryLanguage: () => _settings.appLanguageCode,
+        settings: () => _settings,
         mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
         customSound: (type) {
           final option = AlertTypeOptions.of(_settings, type);
@@ -429,11 +435,40 @@ class OverlayServer {
   }
 
   void setSettings(SettingsModel settings) {
+    final previous = _settings;
     _settings = settings;
     _updateGoals(settings);
     _updateTimer(settings);
+    if (_nameColorOptions(previous) != _nameColorOptions(settings) &&
+        _recentChatMessages.isNotEmpty &&
+        _views.containsValue('chat')) {
+      _broadcastEnvelope({
+        'type': 'nameColors',
+        'data': {
+          for (final entry in _recentChatMessages.entries)
+            '${entry.key}':
+                nameColorHex(resolveNameColor(entry.value, settings)),
+        },
+      }, view: 'chat');
+    }
     _broadcastSettings();
   }
+
+  static Object _nameColorOptions(SettingsModel s) => (
+        s.nameColorMode,
+        s.nameColorSingle,
+        s.nameRoleColors,
+        s.nameReadability,
+        s.bgOpacity,
+        s.showBubble,
+        s.messageOpacity,
+        s.overlayChromaMode,
+        s.overlayChromaColor,
+        s.overlayShowBubble,
+        s.overlayMessageOpacity,
+        s.overlayTwitchBubbleAccent,
+        s.overlayKickBubbleAccent,
+      );
 
   bool reloadClients() {
     if (_clients.isEmpty) return false;
@@ -678,6 +713,7 @@ class OverlayServer {
     _giftGroups.clear();
     await _msgSub?.cancel();
     _msgSub = null;
+    _recentChatMessages.clear();
     final clients = List<WebSocketChannel>.from(_clients);
     _clients.clear();
     _views.clear();
@@ -709,10 +745,18 @@ class OverlayServer {
   }
 
   void _broadcastMessage(ChatMessage msg) {
-    _broadcastEnvelope({
-      'type': 'message',
-      'data': OverlayPayloadEncoder.message(msg),
-    });
+    if (_clients.isNotEmpty) {
+      final sequence = ++_nextChatSequence;
+      _recentChatMessages[sequence] = msg;
+      if (_recentChatMessages.length > 500) {
+        _recentChatMessages.remove(_recentChatMessages.keys.first);
+      }
+      _broadcastEnvelope({
+        'type': 'message',
+        'sequence': sequence,
+        'data': OverlayPayloadEncoder.message(msg, _settings),
+      });
+    }
     _broadcastAlert(msg);
   }
 
@@ -951,11 +995,12 @@ class OverlayServer {
     }
   }
 
-  bool _broadcastEnvelope(Map<String, dynamic> envelope) {
+  bool _broadcastEnvelope(Map<String, dynamic> envelope, {String? view}) {
     if (_clients.isEmpty) return false;
     var sent = false;
     final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
+      if (view != null && _views[client] != view) continue;
       try {
         client.sink.add(json);
         sent = true;

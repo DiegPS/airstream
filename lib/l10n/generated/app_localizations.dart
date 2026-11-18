@@ -98,6 +98,108 @@ abstract class AppLocalizations {
     Locale('es')
   ];
 
+  /// No description provided for @textAndNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Text and names'**
+  String get textAndNames;
+
+  /// No description provided for @chatFontFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Font family'**
+  String get chatFontFamily;
+
+  /// No description provided for @chatFontWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows fonts'**
+  String get chatFontWindows;
+
+  /// No description provided for @chatFontGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Fonts for OBS'**
+  String get chatFontGoogle;
+
+  /// No description provided for @chatFontOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other installed font'**
+  String get chatFontOther;
+
+  /// No description provided for @chatFontInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 1–48 letters (A–Z), numbers, spaces or hyphens.'**
+  String get chatFontInvalid;
+
+  /// No description provided for @chatFontGoogleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'In the app window this font is used only if it is installed; OBS pages download it'**
+  String get chatFontGoogleNote;
+
+  /// No description provided for @nameColorMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Name colors'**
+  String get nameColorMode;
+
+  /// No description provided for @nameColorPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer’s color'**
+  String get nameColorPlatform;
+
+  /// No description provided for @nameColorPlatformThenGenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewer’s color or generated'**
+  String get nameColorPlatformThenGenerated;
+
+  /// No description provided for @nameColorGenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated for everyone'**
+  String get nameColorGenerated;
+
+  /// No description provided for @nameColorSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Single color'**
+  String get nameColorSingle;
+
+  /// No description provided for @nameColorBrand.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform brand color'**
+  String get nameColorBrand;
+
+  /// No description provided for @nameRoleColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner, moderator and VIP colors'**
+  String get nameRoleColors;
+
+  /// No description provided for @nameReadability.
+  ///
+  /// In en, this message translates to:
+  /// **'Improve readability'**
+  String get nameReadability;
+
+  /// No description provided for @nameColorHex.
+  ///
+  /// In en, this message translates to:
+  /// **'Hex color'**
+  String get nameColorHex;
+
+  /// No description provided for @nameColorUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use color'**
+  String get nameColorUse;
+
   /// No description provided for @language.
   ///
   /// In en, this message translates to:

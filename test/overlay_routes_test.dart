@@ -1,11 +1,13 @@
 import 'support/empty_template_library.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/name_color_mode.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shelf/shelf.dart';
 
@@ -85,5 +87,53 @@ void main() {
     final firstFrame = await own.first.timeout(const Duration(seconds: 5));
     expect(firstFrame, contains('"settings"'));
     await own.close();
+  });
+
+  test('chat clients receive current name colors for visible and new messages',
+      () async {
+    final messages = StreamController<ChatMessage>();
+    final server = OverlayServer(templateLibrary: emptyTemplateLibrary());
+    const settings = SettingsModel();
+    addTearDown(() async {
+      await server.dispose();
+      await messages.close();
+    });
+    await server.start(messages: messages.stream, settings: settings, port: 0);
+    final socket = await WebSocket.connect('ws://127.0.0.1:${server.port}/ws');
+    final frames = StreamIterator<dynamic>(socket);
+    addTearDown(() async {
+      await frames.cancel();
+      await socket.close();
+    });
+
+    Future<Map<String, dynamic>> nextFrame(String type) async {
+      expect(
+          await frames.moveNext().timeout(const Duration(seconds: 5)), isTrue);
+      final frame =
+          jsonDecode(frames.current as String) as Map<String, dynamic>;
+      expect(frame['type'], type);
+      return frame;
+    }
+
+    await nextFrame('settings');
+    socket.add(jsonEncode({'type': 'register', 'view': 'chat'}));
+    await nextFrame('registered');
+    final message = ChatMessage(
+      id: 'message',
+      author: const ChatAuthor(name: 'Viewer', channelId: ''),
+      platform: Platform.youtube,
+      items: const [MessageItem.text('Hello')],
+      timestamp: DateTime.utc(2026),
+    );
+    messages.add(message);
+    final first = await nextFrame('message');
+    expect(first['data']['nameColor'], '#FFFFFF');
+
+    server.setSettings(settings.copyWith(nameColorMode: NameColorMode.brand));
+    final updatedColors = await nextFrame('nameColors');
+    expect(updatedColors['data'], {'${first['sequence']}': '#FF4E45'});
+    await nextFrame('settings');
+    messages.add(message);
+    expect((await nextFrame('message'))['data']['nameColor'], '#FF4E45');
   });
 }

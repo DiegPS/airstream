@@ -80,6 +80,12 @@ abstract final class OverlayStylePresets {
   static SettingsModel restoreVisual(
           SettingsModel current, SettingsModel previous) =>
       current.copyWith(
+        chatFontFamily: previous.chatFontFamily,
+        chatFontInstalledOnly: previous.chatFontInstalledOnly,
+        nameColorMode: previous.nameColorMode,
+        nameColorSingle: previous.nameColorSingle,
+        nameRoleColors: previous.nameRoleColors,
+        nameReadability: previous.nameReadability,
         overlayFontSize: previous.overlayFontSize,
         overlayBgOpacity: previous.overlayBgOpacity,
         overlayMessageOpacity: previous.overlayMessageOpacity,
@@ -131,6 +137,12 @@ abstract final class OverlayStylePresets {
   }
 
   static List<Object> _visualValues(SettingsModel s) => [
+        s.chatFontFamily,
+        s.chatFontInstalledOnly,
+        s.nameColorMode,
+        s.nameColorSingle,
+        s.nameRoleColors,
+        s.nameReadability,
         s.overlayFontSize,
         s.overlayBgOpacity,
         s.overlayMessageOpacity,

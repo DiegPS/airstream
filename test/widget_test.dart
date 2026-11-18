@@ -853,6 +853,85 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  for (final (language, sidebar, appearance, heading, brand, invalidFont) in [
+    (
+      'en',
+      'Show sidebar (Ctrl+B)',
+      'Appearance',
+      'Text and names',
+      'Platform brand color',
+      'Enter 1–48 letters (A–Z), numbers, spaces or hyphens.'
+    ),
+    (
+      'es',
+      'Mostrar menú lateral (Ctrl+B)',
+      'Apariencia',
+      'Texto y nombres',
+      'Color de marca de la plataforma',
+      'Escribe de 1 a 48 letras (A–Z), números, espacios o guiones.'
+    ),
+  ]) {
+    testWidgets(
+        'text and names fits 360 px and updates the preview ($language)',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 840);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final settings = _WidgetTestSettings(language);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [settingsProvider.overrideWith((ref) => settings)],
+          child: const AirstreamApp(),
+        ),
+      );
+      await tester.tap(find.byTooltip(sidebar));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(appearance));
+      await tester.pumpAndSettle();
+      expect(find.text(heading), findsOneWidget);
+      final preview = find.byKey(const Key('name-color-preview'));
+      await tester.ensureVisible(preview);
+      await tester.pumpAndSettle();
+      Color? nameColor(String name) => tester
+          .widget<Text>(find.descendant(of: preview, matching: find.text(name)))
+          .style
+          ?.color;
+      expect(nameColor('Alex'), Colors.white);
+      expect(nameColor('Sam'), const Color(0xFF7EA4FF));
+      expect(nameColor('Luz'), const Color(0xFFB7FF8D));
+
+      final mode = find.byKey(const Key('name-color-mode'));
+      await tester.ensureVisible(mode);
+      await tester.pumpAndSettle();
+      await tester.tap(mode);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(brand).last);
+      await tester.pumpAndSettle();
+      expect(nameColor('Alex'), const Color(0xFFFF4E45));
+      expect(nameColor('Sam'), const Color(0xFF7EA4FF));
+      expect(nameColor('Luz'), const Color(0xFF53FC18));
+
+      final font = find.byKey(const Key('font-family'));
+      tester.widget<DropdownButton<String>>(font).onChanged!('');
+      await tester.pumpAndSettle();
+      final custom = find.byKey(const Key('font-family-custom'));
+      await tester.ensureVisible(custom);
+      await tester.enterText(custom, 'Inter;');
+      await tester.pumpAndSettle();
+      expect(find.text(invalidFont), findsOneWidget);
+      expect(settings.state.chatFontFamily, 'Segoe UI');
+      await tester.enterText(custom, 'Inter');
+      await tester.pumpAndSettle();
+      expect(find.text(invalidFont), findsNothing);
+      expect(settings.state.chatFontFamily, 'Inter');
+      expect(settings.state.chatFontInstalledOnly, isTrue);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('hides the app name while the sidebar is hidden',
       (WidgetTester tester) async {
     await tester.pumpWidget(

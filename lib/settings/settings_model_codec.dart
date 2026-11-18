@@ -2,6 +2,9 @@ import 'package:airstream/application/rules/rule_model.dart';
 import 'dart:convert';
 
 import 'settings_model.dart';
+import 'chat_fonts.dart';
+import 'name_color_mode.dart';
+import 'settings_input_normalizer.dart';
 import 'alert_type_options.dart';
 import 'goals.dart';
 import 'package:airstream/application/chat_queue.dart';
@@ -37,6 +40,14 @@ abstract final class SettingsModelCodec {
         'chatHorizontalPadding': model.chatHorizontalPadding,
         'chatLineHeight': model.chatLineHeight,
         'chatFontWeight': model.chatFontWeight,
+        'chatFontFamily': ChatFonts.normalize(model.chatFontFamily),
+        'chatFontInstalledOnly': model.chatFontInstalledOnly,
+        'nameColorMode': model.nameColorMode.name,
+        'nameColorSingle': SettingsInputNormalizer.hexColor(
+            model.nameColorSingle,
+            fallback: defaultNameColorSingle),
+        'nameRoleColors': model.nameRoleColors,
+        'nameReadability': model.nameReadability,
         'chatTextShadow': model.chatTextShadow,
         'chatTextStroke': model.chatTextStroke,
         'maxMessages': model.maxMessages,
@@ -206,6 +217,15 @@ abstract final class SettingsModelCodec {
           (j['chatHorizontalPadding'] as num?)?.toDouble() ?? 24.0,
       chatLineHeight: (j['chatLineHeight'] as num?)?.toDouble() ?? 1.5,
       chatFontWeight: (j['chatFontWeight'] as num?)?.toDouble() ?? 400.0,
+      chatFontFamily: ChatFonts.normalize(j['chatFontFamily']),
+      chatFontInstalledOnly: j['chatFontInstalledOnly'] == true,
+      nameColorMode: NameColorMode.values.asNameMap()[j['nameColorMode']] ??
+          NameColorMode.platform,
+      nameColorSingle: SettingsInputNormalizer.hexColor(
+          j['nameColorSingle'] is String ? j['nameColorSingle'] as String : '',
+          fallback: defaultNameColorSingle),
+      nameRoleColors: j['nameRoleColors'] != false,
+      nameReadability: j['nameReadability'] != false,
       chatTextShadow: j['chatTextShadow'] as bool? ?? false,
       chatTextStroke: (j['chatTextStroke'] as num?)?.toDouble() ?? 0.0,
       maxMessages: j['maxMessages'] as int? ?? 200,

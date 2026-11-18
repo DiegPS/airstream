@@ -3,9 +3,13 @@ import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/chat_fonts.dart';
+import 'package:airstream/application/name_colors.dart';
 
 abstract final class OverlayPayloadEncoder {
-  static Map<String, dynamic> message(ChatMessage msg) => {
+  static Map<String, dynamic> message(ChatMessage msg,
+          [SettingsModel settings = const SettingsModel()]) =>
+      {
         'platform': msg.platform.name,
         'id': msg.id,
         'author': msg.author.name,
@@ -21,6 +25,7 @@ abstract final class OverlayPayloadEncoder {
                 })
             .toList(),
         'color': msg.author.color,
+        'nameColor': nameColorHex(resolveNameColor(msg, settings)),
         'text': msg.plainText,
         'items': msg.items
             .map((item) => item.isEmoji
@@ -97,8 +102,14 @@ abstract final class OverlayPayloadEncoder {
         'data': event.data,
       };
 
+  static String? googleFontStylesheet(SettingsModel settings) =>
+      ChatFonts.googleStylesheet(ChatFonts.normalize(settings.chatFontFamily),
+          installedOnly: settings.chatFontInstalledOnly);
+
   static Map<String, dynamic> settings(SettingsModel settings) => {
         'appLanguageCode': settings.appLanguageCode,
+        'chatFontFamily': ChatFonts.normalize(settings.chatFontFamily),
+        'googleFontStylesheet': googleFontStylesheet(settings),
         'chromaMode': settings.overlayChromaMode,
         'chromaColor': settings.overlayChromaColor,
         'showGrid': settings.overlayShowGrid,

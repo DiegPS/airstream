@@ -1,4 +1,6 @@
 import 'package:airstream/application/chat_queue.dart';
+import 'chat_fonts.dart';
+import 'name_color_mode.dart';
 import 'settings_model_codec.dart';
 
 const defaultProviderEventBannerKinds = <String>[
@@ -63,6 +65,12 @@ class SettingsModel {
   final double chatHorizontalPadding;
   final double chatLineHeight;
   final double chatFontWeight;
+  final String chatFontFamily;
+  final bool chatFontInstalledOnly;
+  final NameColorMode nameColorMode;
+  final String nameColorSingle;
+  final bool nameRoleColors;
+  final bool nameReadability;
   final bool chatTextShadow;
   final double chatTextStroke;
   final int maxMessages;
@@ -219,6 +227,12 @@ class SettingsModel {
     this.chatHorizontalPadding = 24.0,
     this.chatLineHeight = 1.5,
     this.chatFontWeight = 400.0,
+    this.chatFontFamily = ChatFonts.defaultFamily,
+    this.chatFontInstalledOnly = false,
+    this.nameColorMode = NameColorMode.platform,
+    this.nameColorSingle = defaultNameColorSingle,
+    this.nameRoleColors = true,
+    this.nameReadability = true,
     this.chatTextShadow = false,
     this.chatTextStroke = 0.0,
     this.maxMessages = 200,
@@ -367,6 +381,12 @@ class SettingsModel {
     double? chatHorizontalPadding,
     double? chatLineHeight,
     double? chatFontWeight,
+    String? chatFontFamily,
+    bool? chatFontInstalledOnly,
+    NameColorMode? nameColorMode,
+    String? nameColorSingle,
+    bool? nameRoleColors,
+    bool? nameReadability,
     bool? chatTextShadow,
     double? chatTextStroke,
     int? maxMessages,
@@ -517,6 +537,13 @@ class SettingsModel {
             chatHorizontalPadding ?? this.chatHorizontalPadding,
         chatLineHeight: chatLineHeight ?? this.chatLineHeight,
         chatFontWeight: chatFontWeight ?? this.chatFontWeight,
+        chatFontFamily: chatFontFamily ?? this.chatFontFamily,
+        chatFontInstalledOnly:
+            chatFontInstalledOnly ?? this.chatFontInstalledOnly,
+        nameColorMode: nameColorMode ?? this.nameColorMode,
+        nameColorSingle: nameColorSingle ?? this.nameColorSingle,
+        nameRoleColors: nameRoleColors ?? this.nameRoleColors,
+        nameReadability: nameReadability ?? this.nameReadability,
         chatTextShadow: chatTextShadow ?? this.chatTextShadow,
         chatTextStroke: chatTextStroke ?? this.chatTextStroke,
         maxMessages: maxMessages ?? this.maxMessages,

@@ -1,6 +1,8 @@
 import 'poll_results.dart';
 
-String pollOverlayHtml() => '''<!DOCTYPE html>
+import 'overlay_font.dart';
+
+String pollOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,7 +11,7 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
 <style>
   * { box-sizing: border-box; }
   html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
-  body { display: flex; align-items: flex-start; justify-content: center; padding: 24px; font-family: system-ui, sans-serif; }
+  body { display: flex; align-items: flex-start; justify-content: center; padding: 24px; font-family: var(--overlay-font-family, system-ui, sans-serif); }
   #poll {
     --poll-muted: rgba(255,255,255,.7);
     --poll-track: rgba(255,255,255,.12);
@@ -43,6 +45,7 @@ $pollResultsCss
 <body>
 <div id="poll" role="status" aria-live="polite"></div>
 <script>
+${overlayFontScript(googleFontsAllowed)}
 (() => {
   // 208 seconds reads better as 3:28.
   const clock = (s) => s < 60 ? s + ' s' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -112,6 +115,7 @@ $pollResultsCss
       try {
         const envelope = JSON.parse(event.data);
         if (envelope.type === 'settings' && envelope.data) {
+          applyOverlayFont(envelope.data);
           language = envelope.data.appLanguageCode || 'en';
           render();
         } else if (envelope.type === 'poll') {

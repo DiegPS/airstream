@@ -9,6 +9,59 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get textAndNames => 'Text and names';
+
+  @override
+  String get chatFontFamily => 'Font family';
+
+  @override
+  String get chatFontWindows => 'Windows fonts';
+
+  @override
+  String get chatFontGoogle => 'Google Fonts for OBS';
+
+  @override
+  String get chatFontOther => 'Other installed font';
+
+  @override
+  String get chatFontInvalid =>
+      'Enter 1–48 letters (A–Z), numbers, spaces or hyphens.';
+
+  @override
+  String get chatFontGoogleNote =>
+      'In the app window this font is used only if it is installed; OBS pages download it';
+
+  @override
+  String get nameColorMode => 'Name colors';
+
+  @override
+  String get nameColorPlatform => 'Viewer’s color';
+
+  @override
+  String get nameColorPlatformThenGenerated => 'Viewer’s color or generated';
+
+  @override
+  String get nameColorGenerated => 'Generated for everyone';
+
+  @override
+  String get nameColorSingle => 'Single color';
+
+  @override
+  String get nameColorBrand => 'Platform brand color';
+
+  @override
+  String get nameRoleColors => 'Owner, moderator and VIP colors';
+
+  @override
+  String get nameReadability => 'Improve readability';
+
+  @override
+  String get nameColorHex => 'Hex color';
+
+  @override
+  String get nameColorUse => 'Use color';
+
+  @override
   String get language => 'Language';
 
   @override

@@ -27,6 +27,8 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     // Only whether a chat can start matters here, not every setting.
     final hasChannels = ref.watch(settingsProvider.select(hasStartableChat));
     final ttsSpeaking = ref.watch(ttsBusyProvider).valueOrNull ?? false;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 380;
 
     return Material(
       color: Colors.transparent,
@@ -51,22 +53,28 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                 Positioned.fill(
                   child: Row(
                     children: [
-                      const SizedBox(width: 12),
+                      SizedBox(width: compact ? 8 : 12),
                       Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          // Dragging the caption still moves the window, and
-                          // the status dots can be hovered for details.
-                          child: DragToMoveArea(
-                            child: _TitleBarCaption(
-                              overlayUrl: overlayUrl,
-                              showAppName: sidebarVisible,
-                            ),
-                          ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth < 28) {
+                              return const SizedBox.shrink();
+                            }
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: DragToMoveArea(
+                                child: _TitleBarCaption(
+                                  overlayUrl: overlayUrl,
+                                  showAppName: sidebarVisible,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
                       _TopBarActionButton(
+                        showLabel: !compact,
                         label: isRunning
                             ? l.stop
                             : sessionPhase == ChatSessionPhase.failed
@@ -122,7 +130,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                         ),
                       ],
                       // A very narrow window has no room for it.
-                      if (MediaQuery.sizeOf(context).width >= 460) ...[
+                      if (width >= 460) ...[
                         const SizedBox(width: 6),
                         const _ChatFilterButton(),
                       ],
@@ -139,7 +147,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                       const SizedBox(width: 6),
                       const WindowControlBar(),
-                      const SizedBox(width: 8),
+                      SizedBox(width: compact ? 4 : 8),
                     ],
                   ),
                 ),
@@ -261,6 +269,7 @@ class _TopBarActionButton extends StatelessWidget {
     required this.icon,
     required this.enabled,
     required this.accentColor,
+    required this.showLabel,
     this.onTap,
   });
 
@@ -268,6 +277,7 @@ class _TopBarActionButton extends StatelessWidget {
   final IconData icon;
   final bool enabled;
   final Color accentColor;
+  final bool showLabel;
   final VoidCallback? onTap;
 
   @override
@@ -298,15 +308,17 @@ class _TopBarActionButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(icon, size: 15, color: foregroundColor),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: foregroundColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                if (showLabel) ...[
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: foregroundColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

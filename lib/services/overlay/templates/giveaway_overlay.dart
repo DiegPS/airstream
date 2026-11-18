@@ -1,9 +1,12 @@
-String giveawayOverlayHtml() => '''<!DOCTYPE html>
+import 'overlay_font.dart';
+
+String giveawayOverlayHtml({bool googleFontsAllowed = false}) =>
+    '''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Airstream Giveaway</title><style>
 * { box-sizing: border-box; }
 html, body { width:100%;height:100%;margin:0;overflow:hidden;background:transparent; }
-body { display:flex;justify-content:center;align-items:flex-start;padding:24px;font-family:system-ui,sans-serif; }
+body { display:flex;justify-content:center;align-items:flex-start;padding:24px;font-family:var(--overlay-font-family,system-ui,sans-serif); }
 #giveaway { width:min(560px,100%);padding:18px 20px;border-radius:14px;color:white;background:rgba(20,20,20,.9);border-bottom:5px solid #53FC18;box-shadow:0 8px 28px rgba(0,0,0,.45);overflow-wrap:anywhere; }
 #giveaway[hidden] { display:none; }
 h1 { margin:0 0 14px;font-size:32px;line-height:1.25; }
@@ -12,6 +15,7 @@ p { margin:0;color:#ccc;font-size:17px; }
 .dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
 ::selection { background:#53FC18;color:#141414; }
 </style></head><body><div id="giveaway" hidden role="status" aria-live="polite"></div><script>
+${overlayFontScript(googleFontsAllowed)}
 (() => {
   const STRINGS = {
     en: { title: 'Airstream Giveaway', participants: (n) => group(n) + ' participants', closed: 'Entries closed', winner: 'Winner', drawing: 'Drawing…' },
@@ -69,6 +73,7 @@ p { margin:0;color:#ccc;font-size:17px; }
       try {
         const envelope = JSON.parse(event.data);
         if (envelope.type === 'settings' && envelope.data) {
+          applyOverlayFont(envelope.data);
           language = envelope.data.appLanguageCode || 'en'; render();
         } else if (envelope.type === 'giveaway') {
           const next = envelope.data || null;

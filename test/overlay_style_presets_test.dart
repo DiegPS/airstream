@@ -1,9 +1,16 @@
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/settings/name_color_mode.dart';
 import 'package:airstream/settings/overlay_style_presets.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _visualKeys = {
+  'chatFontFamily',
+  'chatFontInstalledOnly',
+  'nameColorMode',
+  'nameColorSingle',
+  'nameRoleColors',
+  'nameReadability',
   'overlayFontSize',
   'overlayBgOpacity',
   'overlayMessageOpacity',
@@ -109,6 +116,12 @@ SettingsModel _different() {
     chatHorizontalPadding: d.chatHorizontalPadding + 1,
     chatLineHeight: d.chatLineHeight + 1,
     chatFontWeight: d.chatFontWeight + 1,
+    chatFontFamily: 'My Installed Font',
+    chatFontInstalledOnly: true,
+    nameColorMode: NameColorMode.single,
+    nameColorSingle: '#FF8800',
+    nameRoleColors: false,
+    nameReadability: false,
     chatTextShadow: !d.chatTextShadow,
     chatTextStroke: d.chatTextStroke + 1,
     maxMessages: d.maxMessages + 1,

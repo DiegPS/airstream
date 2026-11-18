@@ -1,4 +1,7 @@
-String captionsOverlayHtml() => '''<!DOCTYPE html>
+import 'overlay_font.dart';
+
+String captionsOverlayHtml({bool googleFontsAllowed = false}) =>
+    '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -14,7 +17,7 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
     border-radius: .35em;
     color: white;
     background: rgba(0, 0, 0, .72);
-    font: 700 clamp(24px, 4vw, 64px)/1.25 system-ui, sans-serif;
+    font: 700 clamp(24px, 4vw, 64px)/1.25 var(--overlay-font-family, system-ui, sans-serif);
     text-align: center;
     text-shadow: 0 2px 4px #000;
     opacity: 0;
@@ -26,6 +29,7 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
 <body>
 <div id="caption" role="status" aria-live="polite"></div>
 <script>
+${overlayFontScript(googleFontsAllowed)}
 (() => {
   const caption = document.getElementById('caption');
   let retry;
@@ -40,6 +44,7 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
       try {
         const envelope = JSON.parse(event.data);
         if (envelope.type === 'reload') return location.reload();
+        if (envelope.type === 'settings' && envelope.data) return applyOverlayFont(envelope.data);
         if (envelope.type !== 'caption') return;
         caption.textContent = envelope.data.text || '';
         caption.classList.toggle('visible', Boolean(caption.textContent));

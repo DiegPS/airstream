@@ -1,4 +1,7 @@
-String alertsOverlayHtml() => '''<!DOCTYPE html>
+import 'overlay_font.dart';
+
+String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
+    '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -10,7 +13,7 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
     background: transparent;
     overflow: hidden;
     height: 100vh;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: var(--overlay-font-family, 'Segoe UI', sans-serif);
   }
   #root { height: 100%; }
   .alert-stage {
@@ -109,6 +112,7 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
 <body>
 <div id="root"></div>
 <script>
+${overlayFontScript(googleFontsAllowed)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   alertFontSize: 28,
@@ -341,6 +345,7 @@ let socket = null;
 let shuttingDown = false;
 
 function applySettings(next) {
+  applyOverlayFont(next);
   settings = { ...settings, ...next };
   document.documentElement.lang = settings.appLanguageCode || 'en';
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';

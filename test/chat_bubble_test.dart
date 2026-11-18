@@ -1,7 +1,10 @@
 import 'package:airstream/l10n/app_localization_delegates.dart';
+import 'package:airstream/application/name_colors.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/name_color_mode.dart';
+import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/chat_alignment.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart';
@@ -11,6 +14,57 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('uses the payload name colors and the selected installed font',
+      (tester) async {
+    const settings = SettingsModel(
+      chatFontFamily: 'Georgia',
+      nameColorMode: NameColorMode.platformThenGenerated,
+      showAvatars: false,
+    );
+    final messages = [
+      _message(),
+      for (final (platform, name, color, moderator) in [
+        (Platform.twitch, 'Moderator', '#FF5566', true),
+        (Platform.kick, 'Dark name', '#08002B', false),
+      ])
+        ChatMessage(
+          platform: platform,
+          id: name,
+          author: ChatAuthor(name: name, channelId: name, color: color),
+          items: const [MessageItem.text('Hello')],
+          timestamp: DateTime.utc(2026),
+          isModerator: moderator,
+        ),
+    ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider
+              .overrideWith((ref) => _TestSettingsNotifier(settings)),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Column(
+              children: messages
+                  .map((message) => ChatBubble(message: message))
+                  .toList(),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final message in messages) {
+      final style = tester.widget<Text>(find.text(message.author.name)).style!;
+      final payload = OverlayPayloadEncoder.message(message, settings);
+      expect(payload['nameColor'], nameColorHex(style.color!));
+      expect(payload['color'], message.author.color);
+      expect(style.fontFamily, 'Georgia');
+      expect(style.fontFamilyFallback, ['Segoe UI']);
+    }
+  });
+
   test('maps chat position to horizontal alignment', () {
     expect(chatHorizontalAlignment('left'), Alignment.centerLeft);
     expect(chatHorizontalAlignment('center'), Alignment.center);
