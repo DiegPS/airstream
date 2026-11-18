@@ -620,6 +620,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get youtubeBroadcastEnded => 'La transmisión de YouTube terminó';
 
   @override
+  String get youtubePartiallyConnected =>
+      'YouTube: una de las dos transmisiones no se pudo conectar';
+
+  @override
   String retryPlatform(String platform) {
     return 'Reintentar $platform';
   }

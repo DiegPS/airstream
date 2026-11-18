@@ -211,6 +211,7 @@
   "retry": "Retry",
   "obsPasswordNotSaved": "OBS password not saved",
   "youtubeBroadcastEnded": "YouTube broadcast ended",
+  "youtubePartiallyConnected": "YouTube: one of the two streams could not connect",
   "retryPlatform": "Retry {platform}",
   "@retryPlatform": {
     "placeholders": {"platform": {"type": "String"}}

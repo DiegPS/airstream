@@ -1250,6 +1250,12 @@ abstract class AppLocalizations {
   /// **'YouTube broadcast ended'**
   String get youtubeBroadcastEnded;
 
+  /// No description provided for @youtubePartiallyConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube: one of the two streams could not connect'**
+  String get youtubePartiallyConnected;
+
   /// No description provided for @retryPlatform.
   ///
   /// In en, this message translates to:

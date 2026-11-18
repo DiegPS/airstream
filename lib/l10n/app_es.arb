@@ -192,6 +192,7 @@
   "retry": "Reintentar",
   "obsPasswordNotSaved": "Contraseña de OBS sin guardar",
   "youtubeBroadcastEnded": "La transmisión de YouTube terminó",
+  "youtubePartiallyConnected": "YouTube: una de las dos transmisiones no se pudo conectar",
   "retryPlatform": "Reintentar {platform}",
   "@retryPlatform": {
     "placeholders": {"platform": {"type": "String"}}

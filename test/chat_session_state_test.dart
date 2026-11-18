@@ -73,6 +73,17 @@ void main() {
     expect(combineYoutubeChatStatuses(ended, connected), connected);
   });
 
+  test('a dual YouTube chat with one failed stream is partly connected', () {
+    const connected = (ServiceStatus.connected, null);
+    const failed = (ServiceStatus.error, 'Video not found');
+    // Not "connecting" forever: connected, carrying the failure detail.
+    expect(combineYoutubeChatStatuses(connected, failed),
+        (ServiceStatus.connected, 'Video not found'));
+    expect(combineYoutubeChatStatuses((ServiceStatus.error, null), connected),
+        (ServiceStatus.connected, youtubePartialStatus));
+    expect(combineYoutubeChatStatuses(connected, connected), connected);
+  });
+
   test('starts as connecting before the first status event arrives', () {
     expect(
       resolveChatSessionPhase(

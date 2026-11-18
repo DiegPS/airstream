@@ -655,6 +655,15 @@ class AppController {
     }
     _ruleEndTimer?.cancel();
     _ruleEndTimer = null;
+    // A watch only counts while an enabled subathon.ended rule is listening:
+    // turning automation off forgets it, so turning it back on after the
+    // deadline cannot rearm or replay that end.
+    if (!rules.active ||
+        !rules.rules.any((r) =>
+            r['enabled'] == true &&
+            (r['trigger'] as Map)['type'] == 'subathon.ended')) {
+      _watchedSubathonDeadline = null;
+    }
     if (rules.active) {
       if (previous != null && !restoringBackup) {
         for (final e in settings.goals.entries) {
@@ -670,8 +679,12 @@ class AppController {
                 origin: RuleEventOrigin.current));
           }
         }
+        // Both end paths (the timer and a settings edit that normalizes the
+        // phase) fire only for a deadline automation was watching ahead of
+        // time; one that ran out with automation off stays silent.
         if (previous.subathonPhase == 'running' &&
             previous.subathonEndsAtMs != _silentSubathonDeadline &&
+            previous.subathonEndsAtMs == _watchedSubathonDeadline &&
             settings.subathonPhase == 'ended') {
           rules.handle(RuleEvent(
               type: 'subathon.ended',

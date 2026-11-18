@@ -76,6 +76,19 @@ void main() {
     });
   }
 
+  test('a chat command rule needs a command it can match', () {
+    final rule = RuleSchema.newRule('chat.command', id: 'test')
+      ..['actions'] = [
+        {'id': 'a', 'type': 'tts.say', 'text': 'hola'}
+      ];
+    expect(ruleProblems(rule), isEmpty);
+    (rule['trigger'] as Map)['command'] = '';
+    // The editor flags it, and a stored or imported copy is marked invalid
+    // instead of being enabled as a rule that can never run.
+    expect(ruleProblems(rule).keys, contains('trigger-command'));
+    expect(RuleSchema.sanitize([rule]).single['invalid'], isTrue);
+  });
+
   test('clock start and old giveaway draws need no numeric parameter', () {
     final actions = [
       {'id': 'a', 'type': 'clock', 'op': 'start'},

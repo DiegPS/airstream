@@ -57,8 +57,13 @@ abstract final class RuleSchema {
       'text': RuleField.text(min: 1, max: 100, fallback: 'hello')
     },
     'chat.command': {
+      // A blank command can never match a chat command event, so it is
+      // invalid rather than a rule that silently never runs.
       'command': RuleField.text(
-          max: 31, pattern: r'^![A-Za-z0-9_]{1,30}$', fallback: '!hello')
+          min: 2,
+          max: 31,
+          pattern: r'^![A-Za-z0-9_]{1,30}$',
+          fallback: '!hello')
     },
     'chat.firstMessage': {},
     'support.superchat': {

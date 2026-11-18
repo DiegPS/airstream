@@ -1303,6 +1303,43 @@ void main() {
       a.flushMicrotasks();
     });
   });
+
+  test('a subathon that ran out with automation off never fires its end rule',
+      () async {
+    final server = RuleOverlay()..feedSeen = true;
+    final c = makeController(FakeChannelChatClient(), server);
+    addTearDown(c.dispose);
+    final rule = {
+      ...RuleSchema.newRule('subathon.ended', id: 'end'),
+      'enabled': true,
+      'actions': [
+        {'id': 'send', 'type': 'template.trigger', 'name': 'end', 'data': ''}
+      ],
+    };
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Watched while ahead, then automation is turned off before it ends.
+    final running = SettingsModel(
+        overlayEnabled: false,
+        rulesEnabled: true,
+        rules: [rule],
+        subathonPhase: 'running',
+        subathonEndsAtMs: now + 60000);
+    c.applySettings(running, connectChats: false);
+    c.applySettings(running.copyWith(rulesEnabled: false), connectChats: false);
+    // It runs out; automation comes back; a later edit (any subathon
+    // setting) normalizes the phase to ended.
+    final expired = running.copyWith(subathonEndsAtMs: now - 1000);
+    c.applySettings(expired.copyWith(rulesEnabled: false), connectChats: false);
+    c.applySettings(expired, connectChats: false);
+    c.applySettings(expired.copyWith(subathonPhase: 'ended'),
+        connectChats: false);
+    // Let the rule engine drain any run it accepted.
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(c.rules.history, isEmpty);
+    expect(server.triggers, isEmpty);
+  });
   test('starting each chat session clears recent alerts, settings edits do not',
       () async {
     final youtube = FakeYouTubeChatClient();

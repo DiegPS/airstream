@@ -50,7 +50,12 @@ class _ConnectionDots extends ConsumerWidget {
                 )
               : statusMap[p.$3];
           final serviceStatus = s?.$1 ?? ServiceStatus.idle;
+          // Dual YouTube with one stream up and the other failed.
+          final partial = p.$3 == 'youtube' &&
+              serviceStatus == ServiceStatus.connected &&
+              s?.$2 != null;
           final color = switch (serviceStatus) {
+            ServiceStatus.connected when partial => Colors.orange,
             ServiceStatus.connected => const Color(0xFF53FC18),
             ServiceStatus.connecting => Colors.amber,
             ServiceStatus.error => Colors.red,
@@ -58,6 +63,8 @@ class _ConnectionDots extends ConsumerWidget {
           };
           return Tooltip(
             message: switch (serviceStatus) {
+              ServiceStatus.connected when partial =>
+                l.youtubePartiallyConnected,
               ServiceStatus.connected => l.platformStatusConnected(p.$4),
               ServiceStatus.connecting => s?.$2 == youtubeWaitingForLiveStatus
                   ? l.youtubeWaitingForLive

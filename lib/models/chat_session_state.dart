@@ -82,6 +82,15 @@ ChatSessionPhase resolveChatSessionPhase({
       status == ServiceStatus.error || status == ServiceStatus.ended)) {
     return (ServiceStatus.error, horizontal?.$2 ?? vertical?.$2);
   }
+  // One stream works and the other failed: YouTube is up, but partially.
+  // The failing stream's message travels with the connected status so the
+  // title bar can flag it instead of showing "connecting" forever.
+  if (statuses.contains(ServiceStatus.connected) &&
+      statuses.contains(ServiceStatus.error)) {
+    final failed =
+        horizontal?.$1 == ServiceStatus.error ? horizontal : vertical;
+    return (ServiceStatus.connected, failed?.$2 ?? youtubePartialStatus);
+  }
   return (ServiceStatus.connecting, null);
 }
 
@@ -118,3 +127,7 @@ bool hasSingleYoutubeChat(SettingsModel settings) =>
 
 /// Status detail while YouTube waits for the channel to go live.
 const youtubeWaitingForLiveStatus = 'youtube-waiting-for-live';
+
+/// Fallback detail for a dual YouTube chat where one stream connected and the
+/// other failed without a message.
+const youtubePartialStatus = 'youtube-partial';
