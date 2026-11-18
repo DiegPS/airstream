@@ -289,7 +289,10 @@ class TwitchService {
             : notice.message.id,
         timestamp: notice.timestamp,
         authorName: notice.senderName ?? notice.message.author.name,
+        authorChannelId:
+            notice.message.author.id ?? notice.message.author.login,
         text: notice.systemMessage ?? notice.message.plainText,
+        viewerText: notice.message.plainText,
         count: notice.viewerCount ?? notice.milestoneValue,
         data: _userNoticeData(notice),
       );

@@ -568,6 +568,10 @@ function checkWordCloudModeration() {
   assert.deepEqual(words(), ['cedar', 'fern', 'maple', 'moss']);
   view.send('moderation', {scope: 'author', platform: 'twitch', authorName: 'BETO'});
   assert.deepEqual(words(), ['cedar', 'fern']);
+  view.send('message', {id: '', sequence: 6, platform: 'youtube', author: 'Ana', text: 'violet'});
+  view.send('message', {id: '', sequence: 7, platform: 'youtube', author: 'Ana', text: 'rose'});
+  view.send('moderation', {scope: 'message', platform: 'youtube', messageId: '', sequence: 6});
+  assert.deepEqual(words(), ['cedar', 'fern', 'rose']);
   view.send('moderation', {scope: 'platform', platform: 'youtube'});
   assert.deepEqual(words(), []);
   assert.equal(view.nodes.stage.hidden, true);

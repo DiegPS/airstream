@@ -4617,6 +4617,12 @@ abstract class AppLocalizations {
   /// **'Import .zip'**
   String get templateImport;
 
+  /// No description provided for @templatePlatformImages.
+  ///
+  /// In en, this message translates to:
+  /// **'This template can load images from YouTube, Twitch, Kick, 7TV, BetterTTV, and FrankerFaceZ.'**
+  String get templatePlatformImages;
+
   /// No description provided for @templateDuplicate.
   ///
   /// In en, this message translates to:

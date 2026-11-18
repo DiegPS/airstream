@@ -901,6 +901,7 @@
   "templateFieldColorInvalid": "Usa #rrggbb o #rrggbbaa. Este color no se ha guardado.",
   "templateExport": "Exportar .zip",
   "templateImport": "Importar .zip",
+  "templatePlatformImages": "Esta plantilla puede cargar imágenes de YouTube, Twitch, Kick, 7TV, BetterTTV y FrankerFaceZ.",
   "templateDuplicate": "Duplicar",
   "templateCopyWord": "copia",
   "templateArchiveDone": "Plantilla guardada",

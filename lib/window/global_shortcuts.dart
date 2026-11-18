@@ -124,9 +124,13 @@ class GlobalShortcutsNotifier extends StateNotifier<Set<GlobalShortcutAction>>
 
   Future<void> _apply(Map<GlobalShortcutAction, String> shortcuts) async {
     final failed = {...state};
-    for (final action in GlobalShortcutAction.values) {
-      final wanted = shortcuts[action] ?? '';
-      if (_registered[action] == wanted) continue;
+    final changed = {
+      for (final action in GlobalShortcutAction.values)
+        if (_registered[action] != (shortcuts[action] ?? ''))
+          action: shortcuts[action] ?? '',
+    };
+    // Windows rejects a binding while another action still owns it.
+    for (final action in changed.keys) {
       if (_registered.remove(action) != null) {
         try {
           await airWindow.unregisterGlobalHotKey(_id(action));
@@ -134,6 +138,8 @@ class GlobalShortcutsNotifier extends StateNotifier<Set<GlobalShortcutAction>>
           AppLogger.warning('Global shortcut release failed', error: error);
         }
       }
+    }
+    for (final MapEntry(key: action, value: wanted) in changed.entries) {
       failed.remove(action);
       final shortcut = GlobalShortcut.parse(wanted);
       if (shortcut == null) continue;

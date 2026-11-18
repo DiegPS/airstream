@@ -191,7 +191,20 @@ Future<Response> serveLibraryMedia(
 String templateCsp(int port, {bool network = false}) {
   const cdn =
       'https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com';
-  return "default-src 'none'; script-src 'self' 'unsafe-inline' $cdn${network ? ' https:' : ''}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com $cdn; font-src 'self' data: https://fonts.gstatic.com $cdn; img-src 'self' data: blob: http: https:; media-src 'self' data: blob:${network ? ' https:' : ''}; connect-src 'self' ws://localhost:$port ws://127.0.0.1:$port${network ? ' https: wss:' : ''}; worker-src 'self' blob:; object-src 'none'; frame-src ${network ? 'https:' : "'none'"}; base-uri 'self'; form-action 'none'";
+  const chatAssets = 'https://yt3.ggpht.com https://yt4.ggpht.com '
+      'https://*.ytimg.com https://*.googleusercontent.com '
+      'https://static-cdn.jtvnw.net https://files.kick.com '
+      'https://images.kick.com https://cdn.7tv.app '
+      'https://cdn.betterttv.net https://cdn.frankerfacez.com';
+  return "default-src 'none'; "
+      "script-src 'self' 'unsafe-inline' $cdn${network ? ' https:' : ''}; "
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com $cdn; "
+      "font-src 'self' data: https://fonts.gstatic.com $cdn; "
+      "img-src 'self' data: blob: ${network ? 'http: https:' : chatAssets}; "
+      "media-src 'self' data: blob: ${network ? 'https:' : chatAssets}; "
+      "connect-src 'self' ws://localhost:$port ws://127.0.0.1:$port${network ? ' https: wss:' : ''}; "
+      "worker-src 'self' blob:; object-src 'none'; "
+      "frame-src ${network ? 'https:' : "'none'"}; base-uri 'self'; form-action 'none'";
 }
 
 const _templateSdk = '<script src="/sdk/v1.js"></script>';

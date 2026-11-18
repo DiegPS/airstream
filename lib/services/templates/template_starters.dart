@@ -145,7 +145,8 @@ Airstream.on('delete', event => {
     if (message.platform !== event.platform ||
         (event.youtubeStreamOrientation &&
          message.youtubeStreamOrientation !== event.youtubeStreamOrientation)) continue;
-    const matches = event.scope === 'platform' ||
+    const matches = Number.isInteger(event.sequence) ? message.sequence === event.sequence :
+      event.scope === 'platform' ||
       (event.scope === 'message' && event.messageId && message.id === event.messageId) ||
       (event.scope === 'author' &&
        ((event.authorChannelId && message.authorChannelId === event.authorChannelId) ||

@@ -408,6 +408,11 @@ class YouTubeService {
   }
 
   ChatProviderEvent? _convertProviderEvent(yt.LiveChatEvent event) {
+    final redemption =
+        event.kind == yt.LiveChatEventKind.membershipGiftReceived;
+    if (redemption && !_rememberEvent('redemption:${_eventKey(event)}')) {
+      return null;
+    }
     // Hide only YouTube's standard welcome notice, not other viewer notices.
     if (event.kind == yt.LiveChatEventKind.viewerNotice &&
         event.text.trim().replaceAll(RegExp(r'\s+'), ' ') ==
@@ -419,6 +424,7 @@ class YouTubeService {
       yt.LiveChatEventKind.bannerRemoved =>
         ChatProviderEventKind.unpinnedMessage,
       yt.LiveChatEventKind.pollUpdated => ChatProviderEventKind.poll,
+      yt.LiveChatEventKind.membershipGiftReceived ||
       yt.LiveChatEventKind.viewerNotice ||
       yt.LiveChatEventKind.tooltip ||
       yt.LiveChatEventKind.tickerAdded ||
@@ -430,30 +436,35 @@ class YouTubeService {
       _ => null,
     };
     if (kind == null) return null;
+    final fromViewer = redemption ||
+        event.kind == yt.LiveChatEventKind.bannerAdded ||
+        event.kind == yt.LiveChatEventKind.chatItemReplaced ||
+        event.kind == yt.LiveChatEventKind.tickerAdded;
     return ChatProviderEvent(
       platform: Platform.youtube,
       kind: kind,
       id: event.id.isNotEmpty
           ? event.id
           : '${event.actionType}:${DateTime.now().microsecondsSinceEpoch}',
-      timestamp: DateTime.now().toUtc(),
+      timestamp: (redemption ? event.timestamp : null)?.toUtc() ??
+          DateTime.now().toUtc(),
+      authorName: redemption ? event.authorName.trim() : '',
+      authorChannelId: fromViewer ? event.authorChannelId : '',
+      viewerName: fromViewer ? event.authorName : null,
       text: event.text,
+      viewerText: fromViewer ? event.text : null,
       data: Map<String, Object?>.unmodifiable(event.raw),
     );
   }
 
   ChatMessage? _convertMembershipEvent(yt.LiveChatEvent event) {
-    if (event.kind != yt.LiveChatEventKind.membershipGiftPurchased &&
-        event.kind != yt.LiveChatEventKind.membershipGiftReceived) {
+    if (event.kind != yt.LiveChatEventKind.membershipGiftPurchased) {
       return null;
     }
     final stableId = event.id.trim();
     final authorName = event.authorName.trim();
     final text = event.text.trim();
-    final eventKey = stableId.isNotEmpty
-        ? stableId
-        : '${event.kind.name}:${event.authorChannelId}:${event.timestamp?.microsecondsSinceEpoch}:$text';
-    if (!_rememberEvent(eventKey)) return null;
+    if (!_rememberEvent(_eventKey(event))) return null;
     return ChatMessage(
       platform: Platform.youtube,
       id: stableId.isEmpty
@@ -475,6 +486,13 @@ class YouTubeService {
       youtubeStreamOrientation: streamOrientation,
       timestamp: event.timestamp ?? DateTime.now(),
     );
+  }
+
+  String _eventKey(yt.LiveChatEvent event) {
+    final id = event.id.trim();
+    return id.isNotEmpty
+        ? id
+        : '${event.kind.name}:${event.authorChannelId}:${event.timestamp?.microsecondsSinceEpoch}:${event.text.trim()}';
   }
 
   bool _rememberEvent(String key) {

@@ -597,6 +597,7 @@ function matchesChatDeletion(message, event) {
   if (!event || message.platform !== event.platform ||
       (event.youtubeStreamOrientation &&
         message.youtubeStreamOrientation !== event.youtubeStreamOrientation)) return false;
+  if (Number.isInteger(event.sequence)) return message.sequence === event.sequence;
   return event.scope === 'platform' ||
     (event.scope === 'message' && event.messageId && message.id === event.messageId) ||
     (event.scope === 'author' &&

@@ -621,6 +621,7 @@ class ChatCoordinator {
     try {
       await service.connect(channel);
     } catch (error, stack) {
+      if (!_isCurrent(statusKey, generation)) return;
       AppLogger.error(
         '$statusKey connection failed',
         error: error,

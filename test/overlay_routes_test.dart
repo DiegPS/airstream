@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -135,5 +136,109 @@ void main() {
     await nextFrame('settings');
     messages.add(message);
     expect((await nextFrame('message'))['data']['nameColor'], '#FF4E45');
+  });
+
+  group('overlay block lists', () {
+    const settings = SettingsModel(maxMessages: 1);
+    late StreamController<ChatMessage> messages;
+    late OverlayServer server;
+    late StreamIterator<dynamic> frames;
+
+    Future<Map<String, dynamic>> nextFrame(String type) async {
+      expect(
+          await frames.moveNext().timeout(const Duration(seconds: 5)), isTrue);
+      final frame =
+          jsonDecode(frames.current as String) as Map<String, dynamic>;
+      expect(frame['type'], type);
+      return frame;
+    }
+
+    ChatProviderEvent reward(String id, String input,
+            {String author = 'Viewer', String authorId = 'viewer-id'}) =>
+        ChatProviderEvent(
+          platform: Platform.kick,
+          kind: ChatProviderEventKind.reward,
+          id: id,
+          timestamp: DateTime.utc(2026),
+          authorName: author,
+          authorChannelId: authorId,
+          text: input,
+          data: {'user_input': input},
+        );
+
+    setUp(() async {
+      messages = StreamController<ChatMessage>();
+      server = OverlayServer(templateLibrary: emptyTemplateLibrary());
+      addTearDown(() async {
+        await server.dispose();
+        await messages.close();
+      });
+      await server.start(
+          messages: messages.stream, settings: settings, port: 0);
+      final socket =
+          await WebSocket.connect('ws://127.0.0.1:${server.port}/ws');
+      frames = StreamIterator<dynamic>(socket);
+      addTearDown(() async {
+        await frames.cancel();
+        await socket.close();
+      });
+      await nextFrame('settings');
+      socket.add(jsonEncode({'type': 'register', 'view': 'chat'}));
+      await nextFrame('registered');
+    });
+
+    test('new block lists remove previously published overlay records',
+        () async {
+      Future<Map<String, dynamic>> send(String id, String text,
+          {String author = 'Viewer'}) async {
+        messages.add(ChatMessage(
+          id: id,
+          author: ChatAuthor(name: author, channelId: ''),
+          platform: Platform.youtube,
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.utc(2026),
+        ));
+        return nextFrame('message');
+      }
+
+      await send('blocked-author', 'Hello', author: 'Bad Viewer');
+      final idless = await send('', 'A BAD, phrase!');
+      await send('safe', 'Hello');
+      server.broadcastProviderEvent(reward('old-reward', 'bad phrase'));
+      await nextFrame('providerEvent');
+
+      final blocked = settings
+          .copyWith(blockedUsers: ['@badviewer'], blockedWords: ['bad phrase']);
+      server.setSettings(blocked);
+      expect((await nextFrame('moderation'))['data']['messageId'],
+          'blocked-author');
+      expect((await nextFrame('moderation'))['data']['sequence'],
+          idless['sequence']);
+      final deletedReward = (await nextFrame('moderation'))['data'];
+      expect(deletedReward['scope'], 'providerEvent');
+      expect(deletedReward['messageId'], 'old-reward');
+      await nextFrame('settings');
+      // Changing another setting with the same filters does not repeat deletes.
+      server.setSettings(blocked.copyWith(maxMessages: 2));
+      await nextFrame('settings');
+    });
+
+    test('blocked reward authors and phrases never reach overlay subscribers',
+        () async {
+      server.setSettings(settings.copyWith(
+          blockedUsers: ['@Bad Viewer', 'bad-id'],
+          blockedWords: ['bad phrase']));
+      await nextFrame('settings');
+
+      server.broadcastProviderEvent(reward('phrase', 'A BAD, phrase!'));
+      server.broadcastProviderEvent(
+          reward('name', 'Hello', author: 'Bad Viewer'));
+      server.broadcastProviderEvent(reward('id', 'Hello', authorId: 'bad-id'));
+      server.broadcastProviderEvent(reward('safe', 'Hello'));
+
+      final frame = await nextFrame('providerEvent');
+      expect(frame['data']['id'], 'safe');
+      expect(frame['data']['text'], 'Hello');
+    });
   });
 }

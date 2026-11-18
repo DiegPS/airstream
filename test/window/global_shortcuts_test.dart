@@ -120,6 +120,47 @@ void main() {
         ['unregisterGlobalHotKey', 'registerGlobalHotKey']);
   });
 
+  test('releases both old bindings before registering swapped shortcuts',
+      () async {
+    final held = <String, Object>{};
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      final args = call.arguments as Map;
+      final id = args['id'] as String;
+      if (call.method == 'unregisterGlobalHotKey') {
+        held.remove(id);
+        return null;
+      }
+      final binding = (args['key'], (args['modifiers'] as List).join('+'));
+      if (held.containsValue(binding)) return false;
+      held[id] = binding;
+      return true;
+    });
+    final shortcuts = GlobalShortcutsNotifier(onPressed: (_) {});
+    addTearDown(shortcuts.dispose);
+    await shortcuts.apply({
+      GlobalShortcutAction.silenceTts: 'control+M',
+      GlobalShortcutAction.toggleTts: 'alt+F9',
+    });
+    calls.clear();
+    await shortcuts.apply({
+      GlobalShortcutAction.silenceTts: 'alt+F9',
+      GlobalShortcutAction.toggleTts: 'control+M',
+    });
+    expect(shortcuts.state, isEmpty);
+    expect(held, {
+      'shortcut-silenceTts': ('F9', 'alt'),
+      'shortcut-toggleTts': ('M', 'control'),
+    });
+    expect(calls.map((call) => call.method), [
+      'unregisterGlobalHotKey',
+      'unregisterGlobalHotKey',
+      'registerGlobalHotKey',
+      'registerGlobalHotKey',
+    ]);
+  });
+
   test('reports a shortcut another app owns', () async {
     mockPlatform(register: (_) => throw PlatformException(code: 'in_use'));
     final shortcuts = GlobalShortcutsNotifier(onPressed: (_) {});

@@ -191,8 +191,28 @@ void main() {
     final (res, _) = await get('/custom/one/');
     expect(res.headers.value('content-security-policy'),
         templateCsp(server.port, network: true));
-    expect(templateCsp(9),
-        "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' data: blob: http: https:; media-src 'self' data: blob:; connect-src 'self' ws://localhost:9 ws://127.0.0.1:9; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'");
+    const assets = "'self' data: blob: https://yt3.ggpht.com "
+        'https://yt4.ggpht.com https://*.ytimg.com '
+        'https://*.googleusercontent.com https://static-cdn.jtvnw.net '
+        'https://files.kick.com https://images.kick.com '
+        'https://cdn.7tv.app https://cdn.betterttv.net '
+        'https://cdn.frankerfacez.com';
+    const cdns =
+        'https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com';
+    const localConnect = "'self' ws://localhost:9 ws://127.0.0.1:9";
+    String expectedCsp(
+            String images, String media, String network, String frame) =>
+        "default-src 'none'; script-src 'self' 'unsafe-inline' $cdns${network.isEmpty ? '' : ' https:'}; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com $cdns; "
+        "font-src 'self' data: https://fonts.gstatic.com $cdns; "
+        'img-src $images; media-src $media; connect-src $localConnect$network; '
+        "worker-src 'self' blob:; object-src 'none'; frame-src $frame; "
+        "base-uri 'self'; form-action 'none'";
+    expect(templateCsp(9), expectedCsp(assets, assets, '', "'none'"));
+    expect(
+        templateCsp(9, network: true),
+        expectedCsp("'self' data: blob: http: https:",
+            "'self' data: blob: https:", ' https: wss:', 'https:'));
   });
   test('reserved paths fail closed and do not return chat', () async {
     await put('empty/file.txt', 'missing index');

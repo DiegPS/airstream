@@ -797,6 +797,12 @@ function applyModeration(moderation) {
   const orientationMatches = (message) => !moderation.youtubeStreamOrientation ||
     message.youtubeStreamOrientation === moderation.youtubeStreamOrientation;
   const matches = (record) => {
+    if (moderation.scope === 'providerEvent') {
+      const event = record.event;
+      return !!event && event.platform === moderation.platform &&
+        event.kind === moderation.providerEventKind && event.id === moderation.messageId;
+    }
+    if (Number.isInteger(moderation.sequence)) return record.sequence === moderation.sequence;
     const message = record.message;
     if (!message || message.platform !== moderation.platform || !orientationMatches(message)) return false;
     if (moderation.scope === 'platform') return true;

@@ -40,6 +40,26 @@ void main() {
 
   tearDown(() => coordinator.dispose());
 
+  test('a stale channel failure leaves the replacement connected', () async {
+    final oldAttempt = Completer<void>();
+    twitch.connectGate = oldAttempt;
+    const settings = SettingsModel(twitchEnabled: true, twitchChannel: 'old');
+    coordinator.applySettings(settings, connectChats: true);
+    twitch.connectGate = null;
+    coordinator.applySettings(settings.copyWith(twitchChannel: 'replacement'),
+        connectChats: true);
+    twitch.statusController.add((ServiceStatus.connected, null));
+    expect(twitch.lastChannel, 'replacement');
+    final disconnects = twitch.disconnectCount;
+
+    oldAttempt.completeError(StateError('obsolete connection failed'));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(twitch.disconnectCount, disconnects);
+    final statuses = await coordinator.connectionStatusStream.first;
+    expect(statuses['twitch']?.$1, ServiceStatus.connected);
+  });
+
   test('channel changes preserve first-message tracking until chat restarts',
       () async {
     const settings = SettingsModel(twitchEnabled: true, twitchChannel: 'first');

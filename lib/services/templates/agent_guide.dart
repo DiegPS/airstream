@@ -69,6 +69,7 @@ interface Badge { imageUrl: string | null; label: string; kind: string | null; }
 type MessageItem = {kind:'text'; text:string} | {kind:'emoji'; url:string; alt:string; isAnimated:boolean; isCustom:boolean; isZeroWidth:boolean};
 interface Chat {
  platform:Platform; id:string; author:string; authorAvatarUrl:string|null; authorChannelId:string;
+ sequence?:number;
  badgeImageUrl:string|null; badgeLabel:string|null; badges:Badge[]; color:string|null;
  text:string; items:MessageItem[]; isSuperChat:boolean; superChatAmount:string|null;
  superChatColor:string|null; superChatStickerUrl:string|null; isMembership:boolean;
@@ -79,7 +80,7 @@ interface Chat {
  sharedSource:{messageId:string; channelId:string; messageType:string; badges:Record<string,string>; badgeInfo:Record<string,string>; sourceOnly:boolean}|null;
  isAction:boolean; providerRoomId:string; isFirstMessage:boolean; isReturningChatter:boolean; rewardId:string|null;
 }
-interface Delete { platform:Platform; scope:'message'|'author'|'platform'; messageId:string; authorChannelId:string; authorName:string; youtubeStreamOrientation:Orientation|null; }
+interface Delete { platform:Platform; scope:'message'|'author'|'platform'|'providerEvent'; messageId:string; authorChannelId:string; authorName:string; youtubeStreamOrientation:Orientation|null; sequence?:number; providerEventKind?:string; }
 type AlertType = 'superchat'|'membership'|'bits'|'subscription'|'gift'|'raid'|'kicks';
 interface Alert {
  platform:Platform; kind:'superchat'|'membership'|'bits'|'raid'|'host'|'kicks'|'featured'; alertType:AlertType|null;
@@ -244,7 +245,7 @@ Every event passes (data, meta). meta.replay and meta.test are booleans. replay 
 
 Events and WHEN they fire:
 - chat: accepted chat message, Chat below; timestamp is an ISO-8601 string, provider IDs are opaque. For emote images, read items whose kind is emoji and use their url and alt fields. Roles are already resolved. Amounts are presentation strings, never assume numeric currency.
-- delete: moderation deletion, Delete below. scope message matches messageId, author matches authorChannelId/name, platform clears the platform; youtubeStreamOrientation may constrain YouTube deletion. Empty IDs/names can occur.
+- delete: moderation deletion, Delete below. For scope message, match sequence when present, otherwise match messageId. Scope author matches authorChannelId/name, scope platform clears the platform, and youtubeStreamOrientation may constrain YouTube deletion. Scope providerEvent matches a provider event by platform, providerEventKind, and messageId (the provider event id). Empty IDs/names can occur.
 - alert: automatic support or provider alert, Alert below. alertType superchat (YouTube money), membership (YouTube membership), bits (Twitch), subscription (Twitch/Kick subscription or renewal), gift (gift memberships/subscriptions), raid (Twitch raid/Kick host), kicks (Kick support). kind is membership for membership/subscription/gift, superchat for superchat, bits for bits, raid or host/kicks for provider alerts. count exists ONLY for raid/host/kicks; no count key on message alerts. message is trimmed chat text; provider raid has empty message, kicks has provider text. amount/color/stickerUrl come from superChat and may be null. authorChannelId is empty for provider alerts. months/giftCount/membershipKind may be null. Use alertType to distinguish celebrations.
 - trigger: automation event {name:string, data:string, rule:string}. All fields are plain text. Use textContent; never interpret data as HTML. Templates cannot trigger or edit rules.
 - featured: manually featured chat copy, same Alert fields, kind:'featured', alertType:null; no deliveryId and no confirmation command. May still contain support amount and membership metadata from the selected message.
@@ -273,6 +274,7 @@ interface Badge { imageUrl: string | null; label: string; kind: string | null; }
 type MessageItem = {kind:'text'; text:string} | {kind:'emoji'; url:string; alt:string; isAnimated:boolean; isCustom:boolean; isZeroWidth:boolean};
 interface Chat {
  platform:Platform; id:string; author:string; authorAvatarUrl:string|null; authorChannelId:string;
+ sequence?:number;
  badgeImageUrl:string|null; badgeLabel:string|null; badges:Badge[]; color:string|null;
  text:string; items:MessageItem[]; isSuperChat:boolean; superChatAmount:string|null;
  superChatColor:string|null; superChatStickerUrl:string|null; isMembership:boolean;
@@ -283,7 +285,7 @@ interface Chat {
  sharedSource:{messageId:string; channelId:string; messageType:string; badges:Record<string,string>; badgeInfo:Record<string,string>; sourceOnly:boolean}|null;
  isAction:boolean; providerRoomId:string; isFirstMessage:boolean; isReturningChatter:boolean; rewardId:string|null;
 }
-interface Delete { platform:Platform; scope:'message'|'author'|'platform'; messageId:string; authorChannelId:string; authorName:string; youtubeStreamOrientation:Orientation|null; }
+interface Delete { platform:Platform; scope:'message'|'author'|'platform'|'providerEvent'; messageId:string; authorChannelId:string; authorName:string; youtubeStreamOrientation:Orientation|null; sequence?:number; providerEventKind?:string; }
 type AlertType = 'superchat'|'membership'|'bits'|'subscription'|'gift'|'raid'|'kicks';
 interface Alert {
  platform:Platform; kind:'superchat'|'membership'|'bits'|'raid'|'host'|'kicks'|'featured'; alertType:AlertType|null;
@@ -401,9 +403,9 @@ Keep the page background transparent. Size the page to template.json width/heigh
 
 Exact default CSP (PORT is the serving port):
 ```
-default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' data: blob: http: https:; media-src 'self' data: blob:; connect-src 'self' ws://localhost:PORT ws://127.0.0.1:PORT; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'
+default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' data: blob: https://yt3.ggpht.com https://yt4.ggpht.com https://*.ytimg.com https://*.googleusercontent.com https://static-cdn.jtvnw.net https://files.kick.com https://images.kick.com https://cdn.7tv.app https://cdn.betterttv.net https://cdn.frankerfacez.com; media-src 'self' data: blob: https://yt3.ggpht.com https://yt4.ggpht.com https://*.ytimg.com https://*.googleusercontent.com https://static-cdn.jtvnw.net https://files.kick.com https://images.kick.com https://cdn.7tv.app https://cdn.betterttv.net https://cdn.frankerfacez.com; connect-src 'self' ws://localhost:PORT ws://127.0.0.1:PORT; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'
 ```
-With network:true the actual policy additionally allows https: for script-src and media-src, https: wss: for connect-src, and changes frame-src to https:. Even though that policy permits HTTPS frames, do not build templates with iframes. Script CDNs: jsDelivr, cdnjs, unpkg. Styles also allow Google Fonts; fonts allow fonts.gstatic.com and those CDNs. Images can be http/https/data/blob from anywhere. fetch to internet is blocked unless network:true; network:true allows HTTPS, not arbitrary HTTP. CSP does not grant remote CORS permission. No objects; no form submissions. nosniff and no-referrer are set.
+With network:true the policy allows HTTP and HTTPS images, HTTPS media and scripts, and HTTPS and WSS connections. It also changes frame-src to https:. Keep templates free of iframes. The default image and media sources are local files, data and blob URLs, and the listed chat image CDNs. Script CDNs are jsDelivr, cdnjs, and unpkg. Styles also allow Google Fonts. Fonts allow fonts.gstatic.com and those CDNs. An internet fetch requires network:true and HTTPS, and remote CORS permission still applies. No objects or form submissions. nosniff and no-referrer are set.
 
 ## Minimal complete working template
 

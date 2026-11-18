@@ -90,6 +90,7 @@ class FakeChannelChatClient
   bool disposed = false;
   Object? connectError;
   String? lastChannel;
+  Completer<void>? connectGate;
 
   @override
   Stream<ChatMessage> get messages => messageController.stream;
@@ -107,6 +108,7 @@ class FakeChannelChatClient
   Future<void> connect(String channel) async {
     connectCount++;
     lastChannel = channel;
+    if (connectGate case final gate?) await gate.future;
     if (connectError != null) throw connectError!;
   }
 

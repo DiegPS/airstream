@@ -267,18 +267,18 @@ void main() {
         ['', 'abcdef1234567890', 'abcdef1234567891']);
     await tester.pumpWidget(const SizedBox.shrink());
   });
-  for (final valid in [true, false]) {
-    testWidgets('Import ZIP confirmation and rejection valid=$valid',
+  for (final (valid, network) in [(true, true), (true, false), (false, true)]) {
+    testWidgets(
+        'Import ZIP confirmation and rejection valid=$valid network=$network',
         (tester) async {
       final temp = (await tester.runAsync(
           () => io.Directory.systemTemp.createTemp('import-widget-')))!;
       final library = TemplateLibrary(io.Directory('${temp.path}/templates'));
+      final manifest = utf8.encode('{"name":"Shared","network":$network}');
       final archive = Archive()
         ..addFile(ArchiveFile('shared/index.html', 1, [1]))
-        ..addFile(ArchiveFile(
-            'shared/template.json',
-            utf8.encode('{"name":"Shared","network":true}').length,
-            utf8.encode('{"name":"Shared","network":true}')));
+        ..addFile(
+            ArchiveFile('shared/template.json', manifest.length, manifest));
       if (!valid) archive.addFile(ArchiveFile('shared/evil.exe', 1, [1]));
       final zip = io.File('${temp.path}/test.zip');
       await tester
@@ -315,7 +315,13 @@ void main() {
       expect(await tester.runAsync(library.exists), false);
       if (valid) {
         expect(find.byKey(const Key('template-import-dialog')), findsOneWidget);
-        expect(find.text('Internet access'), findsOneWidget);
+        if (network) {
+          expect(find.text('Internet access'), findsOneWidget);
+        } else {
+          expect(
+              find.textContaining('can load images from YouTube, Twitch, Kick'),
+              findsOneWidget);
+        }
         expect(
             find.textContaining('Import only templates from people you trust.'),
             findsOneWidget);

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:airstream/application/goal_tracker.dart';
+import 'package:airstream/application/rules/rule_events.dart';
+import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/services/chat/kick_transport.dart';
 import 'package:airstream/services/chat/youtube_transport.dart';
 import 'package:airstream/services/kick_service.dart';
@@ -7,6 +10,7 @@ import 'package:airstream/services/twitch_service.dart';
 import 'package:airstream/services/youtube_service.dart';
 import 'package:airstream/models/chat_message.dart' as app;
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/support_alert.dart';
 import 'package:dart_kick_chat/dart_kick_chat.dart' as kick;
 import 'package:dart_twitch_chat/dart_twitch_chat.dart' show TwitchSocket;
 import 'package:dart_youtube_chat/dart_youtube_chat.dart' as yt;
@@ -344,7 +348,8 @@ void main() {
     expect(retry.stopped, isFalse);
   });
 
-  test('YouTube converts and deduplicates gifted membership events', () async {
+  test('one YouTube gift of five counts once and five redemptions are notices',
+      () async {
     final chat = _FakeYouTubeTransport();
     final service = YouTubeService(transportFactory: (_) => chat);
     addTearDown(service.dispose);
@@ -352,6 +357,9 @@ void main() {
     final messages = <app.ChatMessage>[];
     final subscription = service.messages.listen(messages.add);
     addTearDown(subscription.cancel);
+    final notices = <ChatProviderEvent>[];
+    final events = service.appEvents.listen(notices.add);
+    addTearDown(events.cancel);
     final event = yt.LiveChatEvent(
       kind: yt.LiveChatEventKind.membershipGiftPurchased,
       actionType: 'addChatItemAction',
@@ -370,9 +378,47 @@ void main() {
 
     chat.eventController.add(event);
     chat.eventController.add(event);
-    await _eventually(() => messages.isNotEmpty);
+    for (var i = 1; i <= 5; i++) {
+      chat.eventController.add(yt.LiveChatEvent(
+        kind: yt.LiveChatEventKind.membershipGiftReceived,
+        actionType: 'addChatItemAction',
+        rendererType: 'liveChatSponsorshipsGiftRedemptionAnnouncementRenderer',
+        id: 'redemption-$i',
+        text: 'Recipient $i received a gift membership',
+        authorChannelId: 'recipient-$i',
+        authorName: 'Recipient $i',
+        timestamp: DateTime.utc(2026),
+      ));
+    }
+    await Future<void>.delayed(Duration.zero);
 
-    expect(messages, hasLength(1));
+    final goals = GoalTracker();
+    final rules = RuleEventAdapter();
+    final summary = SessionSummaryCollector()..start();
+    for (final message in messages) {
+      summary.handleMessage(message);
+    }
+    for (final notice in notices) {
+      summary.handleProviderEvent(notice);
+    }
+    expect(
+        messages.fold(0, (sum, m) => sum + (goals.message(m)['subs'] ?? 0)), 5);
+    expect(notices.map(goals.event), everyElement(isEmpty));
+    expect(messages.map(messageAlertKind).whereType<String>(), ['membership']);
+    expect(notices.map(providerAlertKind), everyElement(isNull));
+    final supportRules = messages
+        .expand((m) => rules.message(m))
+        .where((e) => e.type.startsWith('support.'));
+    expect(supportRules.single.type, 'support.gift');
+    expect(supportRules.single.count, 5);
+    expect(notices.map(rules.provider), everyElement(isNull));
+    expect(summary.summary.supporters.single.name, 'Gifter');
+    expect(summary.summary.supporters.single.count, 5);
+    expect(notices.map((e) => e.id),
+        List.generate(5, (index) => 'redemption-${index + 1}'));
+    expect(
+        notices.map((e) => e.kind), everyElement(ChatProviderEventKind.notice));
+    expect(notices.first.text, 'Recipient 1 received a gift membership');
     expect(messages.single.author.name, 'Gifter');
     expect(messages.single.author.avatarUrl, startsWith('https://'));
     expect(messages.single.isMembershipEvent, isTrue);
@@ -762,7 +808,7 @@ void main() {
     transport.eventController.add(kick.parseKickEvent('RewardRedeemedEvent', {
       'redemption_id': 'redemption-1',
       'reward': {'id': 'reward-1', 'title': 'Hydrate', 'cost': 500},
-      'redeemer': {'id': 3, 'username': 'viewer'},
+      'redeemer': {'id': 3, 'username': 'viewer', 'slug': 'viewer-slug'},
       'user_input': 'please',
       'redeemed_at': '2026-09-06T12:00:00Z',
     }));
@@ -787,7 +833,9 @@ void main() {
 
     expect(events[0].kind, ChatProviderEventKind.reward);
     expect(events[0].authorName, 'viewer');
+    expect(events[0].authorChannelId, 'viewer-slug');
     expect(events[0].text, 'Hydrate · please');
+    expect(events[0].viewerText, 'please');
     expect(events[0].data['cost'], 500);
     expect(events[0].timestamp, DateTime.utc(2026, 9, 6, 12));
     expect(events[1].kind, ChatProviderEventKind.goal);

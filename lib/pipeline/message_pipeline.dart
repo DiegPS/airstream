@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:flutter/foundation.dart' show listEquals;
-
 import 'package:airstream/models/chat_message.dart';
-import 'package:airstream/pipeline/word_matching.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_model.dart';
 
@@ -32,14 +30,10 @@ class MessagePipeline {
   final _seenIdKeys = <String>{};
   final _seenContentKeys = <String>{};
   final _seenOrder = Queue<({String idKey, String contentKey})>();
-  final _blockedUsers = <String>{};
-  final _blockedWordPatterns = <String>{};
-
   SettingsModel _settings;
+  ChatFilter _filter;
 
-  MessagePipeline(this._settings) {
-    _rebuildFilterCache();
-  }
+  MessagePipeline(this._settings) : _filter = ChatFilter(_settings);
 
   /// The filtered, deduplicated output stream.
   Stream<ChatMessage> get stream => _controller.stream;
@@ -67,14 +61,16 @@ class MessagePipeline {
   /// Enriches visible messages without replaying them through deduplication.
   bool applyAuthorUpdate(ChatAuthorUpdate update) {
     var changed = false;
-    final normalized = _normalizeUserKey(update.authorName);
-    final normalizedId = _normalizeUserKey(update.authorId);
+    final normalized = ChatFilter.normalizeUserKey(update.authorName);
+    final normalizedId = ChatFilter.normalizeUserKey(update.authorId);
     for (var index = 0; index < _buffer.length; index++) {
       final message = _buffer[index];
       if (message.platform != update.platform ||
           (normalizedId.isNotEmpty
-              ? _normalizeUserKey(message.author.channelId) != normalizedId
-              : _normalizeUserKey(message.author.name) != normalized) ||
+              ? ChatFilter.normalizeUserKey(message.author.channelId) !=
+                  normalizedId
+              : ChatFilter.normalizeUserKey(message.author.name) !=
+                  normalized) ||
           message.author.avatarUrl == update.avatarUrl) {
         continue;
       }
@@ -95,17 +91,15 @@ class MessagePipeline {
     _settings = settings;
     // Only the filters and the message limit affect the buffer; other
     // settings change often (a slider produces one update per frame).
-    if (previous.maxMessages == settings.maxMessages &&
-        listEquals(previous.blockedUsers, settings.blockedUsers) &&
-        listEquals(previous.blockedWords, settings.blockedWords)) {
+    final filtersChanged = !ChatFilter.sameBlockLists(previous, settings);
+    if (previous.maxMessages == settings.maxMessages && !filtersChanged) {
       return false;
     }
     final previousLength = _buffer.length;
-    _rebuildFilterCache();
-    _buffer.removeWhere(_shouldBlock);
-    if (!listEquals(previous.blockedUsers, settings.blockedUsers) ||
-        !listEquals(previous.blockedWords, settings.blockedWords)) {
-      _session.removeWhere(_shouldBlock);
+    if (filtersChanged) {
+      _filter = ChatFilter(settings);
+      _buffer.removeWhere(_filter.blocksMessage);
+      _session.removeWhere(_filter.blocksMessage);
     }
     final limit = _settings.maxMessages < 0 ? 0 : _settings.maxMessages;
     while (_buffer.length > limit) {
@@ -140,7 +134,7 @@ class MessagePipeline {
   }
 
   void _handleMessage(ChatMessage incoming) {
-    if (_shouldBlock(incoming)) return;
+    if (_filter.blocksMessage(incoming)) return;
     if (_isDuplicate(incoming)) return;
 
     _rememberMessage(incoming);
@@ -171,7 +165,7 @@ class MessagePipeline {
     final identity = msg.author.channelId.trim().isNotEmpty
         ? msg.author.channelId
         : msg.author.name;
-    final author = _normalizeUserKey(identity);
+    final author = ChatFilter.normalizeUserKey(identity);
     if (author.isEmpty) return msg;
     if (!_sessionAuthors.add('${msg.platform.name}:$author')) return msg;
     if (_sessionAuthors.length > _maxSessionAuthors) {
@@ -222,53 +216,4 @@ class MessagePipeline {
     if (scaled > 5000) return 5000;
     return scaled;
   }
-
-  bool _shouldBlock(ChatMessage msg) {
-    final authorKeys = <String>{
-      _normalizeUserKey(msg.author.name),
-      _normalizeUserKey(msg.author.channelId),
-    }..removeWhere((value) => value.isEmpty);
-
-    if (authorKeys.any(_blockedUsers.contains)) {
-      return true;
-    }
-
-    final normalizedText = _normalizeWordPattern(msg.plainText);
-    if (normalizedText.isEmpty || _blockedWordPatterns.isEmpty) {
-      return false;
-    }
-
-    final paddedText = ' $normalizedText ';
-    for (final blockedWord in _blockedWordPatterns) {
-      if (paddedText.contains(' $blockedWord ')) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  void _rebuildFilterCache() {
-    _blockedUsers
-      ..clear()
-      ..addAll(_settings.blockedUsers
-          .map(_normalizeUserKey)
-          .where((value) => value.isNotEmpty));
-
-    _blockedWordPatterns
-      ..clear()
-      ..addAll(_settings.blockedWords
-          .map(_normalizeWordPattern)
-          .where((value) => value.isNotEmpty));
-  }
-
-  static String _normalizeUserKey(String value) {
-    var normalized = value.trim().toLowerCase();
-    normalized = normalized.replaceFirst(RegExp(r'^@+'), '');
-    normalized = normalized.replaceAll(RegExp(r'\s+'), '');
-    return normalized;
-  }
-
-  static String _normalizeWordPattern(String value) =>
-      WordMatching.normalize(value);
 }

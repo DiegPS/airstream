@@ -31,6 +31,8 @@ class ChatProviderEvent {
     this.authorName = '',
     this.authorChannelId = '',
     this.text = '',
+    this.viewerName,
+    this.viewerText,
     this.count,
     this.data = const {},
   });
@@ -42,6 +44,10 @@ class ChatProviderEvent {
   final String authorName;
   final String authorChannelId;
   final String text;
+
+  /// Moderation inputs when they differ from the displayed author or text.
+  final String? viewerName;
+  final String? viewerText;
   final int? count;
   final Map<String, Object?> data;
 }

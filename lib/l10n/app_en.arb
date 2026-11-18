@@ -1103,6 +1103,7 @@
   "templateFieldColorInvalid": "Use #rrggbb or #rrggbbaa. This color has not been saved.",
   "templateExport": "Export .zip",
   "templateImport": "Import .zip",
+  "templatePlatformImages": "This template can load images from YouTube, Twitch, Kick, 7TV, BetterTTV, and FrankerFaceZ.",
   "templateDuplicate": "Duplicate",
   "templateCopyWord": "copy",
   "templateArchiveDone": "Template saved",

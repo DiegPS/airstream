@@ -89,8 +89,8 @@ Airstream.on('chat', (message, meta) => {
   const now = Date.now();
   const words = tokens.filter(word => word.length <= 36 && !stop.has(word));
   if (words.length) {
-    const {id, platform, youtubeStreamOrientation, author, authorChannelId} = message;
-    recent.push({at: now, words, id, platform, youtubeStreamOrientation, author, authorChannelId});
+    const {id, sequence, platform, youtubeStreamOrientation, author, authorChannelId} = message;
+    recent.push({at: now, words, id, sequence, platform, youtubeStreamOrientation, author, authorChannelId});
   }
   prune(now);
 });

@@ -2608,6 +2608,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templateImport => 'Import .zip';
 
   @override
+  String get templatePlatformImages =>
+      'This template can load images from YouTube, Twitch, Kick, 7TV, BetterTTV, and FrankerFaceZ.';
+
+  @override
   String get templateDuplicate => 'Duplicate';
 
   @override

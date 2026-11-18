@@ -200,7 +200,9 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                           archive.count, archive.bytes)),
                       if (archive.network)
                         Text(l.templatesInternet,
-                            style: const TextStyle(color: Color(0xFFFFB15C))),
+                            style: const TextStyle(color: Color(0xFFFFB15C)))
+                      else
+                        Text(l.templatePlatformImages),
                       const SizedBox(height: 12),
                       Text(l.templateTrust)
                     ]),

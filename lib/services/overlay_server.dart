@@ -16,6 +16,7 @@ import 'package:airstream/services/media_library.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/support_alert.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
@@ -282,6 +283,10 @@ class OverlayServer {
   // Built-in chat displays at most 500 messages. Keep their inputs so name
   // colors can also update for messages already on screen.
   final _recentChatMessages = <int, ChatMessage>{};
+  final _recentProviderEvents =
+      <(Platform, ChatProviderEventKind, String), ChatProviderEvent>{};
+  // /chat can retain up to this many visible records.
+  static const _recentRecordLimit = 500;
   int _nextChatSequence = 0;
   final _featured = <String, _PendingFeaturedMessage>{};
   int _nextDelivery = 0;
@@ -293,6 +298,7 @@ class OverlayServer {
   final _clientCountController = StreamController<int>.broadcast();
   StreamSubscription? _msgSub;
   SettingsModel _settings = const SettingsModel();
+  ChatFilter _chatFilter = ChatFilter(const SettingsModel());
 
   int _port = 8080;
   int _lifecycleGeneration = 0;
@@ -506,6 +512,7 @@ class OverlayServer {
     await _stop();
     if (generation != _startGeneration) return;
     _settings = settings;
+    _chatFilter = ChatFilter(settings);
     _updateGoals(settings);
     _updateTimer(settings);
     _port = port;
@@ -568,6 +575,10 @@ class OverlayServer {
   void setSettings(SettingsModel settings) {
     final previous = _settings;
     _settings = settings;
+    if (!ChatFilter.sameBlockLists(previous, settings)) {
+      _chatFilter = ChatFilter(settings);
+      _removeBlockedRecords();
+    }
     if (previous.appLanguageCode != settings.appLanguageCode) {
       for (final entry in _galleryViews.entries.toList()) {
         try {
@@ -738,10 +749,50 @@ class OverlayServer {
   }
 
   void broadcastModeration(ChatModerationEvent event) {
+    _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
     _broadcastEnvelope({
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
     });
+  }
+
+  void _removeBlockedRecords() {
+    final chat = _recentChatMessages.entries
+        .where((entry) => _chatFilter.blocksMessage(entry.value))
+        .toList();
+    for (final MapEntry(key: sequence, value: message) in chat) {
+      _recentChatMessages.remove(sequence);
+      final event = ChatModerationEvent.message(
+        platform: message.platform,
+        messageId: message.id,
+        youtubeStreamOrientation: message.youtubeStreamOrientation,
+      );
+      _broadcastEnvelope({
+        'type': 'moderation',
+        'data': {
+          ...OverlayPayloadEncoder.moderation(event),
+          'sequence': sequence
+        },
+      });
+    }
+    final provider = _recentProviderEvents.entries
+        .where((entry) => _chatFilter.blocksProviderEvent(entry.value))
+        .toList();
+    for (final MapEntry(key: key, value: event) in provider) {
+      _recentProviderEvents.remove(key);
+      _broadcastEnvelope({
+        'type': 'moderation',
+        'data': {
+          'platform': event.platform.name,
+          'scope': 'providerEvent',
+          'messageId': event.id,
+          'authorChannelId': '',
+          'authorName': '',
+          'youtubeStreamOrientation': null,
+          'providerEventKind': event.kind.name,
+        },
+      });
+    }
   }
 
   Map<String, Object?>? _timer;
@@ -811,6 +862,15 @@ class OverlayServer {
   }
 
   void broadcastProviderEvent(ChatProviderEvent event) {
+    if (_chatFilter.blocksProviderEvent(event)) return;
+    if (_clients.isNotEmpty) {
+      final key = (event.platform, event.kind, event.id);
+      _recentProviderEvents.remove(key);
+      _recentProviderEvents[key] = event;
+      if (_recentProviderEvents.length > _recentRecordLimit) {
+        _recentProviderEvents.remove(_recentProviderEvents.keys.first);
+      }
+    }
     _broadcastEnvelope({
       'type': 'providerEvent',
       'data': OverlayPayloadEncoder.providerEvent(event),
@@ -875,6 +935,7 @@ class OverlayServer {
     await _msgSub?.cancel();
     _msgSub = null;
     _recentChatMessages.clear();
+    _recentProviderEvents.clear();
     final clients = List<WebSocketChannel>.from(_clients);
     _clients.clear();
     _views.clear();
@@ -909,16 +970,20 @@ class OverlayServer {
   }
 
   void _broadcastMessage(ChatMessage msg) {
+    if (_chatFilter.blocksMessage(msg)) return;
     if (_clients.isNotEmpty) {
       final sequence = ++_nextChatSequence;
       _recentChatMessages[sequence] = msg;
-      if (_recentChatMessages.length > 500) {
+      if (_recentChatMessages.length > _recentRecordLimit) {
         _recentChatMessages.remove(_recentChatMessages.keys.first);
       }
       _broadcastEnvelope({
         'type': 'message',
         'sequence': sequence,
-        'data': OverlayPayloadEncoder.message(msg, _settings),
+        'data': {
+          ...OverlayPayloadEncoder.message(msg, _settings),
+          'sequence': sequence,
+        },
       });
     }
     broadcastChatSupport(msg);

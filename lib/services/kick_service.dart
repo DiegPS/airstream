@@ -515,8 +515,26 @@ class KickService {
       timestamp: timestamp.toUtc(),
       authorName: authorName,
       authorChannelId: switch (event) {
+        kick.KickRewardRedeemedEvent(:final redeemer) => redeemer.slug,
+        kick.KickPinnedMessageCreatedEvent(:final message) =>
+          message.sender.slug,
         kick.KickKicksGiftedEvent(:final sender) => sender.slug,
+        kick.KickStreamHostedEvent(:final host) => host.slug,
         _ => '',
+      },
+      viewerName: switch (event) {
+        kick.KickPinnedMessageCreatedEvent(:final message) =>
+          message.sender.username,
+        _ => null,
+      },
+      viewerText: switch (event) {
+        kick.KickRewardRedeemedEvent(:final userInput) => userInput,
+        kick.KickKicksGiftedEvent(:final gift, :final message) => [
+            message,
+            gift.message
+          ].where((value) => value.isNotEmpty).join(' · '),
+        kick.KickKnownEvent() || kick.KickUnknownEvent() => text,
+        _ => null,
       },
       text: text,
       count: count,
@@ -642,6 +660,8 @@ class KickService {
         id: pinnedId,
         timestamp: pinned.message.createdAt,
         authorName: pinned.pinnedBy.username,
+        authorChannelId: pinned.message.sender.slug,
+        viewerName: pinned.message.sender.username,
         text: pinned.message.content,
         data: Map<String, Object?>.unmodifiable(pinned.raw),
       ));
