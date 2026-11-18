@@ -39,7 +39,11 @@ void main() {
         for (final e in RuleSchema.actions[type]!.entries)
           e.key: e.value.fallback
       };
-      if (type == 'giveaway') params['keyword'] = 'join';
+      if (type == 'clock') params['op'] = 'add';
+      if (type == 'giveaway') {
+        params['op'] = 'draw';
+        params['keyword'] = 'join';
+      }
       final action = {'id': 'a', 'type': type, ...params};
       final r = {
         ...RuleSchema.newRule('manual', id: 'test'),
@@ -71,6 +75,25 @@ void main() {
       }
     });
   }
+
+  test('clock start and old giveaway draws need no numeric parameter', () {
+    final actions = [
+      {'id': 'a', 'type': 'clock', 'op': 'start'},
+      {
+        'id': 'b',
+        'type': 'giveaway',
+        'op': 'draw',
+        'keyword': '',
+        'membersOnly': false
+      },
+    ];
+    final rule = RuleSchema.newRule('manual', id: 'test')
+      ..['actions'] = actions;
+    expect(ruleProblems(rule), isEmpty);
+    final clean = RuleSchema.sanitize([rule]).single;
+    expect(clean['invalid'], isFalse);
+    expect(clean['actions'], actions);
+  });
   test('volume sanitization and editor validation use the mode-specific range',
       () {
     for (final (mode, max) in [('set', 26), ('change', 100)]) {

@@ -4692,7 +4692,7 @@ abstract class AppLocalizations {
   /// No description provided for @ruleLabel.
   ///
   /// In en, this message translates to:
-  /// **'{code, select, krules{Rules} kdescription{When something happens in your stream, Airstream can do things for you.} kautomation{Automation on} knew{New rule} krecipes{Recipes} kempty{Start with Recipes for an example.} kempty2{Or choose New rule to build your own.} ktripped{Automation paused itself after too many runs in a minute.} kresume{Resume} kinvalid{This rule needs fixing} kpublicObs{Anyone in chat can change OBS with this rule} kpublicChatText{Chat text will appear on your stream} knoCooldown{No cooldown: chat can repeat it as fast as it wants} kedit{Edit} kduplicate{Duplicate} kdelete{Delete} kcopy{copy} kconfirmDelete{Delete this rule?} kcancel{Cancel} kdiscard{Discard changes?} kclose{Close} ksave{Save} kname{Name} kwhen{When} kif{If} kdo{Do} klimits{Limits} koverlap{If it is already running} kaddAction{Add action} ktest{Test} ktestWith{Test with} krun{Run now} kmatched{Matched} kaccepted{Run accepted} khistory{History} kclear{Clear} knoHistory{No runs yet.} kup{Move up} kdown{Move down} kfieldError{Check this value and its limits} kcooldownSeconds{Cooldown (seconds, 0–3600)} kuserCooldownSeconds{Per-person cooldown (seconds, 0–3600)} kqueue{Queue: wait for the previous run} kskip{Skip: ignore while already running} konlyWhileStreaming{Only while OBS is streaming} keveryone{Everyone} kmember{Members/subscribers} kmoderator{Moderators} kvip{VIPs} kowner{Owner} kchat{Chat} ksupport{Support} klive{Live tools} kobs{OBS} ktime{Time} kmanual{Manual} kflow{Flow} kvoice{Voice} ksound{Sound} kpages{Pages and templates} kadd{Add} kdone{Done ✓} kskipped{Skipped} kfailed{Failed} kuncertain{Uncertain} kcancelled{Cancelled} kwouldRun{Would run} kpending{Pending} kchat_message{Message contains text} kchat_command{Chat command} kchat_firstMessage{First message} ksupport_superchat{Super Chat} ksupport_bits{Bits} ksupport_membership{Membership / subscription} ksupport_gift{Gift subscriptions} ksupport_raid{Raid} ksupport_kicks{Kicks} kgoal_reached{Goal reached} kgiveaway_winner{Giveaway winner} kpoll_ended{Poll ended} ksubathon_ended{Subathon ended} kobs_streamStarted{Stream started} kobs_streamStopped{Stream stopped} kobs_recordingStarted{Recording started} kobs_recordingStopped{Recording stopped} kobs_sceneChanged{Scene changed} kinterval{Every N minutes} kwait{Wait} kobs_scene{Switch scene} kobs_previousScene{Return to previous scene} kobs_recording{Recording} kobs_source{Show / hide source} kobs_mute{Mute / unmute input} kobs_text{Set text} kobs_filter{Turn filter on / off} ktts_say{Read aloud} ksound_play{Play sound} kalert_show{Show alert} kfeatured{Feature message} ktemplate_trigger{Trigger template} kgoal_adjust{Adjust goal} ksubathon_adjust{Adjust subathon} kgiveaway{Giveaway} kcounter{Counter} kcommand{Command} kmatch{Match} ktext{Text} kminAmount{Minimum amount} kcurrency{Currency} kmin{Minimum count} kminMonths{Minimum months} kgoalId{Goal} kscene{Scene} kminutes{Minutes} kseconds{Seconds} kstate{State} ksource{Source} kfilter{Filter} kvisible{Visibility} kinput{Audio input} kmediaId{Library media} ktitle{Title} kdata{Data} kdelta{Change} kop{Operation} kkeyword{Keyword} kmembersOnly{Members only} kvalue{Value} kcontains{Contains} kstartsWith{Starts with} kequals{Equals} kstart{Start} kstop{Stop} kshow{Show} khide{Hide} ktoggle{Toggle} kmute{Mute} kunmute{Unmute} kenable{Turn on} kdisable{Turn off} kbuiltin{Built in} klibrary{Library} kchime{Chime} kcoin{Coin} kfanfare{Fanfare} kset{Set} kdraw{Draw} kautomationOff{Automation is off} kchainLimit{Chain limit reached} kinvalidRule{Invalid rule} kruleDisabled{Rule is disabled} kwrongTrigger{Different trigger} kplatform{Platform does not match} krole{Role does not match} knotStreaming{OBS is not streaming} ktextMismatch{Text does not match} kamountUnknown{Amount is unknown} kcurrencyMismatch{Currency does not match} kbelowMinimum{Below the minimum} kcooldown{Rule is cooling down} kuserCooldown{Person is cooling down} ktrippedReason{Automation paused by the safety limit} krunRateExceeded{Too many runs in a minute} koverlapSkipped{Already running} kqueueFull{Queue is full} knoPreviousScene{No previous scene saved} ktargetError{Action failed} ktimeout{Action timed out} kdisposed{Engine is closed} knotConnected{OBS is disconnected} kttsOff{Voice reader is off or not ready} knoMessage{No chat message available} kgoalNotFound{Goal not found} ktimerNotRunning{Subathon is not running} knoReceiver{No template receiver connected} kinvalidKeyword{Invalid keyword} kalreadyOpen{Giveaway is already open} knotOpen{Giveaway is not open} knoEntrants{No eligible entrants} kqueue_joined{Viewer joined the queue} kqueue_next{Next players} kqueue_open{Open the queue} kqueue_close{Close the queue} kqueue_pause{Pause the queue} kcount{Players} krandom{Pick randomly} kqueueAlreadyOpen{The queue is already open} kqueueAlreadyPaused{The queue is already paused} kqueueAlreadyClosed{The queue is already closed} kqueueEmpty{Nobody is waiting in the queue} kcounterLimit{Counter limit reached} krecipe1{Welcome a raid} krecipeDesc1{Show Raid for 15 seconds, then return.} krecipe2{Share your socials} krecipeDesc2{Trigger redes and read your links aloud.} krecipe3{Read Super Chats} krecipeDesc3{Read messages with an amount of at least \$5.} krecipe4{Regular reminder} krecipeDesc4{Trigger recordatorio every 20 minutes.} krecipe5{Celebrate a goal} krecipeDesc5{Show Celebración for 10 seconds, then return.} krecipe6{Count deaths} krecipeDesc6{Moderators add to muertes and trigger a template.} krecipe7{Counter on screen} krecipeDesc7{Moderators add to muertes and show it in a text source.} kdiscardAction{Discard} kbuttons{Rule buttons} knotFound{Item not found} knotTextSource{Not a text source} knoAlertsPage{No alerts page connected} kwillCheckInObs{Will check in OBS} kwouldSkip{Would be skipped} kwebhook{Webhook name (optional)} kwebhookConflict{This webhook name is already used.} kwebhookTitle{Stream Deck and other apps} kwebhookEnable{Enable local rule URLs} kwebhookHelp{Stream Deck: use the Website action with GET request in background. Any app or script can call the URL.} kwebhookSecretWarning{Anyone with the URL can run these rules. Keep it private.} kwebhookServerHelp{Enable the local server in OBS settings to use these URLs.} khideToken{Hide token} krevealToken{Reveal token} kcopyToken{Copy token} kregenerate{Regenerate} kregenerateConfirm{Regenerate token? Existing buttons will stop working.} kexportRules{Export rules} kimportRules{Import rules} kimportReview{Review imported rules} kimportDisabled{All imported rules will be disabled. Review them before enabling.} kimportSkipped{Rules skipped (50-rule limit)} kwebhookCollision{Webhook name removed because it is already used:} kobsNames{Check these names exist in your OBS:} kmissingMedia{Library media missing here (action kept):} ktemplateName{Template trigger name:} kunknownFormat{Unknown rules file format.} kunknownVersion{Unsupported rules file version.} kmalformedJson{Invalid rules JSON file.} kfileTooLarge{Rules file exceeds 1 MB.} ksharingFailed{Could not read or write the rules file.} kobs_stream{Streaming} kobs_replay{Replay buffer} kobs_media{Control media} kobs_volume{Volume} kobs_refresh{Refresh browser source} khttp_request{Call a URL} kstreamStart{Start stream} kstreamStop{Stop stream} kreplaySave{Save replay} kplay{Play} kpause{Pause} krestart{Restart} kmode{Mode} kchange{Change} kdb{dB} kmethod{Method} kget{GET} kpost{POST} kurl{URL} kcontentType{Content type} kjson{JSON} kbody{Body} kstreamAlready{Stream is already in that state} kpublicStreamControl{Public chat cannot start or stop the stream} kreplayOff{The replay buffer is off} kreplayAlready{Replay buffer is already in that state} knotBrowserSource{Not a browser source} knoUrl{Missing URL} kinvalidHttpUrl{Enter a valid HTTP or HTTPS URL} khttpStatus{The URL returned an error} khttpError{Could not connect to the URL} kresetHttpUrl{Set the URL again in:} krecipe8{Tell Discord you are live} krecipeDesc8{Paste your Discord webhook URL to announce your stream.} other{…}}'**
+  /// **'{code, select, krules{Rules} kdescription{When something happens in your stream, Airstream can do things for you.} kautomation{Automation on} knew{New rule} krecipes{Recipes} kempty{Start with Recipes for an example.} kempty2{Or choose New rule to build your own.} ktripped{Automation paused itself after too many runs in a minute.} kresume{Resume} kinvalid{This rule needs fixing} kpublicObs{Anyone in chat can change OBS with this rule} kpublicChatText{Chat text will appear on your stream} knoCooldown{No cooldown: chat can repeat it as fast as it wants} kedit{Edit} kduplicate{Duplicate} kdelete{Delete} kcopy{copy} kconfirmDelete{Delete this rule?} kcancel{Cancel} kdiscard{Discard changes?} kclose{Close} ksave{Save} kname{Name} kwhen{When} kif{If} kdo{Do} klimits{Limits} koverlap{If it is already running} kaddAction{Add action} ktest{Test} ktestWith{Test with} krun{Run now} kmatched{Matched} kaccepted{Run accepted} khistory{History} kclear{Clear} knoHistory{No runs yet.} kup{Move up} kdown{Move down} kfieldError{Check this value and its limits} kcooldownSeconds{Cooldown (seconds, 0–3600)} kuserCooldownSeconds{Per-person cooldown (seconds, 0–3600)} kqueue{Queue: wait for the previous run} kskip{Skip: ignore while already running} konlyWhileStreaming{Only while OBS is streaming} keveryone{Everyone} kmember{Members/subscribers} kmoderator{Moderators} kvip{VIPs} kowner{Owner} kchat{Chat} ksupport{Support} klive{Live tools} kobs{OBS} ktime{Time} kmanual{Manual} kflow{Flow} kvoice{Voice} ksound{Sound} kpages{Pages and templates} kadd{Add} kdone{Done ✓} kskipped{Skipped} kfailed{Failed} kuncertain{Uncertain} kcancelled{Cancelled} kwouldRun{Would run} kpending{Pending} kchat_message{Message contains text} kchat_command{Chat command} kchat_firstMessage{First message} ksupport_superchat{Super Chat} ksupport_bits{Bits} ksupport_membership{Membership / subscription} ksupport_gift{Gift subscriptions} ksupport_raid{Raid} ksupport_kicks{Kicks} kgoal_reached{Goal reached} kgiveaway_winner{Giveaway winner} kpoll_ended{Poll ended} kclock_ended{Timer ended} ksubathon_ended{Subathon ended} kobs_streamStarted{Stream started} kobs_streamStopped{Stream stopped} kobs_recordingStarted{Recording started} kobs_recordingStopped{Recording stopped} kobs_sceneChanged{Scene changed} kinterval{Every N minutes} kwait{Wait} kobs_scene{Switch scene} kobs_previousScene{Return to previous scene} kobs_recording{Recording} kobs_source{Show / hide source} kobs_mute{Mute / unmute input} kobs_text{Set text} kobs_filter{Turn filter on / off} ktts_say{Read aloud} ksound_play{Play sound} kalert_show{Show alert} kfeatured{Feature message} ktemplate_trigger{Trigger template} kgoal_adjust{Adjust goal} kclock{Timer} ksubathon_adjust{Adjust subathon} kgiveaway{Giveaway} kcounter{Counter} kcommand{Command} kmatch{Match} ktext{Text} kminAmount{Minimum amount} kcurrency{Currency} kmin{Minimum count} kminMonths{Minimum months} kgoalId{Goal} kscene{Scene} kminutes{Minutes} kseconds{Seconds} kstate{State} ksource{Source} kfilter{Filter} kvisible{Visibility} kinput{Audio input} kmediaId{Library media} ktitle{Title} kdata{Data} kdelta{Change} kop{Operation} kkeyword{Keyword} kmembersOnly{Members only} kvalue{Value} kcontains{Contains} kstartsWith{Starts with} kequals{Equals} kstart{Start} kstop{Stop} kshow{Show} khide{Hide} ktoggle{Toggle} kmute{Mute} kunmute{Unmute} kenable{Turn on} kdisable{Turn off} kbuiltin{Built in} klibrary{Library} kchime{Chime} kcoin{Coin} kfanfare{Fanfare} kset{Set} kdraw{Draw} kautomationOff{Automation is off} kchainLimit{Chain limit reached} kinvalidRule{Invalid rule} kruleDisabled{Rule is disabled} kwrongTrigger{Different trigger} kplatform{Platform does not match} krole{Role does not match} knotStreaming{OBS is not streaming} ktextMismatch{Text does not match} kamountUnknown{Amount is unknown} kcurrencyMismatch{Currency does not match} kbelowMinimum{Below the minimum} kcooldown{Rule is cooling down} kuserCooldown{Person is cooling down} ktrippedReason{Automation paused by the safety limit} krunRateExceeded{Too many runs in a minute} koverlapSkipped{Already running} kqueueFull{Queue is full} knoPreviousScene{No previous scene saved} ktargetError{Action failed} ktimeout{Action timed out} kdisposed{Engine is closed} knotConnected{OBS is disconnected} kttsOff{Voice reader is off or not ready} knoMessage{No chat message available} kgoalNotFound{Goal not found} ktimerNotRunning{Subathon is not running} knoReceiver{No template receiver connected} kinvalidKeyword{Invalid keyword} kalreadyOpen{Giveaway is already open} knotOpen{Giveaway is not open} knoEntrants{No eligible entrants} kqueue_joined{Viewer joined the queue} kqueue_next{Next players} kqueue_open{Open the queue} kqueue_close{Close the queue} kqueue_pause{Pause the queue} kwinnerCount{Winners} kcount{Players} krandom{Pick randomly} kqueueAlreadyOpen{The queue is already open} kqueueAlreadyPaused{The queue is already paused} kqueueAlreadyClosed{The queue is already closed} kqueueEmpty{Nobody is waiting in the queue} kcounterLimit{Counter limit reached} krecipe1{Welcome a raid} krecipeDesc1{Show Raid for 15 seconds, then return.} krecipe2{Share your socials} krecipeDesc2{Trigger redes and read your links aloud.} krecipe3{Read Super Chats} krecipeDesc3{Read messages with an amount of at least \$5.} krecipe4{Regular reminder} krecipeDesc4{Trigger recordatorio every 20 minutes.} krecipe5{Celebrate a goal} krecipeDesc5{Show Celebración for 10 seconds, then return.} krecipe6{Count deaths} krecipeDesc6{Moderators add to muertes and trigger a template.} krecipe7{Counter on screen} krecipeDesc7{Moderators add to muertes and show it in a text source.} kdiscardAction{Discard} kbuttons{Rule buttons} knotFound{Item not found} knotTextSource{Not a text source} knoAlertsPage{No alerts page connected} kwillCheckInObs{Will check in OBS} kwouldSkip{Would be skipped} kwebhook{Webhook name (optional)} kwebhookConflict{This webhook name is already used.} kwebhookTitle{Stream Deck and other apps} kwebhookEnable{Enable local rule URLs} kwebhookHelp{Stream Deck: use the Website action with GET request in background. Any app or script can call the URL.} kwebhookSecretWarning{Anyone with the URL can run these rules. Keep it private.} kwebhookServerHelp{Enable the local server in OBS settings to use these URLs.} khideToken{Hide token} krevealToken{Reveal token} kcopyToken{Copy token} kregenerate{Regenerate} kregenerateConfirm{Regenerate token? Existing buttons will stop working.} kexportRules{Export rules} kimportRules{Import rules} kimportReview{Review imported rules} kimportDisabled{All imported rules will be disabled. Review them before enabling.} kimportSkipped{Rules skipped (50-rule limit)} kwebhookCollision{Webhook name removed because it is already used:} kobsNames{Check these names exist in your OBS:} kmissingMedia{Library media missing here (action kept):} ktemplateName{Template trigger name:} kunknownFormat{Unknown rules file format.} kunknownVersion{Unsupported rules file version.} kmalformedJson{Invalid rules JSON file.} kfileTooLarge{Rules file exceeds 1 MB.} ksharingFailed{Could not read or write the rules file.} kobs_stream{Streaming} kobs_replay{Replay buffer} kobs_media{Control media} kobs_volume{Volume} kobs_refresh{Refresh browser source} khttp_request{Call a URL} kstreamStart{Start stream} kstreamStop{Stop stream} kreplaySave{Save replay} kplay{Play} kpause{Pause} kreset{Reset} krestart{Restart} kmode{Mode} kchange{Change} kdb{dB} kmethod{Method} kget{GET} kpost{POST} kurl{URL} kcontentType{Content type} kjson{JSON} kbody{Body} kstreamAlready{Stream is already in that state} kpublicStreamControl{Public chat cannot start or stop the stream} kreplayOff{The replay buffer is off} kreplayAlready{Replay buffer is already in that state} knotBrowserSource{Not a browser source} knoUrl{Missing URL} kinvalidHttpUrl{Enter a valid HTTP or HTTPS URL} khttpStatus{The URL returned an error} khttpError{Could not connect to the URL} kresetHttpUrl{Set the URL again in:} krecipe8{Tell Discord you are live} krecipeDesc8{Paste your Discord webhook URL to announce your stream.} other{…}}'**
   String ruleLabel(String code);
 
   /// No description provided for @ruleSummary.
@@ -5546,6 +5546,330 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{Chat export includes the {count} messages still in the chat buffer.}}'**
   String sessionExportChatScope(int count);
+
+  /// No description provided for @clockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get clockTitle;
+
+  /// No description provided for @clockDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a countdown, stopwatch, or local clock on stream.'**
+  String get clockDescription;
+
+  /// No description provided for @clockMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get clockMode;
+
+  /// No description provided for @clockCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Countdown'**
+  String get clockCountdown;
+
+  /// No description provided for @clockStopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopwatch'**
+  String get clockStopwatch;
+
+  /// No description provided for @clockLocalTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Local time'**
+  String get clockLocalTime;
+
+  /// No description provided for @clockLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get clockLabel;
+
+  /// No description provided for @clockDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration in seconds (1–86,400)'**
+  String get clockDuration;
+
+  /// No description provided for @clockSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound at the end'**
+  String get clockSound;
+
+  /// No description provided for @clockSoundNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No sound'**
+  String get clockSoundNone;
+
+  /// No description provided for @clockStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Page style'**
+  String get clockStyle;
+
+  /// No description provided for @clockStyleBig.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get clockStyleBig;
+
+  /// No description provided for @clockStyleCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get clockStyleCompact;
+
+  /// No description provided for @clockStyleRing.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress ring (countdown)'**
+  String get clockStyleRing;
+
+  /// No description provided for @clockEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Time’s up!'**
+  String get clockEnded;
+
+  /// No description provided for @clockPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get clockPause;
+
+  /// No description provided for @clockReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get clockReset;
+
+  /// No description provided for @clockPlusMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 min'**
+  String get clockPlusMinute;
+
+  /// No description provided for @clockMinusMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'−1 min'**
+  String get clockMinusMinute;
+
+  /// No description provided for @pollSaveSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Save current setup'**
+  String get pollSaveSetup;
+
+  /// No description provided for @pollRenameSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename saved poll'**
+  String get pollRenameSetup;
+
+  /// No description provided for @pollDeleteSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete saved poll'**
+  String get pollDeleteSetup;
+
+  /// No description provided for @pollSetupName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name for this setup'**
+  String get pollSetupName;
+
+  /// No description provided for @pollSetupDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'That name is already in use.'**
+  String get pollSetupDuplicate;
+
+  /// No description provided for @pollSavedSetups.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved polls'**
+  String get pollSavedSetups;
+
+  /// No description provided for @pollSetupLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete a saved poll to make room for another.'**
+  String get pollSetupLimit;
+
+  /// No description provided for @giveawayDrawCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Winners per draw'**
+  String get giveawayDrawCount;
+
+  /// No description provided for @giveawayDrawMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw {count} winners'**
+  String giveawayDrawMany(int count);
+
+  /// No description provided for @giveawayHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Giveaway history'**
+  String get giveawayHistory;
+
+  /// No description provided for @giveawayHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed rounds yet.'**
+  String get giveawayHistoryEmpty;
+
+  /// No description provided for @giveawayClearHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear history'**
+  String get giveawayClearHistory;
+
+  /// No description provided for @giveawayStartedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Started {date}'**
+  String giveawayStartedAt(String date);
+
+  /// No description provided for @giveawayEndedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended {date}'**
+  String giveawayEndedAt(String date);
+
+  /// No description provided for @giveawayNoWinners.
+  ///
+  /// In en, this message translates to:
+  /// **'No winners'**
+  String get giveawayNoWinners;
+
+  /// No description provided for @galleryScoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scoreboard'**
+  String get galleryScoreboard;
+
+  /// No description provided for @galleryScoreboardDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show selected rule counters and their current values.'**
+  String get galleryScoreboardDescription;
+
+  /// No description provided for @galleryScoreboardCounters.
+  ///
+  /// In en, this message translates to:
+  /// **'Counter names, separated by commas (up to 8)'**
+  String get galleryScoreboardCounters;
+
+  /// No description provided for @galleryScoreboardLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels in the same order, separated by commas'**
+  String get galleryScoreboardLabels;
+
+  /// No description provided for @galleryScoreboardLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get galleryScoreboardLayout;
+
+  /// No description provided for @galleryWordCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Word cloud'**
+  String get galleryWordCloud;
+
+  /// No description provided for @galleryWordCloudDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Display the most frequent words from the last five minutes of chat.'**
+  String get galleryWordCloudDescription;
+
+  /// No description provided for @galleryWordCloudMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum word length'**
+  String get galleryWordCloudMinLength;
+
+  /// No description provided for @galleryWordCloudMaxWords.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum words'**
+  String get galleryWordCloudMaxWords;
+
+  /// No description provided for @galleryWordCloudRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh interval (seconds)'**
+  String get galleryWordCloudRefresh;
+
+  /// No description provided for @galleryEmoteWall.
+  ///
+  /// In en, this message translates to:
+  /// **'Emote wall'**
+  String get galleryEmoteWall;
+
+  /// No description provided for @galleryEmoteWallDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Float emotes from chat across the screen as they arrive.'**
+  String get galleryEmoteWallDescription;
+
+  /// No description provided for @galleryEmoteWallMax.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum emotes on screen'**
+  String get galleryEmoteWallMax;
+
+  /// No description provided for @galleryEmoteWallSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Emote size (pixels)'**
+  String get galleryEmoteWallSize;
+
+  /// No description provided for @galleryEmoteWallLifetime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time on screen (seconds)'**
+  String get galleryEmoteWallLifetime;
+
+  /// No description provided for @clockPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get clockPaused;
+
+  /// No description provided for @galleryScoreboardHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get galleryScoreboardHome;
+
+  /// No description provided for @galleryScoreboardAway.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get galleryScoreboardAway;
+
+  /// No description provided for @galleryScoreboardRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Row'**
+  String get galleryScoreboardRow;
+
+  /// No description provided for @galleryScoreboardColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Column'**
+  String get galleryScoreboardColumn;
 }
 
 class _AppLocalizationsDelegate

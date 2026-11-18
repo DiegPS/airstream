@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:airstream/settings/goals.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:airstream/services/media_library.dart';
@@ -123,7 +124,35 @@ class OverlayServer {
     }
   }
 
+  final _counterClients = <WebSocketChannel, String>{};
+  Timer? _counterTimer;
+
+  void _countersChanged() {
+    if (_sessionClients.isEmpty) return;
+    _counterTimer ??= Timer(const Duration(seconds: 1), () {
+      _counterTimer = null;
+      final json = jsonEncode(_settings.ruleCounters);
+      for (final client in _sessionClients.keys.toList()) {
+        _sendCounters(client, json, replay: false);
+      }
+    });
+  }
+
+  void _sendCounters(WebSocketChannel client, String json,
+      {required bool replay}) {
+    if (!replay && _counterClients[client] == json) return;
+    try {
+      client.sink.add('{"type":"counters","replay":$replay,"data":$json}');
+      _counterClients[client] = json;
+    } catch (_) {
+      _removeClient(client);
+    }
+  }
+
   void _clearSessionDelivery() {
+    _counterTimer?.cancel();
+    _counterTimer = null;
+    _counterClients.clear();
     _sessionTimer?.cancel();
     _sessionTimer = null;
     _sessionJson = null;
@@ -280,6 +309,7 @@ class OverlayServer {
           'giveaway',
           'goals',
           'timer',
+          'clock',
           'custom'
         ])
           view: _views.values.where((value) => value == view).length,
@@ -519,6 +549,15 @@ class OverlayServer {
     _settings = settings;
     _updateGoals(settings);
     _updateTimer(settings);
+    if (!mapEquals(previous.clock.toJson(), settings.clock.toJson())) {
+      _broadcastEnvelope({
+        'type': 'clock',
+        'data': settings.clock.payload(DateTime.now().millisecondsSinceEpoch),
+      }, view: 'clock');
+    }
+    if (!mapEquals(previous.ruleCounters, settings.ruleCounters)) {
+      _countersChanged();
+    }
     if (_nameColorOptions(previous) != _nameColorOptions(settings) &&
         _recentChatMessages.isNotEmpty &&
         _views.containsValue('chat')) {
@@ -920,6 +959,8 @@ class OverlayServer {
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
           _sessionClients[client] = null;
           _sendSession(client, replay: true);
+          _sendCounters(client, jsonEncode(_settings.ruleCounters),
+              replay: true);
           final queue = queueState?.call();
           if (queue != null) {
             client.sink.add(jsonEncode({
@@ -948,11 +989,20 @@ class OverlayServer {
               'captions',
               'giveaway',
               'goals',
-              'timer'
+              'timer',
+              'clock',
             }.contains(view) &&
             !_views.containsKey(client)) {
           _views[client] = view;
           client.sink.add(jsonEncode({'type': 'registered', 'view': view}));
+          if (view == 'clock') {
+            client.sink.add(jsonEncode({
+              'type': 'clock',
+              'data': _settings.clock
+                  .payload(DateTime.now().millisecondsSinceEpoch),
+              'replay': true,
+            }));
+          }
           if (view == 'alerts') {
             client.sink.add(jsonEncode(_alertControl(_alertsPaused
                 ? AlertQueueOperation.pause
@@ -1152,6 +1202,7 @@ class OverlayServer {
     }
     _templates.remove(client);
     _galleryViews.remove(client);
+    _counterClients.remove(client);
     if (_sessionClients.containsKey(client)) {
       _sessionClients.remove(client);
       if (_sessionClients.isEmpty) _clearSessionDelivery();

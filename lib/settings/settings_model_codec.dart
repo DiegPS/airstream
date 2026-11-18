@@ -9,6 +9,9 @@ import 'name_color_mode.dart';
 import 'settings_input_normalizer.dart';
 import 'alert_type_options.dart';
 import 'goals.dart';
+import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'media_library_entries.dart';
 
@@ -164,6 +167,11 @@ abstract final class SettingsModelCodec {
         'subathonRemainingMs': model.subathonRemainingMs,
         'mediaLibrary': MediaLibraryEntries.sanitize(model.mediaLibrary),
         'goals': Goals.sanitize(model.goals),
+        'clock': model.clock.toJson(),
+        'savedPolls': [for (final poll in model.savedPolls) poll.toJson()],
+        'giveawayHistory': [
+          for (final round in model.giveawayHistory) round.toJson()
+        ],
         'queueOptions': model.queueOptions.toJson(),
         'queueState': model.queueState.toJson(),
         'rulesEnabled': model.rulesEnabled,
@@ -201,6 +209,9 @@ abstract final class SettingsModelCodec {
       subathonRemainingMs: j['subathonRemainingMs'] as int? ?? 0,
       mediaLibrary: MediaLibraryEntries.sanitize(j['mediaLibrary']),
       goals: Goals.sanitize(j['goals']),
+      clock: LiveClock.fromJson(j['clock']),
+      savedPolls: SavedPoll.sanitize(j['savedPolls']),
+      giveawayHistory: GiveawayRound.sanitize(j['giveawayHistory']),
       queueOptions: QueueOptions.fromJson(j['queueOptions']),
       queueState: QueueState.fromJson(j['queueState']),
       rulesEnabled: j['rulesEnabled'] as bool? ?? true,
@@ -446,7 +457,13 @@ abstract final class SettingsModelCodec {
             : RuleSchema.counters(value);
         continue;
       }
-      if (entry.key == 'queueOptions' || entry.key == 'queueState') {
+      if (const {
+        'queueOptions',
+        'queueState',
+        'clock',
+        'savedPolls',
+        'giveawayHistory'
+      }.contains(entry.key)) {
         sanitized[entry.key] = value;
         continue;
       }

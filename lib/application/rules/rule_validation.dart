@@ -58,6 +58,11 @@ Map<String, String> ruleProblems(Map<String, dynamic> rule) {
     int length(String value) =>
         countCodePoints ? value.runes.length : value.length;
     for (final entry in schema.entries) {
+      if (map['type'] == 'giveaway' &&
+          entry.key == 'count' &&
+          !map.containsKey('count')) {
+        continue;
+      }
       final f = entry.value,
           v = map[entry.key] ?? (entry.key == 'webhook' ? '' : null);
       final bad = f.numeric

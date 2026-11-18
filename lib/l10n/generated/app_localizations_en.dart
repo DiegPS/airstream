@@ -2734,6 +2734,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kgoal_reached': 'Goal reached',
         'kgiveaway_winner': 'Giveaway winner',
         'kpoll_ended': 'Poll ended',
+        'kclock_ended': 'Timer ended',
         'ksubathon_ended': 'Subathon ended',
         'kobs_streamStarted': 'Stream started',
         'kobs_streamStopped': 'Stream stopped',
@@ -2755,6 +2756,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kfeatured': 'Feature message',
         'ktemplate_trigger': 'Trigger template',
         'kgoal_adjust': 'Adjust goal',
+        'kclock': 'Timer',
         'ksubathon_adjust': 'Adjust subathon',
         'kgiveaway': 'Giveaway',
         'kcounter': 'Counter',
@@ -2838,6 +2840,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kqueue_open': 'Open the queue',
         'kqueue_close': 'Close the queue',
         'kqueue_pause': 'Pause the queue',
+        'kwinnerCount': 'Winners',
         'kcount': 'Players',
         'krandom': 'Pick randomly',
         'kqueueAlreadyOpen': 'The queue is already open',
@@ -2909,6 +2912,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kreplaySave': 'Save replay',
         'kplay': 'Play',
         'kpause': 'Pause',
+        'kreset': 'Reset',
         'krestart': 'Restart',
         'kmode': 'Mode',
         'kchange': 'Change',
@@ -3405,4 +3409,178 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get clockTitle => 'Timer';
+
+  @override
+  String get clockDescription =>
+      'Run a countdown, stopwatch, or local clock on stream.';
+
+  @override
+  String get clockMode => 'Mode';
+
+  @override
+  String get clockCountdown => 'Countdown';
+
+  @override
+  String get clockStopwatch => 'Stopwatch';
+
+  @override
+  String get clockLocalTime => 'Local time';
+
+  @override
+  String get clockLabel => 'Label';
+
+  @override
+  String get clockDuration => 'Duration in seconds (1–86,400)';
+
+  @override
+  String get clockSound => 'Sound at the end';
+
+  @override
+  String get clockSoundNone => 'No sound';
+
+  @override
+  String get clockStyle => 'Page style';
+
+  @override
+  String get clockStyleBig => 'Large';
+
+  @override
+  String get clockStyleCompact => 'Compact';
+
+  @override
+  String get clockStyleRing => 'Progress ring (countdown)';
+
+  @override
+  String get clockEnded => 'Time’s up!';
+
+  @override
+  String get clockPause => 'Pause';
+
+  @override
+  String get clockReset => 'Reset';
+
+  @override
+  String get clockPlusMinute => '+1 min';
+
+  @override
+  String get clockMinusMinute => '−1 min';
+
+  @override
+  String get pollSaveSetup => 'Save current setup';
+
+  @override
+  String get pollRenameSetup => 'Rename saved poll';
+
+  @override
+  String get pollDeleteSetup => 'Delete saved poll';
+
+  @override
+  String get pollSetupName => 'Name for this setup';
+
+  @override
+  String get pollSetupDuplicate => 'That name is already in use.';
+
+  @override
+  String get pollSavedSetups => 'Saved polls';
+
+  @override
+  String get pollSetupLimit => 'Delete a saved poll to make room for another.';
+
+  @override
+  String get giveawayDrawCount => 'Winners per draw';
+
+  @override
+  String giveawayDrawMany(int count) {
+    return 'Draw $count winners';
+  }
+
+  @override
+  String get giveawayHistory => 'Giveaway history';
+
+  @override
+  String get giveawayHistoryEmpty => 'No completed rounds yet.';
+
+  @override
+  String get giveawayClearHistory => 'Clear history';
+
+  @override
+  String giveawayStartedAt(String date) {
+    return 'Started $date';
+  }
+
+  @override
+  String giveawayEndedAt(String date) {
+    return 'Ended $date';
+  }
+
+  @override
+  String get giveawayNoWinners => 'No winners';
+
+  @override
+  String get galleryScoreboard => 'Scoreboard';
+
+  @override
+  String get galleryScoreboardDescription =>
+      'Show selected rule counters and their current values.';
+
+  @override
+  String get galleryScoreboardCounters =>
+      'Counter names, separated by commas (up to 8)';
+
+  @override
+  String get galleryScoreboardLabels =>
+      'Labels in the same order, separated by commas';
+
+  @override
+  String get galleryScoreboardLayout => 'Layout';
+
+  @override
+  String get galleryWordCloud => 'Word cloud';
+
+  @override
+  String get galleryWordCloudDescription =>
+      'Display the most frequent words from the last five minutes of chat.';
+
+  @override
+  String get galleryWordCloudMinLength => 'Minimum word length';
+
+  @override
+  String get galleryWordCloudMaxWords => 'Maximum words';
+
+  @override
+  String get galleryWordCloudRefresh => 'Refresh interval (seconds)';
+
+  @override
+  String get galleryEmoteWall => 'Emote wall';
+
+  @override
+  String get galleryEmoteWallDescription =>
+      'Float emotes from chat across the screen as they arrive.';
+
+  @override
+  String get galleryEmoteWallMax => 'Maximum emotes on screen';
+
+  @override
+  String get galleryEmoteWallSize => 'Emote size (pixels)';
+
+  @override
+  String get galleryEmoteWallLifetime => 'Time on screen (seconds)';
+
+  @override
+  String get clockPaused => 'Paused';
+
+  @override
+  String get galleryScoreboardHome => 'Home';
+
+  @override
+  String get galleryScoreboardAway => 'Away';
+
+  @override
+  String get galleryScoreboardRow => 'Row';
+
+  @override
+  String get galleryScoreboardColumn => 'Column';
 }

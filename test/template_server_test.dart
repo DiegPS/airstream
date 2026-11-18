@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/live_clock.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_queue.dart';
@@ -83,6 +84,66 @@ void main() {
     await server.dispose();
     await root.delete(recursive: true);
   });
+
+  test(
+      'clock replays to its page and updates alongside the shared font settings',
+      () async {
+    final clock = (const LiveClock(
+      label: 'Break',
+      durationSeconds: 80,
+      style: ClockStyle.ring,
+    )).start(DateTime.now().millisecondsSinceEpoch);
+    final settings = SettingsModel(clock: clock, chatFontFamily: 'Arial');
+    server.setSettings(settings);
+    final page = await connect('clock');
+    final initial = await page.next('clock');
+    expect(initial['replay'], true);
+    expect(initial['data'], containsPair('anchorMs', clock.anchorMs));
+    expect(initial['data'], containsPair('style', 'ring'));
+    expect(initial['data'], containsPair('label', 'Break'));
+    expect((await page.next('settings'))['data'],
+        containsPair('chatFontFamily', 'Arial'));
+    final plain = await connect('chat');
+    server.setSettings(
+        settings.copyWith(clock: clock.configure(style: ClockStyle.compact)));
+    expect(
+        (await page.next('clock'))['data'], containsPair('style', 'compact'));
+    await plain.next('settings');
+    expect(plain.frames.where((frame) => frame['type'] == 'clock'), isEmpty);
+  });
+
+  test('rule counters replay to templates and coalesce changes', () async {
+    server.setSettings(const SettingsModel(ruleCounters: {'home': 4}));
+    final plain = await connect('chat');
+    final custom = await connect('custom', 'one');
+    final gallery = await connect('gallery', 'scoreboard');
+    for (final client in [custom, gallery]) {
+      expect(await client.next('counters'), {
+        'type': 'counters',
+        'data': {'home': 4},
+        'replay': true,
+      });
+    }
+    for (var score = 5; score < 10; score++) {
+      server.setSettings(SettingsModel(ruleCounters: {'home': score}));
+    }
+    final late = await connect('gallery', 'scoreboard');
+    expect((await late.next('counters'))['data'], {'home': 9});
+    for (final client in [custom, gallery]) {
+      expect(await client.next('counters'), {
+        'type': 'counters',
+        'data': {'home': 9},
+        'replay': false,
+      });
+    }
+    server.setSettings(const SettingsModel(ruleCounters: {'home': 9}));
+    await Future<void>.delayed(const Duration(milliseconds: 1050));
+    for (final client in [plain, custom, gallery, late]) {
+      expect(
+          client.frames.where((frame) => frame['type'] == 'counters'), isEmpty);
+    }
+  });
+
   test('session is lazy, replayed only to templates, and coalesced', () async {
     final collector = SessionSummaryCollector()..start();
     var snapshots = 0;

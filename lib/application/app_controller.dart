@@ -10,6 +10,10 @@ import 'package:airstream/services/overlay/featured_message_delivery.dart';
 
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
+import 'package:airstream/application/saved_poll.dart';
+import 'package:airstream/application/rules/rule_sound_player.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/app_logger.dart';
@@ -53,7 +57,11 @@ class AppController {
     AudioCoordinator? audioCoordinator,
     OverlayCoordinator? overlayCoordinator,
     ObsCoordinator? obsCoordinator,
-  }) {
+    DateTime Function()? clock,
+    RuleSoundPlayer? clockSounds,
+  }) : _clockNow = clock ?? DateTime.now {
+    _clockSounds = clockSounds ??
+        RuleSoundPlayer(settings: () => _lastSettings ?? const SettingsModel());
     _chat = chatCoordinator ??
         ChatCoordinator(
           youtube: YouTubeChatServiceAdapter(youtube ?? YouTubeService()),
@@ -88,28 +96,16 @@ class AppController {
     rules = RuleEngine(
         target: RuleActions(
             settings: () => _lastSettings ?? const SettingsModel(),
-            writeSettings: (s, depth) async {
-              final write = ruleSettingsWriter;
-              if (write == null) throw StateError('Settings unavailable');
-              _settingsDepth = depth;
-              try {
-                final pending = write(s);
-                _settingsDepth = 0;
-                await pending;
-              } finally {
-                _settingsDepth = 0;
-              }
-            },
+            writeSettings: _writeRuleSettings,
             obs: _obs,
             audio: _audio,
             giveaway: _giveaway,
             queue: queue,
             server: () => templateServer,
             feature: featureMessageOnStream,
-            draw: (depth) {
-              final winner = _giveaway.draw();
-              if (winner != null) _winnerEvent(depth);
-            }));
+            draw: (count, depth) => drawGiveaways(count, depth: depth),
+            clock: (op, seconds, depth) =>
+                operateClock(op, seconds: seconds, depth: depth)));
     templateServer?.queueState = queue.overlayState;
     templateServer?.sessionState = () =>
         _sessionSummary.templateState(live: _chatRunning && _chatConnected);
@@ -156,11 +152,6 @@ class AppController {
         if (rules.active) {
           final event = _ruleAdapter.provider(e);
           if (event != null) rules.handle(event);
-        }
-      }),
-      _giveaway.states.listen((g) {
-        if (g != null && g.drawId > _lastDrawId) {
-          _winnerEvent(0);
         }
       }),
       _poll.ended.listen((poll) {
@@ -251,21 +242,108 @@ class AppController {
     ));
   }
 
-  int _settingsDepth = 0, _lastDrawId = 0, _ruleEventSequence = 0;
-  Timer? _ruleEndTimer;
-  void _winnerEvent(int depth) {
-    final g = _giveaway.current;
-    if (g == null || g.drawId <= _lastDrawId) return;
-    _lastDrawId = g.drawId;
+  Future<void> _winnerNotifications = Future.value();
+  int _settingsDepth = 0, _ruleEventSequence = 0;
+  Timer? _ruleEndTimer, _clockEndTimer;
+  final DateTime Function() _clockNow;
+  late final RuleSoundPlayer _clockSounds;
+
+  Future<void> _writeRuleSettings(SettingsModel settings, int depth) async {
+    final write = ruleSettingsWriter;
+    if (write == null) throw StateError('Settings unavailable');
+    final previousDepth = _settingsDepth;
+    _settingsDepth = depth;
+    late Future<void> pending;
+    try {
+      pending = write(settings);
+    } finally {
+      _settingsDepth = previousDepth;
+    }
+    await pending;
+  }
+
+  Future<void> operateClock(String op, {int seconds = 0, int depth = 0}) async {
+    final settings = _lastSettings;
+    if (settings == null || _disposed || ruleSettingsWriter == null) return;
+    final now = _clockNow().millisecondsSinceEpoch;
+    final current = settings.clock;
+    final expired = current.expire(now);
+    // Commit a deadline that has already passed before accepting a restart/reset.
+    if (!identical(expired, current)) {
+      await _writeClock(settings, expired, depth);
+      if (!_disposed &&
+          identical(_lastSettings?.clock, expired) &&
+          (op == 'start' || op == 'reset')) {
+        await operateClock(op, seconds: seconds, depth: depth);
+      }
+      return;
+    }
+    final next = current.perform(op, now, seconds: seconds);
+    if (!identical(next, current)) {
+      await _writeClock(settings, next, depth);
+    }
+  }
+
+  void _trackClock(LiveClock? previous, LiveClock clock) {
+    if (previous?.mode != clock.mode ||
+        previous?.phase != clock.phase ||
+        previous?.anchorMs != clock.anchorMs) {
+      _clockEndTimer?.cancel();
+      _clockEndTimer = null;
+      if (clock.mode == ClockMode.countdown &&
+          clock.phase == ClockPhase.running) {
+        _scheduleClockEnd(clock);
+      }
+    }
+  }
+
+  Future<void> _writeClock(SettingsModel settings, LiveClock next, int depth) {
+    final persisted = _writeRuleSettings(settings.copyWith(clock: next), depth);
+    if (identical(_lastSettings?.clock, next) &&
+        next.phase == ClockPhase.ended) {
+      _clockEnded(next, depth);
+    }
+    return persisted;
+  }
+
+  void _clockEnded(LiveClock clock, int depth) {
     if (rules.active) {
       rules.handle(RuleEvent(
-          type: 'giveaway.winner',
-          eventId: 'draw:${g.drawId}',
-          chainDepth: depth,
-          platform: g.winner?.platform.name ?? '',
-          author: RuleAuthor(
-              name: g.winner?.name ?? '', id: g.winner?.authorId ?? '')));
+        type: 'clock.ended',
+        eventId: 'clock:${++_ruleEventSequence}',
+        chainDepth: depth,
+      ));
     }
+    if (clock.sound != HighlightSounds.none) {
+      final sound = HighlightSounds.builtIn.contains(clock.sound)
+          ? {'source': 'builtin', 'name': clock.sound}
+          : {'source': 'library', 'mediaId': clock.sound};
+      unawaited(_clockSounds.play(sound).then<void>((_) {}).catchError(
+          (Object error, StackTrace stack) => AppLogger.warning(
+              'Timer sound failed',
+              error: error,
+              stackTrace: stack)));
+    }
+  }
+
+  void _scheduleClockEnd(LiveClock clock) {
+    _clockEndTimer = Timer(
+        Duration(
+            milliseconds: clock.shownAt(_clockNow().millisecondsSinceEpoch)),
+        () {
+      final current = _lastSettings;
+      if (_disposed || current == null) return;
+      final next = current.clock.expire(_clockNow().millisecondsSinceEpoch);
+      if (identical(next, current.clock)) {
+        _scheduleClockEnd(current.clock);
+      } else if (ruleSettingsWriter != null) {
+        unawaited(_writeClock(current, next, 0).catchError(
+            (Object error, StackTrace stack) => AppLogger.warning(
+                'Timer persistence failed',
+                error: error,
+                stackTrace: stack)));
+      }
+    });
   }
 
   late final ChatCoordinator _chat;
@@ -281,7 +359,15 @@ class AppController {
   }
 
   final _poll = ChatPollController();
-  final _giveaway = ChatGiveawayController();
+  late final _giveaway = ChatGiveawayController(onHistoryChanged: (history) {
+    final settings = _lastSettings;
+    if (settings == null || ruleSettingsWriter == null) return;
+    unawaited(_writeRuleSettings(settings.copyWith(giveawayHistory: history), 0)
+        .catchError((Object error, StackTrace stack) => AppLogger.warning(
+            'Giveaway history persistence failed',
+            error: error,
+            stackTrace: stack)));
+  });
   final _sessionSummary = SessionSummaryCollector();
   final _chatLog = ChatLogWriter();
   bool _chatRunning = false;
@@ -356,7 +442,35 @@ class AppController {
   void startGiveaway({required String keyword, required bool membersOnly}) =>
       _giveaway.start(keyword: keyword, membersOnly: membersOnly);
   void closeGiveaway() => _giveaway.close();
-  GiveawayEntrant? drawGiveaway() => _giveaway.draw();
+  GiveawayEntrant? drawGiveaway() => drawGiveaways(1).firstOrNull;
+
+  List<GiveawayEntrant> drawGiveaways(int count, {int depth = 0}) {
+    final events = <RuleEvent>[];
+    final winners = _giveaway.drawMany(count, onDraw: (winner, drawId) {
+      if (!rules.active) return;
+      events.add(RuleEvent(
+        type: 'giveaway.winner',
+        eventId: 'draw:$drawId',
+        chainDepth: depth,
+        platform: winner.platform.name,
+        author: RuleAuthor(name: winner.name, id: winner.authorId),
+      ));
+    });
+    if (events.isNotEmpty) {
+      // Let the rule engine begin each run before offering the next winner.
+      // Cooldowns and overlap still apply to each announcement.
+      _winnerNotifications = _winnerNotifications.then((_) async {
+        for (final event in events) {
+          if (_disposed) return;
+          rules.handle(event);
+          await Future<void>(() {});
+        }
+      });
+    }
+    return winners;
+  }
+
+  void clearGiveawayHistory() => _giveaway.clearHistory();
   void clearGiveaway() => _giveaway.clear();
 
   Stream<ChatPoll?> get pollStream => _poll.states;
@@ -382,6 +496,20 @@ class AppController {
         command: command,
         language: language ?? _lastSettings?.appLanguageCode ?? 'en',
       );
+  void launchSavedPoll(SavedPoll setup, {required String language}) =>
+      startPoll(
+        question: setup.question,
+        options: setup.options,
+        duration:
+            setup.minutes == null ? null : Duration(minutes: setup.minutes!),
+        mode: setup.mode,
+        allowed: setup.allowed,
+        hideResults: setup.hideResults,
+        allowChange: setup.allowChange,
+        command: setup.command,
+        language: language,
+      );
+
   void endPoll() => _poll.end();
   void clearPoll() => _poll.clear();
 
@@ -418,8 +546,10 @@ class AppController {
     if (_publishingQueueSettings && previous != null) return;
     queue.configure(settings.queueOptions, settings.appLanguageCode);
     if (previous == null) queue.restore(settings.queueState);
+    _giveaway.restoreHistory(settings.giveawayHistory);
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
     templateServer?.rulesEngine = rules;
+    _trackClock(previous?.clock, settings.clock);
     _ruleEndTimer?.cancel();
     _ruleEndTimer = null;
     if (rules.active) {
@@ -506,10 +636,13 @@ class AppController {
     if (_disposed) return;
     _disposed = true;
     _ruleEndTimer?.cancel();
+    _clockEndTimer?.cancel();
     final queueDisposed = queue.dispose();
+    await _winnerNotifications;
     await rules.dispose();
     await queueDisposed;
     await (rules.target as RuleActions).sounds.dispose();
+    await _clockSounds.dispose();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }

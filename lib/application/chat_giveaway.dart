@@ -15,6 +15,82 @@ class GiveawayEntrant {
   String get identity => '${platform.name}:$authorId';
 }
 
+class GiveawayRound {
+  const GiveawayRound({
+    required this.keyword,
+    required this.startedAt,
+    required this.endedAt,
+    required this.entrantCount,
+    required this.winners,
+  });
+
+  static const limit = 20;
+  final String keyword;
+  final DateTime startedAt, endedAt;
+  final int entrantCount;
+  final List<GiveawayEntrant> winners;
+
+  Map<String, Object?> toJson() => {
+        'keyword': keyword,
+        'startedAt': startedAt.millisecondsSinceEpoch,
+        'endedAt': endedAt.millisecondsSinceEpoch,
+        'entrantCount': entrantCount,
+        'winners': [
+          for (final winner in winners)
+            {'name': winner.name, 'platform': winner.platform.name},
+        ],
+      };
+
+  static String _text(Object? value, int max) => value is String
+      ? String.fromCharCodes(value.trim().runes.take(max)).trim()
+      : '';
+
+  static GiveawayRound? _fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final keyword = _text(raw['keyword'], 250);
+    final start = raw['startedAt'], end = raw['endedAt'];
+    final count = raw['entrantCount'];
+    if (keyword.isEmpty ||
+        start is! int ||
+        end is! int ||
+        start < 0 ||
+        end < start ||
+        end > 8640000000000000 ||
+        count is! int ||
+        count < 0 ||
+        count > 50000) {
+      return null;
+    }
+    final winners = raw['winners'];
+    return GiveawayRound(
+      keyword: keyword,
+      startedAt: DateTime.fromMillisecondsSinceEpoch(start),
+      endedAt: DateTime.fromMillisecondsSinceEpoch(end),
+      entrantCount: count,
+      winners: List.unmodifiable([
+        if (winners is List)
+          for (final win in winners.take(count))
+            if (win is Map)
+              if (Platform.values.asNameMap()[win['platform']]
+                  case final platform?)
+                if (_text(win['name'], 250) case final name
+                    when name.isNotEmpty)
+                  GiveawayEntrant(platform: platform, authorId: '', name: name),
+      ]),
+    );
+  }
+
+  static List<GiveawayRound> sanitize(Object? raw) {
+    if (raw is! List) return const [];
+    final rounds = <GiveawayRound>[];
+    for (final item in raw) {
+      if (_fromJson(item) case final round?) rounds.add(round);
+      if (rounds.length == limit) break;
+    }
+    return List.unmodifiable(rounds);
+  }
+}
+
 class ChatGiveaway {
   ChatGiveaway(
       {required this.keyword,
@@ -22,7 +98,8 @@ class ChatGiveaway {
       this.phase = GiveawayPhase.open,
       Iterable<GiveawayEntrant> entrants = const [],
       Iterable<GiveawayEntrant> winners = const [],
-      this.drawId = 0})
+      this.drawId = 0,
+      this.batchDraw = false})
       : entrants = List.unmodifiable(entrants),
         winners = List.unmodifiable(winners);
   final String keyword;
@@ -31,20 +108,23 @@ class ChatGiveaway {
   final List<GiveawayEntrant> entrants;
   final List<GiveawayEntrant> winners;
   final int drawId;
+  final bool batchDraw;
   int get entrantCount => entrants.length;
   GiveawayEntrant? get winner => winners.lastOrNull;
   ChatGiveaway _copy(
           {GiveawayPhase? phase,
           Iterable<GiveawayEntrant>? entrants,
           Iterable<GiveawayEntrant>? winners,
-          int? drawId}) =>
+          int? drawId,
+          bool? batchDraw}) =>
       ChatGiveaway(
           keyword: keyword,
           membersOnly: membersOnly,
           phase: phase ?? this.phase,
           entrants: entrants ?? this.entrants,
           winners: winners ?? this.winners,
-          drawId: drawId ?? this.drawId);
+          drawId: drawId ?? this.drawId,
+          batchDraw: batchDraw ?? this.batchDraw);
   Map<String, Object?> toOverlayJson() => {
         'keyword': keyword,
         'phase': phase.name,
@@ -53,12 +133,55 @@ class ChatGiveaway {
             ? null
             : {'name': winner!.name, 'platform': winner!.platform.name},
         'drawId': drawId,
+        if (batchDraw) 'batchDraw': true,
       };
 }
 
 class ChatGiveawayController {
-  ChatGiveawayController(
-      {this.publishInterval = const Duration(milliseconds: 250)});
+  ChatGiveawayController({
+    this.publishInterval = const Duration(milliseconds: 250),
+    DateTime Function()? clock,
+    this.onHistoryChanged,
+  }) : _clock = clock ?? DateTime.now;
+
+  final DateTime Function() _clock;
+  final void Function(List<GiveawayRound>)? onHistoryChanged;
+  List<GiveawayRound> _history = const [];
+  List<GiveawayRound> get history => _history;
+  DateTime? _startedAt, _endedAt;
+  GiveawayRound? _record;
+
+  void restoreHistory(List<GiveawayRound> history) {
+    if (identical(history, _history)) return;
+    _history = history;
+    _record = null;
+  }
+
+  void clearHistory() {
+    restoreHistory(const []);
+    onHistoryChanged?.call(_history);
+  }
+
+  void _recordRound(ChatGiveaway state) {
+    final started = _startedAt!;
+    final now = _clock();
+    final round = GiveawayRound(
+      keyword: state.keyword,
+      startedAt: started,
+      endedAt: _endedAt ??= now.isBefore(started) ? started : now,
+      entrantCount: state.entrantCount,
+      winners: state.winners,
+    );
+    _history = List.unmodifiable([
+      round,
+      ..._history
+          .where((item) => !identical(item, _record))
+          .take(GiveawayRound.limit - 1),
+    ]);
+    _record = round;
+    onHistoryChanged?.call(_history);
+  }
+
   final Duration publishInterval;
   final _random = Random.secure();
   final _states = StreamController<ChatGiveaway?>.broadcast();
@@ -89,6 +212,10 @@ class ChatGiveawayController {
     if (normalizeVoiceText(keyword).isEmpty) {
       throw ArgumentError('A giveaway needs a keyword.');
     }
+    _close(publish: false);
+    _startedAt = _clock();
+    _endedAt = null;
+    _record = null;
     _identities.clear();
     _entrants.clear();
     _dirty = false;
@@ -122,30 +249,51 @@ class ChatGiveawayController {
     _publishTimer ??= Timer(publishInterval, _publishNow);
   }
 
-  void close() {
+  void close() => _close(publish: true);
+
+  void _close({required bool publish}) {
     final state = current;
     if (state == null || state.phase != GiveawayPhase.open) return;
     _current = state._copy(phase: GiveawayPhase.closed);
-    _publishNow();
+    _recordRound(_current!);
+    if (publish) _publishNow();
   }
 
-  GiveawayEntrant? draw() {
+  GiveawayEntrant? draw() => drawMany(1).firstOrNull;
+
+  List<GiveawayEntrant> drawMany(int count,
+      {void Function(GiveawayEntrant, int)? onDraw}) {
     final state = current;
-    if (state == null) return null;
+    if (state == null) return const [];
     final won = state.winners.map((e) => e.identity).toSet();
     final eligible =
         state.entrants.where((e) => !won.contains(e.identity)).toList();
-    if (eligible.isEmpty) return null;
-    final winner = eligible[_random.nextInt(eligible.length)];
-    _current = state._copy(
-        phase: GiveawayPhase.drawn,
-        winners: [...state.winners, winner],
-        drawId: ++_drawSequence);
-    _publishNow();
-    return winner;
+    final total = min(count.clamp(1, 10), eligible.length);
+    final draws = <(GiveawayEntrant, int)>[];
+    for (var i = 0; i < total; i++) {
+      final index = _random.nextInt(eligible.length);
+      final winner = eligible[index];
+      // Swap with the tail for a uniform draw without replacement.
+      eligible[index] = eligible.last;
+      eligible.removeLast();
+      final drawId = ++_drawSequence;
+      draws.add((winner, drawId));
+      _current = _current!._copy(
+          phase: GiveawayPhase.drawn,
+          winners: [..._current!.winners, winner],
+          drawId: drawId,
+          batchDraw: total > 1);
+      _publishNow();
+    }
+    if (draws.isNotEmpty) _recordRound(_current!);
+    for (final (winner, id) in draws) {
+      onDraw?.call(winner, id);
+    }
+    return List.unmodifiable(draws.map((draw) => draw.$1));
   }
 
   void clear() {
+    _close(publish: false);
     _current = null;
     _identities.clear();
     _entrants.clear();

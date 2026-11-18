@@ -3,8 +3,8 @@ String sdkV1() => r"""
 (() => {
   'use strict';
   if (window.Airstream) return;
-  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','queue','connected','disconnected'];
-  const states = new Set(['goals','timer','giveaway','poll','settings','fields','session','queue']);
+  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','queue','counters','connected','disconnected'];
+  const states = new Set(['goals','timer','giveaway','poll','settings','fields','session','queue','counters']);
   const handlers = new Map(names.map(n => [n,new Set()]));
   const state = {};
   const template = (location.pathname.match(/^\/custom\/([a-z0-9][a-z0-9-]{0,39})(?:\/|$)/) || [,''])[1];
@@ -67,7 +67,7 @@ String sdkV1() => r"""
   window.Airstream=api;
   window.addEventListener('error',e => report(e.message,e.filename,e.lineno));
   window.addEventListener('unhandledrejection',e => report(e.reason));
-  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session',queue:'queue'};
+  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session',queue:'queue',counters:'counters'};
   function connect() {
     if (closing || socket) return;
     const ws=new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')+location.host+'/ws'); socket=ws;
@@ -135,6 +135,9 @@ String sdkV1() => r"""
       max:50,command:spanish?'!unirme':'!join'},meta);
   }
   sendQueue(replay);
+  let demoScore = 7;
+  emit('counters',{home:demoScore,away:4},replay);
+  setInterval(() => emit('counters',{home:++demoScore,away:4}),5000);
   setInterval(() => {
     queueTick++;
     const step = queueTick % 9;
@@ -154,7 +157,11 @@ String sdkV1() => r"""
     const n=chatIndex++, platform=['youtube','twitch','kick'][n%3];
     const color=api.platformColor(platform);
     const nameColor=n%8===0?'#FFD700':n%4===0?'#7EA4FF':n%5===0?'#FF69D4':color;
-    return {platform,id:'demo-chat-'+n,author:people[n%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+n%8,badgeImageUrl:null,badgeLabel:n%4===0?'Moderator':null,badges:[],color,nameColor,text:'Demo message '+(n+1)+' ★',items:[{kind:'text',text:'Demo message '+(n+1)+' '},{kind:'emoji',url:emote,alt:'★',isAnimated:false,isCustom:false,isZeroWidth:false}],isSuperChat:false,superChatAmount:null,superChatColor:null,superChatStickerUrl:null,isMembership:n%3===0,isMembershipEvent:false,membershipEventKind:null,membershipMonths:null,membershipGiftCount:null,isOwner:n%8===0,isModerator:n%4===0,isVip:n%5===0,isVerified:false,youtubeStreamOrientation:null,timestamp:new Date().toISOString(),reply:null,sharedSource:null,isAction:false,providerRoomId:'',isFirstMessage:false,isReturningChatter:false,rewardId:null};
+    const sample = ['Great round, great team!', '¡Vamos equipo, buen juego!',
+      'Team strategy for the next round', 'Equipo, gran partida y buena estrategia'];
+    const text = (gallery === 'word-cloud' || template === 'word-cloud')
+      ? sample[n % sample.length] + ' ' : 'Demo message ' + (n+1) + ' ';
+    return {platform,id:'demo-chat-'+n,author:people[n%8],authorAvatarUrl:null,authorChannelId:'demo-user-'+n%8,badgeImageUrl:null,badgeLabel:n%4===0?'Moderator':null,badges:[],color,nameColor,text:text+'★',items:[{kind:'text',text},{kind:'emoji',url:emote,alt:'★',isAnimated:false,isCustom:false,isZeroWidth:false}],isSuperChat:false,superChatAmount:null,superChatColor:null,superChatStickerUrl:null,isMembership:n%3===0,isMembershipEvent:false,membershipEventKind:null,membershipMonths:null,membershipGiftCount:null,isOwner:n%8===0,isModerator:n%4===0,isVip:n%5===0,isVerified:false,youtubeStreamOrientation:null,timestamp:new Date().toISOString(),reply:null,sharedSource:null,isAction:false,providerRoomId:'',isFirstMessage:false,isReturningChatter:false,rewardId:null};
   }
   const supportTypes=['superchat','membership','bits','subscription','gift','raid','kicks'];
   const sessionPeople=['PixelFern','LunaBuilds','CaptainOfTheLongestStarshipNameEver',

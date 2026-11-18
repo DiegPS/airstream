@@ -1,3 +1,6 @@
+import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'chat_fonts.dart';
@@ -186,6 +189,9 @@ class SettingsModel {
   final int subathonRemainingMs;
   final Map<String, Map<String, dynamic>> mediaLibrary;
   final Map<String, Map<String, dynamic>> goals;
+  final LiveClock clock;
+  final List<SavedPoll> savedPolls;
+  final List<GiveawayRound> giveawayHistory;
   final QueueOptions queueOptions;
   final QueueState queueState;
   final Map<String, Map<String, dynamic>> alertTypeOptions;
@@ -352,6 +358,9 @@ class SettingsModel {
     this.subathonRemainingMs = 0,
     this.mediaLibrary = const {},
     this.goals = const {},
+    this.clock = const LiveClock(),
+    this.savedPolls = const [],
+    this.giveawayHistory = const [],
     this.queueOptions = const QueueOptions(),
     this.queueState = const QueueState(),
     this.rulesEnabled = true,
@@ -514,6 +523,9 @@ class SettingsModel {
     int? subathonRemainingMs,
     Map<String, Map<String, dynamic>>? mediaLibrary,
     Map<String, Map<String, dynamic>>? goals,
+    LiveClock? clock,
+    List<SavedPoll>? savedPolls,
+    List<GiveawayRound>? giveawayHistory,
     QueueOptions? queueOptions,
     QueueState? queueState,
     bool? rulesEnabled,
@@ -704,6 +716,9 @@ class SettingsModel {
         subathonRemainingMs: subathonRemainingMs ?? this.subathonRemainingMs,
         mediaLibrary: mediaLibrary ?? this.mediaLibrary,
         goals: goals ?? this.goals,
+        clock: clock ?? this.clock,
+        savedPolls: savedPolls ?? this.savedPolls,
+        giveawayHistory: giveawayHistory ?? this.giveawayHistory,
         queueOptions: queueOptions ?? this.queueOptions,
         queueState: queueState ?? this.queueState,
         rulesEnabled: rulesEnabled ?? this.rulesEnabled,

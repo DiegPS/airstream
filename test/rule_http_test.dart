@@ -59,7 +59,7 @@ void main() {
       queue: queue,
       server: () => null,
       feature: (_) {},
-      draw: (_) {},
+      draw: (count, depth) {},
       httpClient: client,
     );
     engine = RuleEngine(target: target);

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/services/overlay/templates/poll_overlay.dart';
+import 'package:airstream/services/overlay/templates/clock_overlay.dart';
+import 'package:airstream/services/overlay/templates/giveaway_overlay.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -19,6 +21,9 @@ void main() {
     'top-supporters': ['Top of the stream', 'Top del directo'],
     'queue-list': ['Queue', 'Lista de turnos'],
     'poll': ['Poll', 'Encuesta'],
+    'scoreboard': ['Scoreboard', 'Marcador'],
+    'word-cloud': ['Word cloud', 'Nube de palabras'],
+    'emote-wall': ['Emote wall', 'Muro de emotes'],
   };
   const widgets = {
     'recent-support': (480, 640),
@@ -27,9 +32,12 @@ void main() {
     'top-supporters': (560, 480),
     'queue-list': (480, 720),
     'poll': (640, 480),
+    'scoreboard': (960, 520),
+    'word-cloud': (960, 480),
+    'emote-wall': (960, 540),
   };
 
-  test('all ten gallery items build valid localized manifests and files', () {
+  test('all gallery items build valid localized manifests and files', () {
     expect(galleryCatalog.keys, orderedEquals(names.keys));
     expect(galleryCatalog.values.map((i) => i.id), orderedEquals(names.keys));
     for (final (i, language) in ['en', 'es'].indexed) {
@@ -118,6 +126,9 @@ void main() {
           'top-supporters',
           'queue-list',
           'poll',
+          'scoreboard',
+          'word-cloud',
+          'emote-wall',
         ])
           id: {
             'en': galleryCatalog[id]!.buildFiles('en'),
@@ -129,6 +140,8 @@ void main() {
           'const screens = ${jsonEncode(screens)};\n'
           'const widgets = ${jsonEncode(widgets)};\n'
           'const pollPage = ${jsonEncode(pollOverlayHtml())};\n'
+          'const clockPage = ${jsonEncode(clockOverlayHtml())};\n'
+          'const giveawayPage = ${jsonEncode(giveawayOverlayHtml())};\n'
           '$_nodeChecks');
       final result =
           await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
@@ -206,10 +219,10 @@ class Element extends EventTarget {
 }
 
 function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
-  const builtInPoll = id === '/poll';
+  const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage}[id];
   const item = (screens[id] || widgets[id]);
-  const files = builtInPoll
-    ? {'index.html': pollPage, 'script.js': pollPage.split('<script>')[1].split('</script>')[0]}
+  const files = html
+    ? {'index.html': html, 'script.js': html.split('<script>')[1].split('</script>')[0]}
     : item[lang];
   const nodes = Object.fromEntries([...files['index.html'].matchAll(/<([a-z0-9]+)\b[^>]*\bid="([^"]+)"([^>]*)>/g)]
     .map(([, tag, key, attributes]) => {
@@ -264,12 +277,12 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     setInterval: context.setInterval, clearInterval: context.clearInterval,
     setTimeout: context.setTimeout, clearTimeout: context.clearTimeout});
   vm.createContext(context);
-  if (!builtInPoll) {
+  if (!html) {
     vm.runInContext(sdk, context);
     context.Airstream = win.Airstream;
   }
   vm.runInContext(files['script.js'], context);
-  if (builtInPoll) socket.open();
+  if (html) socket.open();
 
   function send(type, data, replay = false) {
     socket.message({data: JSON.stringify({type, data, replay})});
@@ -652,6 +665,83 @@ async function checkQueue() {
   console.log('PASS: Queue renders literal names and notes, keeps keyed rows on replay, animates joins and departures, localizes status and overflow, hides when closed, and evolves in demo');
 }
 
+
+
+function checkLivePages() {
+  const epoch = Date.parse('2026-11-17T12:00:00Z');
+  const clock = page('/clock');
+  assert.deepEqual(clock.sent, [{type:'register', view:'clock'}]);
+  clock.send('settings', {appLanguageCode:'es', chatFontFamily:'Arial'});
+  const countdown = {mode:'countdown', phase:'running', style:'ring', label:literal,
+    durationSeconds:10, anchorMs:epoch+5000, valueMs:0, serverNowMs:epoch};
+  clock.send('clock', countdown, true);
+  assert.equal(clock.nodes.label.textContent, literal);
+  assert.equal(clock.nodes.value.textContent, '0:05');
+  assert.equal(clock.nodes.clock.style['--progress'], '50%');
+  clock.advance(5000);
+  assert.equal(clock.nodes.value.textContent, '0:00');
+  assert.equal(clock.nodes.status.textContent, '¡Se acabó el tiempo!');
+  clock.send('clock', {...countdown, mode:'stopwatch', phase:'paused', style:'compact', valueMs:2300,
+    serverNowMs:epoch+5000});
+  assert.equal(clock.nodes.clock.dataset.style, 'compact');
+  assert.equal(clock.nodes.value.textContent, '0:02');
+  assert.equal(clock.nodes.status.textContent, 'En pausa');
+  clock.send('clock', {...countdown, mode:'clock', phase:'idle', style:'big', serverNowMs:epoch+5000});
+  assert.equal(clock.nodes.value.textContent, '12:00:05');
+
+  const giveaway = page('/giveaway');
+  const draw = (drawId, name) => ({phase:'drawn', drawId, batchDraw:true, winner:{name, platform:'twitch'}});
+  giveaway.send('giveaway', draw(1, 'Ana'));
+  giveaway.send('giveaway', draw(2, 'Beto'));
+  giveaway.send('giveaway', draw(3, 'Carla'));
+  giveaway.advance(2500);
+  assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Ana');
+  giveaway.advance(4100);
+  assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Beto');
+  giveaway.advance(4100);
+  assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Carla');
+  console.log('PASS: /clock renders all three modes and /giveaway reveals each batch winner');
+}
+
+async function checkLiveWidgets() {
+  for (const lang of ['en', 'es']) {
+    const scoreboard = page('scoreboard', lang, {demo: true, values: {layout: 'column'}});
+    const cloud = page('word-cloud', lang, {demo: true, values: {refresh: 1, maxWords: 4}});
+    const wall = page('emote-wall', lang, {demo: true, values: {maxEmotes: 2, lifetime: 3}});
+    await new Promise(setImmediate);
+    assert.equal(scoreboard.nodes.stage.hidden, false);
+    assert.equal(scoreboard.nodes.scores.dataset.layout, 'column');
+    assert.equal(scoreboard.nodes.scores.textContent, lang === 'es' ? 'Local7Visitante4' : 'Home7Away4');
+    scoreboard.advance(5000);
+    assert.equal(scoreboard.nodes.scores.children[0].children[1].textContent, '8');
+    cloud.advance(7500);
+    const words = cloud.nodes.words.children.map(word => word.textContent);
+    assert.equal(words.length, 4);
+    assert.ok(words.includes('equipo'));
+    assert.ok(!words.includes('para') && !words.includes('the'));
+    wall.advance(2900);
+    assert.equal(wall.nodes.emotes.children.length, 1);
+    assert.match(wall.nodes.emotes.children[0].src, /^data:image\//);
+    wall.advance(6000);
+    assert.equal(wall.nodes.emotes.children.length, 2);
+  }
+  const scoreboard = page('scoreboard');
+  scoreboard.fields({counters: 'deaths,missing', labels: literal});
+  scoreboard.send('counters', {deaths: -4});
+  assert.equal(scoreboard.nodes.scores.textContent, literal + '-4missing0');
+  const wall = page('emote-wall');
+  wall.fields({lifetime: 1});
+  wall.send('message', {items: [
+    {kind: 'emoji', url: 'javascript:bad'},
+    {kind: 'emoji', url: 'https://example.invalid/emote', alt: 'wave'}
+  ]});
+  assert.equal(wall.nodes.emotes.children.length, 1);
+  assert.equal(wall.nodes.emotes.children[0].alt, 'wave');
+  wall.advance(1000);
+  assert.equal(wall.nodes.stage.hidden, true);
+  console.log('PASS: Scoreboard, Word cloud and Emote wall render live or demo data in both languages');
+}
+
 async function main() {
   const starting = page('starting-soon');
   starting.fields({startTime: '12:01'});
@@ -812,6 +902,8 @@ async function main() {
   checkTopSupporters();
   await checkWidgetDemos();
   await checkQueue();
+  checkLivePages();
+  await checkLiveWidgets();
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
 ''';

@@ -272,7 +272,7 @@ void main() {
         queue: queue,
         server: () => null,
         feature: (_) {},
-        draw: (_) {},
+        draw: (count, depth) {},
       );
       engine = RuleEngine(target: actions);
       addTearDown(() async {

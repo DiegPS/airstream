@@ -4,6 +4,9 @@ import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/application/saved_poll.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
@@ -44,6 +47,21 @@ class _PollApp implements AppController {
       );
 
   @override
+  void launchSavedPoll(SavedPoll setup, {required String language}) =>
+      startPoll(
+        question: setup.question,
+        options: setup.options,
+        duration:
+            setup.minutes == null ? null : Duration(minutes: setup.minutes!),
+        mode: setup.mode,
+        hideResults: setup.hideResults,
+        allowed: setup.allowed,
+        allowChange: setup.allowChange,
+        command: setup.command,
+        language: language,
+      );
+
+  @override
   void endPoll() => polls.end();
 
   @override
@@ -56,12 +74,15 @@ class _PollApp implements AppController {
 void main() {
   for (final language in ['en', 'es']) {
     testWidgets('all poll modes fit 360 px in $language', (tester) async {
+      SharedPreferences.setMockInitialValues({});
       final l = lookupAppLocalizations(Locale(language));
       final app = _PollApp();
       try {
         await tester.pumpWidget(ProviderScope(
           overrides: [
             appControllerProvider.overrideWithValue(app),
+            settingsProvider.overrideWith(
+                (_) => SettingsNotifier(systemLanguageCode: () => language)),
             overlayServerStateProvider
                 .overrideWith((_) => const Stream.empty()),
             overlayUrlProvider.overrideWithValue(null),
@@ -178,6 +199,26 @@ void main() {
           expect(find.text(l.pollResultsHiddenOnPages), findsNothing);
           await click(find.byKey(const Key('poll-new')));
         }
+
+        await click(find.text(l.pollSavedSetups));
+        await click(find.widgetWithText(TextButton, l.pollSaveSetup));
+        await tester.enterText(
+            find.byKey(const Key('poll-setup-name')), 'Saved setup');
+        await tester.pumpAndSettle();
+        await click(find.widgetWithText(TextButton, l.ruleLabel('ksave')));
+        expect(find.text('Saved setup'), findsOneWidget);
+        await click(find.byTooltip(l.pollRenameSetup));
+        await tester.enterText(
+            find.byKey(const Key('poll-setup-name')), 'Renamed setup');
+        await tester.pumpAndSettle();
+        await click(find.widgetWithText(TextButton, l.ruleLabel('ksave')));
+        expect(find.text('Renamed setup'), findsOneWidget);
+        await click(find.widgetWithText(TextButton, l.pollStart));
+        expect(app.polls.current?.mode, PollMode.freeAnswer);
+        expect(app.polls.current?.command, '!r');
+        await click(find.byTooltip(l.pollDeleteSetup));
+        expect(find.text('Renamed setup'), findsNothing);
+        expect(tester.takeException(), isNull);
       } finally {
         await tester.pumpWidget(const SizedBox.shrink());
         unawaited(app.polls.dispose());

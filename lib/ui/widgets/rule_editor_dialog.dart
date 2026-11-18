@@ -332,9 +332,18 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
           for (final e in schema.entries)
             input(
                 '$prefix-${e.key}',
-                '${ruleText(l, e.key)}${e.value.numeric ? ' (${e.value.min}–${e.value.max})' : ''}',
-                map[e.key] ?? (e.key == 'webhook' ? '' : null),
-                (v) => map[e.key] = v,
+                '${ruleText(l, map['type'] == 'giveaway' && e.key == 'count' ? 'winnerCount' : e.key)}${e.value.numeric ? ' (${e.value.min}–${e.value.max})' : ''}',
+                map[e.key] ??
+                    (e.key == 'webhook'
+                        ? ''
+                        : map['type'] == 'giveaway' && e.key == 'count'
+                            ? e.value.fallback
+                            : null), (v) {
+              map[e.key] = v;
+              if (map['type'] == 'clock' && e.key == 'op' && v == 'add') {
+                map.putIfAbsent('seconds', () => 0);
+              }
+            },
                 field: e.value,
                 multiline: e.key == 'body',
                 hint: e.key == 'scene' &&

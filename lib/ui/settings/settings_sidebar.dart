@@ -618,6 +618,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               const QueueCard(),
               const GoalsCard(),
               const SubathonCard(),
+              const ClockCard(),
               const RecentAlertsCard(),
             ]);
       case 5:

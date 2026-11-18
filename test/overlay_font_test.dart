@@ -123,6 +123,7 @@ void main() {
       'giveaway',
       'goals',
       'timer',
+      'clock',
       'captions'
     ]) {
       final request = Request('GET', Uri.parse('http://localhost:8080/$page'));

@@ -1,4 +1,7 @@
+import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/settings/name_color_mode.dart';
@@ -49,10 +52,12 @@ const _visualKeys = {
   'alertFontSize',
   'alertShowAvatars',
 };
-Map<String, dynamic> _visual(SettingsModel s) =>
-    s.toJson()..removeWhere((key, _) => !_visualKeys.contains(key));
-Map<String, dynamic> _other(SettingsModel s) =>
-    s.toJson()..removeWhere((key, _) => _visualKeys.contains(key));
+Map<String, dynamic> _visual(SettingsModel s) => s.toJson()
+  ..removeWhere((key, _) => !_visualKeys.contains(key))
+  ..['clockStyle'] = s.clock.style.name;
+Map<String, dynamic> _other(SettingsModel s) => s.toJson()
+  ..removeWhere((key, _) => _visualKeys.contains(key))
+  ..['clock'] = (s.clock.toJson()..remove('style'));
 
 SettingsModel _different() {
   const d = SettingsModel();
@@ -70,6 +75,28 @@ SettingsModel _different() {
       }
     ],
     ruleCounters: {'count': 1},
+    clock: const LiveClock(
+      durationSeconds: 900,
+      label: 'Stage',
+      sound: 'coin',
+      style: ClockStyle.ring,
+    ).start(10000),
+    savedPolls: [
+      SavedPoll.fromJson(
+          {'name': 'Feedback', 'question': 'How was it?', 'mode': 'rating'})!
+    ],
+    giveawayHistory: [
+      GiveawayRound(
+        keyword: 'go',
+        startedAt: DateTime.utc(2026),
+        endedAt: DateTime.utc(2026, 1, 2),
+        entrantCount: 1,
+        winners: const [
+          GiveawayEntrant(
+              platform: Platform.kick, authorId: '', name: 'Viewer'),
+        ],
+      ),
+    ],
     queueOptions: const QueueOptions(command: '!play', max: 20, rejoin: false),
     queueState: const QueueState(status: QueueStatus.paused),
     subathonSecondsPerSub: d.subathonSecondsPerSub + 1,

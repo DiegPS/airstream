@@ -32,6 +32,7 @@ class RuleActions implements RuleActionTarget {
       required this.server,
       required this.feature,
       required this.draw,
+      this.clock,
       RuleSoundPlayer? sounds,
       http.Client? httpClient})
       : sounds = sounds ?? RuleSoundPlayer(settings: settings),
@@ -46,7 +47,8 @@ class RuleActions implements RuleActionTarget {
   final ChatQueueController queue;
   final OverlayServer? Function() server;
   final void Function(ChatMessage) feature;
-  final void Function(int) draw;
+  final void Function(int, int) draw;
+  final Future<void> Function(String op, int seconds, int depth)? clock;
   @override
   bool get streaming => obs.currentState.outputActive;
   @override
@@ -199,6 +201,10 @@ class RuleActions implements RuleActionTarget {
               SubathonTimer.addSeconds(s, DateTime.now().millisecondsSinceEpoch,
                   a['seconds'] as int),
               depth);
+        case 'clock':
+          final operate = clock;
+          if (operate == null) throw StateError('Clock unavailable');
+          await operate(a['op'] as String, a['seconds'] as int? ?? 0, depth);
         case 'counter':
           final name = a['name'] as String,
               value = ((a['op'] == 'add' ? (s.ruleCounters[name] ?? 0) : 0) +
@@ -225,7 +231,7 @@ class RuleActions implements RuleActionTarget {
             case 'close':
               giveaway.close();
             case 'draw':
-              draw(depth);
+              draw(a['count'] as int? ?? 1, depth);
           }
       }
     } on ObsNotTextSourceException {

@@ -1,4 +1,13 @@
+import 'dart:convert';
+
 import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:flutter/widgets.dart' show Locale;
+
+String widgetCopy(Map<String, String> Function(AppLocalizations) strings) =>
+    jsonEncode({
+      for (final language in ['en', 'es'])
+        language: strings(lookupAppLocalizations(Locale(language))),
+    });
 
 List<Map<String, Object?>> galleryFields(AppLocalizations l) => [
       {

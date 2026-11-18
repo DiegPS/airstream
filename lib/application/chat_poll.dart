@@ -220,17 +220,38 @@ class ChatPollController {
     String command = ChatPoll.defaultCommand,
     String language = 'en',
   }) {
-    final hasCustomOptions = mode == PollMode.numbered || mode == PollMode.word;
+    final (cleanOptions, keys, cleanCommand) =
+        validateSetup(question, options, mode, command);
+    _wordOptions = keys;
+    _privateVoteIds.clear();
+    _endTimer?.cancel();
+    _poll = _openPoll = ChatPoll(
+      question: question.trim(),
+      options: List.unmodifiable(
+          mode == PollMode.yesNo ? _yesNoOptions(language) : cleanOptions),
+      mode: mode,
+      hideResults: hideResults,
+      allowed: allowed,
+      allowChange: allowChange,
+      command: cleanCommand,
+      endsAt: duration == null ? null : _clock().add(duration),
+    );
+    if (duration != null) _endTimer = Timer(duration, end);
+    _publishNow();
+  }
+
+  static (List<String>, Map<String, int>, String) validateSetup(
+      String question, List<String> options, PollMode mode, String command) {
     final cleanOptions = switch (mode) {
       PollMode.numbered || PollMode.word => [
           for (final option in options)
             if (option.trim().isNotEmpty) option.trim(),
         ],
-      PollMode.yesNo => _yesNoOptions(language),
+      PollMode.yesNo => <String>[],
       PollMode.rating || PollMode.freeAnswer => <String>[],
     };
     if (question.trim().isEmpty ||
-        (hasCustomOptions &&
+        ((mode == PollMode.numbered || mode == PollMode.word) &&
             (cleanOptions.length < ChatPoll.minOptions ||
                 cleanOptions.length > ChatPoll.maxOptions))) {
       throw ArgumentError.value(PollInputError.invalid);
@@ -259,21 +280,7 @@ class ChatPollController {
             QueueOptions.reservedCommand(cleanCommand))) {
       throw ArgumentError.value(PollInputError.invalidCommand);
     }
-    _wordOptions = keys;
-    _privateVoteIds.clear();
-    _endTimer?.cancel();
-    _poll = _openPoll = ChatPoll(
-      question: question.trim(),
-      options: List.unmodifiable(cleanOptions),
-      mode: mode,
-      hideResults: hideResults,
-      allowed: allowed,
-      allowChange: allowChange,
-      command: cleanCommand,
-      endsAt: duration == null ? null : _clock().add(duration),
-    );
-    if (duration != null) _endTimer = Timer(duration, end);
-    _publishNow();
+    return (cleanOptions, keys, cleanCommand);
   }
 
   static List<String> _yesNoOptions(String language) {

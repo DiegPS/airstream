@@ -1,3 +1,4 @@
+import 'package:airstream/application/live_clock.dart';
 import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
 
@@ -28,6 +29,7 @@ abstract final class SettingsProfiles {
     'profiles',
     'goals',
     'queueState',
+    'giveawayHistory',
     'rulesEnabled',
     'rulesWebhookEnabled',
     'rulesWebhookToken',
@@ -50,7 +52,9 @@ abstract final class SettingsProfiles {
   /// The part of [settings] a profile stores.
   static Map<String, dynamic> capture(SettingsModel settings) => {
         for (final entry in settings.toJson().entries)
-          if (!_isConnectionKey(entry.key)) entry.key: entry.value,
+          if (!_isConnectionKey(entry.key) && entry.key != 'clock')
+            entry.key: entry.value,
+        'clock': settings.clock.optionsJson(),
       };
 
   /// [current] with [profile] applied; connections stay unchanged.
@@ -66,11 +70,26 @@ abstract final class SettingsProfiles {
                   profile['highlightSound'] is bool))
             entry.key: entry.value,
         for (final entry in profile.entries)
-          if (!_isConnectionKey(entry.key)) entry.key: entry.value,
+          if (!_isConnectionKey(entry.key) && entry.key != 'clock')
+            entry.key: entry.value,
+        if (profile['clock'] is Map)
+          'clock':
+              _applyClock(current.clock, LiveClock.fromJson(profile['clock']))
+                  .toJson(),
       }).copyWith(
+          giveawayHistory: current.giveawayHistory,
           obsPassword: current.obsPassword,
           rulesWebhookToken: current.rulesWebhookToken,
           rulesWebhookEnabled: current.rulesWebhookEnabled);
+
+  static LiveClock _applyClock(LiveClock current, LiveClock options) =>
+      current.configure(
+        mode: options.mode,
+        label: options.label,
+        durationSeconds: options.durationSeconds,
+        style: options.style,
+        sound: options.sound,
+      );
 
   static SettingsModel save(SettingsModel current, String name) {
     final profiles = {...current.profiles, name.trim(): capture(current)};

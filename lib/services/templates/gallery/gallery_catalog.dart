@@ -1,3 +1,6 @@
+import 'emote_wall.dart';
+import 'scoreboard.dart';
+import 'word_cloud.dart';
 import 'dart:convert';
 
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -163,5 +166,38 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
     description: (l) => l.galleryPollDescription,
     files: pollWidgetFiles,
     fields: (_) => const [],
+  ),
+  'scoreboard': GalleryItem(
+    id: 'scoreboard',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: scoreboardWidth,
+    height: scoreboardHeight,
+    name: (l) => l.galleryScoreboard,
+    description: (l) => l.galleryScoreboardDescription,
+    files: scoreboardFiles,
+    fields: scoreboardFields,
+  ),
+  'word-cloud': GalleryItem(
+    id: 'word-cloud',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: 960,
+    height: 480,
+    name: (l) => l.galleryWordCloud,
+    description: (l) => l.galleryWordCloudDescription,
+    files: wordCloudFiles,
+    fields: wordCloudFields,
+  ),
+  'emote-wall': GalleryItem(
+    id: 'emote-wall',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: emoteWallWidth,
+    height: emoteWallHeight,
+    name: (l) => l.galleryEmoteWall,
+    description: (l) => l.galleryEmoteWallDescription,
+    files: emoteWallFiles,
+    fields: emoteWallFields,
   ),
 });

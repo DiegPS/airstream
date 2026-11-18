@@ -4,6 +4,7 @@ import 'package:airstream/ui/widgets/poll_card.dart';
 import 'package:airstream/ui/widgets/giveaway_card.dart';
 import 'package:airstream/ui/widgets/goals_card.dart';
 import 'package:airstream/ui/widgets/subathon_card.dart';
+import 'package:airstream/ui/widgets/clock_card.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'dart:convert';
 import 'package:archive/archive.dart';
@@ -2116,6 +2117,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(PollCard), findsNothing);
         expect(find.byType(GiveawayCard), findsNothing);
+        expect(find.byType(ClockCard), findsNothing);
         expect(find.byType(GoalsCard), findsNothing);
         expect(find.byType(SubathonCard), findsNothing);
         expect(find.byType(RecentAlertsCard), findsNothing);
@@ -2178,6 +2180,7 @@ void main() {
         for (final type in [
           PollCard,
           GiveawayCard,
+          ClockCard,
           GoalsCard,
           SubathonCard,
           RecentAlertsCard
@@ -2227,7 +2230,8 @@ void main() {
           for (final (type, path) in [
             (GiveawayCard, 'giveaway'),
             (GoalsCard, 'goals'),
-            (SubathonCard, 'timer')
+            (SubathonCard, 'timer'),
+            (ClockCard, 'clock'),
           ]) {
             expect(
                 tester
@@ -2290,10 +2294,16 @@ void main() {
                     (widget.key! as ValueKey<String>)
                         .value
                         .startsWith('gallery-item-'))),
-            findsNWidgets(10));
+            findsNWidgets(13));
         expect(
             find.byKey(const Key('gallery-item-queue-list')), findsOneWidget);
         expect(find.byKey(const Key('gallery-item-poll')), findsOneWidget);
+        expect(
+            find.byKey(const Key('gallery-item-scoreboard')), findsOneWidget);
+        expect(
+            find.byKey(const Key('gallery-item-word-cloud')), findsOneWidget);
+        expect(
+            find.byKey(const Key('gallery-item-emote-wall')), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         await queue.close();
@@ -2368,6 +2378,9 @@ void main() {
         'latest-support': spanish ? 'Último apoyo' : 'Latest support',
         'top-supporters': spanish ? 'Top del directo' : 'Top of the stream',
         'poll': spanish ? 'Encuesta' : 'Poll',
+        'scoreboard': spanish ? 'Marcador' : 'Scoreboard',
+        'word-cloud': spanish ? 'Nube de palabras' : 'Word cloud',
+        'emote-wall': spanish ? 'Muro de emotes' : 'Emote wall',
       };
       for (final entry in names.entries) {
         final item = find.byKey(Key('gallery-item-${entry.key}'));

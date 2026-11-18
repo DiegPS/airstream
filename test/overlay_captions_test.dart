@@ -30,6 +30,7 @@ void main() {
       'giveaway': 0,
       'goals': 0,
       'timer': 0,
+      'clock': 0,
       'custom': 0
     });
     Future<void> until(bool Function(Map<String, int>) matches) async {
@@ -58,6 +59,7 @@ void main() {
         'giveaway': 0,
         'goals': 0,
         'timer': 0,
+        'clock': 0,
         'custom': 0
       });
       await alerts.sink.close();

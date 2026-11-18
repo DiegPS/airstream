@@ -2756,6 +2756,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kgoal_reached': 'Meta cumplida',
         'kgiveaway_winner': 'Ganador del sorteo',
         'kpoll_ended': 'Encuesta terminada',
+        'kclock_ended': 'Temporizador terminado',
         'ksubathon_ended': 'Subatón terminado',
         'kobs_streamStarted': 'Transmisión iniciada',
         'kobs_streamStopped': 'Transmisión detenida',
@@ -2777,6 +2778,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kfeatured': 'Destacar mensaje',
         'ktemplate_trigger': 'Activar plantilla',
         'kgoal_adjust': 'Ajustar meta',
+        'kclock': 'Temporizador',
         'ksubathon_adjust': 'Ajustar subatón',
         'kgiveaway': 'Sorteo',
         'kcounter': 'Contador',
@@ -2860,6 +2862,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kqueue_open': 'Abrir la lista',
         'kqueue_close': 'Cerrar la lista',
         'kqueue_pause': 'Pausar la lista',
+        'kwinnerCount': 'Ganadores',
         'kcount': 'Jugadores',
         'krandom': 'Elegir al azar',
         'kqueueAlreadyOpen': 'La lista ya está abierta',
@@ -2934,6 +2937,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kreplaySave': 'Guardar repetición',
         'kplay': 'Reproducir',
         'kpause': 'Pausar',
+        'kreset': 'Reiniciar',
         'krestart': 'Reiniciar',
         'kmode': 'Modo',
         'kchange': 'Cambiar',
@@ -3441,4 +3445,179 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get clockTitle => 'Temporizador';
+
+  @override
+  String get clockDescription =>
+      'Muestra una cuenta atrás, un cronómetro o la hora local en el directo.';
+
+  @override
+  String get clockMode => 'Modo';
+
+  @override
+  String get clockCountdown => 'Cuenta atrás';
+
+  @override
+  String get clockStopwatch => 'Cronómetro';
+
+  @override
+  String get clockLocalTime => 'Hora local';
+
+  @override
+  String get clockLabel => 'Etiqueta';
+
+  @override
+  String get clockDuration => 'Duración en segundos (1–86 400)';
+
+  @override
+  String get clockSound => 'Sonido al terminar';
+
+  @override
+  String get clockSoundNone => 'Sin sonido';
+
+  @override
+  String get clockStyle => 'Estilo de la página';
+
+  @override
+  String get clockStyleBig => 'Grande';
+
+  @override
+  String get clockStyleCompact => 'Compacto';
+
+  @override
+  String get clockStyleRing => 'Anillo de progreso (cuenta atrás)';
+
+  @override
+  String get clockEnded => '¡Se acabó el tiempo!';
+
+  @override
+  String get clockPause => 'Pausar';
+
+  @override
+  String get clockReset => 'Reiniciar';
+
+  @override
+  String get clockPlusMinute => '+1 min';
+
+  @override
+  String get clockMinusMinute => '−1 min';
+
+  @override
+  String get pollSaveSetup => 'Guardar configuración actual';
+
+  @override
+  String get pollRenameSetup => 'Cambiar nombre de la encuesta guardada';
+
+  @override
+  String get pollDeleteSetup => 'Eliminar encuesta guardada';
+
+  @override
+  String get pollSetupName => 'Nombre de la configuración';
+
+  @override
+  String get pollSetupDuplicate => 'Ese nombre ya está en uso.';
+
+  @override
+  String get pollSavedSetups => 'Encuestas guardadas';
+
+  @override
+  String get pollSetupLimit =>
+      'Elimina una encuesta guardada para agregar otra.';
+
+  @override
+  String get giveawayDrawCount => 'Ganadores por sorteo';
+
+  @override
+  String giveawayDrawMany(int count) {
+    return 'Sacar $count ganadores';
+  }
+
+  @override
+  String get giveawayHistory => 'Historial de sorteos';
+
+  @override
+  String get giveawayHistoryEmpty => 'Todavía no hay rondas terminadas.';
+
+  @override
+  String get giveawayClearHistory => 'Borrar historial';
+
+  @override
+  String giveawayStartedAt(String date) {
+    return 'Inicio $date';
+  }
+
+  @override
+  String giveawayEndedAt(String date) {
+    return 'Fin $date';
+  }
+
+  @override
+  String get giveawayNoWinners => 'Sin ganadores';
+
+  @override
+  String get galleryScoreboard => 'Marcador';
+
+  @override
+  String get galleryScoreboardDescription =>
+      'Muestra los valores actuales de los contadores de reglas que elijas.';
+
+  @override
+  String get galleryScoreboardCounters =>
+      'Nombres de los contadores separados por comas (hasta 8)';
+
+  @override
+  String get galleryScoreboardLabels =>
+      'Etiquetas en el mismo orden, separadas por comas';
+
+  @override
+  String get galleryScoreboardLayout => 'Distribución';
+
+  @override
+  String get galleryWordCloud => 'Nube de palabras';
+
+  @override
+  String get galleryWordCloudDescription =>
+      'Muestra las palabras más frecuentes de los últimos cinco minutos de chat.';
+
+  @override
+  String get galleryWordCloudMinLength => 'Longitud mínima de palabra';
+
+  @override
+  String get galleryWordCloudMaxWords => 'Máximo de palabras';
+
+  @override
+  String get galleryWordCloudRefresh => 'Intervalo de actualización (segundos)';
+
+  @override
+  String get galleryEmoteWall => 'Muro de emotes';
+
+  @override
+  String get galleryEmoteWallDescription =>
+      'Haz flotar por la pantalla los emotes que llegan al chat.';
+
+  @override
+  String get galleryEmoteWallMax => 'Máximo de emotes en pantalla';
+
+  @override
+  String get galleryEmoteWallSize => 'Tamaño del emote (píxeles)';
+
+  @override
+  String get galleryEmoteWallLifetime => 'Tiempo en pantalla (segundos)';
+
+  @override
+  String get clockPaused => 'En pausa';
+
+  @override
+  String get galleryScoreboardHome => 'Local';
+
+  @override
+  String get galleryScoreboardAway => 'Visitante';
+
+  @override
+  String get galleryScoreboardRow => 'Fila';
+
+  @override
+  String get galleryScoreboardColumn => 'Columna';
 }

@@ -4,6 +4,7 @@ import 'package:airstream/services/templates/template_library.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/overlay/templates/timer_overlay.dart';
+import 'package:airstream/services/overlay/templates/clock_overlay.dart';
 import 'dart:io';
 import 'package:airstream/services/media_library.dart';
 import 'package:airstream/settings/media_library_entries.dart';
@@ -103,6 +104,7 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
       'featured' => featuredOverlayHtml,
       'captions' => captionsOverlayHtml,
       'timer' => timerOverlayHtml,
+      'clock' => clockOverlayHtml,
       'goals' => goalsOverlayHtml,
       'giveaway' => giveawayOverlayHtml,
       'poll' => pollOverlayHtml,

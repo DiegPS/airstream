@@ -96,7 +96,7 @@ void main() {
       giveaway: giveaway,
       server: () => null,
       feature: (_) {},
-      draw: (_) {},
+      draw: (count, depth) {},
     );
     final engine = RuleEngine(target: actions);
     addTearDown(() async {
@@ -342,7 +342,7 @@ void main() {
         giveaway: giveaway,
         server: () => alertTarget,
         feature: (_) {},
-        draw: (_) {});
+        draw: (count, depth) {});
     final engine = RuleEngine(target: actions);
     final definition = rule(actions: [
       {

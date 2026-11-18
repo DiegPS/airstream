@@ -32,7 +32,16 @@ ${overlayFontScript(googleFontsAllowed)}
   }
   const card = document.getElementById('giveaway');
   let language = 'en', state = null, lastDrawId = null;
-  let socket = null, retry = 0, spin = 0, reveal = 0, closing = false, spinning = false;
+  let socket = null, retry = 0, spin = 0, reveal = 0, advance = 0, closing = false, spinning = false;
+  const pending = [];
+  function resetDraws() {
+    cancelSpin(); window.clearTimeout(advance); advance = 0; pending.length = 0;
+  }
+  function nextDraw() {
+    if (!pending.length || spinning || advance) return;
+    state = pending.shift();
+    animate();
+  }
   function cancelSpin() {
     window.clearInterval(spin); window.clearTimeout(reveal); spinning = false;
   }
@@ -60,11 +69,14 @@ ${overlayFontScript(googleFontsAllowed)}
     card.replaceChildren(name, text('p', strings.drawing));
     const tick = () => { name.textContent = Array.from({length: 3}, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join(' '); };
     tick(); spin = window.setInterval(tick, 80);
-    reveal = window.setTimeout(() => { cancelSpin(); render(); }, 2500);
+    reveal = window.setTimeout(() => {
+      cancelSpin(); render();
+      if (pending.length) advance = window.setTimeout(() => { advance = 0; nextDraw(); }, 1600);
+    }, 2500);
   }
   function connect() {
     // A giveaway may have been cleared while this page was disconnected.
-    cancelSpin(); state = null; render();
+    resetDraws(); state = null; render();
     const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
     socket = ws;
     ws.addEventListener('open', () => ws.send(JSON.stringify({type:'register', view:'giveaway'})));
@@ -79,17 +91,22 @@ ${overlayFontScript(googleFontsAllowed)}
           const next = envelope.data || null;
           const shouldAnimate = !envelope.replay && next && next.phase === 'drawn' && next.winner && next.drawId !== lastDrawId;
           if (next && next.phase === 'drawn') lastDrawId = next.drawId;
+          // Each winner in a batch gets a full reveal on the browser page.
+          if (next?.batchDraw && !envelope.replay) {
+            if (shouldAnimate) { pending.push(next); nextDraw(); }
+            return;
+          }
           // Duplicate packets and language changes must not restart a live draw.
           if (spinning && next && state && next.drawId === state.drawId && !envelope.replay) { state = next; return; }
-          cancelSpin(); state = next;
+          resetDraws(); state = next;
           if (shouldAnimate) animate(); else render();
         } else if (envelope.type === 'reload') window.location.reload();
       } catch (error) { console.warn('Ignored malformed giveaway message', error); }
     });
-    ws.addEventListener('close', () => { if (ws !== socket) return; cancelSpin(); render(); if (!closing) retry = window.setTimeout(connect, 3000); });
+    ws.addEventListener('close', () => { if (ws !== socket) return; resetDraws(); render(); if (!closing) retry = window.setTimeout(connect, 3000); });
     ws.addEventListener('error', () => ws.close());
   }
   connect();
-  window.addEventListener('beforeunload', () => { closing = true; window.clearTimeout(retry); cancelSpin(); if (socket) socket.close(); });
+  window.addEventListener('beforeunload', () => { closing = true; window.clearTimeout(retry); resetDraws(); if (socket) socket.close(); });
 })();
 </script></body></html>''';

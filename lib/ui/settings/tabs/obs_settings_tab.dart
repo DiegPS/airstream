@@ -303,6 +303,14 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                         SnackBar(content: Text(l.subathonUrlCopied)));
                   },
                 ),
+                _overlayUrlCard(
+                  l: l,
+                  title: l.clockTitle,
+                  overlayUrl: '$overlayCopyUrl/clock',
+                  description: l.clockDescription,
+                  onCopy: () => Clipboard.setData(
+                      ClipboardData(text: '$overlayCopyUrl/clock')),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   overlayClientCount == 1

@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/application/saved_poll.dart';
+import 'package:airstream/settings/settings_notifier.dart';
 import 'package:intl/intl.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/app_notice.dart';
@@ -74,6 +76,174 @@ class _PollCardState extends ConsumerState<PollCard> {
     }
   }
 
+  Future<void> _saveSetup(AppLocalizations l, [SavedPoll? existing]) async {
+    final draft = existing?.toJson() ??
+        {
+          'question': _question.text,
+          'options': [for (final option in _options) option.text],
+          'mode': _mode.name,
+          'minutes': _minutes,
+          'allowed': _allowed.name,
+          'hideResults': _hideResults,
+          'allowChange': _allowChange,
+          'command': _command.text,
+        };
+    if (existing == null) {
+      try {
+        ChatPollController.validateSetup(_question.text,
+            [for (final option in _options) option.text], _mode, _command.text);
+      } on ArgumentError catch (error) {
+        setState(() => _error = error.invalidValue as PollInputError);
+        return;
+      }
+    }
+    final saved = ref.read(settingsProvider).savedPolls;
+    bool taken(List<SavedPoll> polls, String name) => polls.any((poll) =>
+        !identical(poll, existing) &&
+        poll.name.toLowerCase() == name.toLowerCase());
+    var input = existing?.name ?? '';
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final clean = SavedPoll.cleanName(input);
+          final duplicate = taken(saved, clean);
+          return AlertDialog(
+            title: Text(existing == null ? l.pollSaveSetup : l.pollRenameSetup),
+            content: TextFormField(
+              key: const Key('poll-setup-name'),
+              initialValue: input,
+              autofocus: true,
+              inputFormatters: [LengthLimitingTextInputFormatter(60)],
+              decoration: settingsInput(
+                hint: l.pollSetupName,
+                error: duplicate ? l.pollSetupDuplicate : null,
+              ),
+              onChanged: (value) => setDialogState(() => input = value),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l.cancel)),
+              TextButton(
+                onPressed: duplicate || clean.isEmpty
+                    ? null
+                    : () => Navigator.pop(context, clean),
+                child: Text(l.ruleLabel('ksave')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (!mounted || name == null) return;
+    final updated = SavedPoll.fromJson({...draft, 'name': name});
+    if (updated == null) {
+      setState(() => _error = PollInputError.invalid);
+      return;
+    }
+    final latest = ref.read(settingsProvider).savedPolls;
+    if (taken(latest, name) ||
+        (existing == null && latest.length >= SavedPoll.limit)) {
+      return;
+    }
+    await _writeSaved([
+      for (final poll in latest) identical(poll, existing) ? updated : poll,
+      if (existing == null) updated,
+    ]);
+  }
+
+  Future<void> _writeSaved(List<SavedPoll> polls) {
+    final settings = ref.read(settingsProvider);
+    return ref
+        .read(settingsProvider.notifier)
+        .update(settings.copyWith(savedPolls: List.unmodifiable(polls)));
+  }
+
+  void _launch(SavedPoll setup, AppLocalizations l) {
+    setState(() {
+      _question.text = setup.question;
+      _command.text = setup.command;
+      for (final option in _options) {
+        option.dispose();
+      }
+      _options
+        ..clear()
+        ..addAll(
+            setup.options.map((option) => TextEditingController(text: option)));
+      while (_options.length < ChatPoll.minOptions) {
+        _options.add(TextEditingController());
+      }
+      _mode = setup.mode;
+      _minutes = setup.minutes;
+      _allowed = setup.allowed;
+      _hideResults = setup.hideResults;
+      _allowChange = setup.allowChange;
+      _error = null;
+    });
+    ref
+        .read(appControllerProvider)
+        .launchSavedPoll(setup, language: l.localeName);
+  }
+
+  Widget _savedPolls(AppLocalizations l, List<SavedPoll> saved) => Material(
+        type: MaterialType.transparency,
+        child: ExpansionTile(
+          key: const Key('saved-polls'),
+          tilePadding: EdgeInsets.zero,
+          title: Text(l.pollSavedSetups),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextButton.icon(
+              onPressed: _canStart && saved.length < SavedPoll.limit
+                  ? () => _saveSetup(l)
+                  : null,
+              icon: const Icon(Icons.bookmark_add_outlined),
+              label: Text(l.pollSaveSetup),
+            ),
+            if (saved.length >= SavedPoll.limit) Text(l.pollSetupLimit),
+            for (final poll in saved)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(poll.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(poll.question,
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          key: ValueKey(poll),
+                          onPressed: () => _launch(poll, l),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: Text(l.pollStart),
+                        ),
+                        IconButton(
+                          tooltip: l.pollRenameSetup,
+                          onPressed: () => _saveSetup(l, poll),
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        IconButton(
+                          tooltip: l.pollDeleteSetup,
+                          onPressed: () => _writeSaved([
+                            for (final current
+                                in ref.read(settingsProvider).savedPolls)
+                              if (!identical(current, poll)) current,
+                          ]),
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+
   String _modeLabel(AppLocalizations l, PollMode mode) => switch (mode) {
         PollMode.numbered => l.pollModeNumbered,
         PollMode.word => l.pollModeWord,
@@ -101,6 +271,7 @@ class _PollCardState extends ConsumerState<PollCard> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final poll = ref.watch(chatPollProvider).valueOrNull;
+    final saved = ref.watch(settingsProvider.select((s) => s.savedPolls));
     final running = poll != null && !poll.closed && poll.endsAt != null;
     if (running && _ticker == null) {
       _ticker = Timer.periodic(
@@ -119,6 +290,7 @@ class _PollCardState extends ConsumerState<PollCard> {
       description: l.pollDescription,
       children: [
         if (poll == null) ..._editor(l) else ..._results(l, poll),
+        _savedPolls(l, saved),
         const SizedBox(height: 10),
         _overlayHint(l),
       ],
@@ -207,7 +379,7 @@ class _PollCardState extends ConsumerState<PollCard> {
               style: const TextStyle(color: Colors.white, fontSize: 12),
               items: [
                 DropdownMenuItem(value: null, child: Text(l.pollNoTimeLimit)),
-                for (final minutes in const [1, 2, 5])
+                for (final minutes in SavedPoll.durations)
                   DropdownMenuItem(
                     value: minutes,
                     child: Text(l.pollMinutes(minutes)),

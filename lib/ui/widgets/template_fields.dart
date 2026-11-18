@@ -115,8 +115,14 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     if (f.type == 'select' || f.type == 'media') {
       final entries = <String, String>{};
       if (f.type == 'select') {
-        for (final s in f.options['options'] as List) {
-          entries[s as String] = s;
+        final scoreLayout = widget.info.manifest.gallery?.id == 'scoreboard' &&
+            f.key == 'layout';
+        for (final option in (f.options['options'] as List).cast<String>()) {
+          entries[option] = switch ((scoreLayout, option)) {
+            (true, 'row') => l.galleryScoreboardRow,
+            (true, 'column') => l.galleryScoreboardColumn,
+            _ => option,
+          };
         }
       } else {
         entries[''] = l.templateFieldNone;

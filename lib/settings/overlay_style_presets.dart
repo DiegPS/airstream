@@ -1,3 +1,5 @@
+import 'package:airstream/application/live_clock.dart';
+
 import 'settings_model.dart';
 
 enum OverlayStylePreset {
@@ -8,7 +10,7 @@ enum OverlayStylePreset {
   vertical
 }
 
-/// Visual-only styles shared by the OBS chat and alerts pages.
+/// Visual styles for the built-in OBS pages.
 abstract final class OverlayStylePresets {
   static SettingsModel apply(
           SettingsModel current, OverlayStylePreset preset) =>
@@ -19,6 +21,7 @@ abstract final class OverlayStylePresets {
     return switch (preset) {
       OverlayStylePreset.classic => defaults,
       OverlayStylePreset.compactGaming => defaults.copyWith(
+          clock: defaults.clock.configure(style: ClockStyle.compact),
           overlayFontSize: 12,
           overlayMessageOpacity: 0.55,
           overlayShowAvatars: false,
@@ -80,6 +83,7 @@ abstract final class OverlayStylePresets {
   static SettingsModel restoreVisual(
           SettingsModel current, SettingsModel previous) =>
       current.copyWith(
+        clock: current.clock.configure(style: previous.clock.style),
         chatFontFamily: previous.chatFontFamily,
         chatFontInstalledOnly: previous.chatFontInstalledOnly,
         nameColorMode: previous.nameColorMode,
@@ -139,6 +143,7 @@ abstract final class OverlayStylePresets {
   }
 
   static List<Object> _visualValues(SettingsModel s) => [
+        s.clock.style,
         s.chatFontFamily,
         s.chatFontInstalledOnly,
         s.nameColorMode,

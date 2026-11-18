@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:airstream/settings/settings_document.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -115,6 +117,57 @@ void main() {
     c.draw();
     expect(c.current!.drawId, greaterThan(lastId));
   });
+
+  test('a batch publishes each distinct winner and persists one round',
+      () async {
+    final states = <ChatGiveaway?>[];
+    final subscription = c.states.listen(states.add);
+    addTearDown(subscription.cancel);
+    await Future<void>.delayed(Duration.zero);
+    c.start(keyword: 'enter', membersOnly: false);
+    for (var i = 0; i < 6; i++) {
+      c.handleMessage(
+          message('viewer $i', 'enter', platform: Platform.values[i % 3]));
+    }
+    final first = c.draw()!;
+    final ids = <int>[];
+    final batch = c.drawMany(10, onDraw: (_, id) => ids.add(id));
+    expect(batch.map((winner) => winner.identity).toSet(), hasLength(5));
+    expect(batch, isNot(contains(first)));
+    expect(ids, [2, 3, 4, 5, 6]);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+        states
+            .where((state) => state?.batchDraw == true)
+            .map((state) => state!.drawId),
+        ids);
+    final round = c.history.single;
+    expect(round.entrantCount, 6);
+    expect(round.endedAt.isBefore(round.startedAt), false);
+    expect(round.winners, [first, ...batch]);
+    final disk =
+        SettingsDocumentCodec.encode(SettingsModel(giveawayHistory: c.history));
+    final restored =
+        SettingsDocumentCodec.decode(disk).settings.giveawayHistory;
+    expect(restored.single.toJson(), round.toJson());
+    expect(disk, isNot(contains('authorId')));
+  });
+
+  test('retains the latest 20 rounds across restart and clears them', () {
+    for (var i = 0; i < 25; i++) {
+      c.start(keyword: 'round $i', membersOnly: false);
+      c.close();
+    }
+    final saved = SettingsModel(giveawayHistory: c.history).toJson();
+    final restored = SettingsModel.fromJson(saved).giveawayHistory;
+    expect(restored.map((round) => round.keyword),
+        [for (var i = 24; i >= 5; i--) 'round $i']);
+    c.restoreHistory(restored);
+    c.clearHistory();
+    c.clear();
+    expect(c.history, isEmpty);
+  });
+
   test('caps entries at 50000 and preserves earlier immutable snapshots', () {
     c.start(keyword: 'go', membersOnly: false);
     c.handleMessage(message('first', 'go'));

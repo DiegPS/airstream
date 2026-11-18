@@ -7,6 +7,8 @@ import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/speech/voice_command.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:flutter/services.dart';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,6 +21,54 @@ class GiveawayCard extends ConsumerStatefulWidget {
 class _GiveawayCardState extends ConsumerState<GiveawayCard> {
   final _keyword = TextEditingController();
   bool _membersOnly = false;
+  int _drawCount = 1;
+
+  Widget _history(
+      AppLocalizations l, List<GiveawayRound> rounds, VoidCallback clear) {
+    final format = DateFormat.yMd(l.localeName).add_Hms();
+    String detail(GiveawayRound round) => [
+          round.keyword,
+          l.giveawayStartedAt(format.format(round.startedAt)),
+          l.giveawayEndedAt(format.format(round.endedAt)),
+          l.giveawayParticipants(round.entrantCount),
+          if (round.winners.isEmpty) l.giveawayNoWinners,
+          for (final winner in round.winners)
+            '${winner.name} (${winner.platform.name})',
+        ].join('\n');
+    return Material(
+      type: MaterialType.transparency,
+      child: ExpansionTile(
+        key: const Key('giveaway-history'),
+        title: Text(l.giveawayHistory),
+        tilePadding: EdgeInsets.zero,
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (rounds.isEmpty) Text(l.giveawayHistoryEmpty),
+          if (rounds.isNotEmpty) ...[
+            Wrap(
+              spacing: 6,
+              children: [
+                TextButton.icon(
+                  onPressed: () => Clipboard.setData(
+                      ClipboardData(text: rounds.map(detail).join('\n\n'))),
+                  icon: const Icon(Icons.copy_outlined),
+                  label: Text(l.copy),
+                ),
+                TextButton(
+                    onPressed: clear, child: Text(l.giveawayClearHistory)),
+              ],
+            ),
+            for (final round in rounds)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(detail(round)),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _keyword.dispose();
@@ -29,6 +79,8 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final state = ref.watch(chatGiveawayProvider).valueOrNull;
+    final history =
+        ref.watch(settingsProvider.select((s) => s.giveawayHistory));
     final controller = ref.read(appControllerProvider);
     final winner = state?.winner;
     final url = ref.watch(overlayUrlProvider);
@@ -129,18 +181,41 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                   if (state.phase == GiveawayPhase.open)
                     button('giveaway-close', l.giveawayClose,
                         controller.closeGiveaway),
+                  Row(children: [
+                    Expanded(child: Text(l.giveawayDrawCount)),
+                    DropdownButton<int>(
+                      key: const Key('giveaway-draw-count'),
+                      value: _drawCount,
+                      items: [
+                        for (var count = 1; count <= 10; count++)
+                          DropdownMenuItem(value: count, child: Text('$count')),
+                      ],
+                      onChanged: (count) {
+                        if (count != null) setState(() => _drawCount = count);
+                      },
+                    ),
+                  ]),
                   button(
                       winner == null ? 'giveaway-draw' : 'giveaway-redraw',
-                      winner == null ? l.giveawayDraw : l.giveawayRedraw,
+                      _drawCount > 1
+                          ? l.giveawayDrawMany(_drawCount)
+                          : winner == null
+                              ? l.giveawayDraw
+                              : l.giveawayRedraw,
                       state.entrantCount > state.winners.length
                           ? () {
-                              controller.drawGiveaway();
+                              if (_drawCount == 1) {
+                                controller.drawGiveaway();
+                              } else {
+                                controller.drawGiveaways(_drawCount);
+                              }
                             }
                           : null),
                   button('giveaway-clear', l.giveawayClear,
                       controller.clearGiveaway),
                 ]),
           ],
+          _history(l, history, controller.clearGiveawayHistory),
           const SizedBox(height: 12),
           if (pageUrl != null)
             PageUrlRow(

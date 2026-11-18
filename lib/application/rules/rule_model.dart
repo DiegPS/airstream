@@ -61,6 +61,7 @@ abstract final class RuleSchema {
     'queue.joined': {},
     'queue.next': {},
     'subathon.ended': {},
+    'clock.ended': {},
     'obs.streamStarted': {},
     'obs.streamStopped': {},
     'obs.recordingStarted': {},
@@ -148,8 +149,13 @@ abstract final class RuleSchema {
       'delta': RuleField.number(-100000, 100000)
     },
     'subathon.adjust': {'seconds': RuleField.number(-36000, 36000)},
+    'clock': {
+      'op': RuleField.choice(['start', 'pause', 'reset', 'add'], 'start'),
+      'seconds': RuleField.number(-86400, 86400),
+    },
     'giveaway': {
       'op': RuleField.choice(['start', 'close', 'draw'], 'start'),
+      'count': RuleField.number(1, 10, fallback: 1),
       'keyword': RuleField.text(),
       'membersOnly': RuleField.boolean()
     },
@@ -170,7 +176,18 @@ abstract final class RuleSchema {
   static Map<String, RuleField> actionFields(Map action) =>
       action['type'] == 'obs.volume' && action['mode'] == 'change'
           ? {...actions['obs.volume']!, 'db': const RuleField.number(-100, 100)}
-          : actions[action['type']] ?? const {};
+          : {
+              for (final entry
+                  in (actions[action['type']] ?? const <String, RuleField>{})
+                      .entries)
+                if (!(action['type'] == 'clock' &&
+                        entry.key == 'seconds' &&
+                        action['op'] != 'add') &&
+                    !(action['type'] == 'giveaway' &&
+                        entry.key == 'count' &&
+                        action['op'] != 'draw'))
+                  entry.key: entry.value,
+            };
 
   static Map<String, dynamic> withoutHttpUrl(Map<String, dynamic> action) =>
       action['type'] == 'http.request' ? {...action, 'url': ''} : action;
@@ -235,13 +252,18 @@ abstract final class RuleSchema {
         invalid = true;
         return {'type': type};
       }
-      final fields = type == 'obs.volume'
+      final fields = identical(table, actions)
           ? actionFields({...map, 'type': type})
           : table[type]!;
       final result = <String, dynamic>{'type': type};
       for (final e in fields.entries) {
         final f = e.value, value = map[e.key];
         if (f.numeric) {
+          if (type == 'giveaway' &&
+              e.key == 'count' &&
+              !map.containsKey('count')) {
+            continue;
+          }
           if (value is! num || !value.isFinite) invalid = true;
           result[e.key] = e.key == 'minAmount' && value is num && value.isFinite
               ? value.clamp(f.min, f.max)
