@@ -716,6 +716,16 @@ class AppController {
               chainDepth: _settingsDepth,
               origin: RuleEventOrigin.current));
         }
+        // A paused subathon only ends when the streamer takes its last
+        // seconds off: that explicit end runs the rule once, here.
+        if (previous.subathonPhase == 'paused' &&
+            settings.subathonPhase == 'ended') {
+          rules.handle(RuleEvent(
+              type: 'subathon.ended',
+              eventId: 'paused-end:${++_ruleEventSequence}',
+              chainDepth: _settingsDepth,
+              origin: RuleEventOrigin.current));
+        }
       }
       final subathonDue = settings.subathonEndsAtMs;
       final subathonAhead = subathonDue > DateTime.now().millisecondsSinceEpoch;

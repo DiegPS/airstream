@@ -96,7 +96,16 @@ ChatSessionPhase resolveChatSessionPhase({
         horizontal?.$1 == ServiceStatus.error ? horizontal : vertical;
     return (ServiceStatus.connected, failed?.$2 ?? youtubePartialStatus);
   }
-  return (ServiceStatus.connecting, null);
+  // Scheduled broadcasts: keep "waiting for live" when a stream still
+  // connecting is waiting, so the title bar, Diagnostics and the empty
+  // chat say so instead of a generic "connecting".
+  final waiting = [horizontal, vertical].any((status) =>
+      status?.$1 == ServiceStatus.connecting &&
+      status?.$2 == youtubeWaitingForLiveStatus);
+  return (
+    ServiceStatus.connecting,
+    waiting ? youtubeWaitingForLiveStatus : null
+  );
 }
 
 /// Whether [settings] name at least one enabled chat that can be started.

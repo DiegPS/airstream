@@ -59,6 +59,9 @@ void main() {
     expect(SubathonTimer.remaining(s, now), 120000);
     final paused = SubathonTimer.pause(s, now);
     expect(SubathonTimer.addSeconds(paused, now, -999).subathonRemainingMs, 0);
+    // Taking the last seconds off a paused subathon ends it; it does not
+    // sit at 0:00 paused until Resume.
+    expect(SubathonTimer.addSeconds(paused, now, -999).subathonPhase, 'ended');
     expect(
         SubathonTimer.addSeconds(paused, now, 999).subathonRemainingMs, 120000);
     expect(SubathonTimer.addSeconds(s, now, -999).subathonPhase, 'ended');

@@ -2189,8 +2189,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'listeningPort': 'Escuchando en el puerto $value',
         'starting': 'Iniciando',
         'noAlerts': 'No hay página de alertas conectada en OBS',
-        'pages':
-            'Páginas: chat / alertas / encuesta / subtítulos / sorteo / metas / temporizador: $value',
+        'pages': 'Páginas abiertas en OBS: $value',
         'loading': 'Cargando $value',
         'ready': 'Listo: $value',
         'listening': 'Escuchando',

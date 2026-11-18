@@ -59,6 +59,12 @@ abstract final class SubathonTimer {
         ? math.max(before, _cap(s, adjusted))
         : math.max(0, adjusted);
     if (ms == before) return s;
+    // Taking the last seconds off ends the subathon, paused or not; a
+    // paused one must not sit at 0:00 waiting for Resume to end it.
+    if (ms == 0) {
+      return s.copyWith(
+          subathonPhase: 'ended', subathonEndsAtMs: 0, subathonRemainingMs: 0);
+    }
     return s.subathonPhase == 'running'
         ? normalize(s.copyWith(subathonEndsAtMs: now + ms), now)
         : s.copyWith(subathonRemainingMs: ms);

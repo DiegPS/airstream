@@ -167,8 +167,11 @@ void main() {
                   : DiagnosticStatus.warning);
       if (phase == OverlayServerPhase.ready) {
         expect(row.summary, contains('Listening on port 8123'));
-        expect(row.summary, contains('2 / 1 / 3 / 4 / 0 / 0 / 0 / 5'));
-        expect(row.summary, contains('goals / timer / custom'));
+        // Every count carries its own label, /featured and /clock included.
+        expect(
+            row.summary,
+            contains('/ 2 · /alerts 1 · /featured 0 · /poll 3 · /captions 4 · '
+                '/giveaway 0 · /goals 0 · /timer 0 · /clock 0 · custom 5'));
       }
     });
   }

@@ -59,6 +59,27 @@ String diagnosticErrorKey(Object? error) {
   return 'failed';
 }
 
+/// Every page the server counts, each labelled with its OBS address so the
+/// labels and counts can never drift apart again.
+const diagnosticPageViews = [
+  'chat',
+  'alerts',
+  'featured',
+  'poll',
+  'captions',
+  'giveaway',
+  'goals',
+  'timer',
+  'clock',
+  'custom',
+];
+
+String diagnosticPageCounts(Map<String, int> pages) => [
+      for (final view in diagnosticPageViews)
+        '${view == 'chat' ? '/' : view == 'custom' ? 'custom' : '/$view'} '
+            '${pages[view] ?? 0}',
+    ].join(' · ');
+
 const diagnosticEnglish = <String, String>{
   'set': 'set',
   'off': 'Off',
@@ -76,8 +97,7 @@ const diagnosticEnglish = <String, String>{
   'listeningPort': 'Listening on port {value}',
   'starting': 'Starting',
   'noAlerts': 'No alerts page connected in OBS',
-  'pages':
-      'Pages: chat / alerts / poll / captions / giveaway / goals / timer / custom: {value}',
+  'pages': 'Pages open in OBS: {value}',
   'loading': 'Loading {value}',
   'ready': 'Ready: {value}',
   'listening': 'Listening',
@@ -223,16 +243,7 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
           : server.phase == OverlayServerPhase.error
               ? err(server.error)
               : ready
-                  ? '${t('listeningPort', '${server.port ?? s.overlayPort}')} · ${t('pages', [
-                        'chat',
-                        'alerts',
-                        'poll',
-                        'captions',
-                        'giveaway',
-                        'goals',
-                        'timer',
-                        'custom'
-                      ].map((v) => snapshot.pages[v] ?? 0).join(' / '))}${noAlerts ? ' · ${t('noAlerts')}' : ''}'
+                  ? '${t('listeningPort', '${server.port ?? s.overlayPort}')} · ${t('pages', diagnosticPageCounts(snapshot.pages))}${noAlerts ? ' · ${t('noAlerts')}' : ''}'
                   : t('starting')));
   final tts = snapshot.tts;
   // Catalog names, never model IDs or filenames from an exception.

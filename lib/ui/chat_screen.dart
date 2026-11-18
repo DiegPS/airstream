@@ -585,9 +585,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             );
           }
+          final statuses = ref.watch(connectionStatusProvider).valueOrNull;
+          // Single YouTube, or dual YouTube where the streams wait for live.
           final youtubeWaiting =
-              ref.watch(connectionStatusProvider).valueOrNull?['youtube']?.$2 ==
-                  youtubeWaitingForLiveStatus;
+              statuses?['youtube']?.$2 == youtubeWaitingForLiveStatus ||
+                  combineYoutubeChatStatuses(statuses?['youtubeHorizontal'],
+                              statuses?['youtubeVertical'])
+                          .$2 ==
+                      youtubeWaitingForLiveStatus;
           final text = hasChannels
               ? switch (sessionPhase) {
                   ChatSessionPhase.connecting when youtubeWaiting =>

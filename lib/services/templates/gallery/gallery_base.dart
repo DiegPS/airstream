@@ -325,8 +325,14 @@ const supportDescriptions = {
     membership: s => s.months ? n(s.months) + '-month member' : 'New member',
     bits: s => s.amount || (s.value == null ? 'Bits' : n(s.value) + ' Bits'),
     subscription: s => s.months ? n(s.months) + (s.months === 1 ? ' month' : ' months') + ' subscribed' : 'New subscription',
-    gift: s => 'Gifted ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' sub' : ' subs'),
-    raid: s => s.count == null ? 'Raid' : 'Raid with ' + n(s.count) + (s.count === 1 ? ' viewer' : ' viewers'),
+    // YouTube gifts memberships; Kick hosts rather than raids.
+    gift: s => 'Gifted ' + n(s.count ?? 1) + (s.platform === 'youtube'
+      ? ((s.count ?? 1) === 1 ? ' membership' : ' memberships')
+      : ((s.count ?? 1) === 1 ? ' sub' : ' subs')),
+    raid: s => {
+      const label = s.platform === 'kick' ? 'Host' : 'Raid';
+      return s.count == null ? label : label + ' with ' + n(s.count) + (s.count === 1 ? ' viewer' : ' viewers');
+    },
     kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' Kicks'
   },
   es: {
@@ -334,8 +340,13 @@ const supportDescriptions = {
     membership: s => s.months ? 'Membresía de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva membresía',
     bits: s => s.value == null ? (s.amount || 'Bits') : n(s.value) + ' bits',
     subscription: s => s.months ? 'Suscripción de ' + n(s.months) + (s.months === 1 ? ' mes' : ' meses') : 'Nueva suscripción',
-    gift: s => 'Regaló ' + n(s.count ?? 1) + ((s.count ?? 1) === 1 ? ' suscripción' : ' suscripciones'),
-    raid: s => s.count == null ? 'Raid' : 'Raid con ' + n(s.count) + (s.count === 1 ? ' espectador' : ' espectadores'),
+    gift: s => 'Regaló ' + n(s.count ?? 1) + (s.platform === 'youtube'
+      ? ((s.count ?? 1) === 1 ? ' membresía' : ' membresías')
+      : ((s.count ?? 1) === 1 ? ' suscripción' : ' suscripciones')),
+    raid: s => {
+      const label = s.platform === 'kick' ? 'Host' : 'Raid';
+      return s.count == null ? label : label + ' con ' + n(s.count) + (s.count === 1 ? ' espectador' : ' espectadores');
+    },
     kicks: s => s.value == null ? 'Kicks' : n(s.value) + ' kicks'
   }
 };

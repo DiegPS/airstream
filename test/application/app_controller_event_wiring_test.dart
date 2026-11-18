@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:airstream/application/subathon_timer.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airstream/application/rules/rule_events.dart';
@@ -1409,6 +1410,36 @@ void main() {
       unawaited(c.dispose());
       a.flushMicrotasks();
     });
+  });
+
+  test('ending a paused subathon with −1m runs its end rule once', () async {
+    final server = RuleOverlay()..feedSeen = true;
+    final c = makeController(FakeChannelChatClient(), server);
+    addTearDown(c.dispose);
+    final rule = {
+      ...RuleSchema.newRule('subathon.ended', id: 'end'),
+      'enabled': true,
+      'actions': [
+        {'id': 'send', 'type': 'template.trigger', 'name': 'end', 'data': ''}
+      ],
+    };
+    final paused = SettingsModel(
+        overlayEnabled: false,
+        rulesEnabled: true,
+        rules: [rule],
+        subathonPhase: 'paused',
+        subathonRemainingMs: 30000);
+    c.applySettings(paused, connectChats: false);
+    final ended = SubathonTimer.addSeconds(
+        paused, DateTime.now().millisecondsSinceEpoch, -60);
+    expect(ended.subathonPhase, 'ended');
+    c.applySettings(ended, connectChats: false);
+    c.applySettings(ended, connectChats: false);
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(c.rules.history, hasLength(1));
+    expect(c.rules.history.single.event.type, 'subathon.ended');
   });
 
   test('a subathon that ran out with automation off never fires its end rule',

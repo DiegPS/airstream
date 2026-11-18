@@ -829,6 +829,17 @@ function checkLatestSupport() {
   latest.send('session', null, true);
   assert.equal(latest.nodes.empty.hidden, false);
   assert.equal(latest.nodes.empty.textContent, 'Todavía no hay apoyos');
+  // YouTube gifts memberships and Kick hosts, so the wording follows the
+  // platform instead of calling them subscriptions and raids.
+  const ytGift = {...support('gift', 'Ana', 18), platform: 'youtube', count: 5};
+  const kickHost = {...support('raid', 'Beto', 19), platform: 'kick', count: 30};
+  latest.fields({mode: 'newest'});
+  latest.send('session', {...payload, latest: {gift: ytGift, bits: null, raid: null},
+    supporters: [ytGift]}, true);
+  assert.match(active().textContent, /Regaló 5 membresías/);
+  latest.send('session', {...payload, latest: {gift: null, bits: null, raid: kickHost},
+    supporters: [kickHost]}, true);
+  assert.match(active().textContent, /Host con 30 espectadores/);
   console.log('PASS: latest support uses localized descriptions and literal names, animates only on new support, rotates present types and handles empty state and media IDs');
 }
 

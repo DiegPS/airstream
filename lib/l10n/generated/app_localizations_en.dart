@@ -2173,8 +2173,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'listeningPort': 'Listening on port $value',
         'starting': 'Starting',
         'noAlerts': 'No alerts page connected in OBS',
-        'pages':
-            'Pages: chat / alerts / poll / captions / giveaway / goals / timer: $value',
+        'pages': 'Pages open in OBS: $value',
         'loading': 'Loading $value',
         'ready': 'Ready: $value',
         'listening': 'Listening',

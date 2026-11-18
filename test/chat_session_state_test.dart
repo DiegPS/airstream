@@ -84,6 +84,14 @@ void main() {
     expect(combineYoutubeChatStatuses(connected, connected), connected);
   });
 
+  test('dual YouTube keeps "waiting for live" for scheduled broadcasts', () {
+    const waiting = (ServiceStatus.connecting, youtubeWaitingForLiveStatus);
+    const connecting = (ServiceStatus.connecting, null);
+    expect(combineYoutubeChatStatuses(waiting, waiting), waiting);
+    expect(combineYoutubeChatStatuses(waiting, connecting), waiting);
+    expect(combineYoutubeChatStatuses(connecting, connecting), connecting);
+  });
+
   test('starts as connecting before the first status event arrives', () {
     expect(
       resolveChatSessionPhase(
