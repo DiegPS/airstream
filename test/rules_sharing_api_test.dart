@@ -233,4 +233,57 @@ void main() {
       ('obsNames', 'Blur')
     ]);
   });
+
+  test('sharing removes HTTP URLs and reviews new OBS names', () {
+    const url = 'https://example.invalid/webhooks/private-value';
+    const request = {
+      'id': 'hook',
+      'type': 'http.request',
+      'method': 'post',
+      'url': url,
+      'contentType': 'json',
+      'body': '{"content":"Live"}',
+    };
+    final original = rule('go')
+      ..['name'] = 'Announce the stream'
+      ..['actions'] = [
+        request,
+        {...request, 'id': 'hook2'},
+        {'id': 'video', 'type': 'obs.media', 'source': 'Clip', 'op': 'play'},
+        {
+          'id': 'volume',
+          'type': 'obs.volume',
+          'input': 'Mic',
+          'mode': 'set',
+          'db': 6
+        },
+        {'id': 'refresh', 'type': 'obs.refresh', 'source': 'Browser'},
+      ];
+    final exported = RuleSharing.export([original]);
+    expect(exported, isNot(contains('private-value')));
+    final file = jsonDecode(exported) as Map;
+    final actions = file['rules'].single['actions'] as List;
+    expect(actions[0], {...request, 'url': ''});
+    expect(actions[1]['url'], '');
+    expect(original['actions'].first['url'], url);
+
+    for (final source in [
+      exported,
+      jsonEncode({
+        ...file,
+        'rules': [original]
+      }),
+    ]) {
+      final review = RuleSharing.import(source, existing: []);
+      expect(review.rules.single['actions'].first['url'], '');
+      expect(review.rules.single['enabled'], isFalse);
+      expect(review.rules.single['invalid'], isFalse);
+      expect(review.warnings.values.single, [
+        ('obsNames', 'Clip'),
+        ('obsNames', 'Mic'),
+        ('obsNames', 'Browser'),
+        ('resetHttpUrl', 'Announce the stream')
+      ]);
+    }
+  });
 }

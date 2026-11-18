@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:airstream/services/speech/voice_command.dart';
 import 'rule_events.dart';
 import 'rule_model.dart';
@@ -93,7 +95,8 @@ String? evaluateRule(Map<String, dynamic> rule, RuleEvent event, RuleContext c,
 }
 
 String resolveRuleText(
-    String text, RuleEvent e, Map<String, int> counters, int max) {
+    String text, RuleEvent e, Map<String, int> counters, int? max,
+    {String Function(String)? escapeValue}) {
   final args = e.args.split(RegExp(r'\s+'));
   final values = <String, String>{
     'user': e.author.name,
@@ -111,10 +114,27 @@ String resolveRuleText(
     for (var i = 1; i <= 9; i++) 'arg$i': args.length >= i ? args[i - 1] : '',
     for (final c in counters.entries) 'counter.${c.key}': '${c.value}'
   };
-  return String.fromCharCodes(text
-      .replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) => values[m[1]] ?? m[0]!)
-      .runes
-      .take(max));
+  final resolved = text.replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) {
+    final value = values[m[1]];
+    return value == null ? m[0]! : escapeValue?.call(value) ?? value;
+  });
+  return max == null
+      ? resolved
+      : String.fromCharCodes(resolved.runes.take(max));
+}
+
+String resolveHttpRuleBody(
+    Map<String, dynamic> action, RuleEvent event, Map<String, int> counters) {
+  final body = action['body'] as String;
+  if (action['contentType'] != 'json') {
+    return resolveRuleText(body, event, counters, 2000);
+  }
+  // The schema bounds the template. Truncating expanded JSON can break escapes
+  // or remove closing delimiters.
+  return resolveRuleText(body, event, counters, null, escapeValue: (value) {
+    final quoted = jsonEncode(value);
+    return quoted.substring(1, quoted.length - 1);
+  });
 }
 
 /// Evaluates every rule without allocating or mutating execution state.

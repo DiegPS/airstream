@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'rule_model.dart';
 import 'rule_events.dart';
 import 'rule_evaluator.dart';
+import 'rule_validation.dart';
 
 class RuleActionResult {
   const RuleActionResult(this.status, [this.reason]);
@@ -84,6 +85,14 @@ class RuleEngine {
     'disposed',
     'notFound',
     'notTextSource',
+    'streamAlready',
+    'publicStreamControl',
+    'replayOff',
+    'replayAlready',
+    'notBrowserSource',
+    'noUrl',
+    'httpStatus',
+    'httpError',
     'noAlertsPage',
     'willCheckInObs',
     'notConnected',
@@ -122,7 +131,8 @@ class RuleEngine {
   final _changes = StreamController<List<RuleRun>>.broadcast();
   Stream<List<RuleRun>> get historyStream => _changes.stream;
   final _generations = <String, int>{};
-  final _queues = <String, List<RuleRun>>{};
+  // History holds a redacted run. Queued execution still needs the original actions.
+  final _queues = <String, List<(RuleRun, List<Map<String, dynamic>>)>>{};
   final _running = <String, RuleRun>{};
   final _waits = <RuleRun, ({Timer timer, Completer<void> completer})>{};
   final _cooldowns = <String, DateTime>{},
@@ -201,7 +211,7 @@ class RuleEngine {
   void _cancel(String id) {
     _generations[id] = (_generations[id] ?? 0) + 1;
     final waiting = _queues.remove(id) ?? [];
-    for (final run in waiting) {
+    for (final (run, _) in waiting) {
       _finishCancelled(run);
     }
     final run = _running[id];
@@ -275,9 +285,12 @@ class RuleEngine {
     _userCooldowns['$id:${e.userKey}'] = now;
     // Entries expire with their maximum possible cooldown, bounding long sessions.
     _userCooldowns.removeWhere((_, t) => now.difference(t).inSeconds > 3600);
+    final actions = r['actions'] as List<Map<String, dynamic>>;
     final run = RuleRun(
         id: 'run_${++_sequence}',
-        rule: r,
+        rule: actions.any((a) => a['type'] == 'http.request')
+            ? {...r, 'actions': actions.map(RuleSchema.withoutHttpUrl).toList()}
+            : r,
         event: e,
         startedAt: now,
         generation: _generations[id] ?? 0,
@@ -285,7 +298,7 @@ class RuleEngine {
     _history.insert(0, run);
     if (_history.length > 50) _history.removeLast();
     _publish();
-    queue.add(run);
+    queue.add((run, actions));
     if (!_running.containsKey(id)) {
       unawaited(Future<void>(() => _drain(id)));
     }
@@ -296,15 +309,14 @@ class RuleEngine {
     if (_running.containsKey(id)) return;
     final queue = _queues[id];
     if (queue == null || queue.isEmpty) return;
-    final run = queue.removeAt(0);
+    final (run, actions) = queue.removeAt(0);
     _running[id] = run;
-    for (final raw in run.rule['actions'] as List) {
+    for (final raw in actions) {
       if (!_current(run)) break;
-      final a = _resolve(Map<String, dynamic>.from(raw as Map), run.event);
+      final a = _resolve(Map<String, dynamic>.of(raw), run.event);
       RuleActionResult result;
-      final skip = a['type'] == 'obs.previousScene' && run.previousScene == null
-          ? 'noPreviousScene'
-          : target.skipReason(a, run.event);
+      final skip =
+          _skipReason(a, run.rule, run.event, run.previousScene != null);
       if (skip != null) {
         result = RuleActionResult('skipped', skip);
       } else if (a['type'] == 'wait') {
@@ -347,6 +359,7 @@ class RuleEngine {
 
   Map<String, dynamic> _resolve(Map<String, dynamic> a, RuleEvent e,
       {Map<String, int>? counters}) {
+    if (a['type'] == 'http.request') return a;
     final schema = RuleSchema.actions[a['type']] ?? const {};
     return {
       for (final entry in a.entries)
@@ -359,6 +372,15 @@ class RuleEngine {
     };
   }
 
+  String? _skipReason(Map<String, dynamic> action, Map<String, dynamic> rule,
+      RuleEvent event, bool hasPreviousScene) {
+    if (blocksPublicStreamControl(action, rule)) return 'publicStreamControl';
+    if (action['type'] == 'obs.previousScene' && !hasPreviousScene) {
+      return 'noPreviousScene';
+    }
+    return target.skipReason(action, event);
+  }
+
   RuleSimulation simulate(Map<String, dynamic> rule, RuleEvent event) {
     final r = RuleSchema.sanitize([rule]).single;
     final reason = evaluateRule(r, event, _context());
@@ -369,10 +391,13 @@ class RuleEngine {
     for (final raw in r['actions'] as List) {
       final a = _resolve(Map<String, dynamic>.from(raw as Map), event,
           counters: counters);
-      actions.add(a);
-      final skip = a['type'] == 'obs.previousScene' && !previous
-          ? 'noPreviousScene'
-          : target.skipReason(a, event);
+      actions.add(a['type'] == 'http.request'
+          ? {
+              ...RuleSchema.withoutHttpUrl(a),
+              'body': resolveHttpRuleBody(a, event, counters)
+            }
+          : a);
+      final skip = _skipReason(a, r, event, previous);
       if (a['type'] == 'obs.scene' && skip == null) previous = true;
       if (a['type'] == 'counter' && skip == null) {
         final name = a['name'] as String;
@@ -383,8 +408,17 @@ class RuleEngine {
       results.add(skip == null
           ? RuleActionResult(
               'wouldRun',
-              const ['obs.source', 'obs.mute', 'obs.text', 'obs.filter']
-                      .contains(a['type'])
+              const [
+                'obs.source',
+                'obs.mute',
+                'obs.text',
+                'obs.filter',
+                'obs.stream',
+                'obs.replay',
+                'obs.media',
+                'obs.volume',
+                'obs.refresh'
+              ].contains(a['type'])
                   ? 'willCheckInObs'
                   : null)
           : RuleActionResult('skipped', skip));

@@ -16,6 +16,13 @@ class ObsNotTextSourceException implements Exception {
   String toString() => 'Not a text source';
 }
 
+class ObsNotBrowserSourceException implements Exception {
+  const ObsNotBrowserSourceException();
+
+  @override
+  String toString() => 'Not a browser source';
+}
+
 @immutable
 class ObsState {
   final int connectionGeneration;
@@ -193,6 +200,30 @@ class ObsService {
             ? !await obs.filterEnabled(source, filter)
             : state == 'enable';
         await obs.setFilterEnabled(source, filter, enabled);
+      });
+
+  Future<void> ruleStream(bool start) => _runControl(
+      start ? 'start stream' : 'stop stream', (obs) => obs.stream(start));
+
+  Future<void> ruleReplay(String operation) =>
+      _runControl('control replay buffer', (obs) => obs.replay(operation));
+
+  Future<void> ruleMedia(String source, String operation) =>
+      _runControl('control media', (obs) => obs.media(source, operation));
+
+  Future<void> ruleVolume(String input, bool change, int db) =>
+      _runControl('adjust input volume', (obs) async {
+        final current = change ? await obs.inputVolumeDb(input) : 0.0;
+        await obs.setInputVolumeDb(
+            input, (current + db).clamp(-100, 26).toDouble());
+      });
+
+  Future<void> ruleRefresh(String source) =>
+      _runControl('refresh browser source', (obs) async {
+        if (await obs.inputKind(source) != 'browser_source') {
+          throw const ObsNotBrowserSourceException();
+        }
+        await obs.pressInputButton(source, 'refreshnocache');
       });
 
   Future<void> _runControl(

@@ -22,6 +22,11 @@ abstract interface class ObsClient {
   Future<void> ruleMute(String input, String state);
   Future<void> ruleText(String source, String text);
   Future<void> ruleFilter(String source, String filter, String state);
+  Future<void> ruleStream(bool start);
+  Future<void> ruleReplay(String operation);
+  Future<void> ruleMedia(String source, String operation);
+  Future<void> ruleVolume(String input, bool change, int db);
+  Future<void> ruleRefresh(String source);
   Future<void> dispose();
 }
 
@@ -62,6 +67,18 @@ class ObsServiceAdapter implements ObsClient {
   Future<void> ruleFilter(String source, String filter, String state) =>
       service.ruleFilter(source, filter, state);
   @override
+  Future<void> ruleStream(bool start) => service.ruleStream(start);
+  @override
+  Future<void> ruleReplay(String operation) => service.ruleReplay(operation);
+  @override
+  Future<void> ruleMedia(String source, String operation) =>
+      service.ruleMedia(source, operation);
+  @override
+  Future<void> ruleVolume(String input, bool change, int db) =>
+      service.ruleVolume(input, change, db);
+  @override
+  Future<void> ruleRefresh(String source) => service.ruleRefresh(source);
+  @override
   Future<void> dispose() => service.dispose();
 }
 
@@ -91,6 +108,13 @@ class ObsCoordinator {
       _obs.ruleFilter(source, filter, state);
   Future<void> ruleRecording(bool start) =>
       start ? _obs.startRecording() : _obs.stopRecording();
+  Future<void> ruleStream(bool start) => _obs.ruleStream(start);
+  Future<void> ruleReplay(String operation) => _obs.ruleReplay(operation);
+  Future<void> ruleMedia(String source, String operation) =>
+      _obs.ruleMedia(source, operation);
+  Future<void> ruleVolume(String input, bool change, int db) =>
+      _obs.ruleVolume(input, change, db);
+  Future<void> ruleRefresh(String source) => _obs.ruleRefresh(source);
 
   Stream<ObsState> get stateStream async* {
     yield _obs.currentState;

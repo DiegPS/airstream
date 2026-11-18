@@ -46,7 +46,9 @@ void main() {
         'enabled': true,
         'actions': [action]
       };
-      expect(RuleSchema.sanitize([r]).single['invalid'], false);
+      final clean = RuleSchema.sanitize([r]).single;
+      expect(clean['invalid'], false);
+      expect(clean['actions'], [action]);
       for (final field in RuleSchema.actions[type]!.entries) {
         if (!field.value.numeric &&
             field.value.min == 0 &&
@@ -69,6 +71,71 @@ void main() {
       }
     });
   }
+  test('volume sanitization and editor validation use the mode-specific range',
+      () {
+    for (final (mode, max) in [('set', 26), ('change', 100)]) {
+      final action = {
+        'id': 'a',
+        'type': 'obs.volume',
+        'input': 'Mic',
+        'mode': mode,
+        'db': 101
+      };
+      final rule = RuleSchema.newRule('manual', id: 'test')
+        ..['actions'] = [action];
+      expect(ruleProblems(rule), {'action-0-db': 'fieldError'});
+      final clean = RuleSchema.sanitize([rule]).single;
+      expect(clean['actions'].single['db'], max);
+      expect(ruleProblems(clean), isEmpty);
+      action['db'] = -101;
+      expect(ruleProblems(rule), {'action-0-db': 'fieldError'});
+      expect(RuleSchema.sanitize([rule]).single['actions'].single['db'], -100);
+    }
+  });
+
+  test('HTTP templates and URL lengths are bounded without requiring a URL',
+      () {
+    final url = 'https://example.invalid/${'a' * 600}';
+    final body = '🎮' * 2001;
+    final action = {
+      'id': 'a',
+      'type': 'http.request',
+      'method': 'post',
+      'url': url,
+      'contentType': 'json',
+      'body': body,
+    };
+    final rule = RuleSchema.newRule('manual', id: 'test')
+      ..['actions'] = [action];
+    expect(ruleProblems(rule).keys, ['action-0-url', 'action-0-body']);
+    final clean = RuleSchema.sanitize([rule]).single;
+    expect(clean['actions'].single['url'], url.substring(0, 500));
+    expect(clean['actions'].single['body'], '🎮' * 2000);
+    expect(clean['invalid'], isFalse);
+    for (final invalid in ['', 'ftp://example.invalid', 'https:///missing']) {
+      action['url'] = invalid;
+      action['body'] = '';
+      expect(RuleSchema.sanitize([rule]).single['invalid'], isFalse);
+      expect(ruleProblems(rule), {'action-0-url': 'invalidHttpUrl'});
+    }
+  });
+
+  test('stream control is an editor error only for public chat rules', () {
+    for (final (trigger, roles, blocked) in [
+      ('chat.command', <String>[], true),
+      ('chat.firstMessage', ['everyone', 'moderator'], true),
+      ('chat.message', ['moderator'], false),
+      ('manual', <String>[], false),
+    ]) {
+      final rule = RuleSchema.newRule(trigger, id: 'test')
+        ..['actions'] = [
+          {'id': 'a', 'type': 'obs.stream', 'state': 'start'}
+        ];
+      rule['conditions']['roles'] = roles;
+      expect(ruleProblems(rule),
+          blocked ? {'action-0-state': 'publicStreamControl'} : isEmpty);
+    }
+  });
   test('clamps OBS text and filter fields by Unicode code points', () {
     final source = 'S' * 100;
     final filter = 'F' * 100;

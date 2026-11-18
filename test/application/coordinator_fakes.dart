@@ -349,6 +349,36 @@ class FakeObsClient implements ObsClient {
     if (commandError != null) throw commandError!;
   }
 
+  @override
+  Future<void> ruleStream(bool start) async {
+    ruleControls.add('stream:$start');
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleReplay(String operation) async {
+    ruleControls.add('replay:$operation');
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleMedia(String source, String operation) async {
+    ruleControls.add('media:$source:$operation');
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleVolume(String input, bool change, int db) async {
+    ruleControls.add('volume:$input:$change:$db');
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleRefresh(String source) async {
+    ruleControls.add('refresh:$source');
+    if (commandError != null) throw commandError!;
+  }
+
   final statesController = StreamController<ObsState>.broadcast(sync: true);
   ObsState state = const ObsState();
   int connectCount = 0;

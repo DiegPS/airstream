@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:obs_websocket/obs_websocket.dart' show ObsRequestException;
 import 'rule_sound_player.dart';
 import 'package:airstream/services/speech/voice_command.dart';
@@ -10,10 +13,12 @@ import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/services/obs_service.dart'
-    show ObsNotTextSourceException;
+    show ObsNotBrowserSourceException, ObsNotTextSourceException;
 import 'package:airstream/models/chat_message.dart';
 import 'rule_engine.dart';
+import 'rule_evaluator.dart';
 import 'rule_events.dart';
+import 'rule_validation.dart';
 
 /// Local feature bridge. Settings writes are supplied by the Riverpod layer.
 class RuleActions implements RuleActionTarget {
@@ -27,9 +32,12 @@ class RuleActions implements RuleActionTarget {
       required this.server,
       required this.feature,
       required this.draw,
-      RuleSoundPlayer? sounds})
-      : sounds = sounds ?? RuleSoundPlayer(settings: settings);
+      RuleSoundPlayer? sounds,
+      http.Client? httpClient})
+      : sounds = sounds ?? RuleSoundPlayer(settings: settings),
+        _httpClient = httpClient;
   final RuleSoundPlayer sounds;
+  final http.Client? _httpClient;
   final SettingsModel Function() settings;
   final Future<void> Function(SettingsModel, int) writeSettings;
   final ObsCoordinator obs;
@@ -60,6 +68,11 @@ class RuleActions implements RuleActionTarget {
         (!s.obsEnabled || !obs.currentState.connected)) {
       return 'notConnected';
     }
+    if (type == 'obs.stream' &&
+        (a['state'] == 'start') == obs.currentState.outputActive) {
+      return 'streamAlready';
+    }
+    if (type == 'http.request' && httpRuleUri(a['url']) == null) return 'noUrl';
     if (type == 'tts.say' && !audio.ruleTtsReady) return 'ttsOff';
     if (type == 'featured' && e.message == null) return 'noMessage';
     if (type == 'goal.adjust' && !s.goals.containsKey(a['goalId'])) {
@@ -109,6 +122,9 @@ class RuleActions implements RuleActionTarget {
 
   @override
   Future<RuleActionResult> execute(Map<String, dynamic> a, RuleRun run) async {
+    if (blocksPublicStreamControl(a, run.rule)) {
+      return const RuleActionResult('skipped', 'publicStreamControl');
+    }
     final skip = skipReason(a, run.event);
     if (skip != null) return RuleActionResult('skipped', skip);
     final s = settings(), depth = run.event.chainDepth + 1;
@@ -130,6 +146,19 @@ class RuleActions implements RuleActionTarget {
         case 'obs.filter':
           await obs.ruleFilter(a['source'] as String, a['filter'] as String,
               a['state'] as String);
+        case 'obs.stream':
+          await obs.ruleStream(a['state'] == 'start');
+        case 'obs.replay':
+          await obs.ruleReplay(a['op'] as String);
+        case 'obs.media':
+          await obs.ruleMedia(a['source'] as String, a['op'] as String);
+        case 'obs.volume':
+          await obs.ruleVolume(
+              a['input'] as String, a['mode'] == 'change', a['db'] as int);
+        case 'obs.refresh':
+          await obs.ruleRefresh(a['source'] as String);
+        case 'http.request':
+          return await _request(a, run.event);
         case 'sound.play':
           if (!await sounds.play(a)) {
             return const RuleActionResult('skipped', 'notFound');
@@ -201,12 +230,59 @@ class RuleActions implements RuleActionTarget {
       }
     } on ObsNotTextSourceException {
       return const RuleActionResult('failed', 'notTextSource');
+    } on ObsNotBrowserSourceException {
+      return const RuleActionResult('failed', 'notBrowserSource');
     } on ObsRequestException catch (e) {
       if (e.code == 600 || e.code == 601) {
         return const RuleActionResult('failed', 'notFound');
       }
+      if (a['type'] == 'obs.replay') {
+        if (a['op'] == 'save' && e.code == 501) {
+          return const RuleActionResult('failed', 'replayOff');
+        }
+        if ((a['op'] == 'start' && e.code == 500) ||
+            (a['op'] == 'stop' && e.code == 501)) {
+          return const RuleActionResult('skipped', 'replayAlready');
+        }
+      }
+      if (a['type'] == 'obs.stream' &&
+          e.code == (a['state'] == 'start' ? 500 : 501)) {
+        return const RuleActionResult('skipped', 'streamAlready');
+      }
       rethrow;
     }
     return RuleActionResult.done;
+  }
+
+  Future<RuleActionResult> _request(
+      Map<String, dynamic> action, RuleEvent event) async {
+    final client = _httpClient ?? http.Client();
+    try {
+      final post = action['method'] == 'post';
+      final request =
+          http.Request(post ? 'POST' : 'GET', httpRuleUri(action['url'])!)
+            ..headers['User-Agent'] = 'Airstream';
+      if (post) {
+        request.headers['Content-Type'] =
+            action['contentType'] == 'json' ? 'application/json' : 'text/plain';
+        request.bodyBytes =
+            utf8.encode(resolveHttpRuleBody(action, event, counters));
+      }
+      Future<int> send() async {
+        final response = await client.send(request);
+        await response.stream.drain<void>();
+        return response.statusCode;
+      }
+
+      final status = await send().timeout(const Duration(seconds: 5));
+      return status >= 200 && status < 300
+          ? RuleActionResult.done
+          : const RuleActionResult('failed', 'httpStatus');
+    } catch (_) {
+      // Client exceptions can contain the full URL.
+      return const RuleActionResult('failed', 'httpError');
+    } finally {
+      if (_httpClient == null) client.close();
+    }
   }
 }

@@ -55,6 +55,12 @@ abstract interface class ObsClient {
       {required bool overlay});
   Future<bool> filterEnabled(String source, String filter);
   Future<void> setFilterEnabled(String source, String filter, bool enabled);
+  Future<void> stream(bool start);
+  Future<void> replay(String operation);
+  Future<void> media(String source, String operation);
+  Future<double> inputVolumeDb(String input);
+  Future<void> setInputVolumeDb(String input, double db);
+  Future<void> pressInputButton(String input, String property);
   Future<void> close();
 }
 
@@ -66,7 +72,7 @@ typedef ObsClientConnector = Future<ObsClient> Function({
 });
 
 class ObsWebSocketClient implements ObsClient {
-  ObsWebSocketClient._(this._socket);
+  ObsWebSocketClient(this._socket);
   final ObsWebSocket _socket;
 
   static Future<ObsClient> connect({
@@ -81,7 +87,7 @@ class ObsWebSocketClient implements ObsClient {
       onDone: onDone,
       fallbackEventHandler: onEvent,
     );
-    return ObsWebSocketClient._(socket);
+    return ObsWebSocketClient(socket);
   }
 
   @override
@@ -179,6 +185,44 @@ class ObsWebSocketClient implements ObsClient {
   Future<void> setFilterEnabled(String source, String filter, bool enabled) =>
       _socket.filters.setSourceFilterEnabled(
           sourceName: source, filterName: filter, filterEnabled: enabled);
+
+  @override
+  Future<void> stream(bool start) =>
+      start ? _socket.stream.start() : _socket.stream.stop();
+
+  @override
+  Future<void> replay(String operation) => switch (operation) {
+        // The package requires an output name but omits it from these requests.
+        'start' => _socket.outputs.startReplayBuffer(''),
+        'stop' => _socket.outputs.stopReplayBuffer(''),
+        _ => _socket.outputs.saveReplayBuffer(''),
+      };
+
+  @override
+  Future<void> media(String source, String operation) =>
+      _socket.mediaInputs.triggerMediaInputAction(
+        inputName: source,
+        mediaAction: switch (operation) {
+          'play' => ObsMediaInputAction.play,
+          'pause' => ObsMediaInputAction.pause,
+          'stop' => ObsMediaInputAction.stop,
+          _ => ObsMediaInputAction.restart,
+        },
+      );
+
+  @override
+  Future<double> inputVolumeDb(String input) async =>
+      (await _socket.inputs.getInputVolume(inputName: input)).inputVolumeDb;
+
+  @override
+  Future<void> setInputVolumeDb(String input, double db) async {
+    await _socket.sendRequest(Request('SetInputVolume',
+        requestData: {'inputName': input, 'inputVolumeDb': db}));
+  }
+
+  @override
+  Future<void> pressInputButton(String input, String property) => _socket.inputs
+      .pressInputPropertiesButton(inputName: input, propertyName: property);
 
   @override
   Future<void> close() => _socket.close();

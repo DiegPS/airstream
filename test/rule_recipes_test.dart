@@ -3,6 +3,7 @@ import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_recipes.dart';
+import 'package:airstream/application/rules/rule_sharing.dart';
 import 'package:airstream/application/rules/rule_validation.dart';
 import 'package:airstream/l10n/generated/app_localizations_en.dart';
 import 'package:airstream/l10n/generated/app_localizations_es.dart';
@@ -65,6 +66,27 @@ void main() {
       },
     ]);
     expect(ruleProblems(recipe), isEmpty);
+  });
+
+  test('Discord recipe round trips and requires the webhook URL', () {
+    final recipe = RuleRecipes.all.singleWhere((r) => r['id'] == 'recipe_8');
+    expect(recipe['trigger'], {'type': 'obs.streamStarted'});
+    expect(recipe['enabled'], isFalse);
+    expect(recipe['actions'], [
+      {
+        'id': 'a_0',
+        'type': 'http.request',
+        'method': 'post',
+        'url': '',
+        'contentType': 'json',
+        'body': '{"content":"¡Estoy en directo!"}',
+      },
+    ]);
+    final review =
+        RuleSharing.import(RuleSharing.export([recipe]), existing: []);
+    expect(review.rules.single, {...recipe, 'id': review.rules.single['id']});
+    expect(
+        ruleProblems(review.rules.single), {'action-0-url': 'invalidHttpUrl'});
   });
 
   test('public chat text warning tracks viewer text placeholders only', () {

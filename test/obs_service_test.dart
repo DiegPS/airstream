@@ -12,7 +12,14 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/obs/obs_client.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:obs_websocket/obs_websocket.dart' show ObsRequestException;
+import 'package:obs_websocket/obs_websocket.dart' as websocket
+    show
+        ObsRequestException,
+        ObsWebSocket,
+        Request,
+        RequestResponse,
+        RequestStatus;
+import 'package:obs_websocket/request.dart' as requests;
 
 import 'application/coordinator_fakes.dart'
     show FakeTtsClient, FakeCaptionsClient;
@@ -165,10 +172,64 @@ void main() {
     expect(service.currentState.error, contains('TimeoutException'));
   });
 
-  group('OBS text and filter rules', () {
+  test('OBS adapter sends the exact phase 11 request payloads', () async {
+    final socket = _RecordingSocket();
+    final client = ObsWebSocketClient(socket);
+    await client.stream(true);
+    await client.stream(false);
+    for (final op in ['save', 'start', 'stop']) {
+      await client.replay(op);
+    }
+    for (final op in ['play', 'pause', 'restart', 'stop']) {
+      await client.media('Clip', op);
+    }
+    expect(await client.inputVolumeDb('Mic'), -18.5);
+    await client.setInputVolumeDb('Mic', 2.5);
+    expect(await client.inputKind('Browser'), 'browser_source');
+    await client.pressInputButton('Browser', 'refreshnocache');
+    expect(socket.sent.map((r) => [r.requestType, r.requestData]), [
+      ['StartStream', null],
+      ['StopStream', null],
+      ['SaveReplayBuffer', null],
+      ['StartReplayBuffer', null],
+      ['StopReplayBuffer', null],
+      for (final op in ['PLAY', 'PAUSE', 'RESTART', 'STOP'])
+        [
+          'TriggerMediaInputAction',
+          {
+            'inputName': 'Clip',
+            'inputUuid': null,
+            'mediaAction': 'OBS_WEBSOCKET_MEDIA_INPUT_ACTION_$op'
+          }
+        ],
+      [
+        'GetInputVolume',
+        {'inputName': 'Mic', 'inputUuid': null}
+      ],
+      [
+        'SetInputVolume',
+        {'inputName': 'Mic', 'inputVolumeDb': 2.5}
+      ],
+      [
+        'GetInputSettings',
+        {'inputName': 'Browser', 'inputUuid': null}
+      ],
+      [
+        'PressInputPropertiesButton',
+        {
+          'inputName': 'Browser',
+          'inputUuid': null,
+          'propertyName': 'refreshnocache'
+        }
+      ],
+    ]);
+  });
+
+  group('OBS rules', () {
     late _FakeObsClient client;
     late ObsService service;
     late RuleEngine engine;
+    late RuleActions actions;
     late SettingsModel settings;
     const manual = RuleEvent(type: 'manual');
     const textAction = {
@@ -202,7 +263,7 @@ void main() {
       final queue = ChatQueueController();
       settings =
           const SettingsModel(obsEnabled: true, ruleCounters: {'muertes': 4});
-      final actions = RuleActions(
+      actions = RuleActions(
         settings: () => settings,
         writeSettings: (next, _) async => settings = next,
         obs: obs,
@@ -310,7 +371,7 @@ void main() {
     ]) {
       test('$request reports OBS error $code as notFound', () async {
         client.requestError =
-            ObsRequestException(requestType: request, code: code);
+            websocket.ObsRequestException(requestType: request, code: code);
         expect(await run(rule(actions: [action]), manual),
             [('failed', 'notFound')]);
         expect(service.currentState.error, contains('code $code'));
@@ -334,7 +395,193 @@ void main() {
           List.filled(2, ('skipped', 'notConnected')));
       expect(client.commands, isEmpty);
     });
+
+    Map<String, dynamic> stream(String state) =>
+        {'id': state, 'type': 'obs.stream', 'state': state};
+    Map<String, dynamic> replay(String op) =>
+        {'id': op, 'type': 'obs.replay', 'op': op};
+    const refresh = {
+      'id': 'refresh',
+      'type': 'obs.refresh',
+      'source': 'Browser'
+    };
+    const volume = {
+      'id': 'volume',
+      'type': 'obs.volume',
+      'input': 'Mic',
+      'mode': 'set',
+      'db': -6
+    };
+    const media = {
+      'id': 'media',
+      'type': 'obs.media',
+      'source': 'Video',
+      'op': 'restart'
+    };
+
+    test('skips redundant stream state and sends start and stop when needed',
+        () async {
+      final definition = rule(actions: [stream('start'), stream('stop')]);
+      expect(await run(definition, manual),
+          [('skipped', 'streamAlready'), ('done', null)]);
+      expect(client.commands, ['StopStream']);
+      await service.disconnect();
+      client.streaming = false;
+      await service.connect(host: 'studio.local:4455', password: '');
+      expect(
+          await run(rule(actions: [stream('stop'), stream('start')]), manual),
+          [('skipped', 'streamAlready'), ('done', null)]);
+      expect(client.commands, ['StopStream', 'StartStream']);
+    });
+
+    test('blocks public chat stream control in the engine and action target',
+        () async {
+      final definition = rule(type: 'chat.command', actions: [stream('stop')]);
+      const event = RuleEvent(type: 'chat.command', text: '!hello');
+      expect(engine.simulate(definition, event).results.single.reason,
+          'publicStreamControl');
+      expect(
+          await run(definition, event), [('skipped', 'publicStreamControl')]);
+      final direct =
+          await actions.execute(stream('stop'), engine.history.single);
+      expect(
+          (direct.status, direct.reason), ('skipped', 'publicStreamControl'));
+      expect(client.commands, isEmpty);
+    });
+
+    test('sends all replay and media operations', () async {
+      final definition = rule(actions: [
+        for (final op in ['save', 'start', 'stop']) replay(op),
+        for (final op in ['play', 'pause', 'restart', 'stop'])
+          {...media, 'id': 'media_$op', 'op': op},
+      ]);
+      expect(await run(definition, manual), List.filled(7, ('done', null)));
+      expect(client.commands, [
+        'SaveReplayBuffer',
+        'StartReplayBuffer',
+        'StopReplayBuffer',
+        'media:Video:play',
+        'media:Video:pause',
+        'media:Video:restart',
+        'media:Video:stop',
+      ]);
+    });
+
+    for (final (op, request, code, status, reason) in [
+      ('save', 'SaveReplayBuffer', 501, 'failed', 'replayOff'),
+      ('start', 'StartReplayBuffer', 500, 'skipped', 'replayAlready'),
+      ('stop', 'StopReplayBuffer', 501, 'skipped', 'replayAlready'),
+    ]) {
+      test('maps $request error $code to $reason', () async {
+        client.requestError =
+            websocket.ObsRequestException(requestType: request, code: code);
+        expect(
+            await run(rule(actions: [replay(op)]), manual), [(status, reason)]);
+      });
+    }
+
+    test('sets dB directly and reads and clamps each relative change',
+        () async {
+      final definition = rule(actions: [
+        volume,
+        {...volume, 'id': 'up', 'mode': 'change', 'db': 100},
+        {...volume, 'id': 'down', 'mode': 'change', 'db': -100},
+        {...volume, 'id': 'clamp', 'mode': 'change', 'db': -100},
+      ]);
+      expect(await run(definition, manual), List.filled(4, ('done', null)));
+      expect(client.commands, [
+        'set-volume:Mic:-6.0',
+        'read-volume:Mic',
+        'set-volume:Mic:26.0',
+        'read-volume:Mic',
+        'set-volume:Mic:-74.0',
+        'read-volume:Mic',
+        'set-volume:Mic:-100.0',
+      ]);
+    });
+
+    test('refresh only presses refreshnocache for browser sources', () async {
+      final definition = rule(actions: [refresh]);
+      expect(await run(definition, manual), [('failed', 'notBrowserSource')]);
+      expect(client.commands, ['kind:Browser']);
+      client.kind = 'browser_source';
+      expect(await run(definition, manual), [('done', null)]);
+      expect(client.commands,
+          ['kind:Browser', 'kind:Browser', 'press:Browser:refreshnocache']);
+    });
+
+    for (final (request, code, action) in [
+      ('TriggerMediaInputAction', 600, media),
+      ('GetInputVolume', 601, {...volume, 'mode': 'change'}),
+      ('GetInputSettings', 600, refresh),
+    ]) {
+      test('$request maps error $code to notFound', () async {
+        client.requestError =
+            websocket.ObsRequestException(requestType: request, code: code);
+        expect(await run(rule(actions: [action]), manual),
+            [('failed', 'notFound')]);
+        expect(
+            client.commands.where((command) =>
+                command.startsWith('set-volume:') ||
+                command.startsWith('press:')),
+            isEmpty);
+      });
+    }
+
+    test('simulates all new OBS actions and skips them when disconnected',
+        () async {
+      final definition = rule(actions: [
+        stream('stop'),
+        replay('save'),
+        media,
+        volume,
+        refresh,
+      ]);
+      expect(engine.simulate(definition, manual).results.map((r) => r.reason),
+          List.filled(5, 'willCheckInObs'));
+      expect(client.commands, isEmpty);
+      await service.disconnect();
+      expect(await run(definition, manual),
+          List.filled(5, ('skipped', 'notConnected')));
+      expect(client.commands, isEmpty);
+    });
   });
+}
+
+class _RecordingSocket implements websocket.ObsWebSocket {
+  final sent = <websocket.Request>[];
+
+  @override
+  late final requests.Inputs inputs = requests.Inputs(this);
+  @override
+  late final requests.MediaInputs mediaInputs = requests.MediaInputs(this);
+  @override
+  late final requests.Outputs outputs = requests.Outputs(this);
+  @override
+  late final requests.Stream stream = requests.Stream(this);
+
+  @override
+  Future<websocket.RequestResponse?> sendRequest(
+      websocket.Request request) async {
+    sent.add(request);
+    return websocket.RequestResponse(
+      requestType: request.requestType,
+      requestId: request.requestId,
+      requestStatus:
+          websocket.RequestStatus(result: true, code: 100, comment: null),
+      responseData: switch (request.requestType) {
+        'GetInputVolume' => {'inputVolumeDb': -18.5, 'inputVolumeMul': 0.12},
+        'GetInputSettings' => {
+            'inputKind': 'browser_source',
+            'inputSettings': <String, dynamic>{}
+          },
+        _ => null,
+      },
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeObsClient implements ObsClient {
@@ -348,7 +595,9 @@ class _FakeObsClient implements ObsClient {
   final inputWrites = <(String, Map<String, dynamic>, bool)>[];
   String kind = 'text_gdiplus_v3';
   bool filterIsEnabled = false;
-  ObsRequestException? requestError;
+  websocket.ObsRequestException? requestError;
+  bool streaming = true;
+  double volumeDb = -10;
   int statsCalls = 0;
   int closeCount = 0;
 
@@ -388,12 +637,50 @@ class _FakeObsClient implements ObsClient {
   }
 
   @override
+  Future<void> stream(bool start) async =>
+      commands.add(start ? 'StartStream' : 'StopStream');
+
+  @override
+  Future<void> replay(String operation) async {
+    final request = switch (operation) {
+      'start' => 'StartReplayBuffer',
+      'stop' => 'StopReplayBuffer',
+      _ => 'SaveReplayBuffer',
+    };
+    commands.add(request);
+    failRequest(request);
+  }
+
+  @override
+  Future<void> media(String source, String operation) async {
+    failRequest('TriggerMediaInputAction');
+    commands.add('media:$source:$operation');
+  }
+
+  @override
+  Future<double> inputVolumeDb(String input) async {
+    commands.add('read-volume:$input');
+    failRequest('GetInputVolume');
+    return volumeDb;
+  }
+
+  @override
+  Future<void> setInputVolumeDb(String input, double db) async {
+    commands.add('set-volume:$input:$db');
+    volumeDb = db;
+  }
+
+  @override
+  Future<void> pressInputButton(String input, String property) async =>
+      commands.add('press:$input:$property');
+
+  @override
   Future<void> subscribeOutputsAndScenes() async {}
   @override
   Future<String> currentProgramScene() async => 'Main';
   @override
-  Future<ObsStreamSnapshot> streamStatus() async => const ObsStreamSnapshot(
-        outputActive: true,
+  Future<ObsStreamSnapshot> streamStatus() async => ObsStreamSnapshot(
+        outputActive: streaming,
         outputReconnecting: false,
         outputBytes: 1000,
         outputDuration: 1000,

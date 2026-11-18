@@ -178,14 +178,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
       {RuleField? field,
       List<String> placeholders = const [],
       Map<String, String>? options,
-      String? hint}) {
+      String? hint,
+      bool multiline = false}) {
     final l = AppLocalizations.of(context)!;
 
     final problem = problems[path];
 
     final decoration = settingsInput(
             hint: hint, error: problem == null ? null : ruleText(l, problem))
-        .copyWith(labelText: label);
+        .copyWith(
+            labelText: label,
+            errorMaxLines: problem == 'publicStreamControl' ? 3 : null);
 
     Widget child;
 
@@ -231,10 +234,13 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             key: Key('rule-$path'),
             controller: c,
             decoration: decoration,
+            maxLines: multiline ? 3 : 1,
             keyboardType: field?.numeric == true
                 ? const TextInputType.numberWithOptions(
                     signed: true, decimal: true)
-                : TextInputType.text,
+                : multiline
+                    ? TextInputType.multiline
+                    : TextInputType.text,
             onChanged: (v) => change(() =>
                 update(field?.numeric == true ? num.tryParse(v) ?? v : v))),
         if (placeholders.isNotEmpty)
@@ -330,32 +336,41 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                 map[e.key] ?? (e.key == 'webhook' ? '' : null),
                 (v) => map[e.key] = v,
                 field: e.value,
+                multiline: e.key == 'body',
                 hint: e.key == 'scene' &&
                         widget.engine.target.currentScene.isNotEmpty
                     ? widget.engine.target.currentScene
                     : null,
                 placeholders: !e.value.numeric &&
                         e.value.choices == null &&
-                        ['text', 'title', 'data'].contains(e.key)
+                        ['text', 'title', 'data', 'body'].contains(e.key)
                     ? placeholders.toSet().toList()
                     : const [],
-                options: e.key == 'goalId'
-                    ? {
-                        '': '—',
-                        for (final g in settings.goals.entries)
-                          g.key: g.value['title']?.toString() ?? g.key
-                      }
-                    : e.key == 'mediaId'
-                        ? {
-                            '': '—',
-                            for (final m in settings.mediaLibrary.entries.where(
-                                (m) => map['type'] == 'sound.play'
-                                    ? m.value['kind'] == 'audio'
-                                    : ['image', 'video']
-                                        .contains(m.value['kind'])))
-                              m.key: m.value['name'].toString()
-                          }
-                        : null)
+                options: switch ((map['type'], e.key)) {
+                  ('obs.stream', 'state') => {
+                      'start': ruleText(l, 'streamStart'),
+                      'stop': ruleText(l, 'streamStop')
+                    },
+                  ('obs.replay', 'op') => {
+                      'save': ruleText(l, 'replaySave'),
+                      'start': ruleText(l, 'start'),
+                      'stop': ruleText(l, 'stop')
+                    },
+                  (_, 'goalId') => {
+                      '': '—',
+                      for (final g in settings.goals.entries)
+                        g.key: g.value['title']?.toString() ?? g.key
+                    },
+                  (_, 'mediaId') => {
+                      '': '—',
+                      for (final m in settings.mediaLibrary.entries.where((m) =>
+                          map['type'] == 'sound.play'
+                              ? m.value['kind'] == 'audio'
+                              : ['image', 'video'].contains(m.value['kind'])))
+                        m.key: m.value['name'].toString()
+                    },
+                  _ => null,
+                })
         ];
 
     final valid = problems.isEmpty;
@@ -555,9 +570,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                             ...params(
                                                 actions[i]
                                                     as Map<String, dynamic>,
-                                                RuleSchema.actions[actions[i]
-                                                        ['type']] ??
-                                                    {},
+                                                RuleSchema.actionFields(
+                                                    actions[i] as Map),
                                                 'action-$i')
                                           ])),
                                 PopupMenuButton<String>(

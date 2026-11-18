@@ -63,6 +63,15 @@ abstract final class RuleRecipes {
             ],
             roles: ['moderator'],
             cooldown: 30),
+        _recipe(8, 'obs.streamStarted', {}, [
+          {
+            'type': 'http.request',
+            'method': 'post',
+            'url': '',
+            'contentType': 'json',
+            'body': '{"content":"¡Estoy en directo!"}'
+          },
+        ]),
       ];
   static Map<String, dynamic> _recipe(int n, String type,
       Map<String, dynamic> params, List<Map<String, dynamic>> actions,

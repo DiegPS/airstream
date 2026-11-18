@@ -96,6 +96,30 @@ abstract final class RuleSchema {
       'filter': RuleField.text(min: 1, max: 100, fallback: 'Filter'),
       'state': RuleField.choice(['enable', 'disable', 'toggle'], 'enable')
     },
+    'obs.stream': {
+      'state': RuleField.choice(['start', 'stop'], 'start')
+    },
+    'obs.replay': {
+      'op': RuleField.choice(['save', 'start', 'stop'], 'save')
+    },
+    'obs.media': {
+      'source': RuleField.text(min: 1, max: 100, fallback: 'Video'),
+      'op': RuleField.choice(['play', 'pause', 'restart', 'stop'], 'restart')
+    },
+    'obs.volume': {
+      'input': RuleField.text(min: 1, max: 100, fallback: 'Mic'),
+      'mode': RuleField.choice(['set', 'change'], 'set'),
+      'db': RuleField.number(-100, 26)
+    },
+    'obs.refresh': {
+      'source': RuleField.text(min: 1, max: 100, fallback: 'Browser')
+    },
+    'http.request': {
+      'method': RuleField.choice(['get', 'post'], 'post'),
+      'url': RuleField.text(max: 500),
+      'contentType': RuleField.choice(['json', 'text'], 'json'),
+      'body': RuleField.text(max: 2000)
+    },
     'tts.say': {
       'text': RuleField.text(min: 1, max: 300, fallback: 'Hello {user}')
     },
@@ -143,6 +167,14 @@ abstract final class RuleSchema {
       'value': RuleField.number(-1000000, 1000000)
     },
   };
+  static Map<String, RuleField> actionFields(Map action) =>
+      action['type'] == 'obs.volume' && action['mode'] == 'change'
+          ? {...actions['obs.volume']!, 'db': const RuleField.number(-100, 100)}
+          : actions[action['type']] ?? const {};
+
+  static Map<String, dynamic> withoutHttpUrl(Map<String, dynamic> action) =>
+      action['type'] == 'http.request' ? {...action, 'url': ''} : action;
+
   static String text(Object? value, int max) => String.fromCharCodes(
       (value is String ? value.trim() : '').runes.take(max));
   static int integer(Object? value, int min, int max, [int fallback = 0]) =>
@@ -198,11 +230,14 @@ abstract final class RuleSchema {
     Map<String, dynamic> params(
         Object? v, Map<String, Map<String, RuleField>> table) {
       final map = v is Map ? v : const {};
-      final type = text(map['type'], 200), fields = table[type];
-      if (fields == null) {
+      final type = text(map['type'], 200);
+      if (!table.containsKey(type)) {
         invalid = true;
         return {'type': type};
       }
+      final fields = type == 'obs.volume'
+          ? actionFields({...map, 'type': type})
+          : table[type]!;
       final result = <String, dynamic>{'type': type};
       for (final e in fields.entries) {
         final f = e.value, value = map[e.key];

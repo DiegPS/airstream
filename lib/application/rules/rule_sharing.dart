@@ -15,7 +15,15 @@ abstract final class RuleSharing {
   static String export(List<Map<String, dynamic>> rules) => jsonEncode({
         'format': 'airstream-rules',
         'version': 1,
-        'rules': RuleSchema.sanitize(rules)
+        'rules': [
+          for (final rule in RuleSchema.sanitize(rules))
+            {
+              ...rule,
+              'actions': (rule['actions'] as List<Map<String, dynamic>>)
+                  .map(RuleSchema.withoutHttpUrl)
+                  .toList()
+            }
+        ]
       });
   static RuleImportReview import(
     String source, {
@@ -68,6 +76,7 @@ abstract final class RuleSharing {
       if (t['type'] == 'obs.sceneChanged' && t['scene'] != '') {
         ww.add(('obsNames', t['scene'] as String));
       }
+      var needsUrl = false;
       for (final a in r['actions'] as List) {
         if (a['type'].toString().startsWith('obs.')) {
           for (final k in ['scene', 'source', 'input', 'filter']) {
@@ -83,7 +92,12 @@ abstract final class RuleSharing {
         if (a['type'] == 'template.trigger') {
           ww.add(('templateName', a['name'] as String));
         }
+        if (a['type'] == 'http.request') {
+          a['url'] = '';
+          needsUrl = true;
+        }
       }
+      if (needsUrl) ww.add(('resetHttpUrl', r['name'] as String));
       rules.add(r);
       warnings[id] = ww;
     }

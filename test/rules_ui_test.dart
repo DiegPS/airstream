@@ -119,6 +119,14 @@ void main() {
           'text': '',
           'seconds': 5,
           'mediaId': '0123456789abcdef'
+        },
+        {
+          'id': 'http',
+          'type': 'http.request',
+          'method': 'post',
+          'url': 'https://example.invalid/private',
+          'contentType': 'json',
+          'body': '{}',
         }
       ]
     };
@@ -136,11 +144,14 @@ void main() {
     expect(find.textContaining('Check these names exist in your OBS: Studio'),
         findsOneWidget);
     expect(find.textContaining('0123456789abcdef'), findsOneWidget);
+    expect(
+        find.textContaining('Set the URL again in: New rule'), findsOneWidget);
     expect(settings.state.rules, isEmpty);
     await t.tap(find.byKey(const Key('rules-import-confirm')));
     await t.pumpAndSettle();
     expect(settings.state.rules.single['enabled'], false);
     expect(settings.state.rules.single['id'], isNot('incoming'));
+    expect(settings.state.rules.single['actions'].last['url'], '');
   });
 
   testWidgets('manual buttons include enabled rules only and explain cooldown',
@@ -388,6 +399,96 @@ void main() {
       await t.tap(moderators);
       await t.pumpAndSettle();
       expect(warning, findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('phase 11 actions fit 360 px and validate in $language',
+        (t) async {
+      t.view.physicalSize = const Size(360, 700);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      await mount(t, language: language);
+      await t.tap(find.byKey(const Key('rules-new')));
+      await t.pumpAndSettle();
+      final l = AppLocalizations.of(t.element(find.byType(RuleEditorDialog)))!;
+      final addAction = find.byKey(const Key('rule-add-action'));
+      Finder field(int action, String name) =>
+          find.byKey(Key('rule-action-$action-$name'));
+      Future<void> add(String type, List<String> fields, int action) async {
+        await visible(t, addAction);
+        await t.tap(addAction);
+        await t.pumpAndSettle();
+        final item =
+            find.widgetWithText(PopupMenuItem<String>, ruleText(l, type));
+        await visible(t, item);
+        await t.tap(item);
+        await t.pumpAndSettle();
+        for (final name in fields) {
+          final input = field(action, name);
+          await visible(t, input);
+          expect(input.hitTestable(), findsOneWidget);
+        }
+        expect(t.takeException(), isNull);
+      }
+
+      await add('obs.stream', ['state'], 0);
+      final streamError = find.text(language == 'es'
+          ? 'El chat público no puede iniciar ni detener la emisión'
+          : 'Public chat cannot start or stop the stream');
+      expect(streamError.hitTestable(), findsOneWidget);
+      final moderators =
+          find.widgetWithText(FilterChip, ruleText(l, 'moderator'));
+      await visible(t, moderators);
+      await t.tap(moderators);
+      await t.pumpAndSettle();
+      expect(streamError, findsNothing);
+
+      await add('obs.replay', ['op'], 1);
+      await add('obs.media', ['source', 'op'], 2);
+      await add('obs.volume', ['input', 'mode', 'db'], 3);
+      final db = field(3, 'db');
+      expect(t.widget<TextField>(db).decoration?.labelText, 'dB (-100–26)');
+      final mode = field(3, 'mode');
+      await visible(t, mode);
+      await t.tap(mode);
+      await t.pumpAndSettle();
+      await t.tap(find.text(ruleText(l, 'change')).last);
+      await t.pumpAndSettle();
+      expect(t.widget<TextField>(db).decoration?.labelText, 'dB (-100–100)');
+
+      await add('obs.refresh', ['source'], 4);
+      await add('http.request', ['method', 'url', 'contentType', 'body'], 5);
+      final url = field(5, 'url');
+      final urlError = find.text(ruleText(l, 'invalidHttpUrl'));
+      await visible(t, url);
+      expect(urlError.hitTestable(), findsOneWidget);
+      await t.enterText(url, 'https://example.invalid/announce');
+      await t.pumpAndSettle();
+      expect(urlError, findsNothing);
+      expect(t.widget<TextField>(field(5, 'body')).maxLines, 3);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('Discord recipe opens with the URL field error in $language',
+        (t) async {
+      t.view.physicalSize = const Size(360, 700);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      await mount(t, language: language);
+      final l = AppLocalizations.of(t.element(find.byType(RulesCard)))!;
+      final recipes = find.text(ruleText(l, 'recipes'));
+      await visible(t, recipes);
+      await t.tap(recipes);
+      await t.pumpAndSettle();
+      final add = find.byKey(const Key('recipe-add-8'));
+      await visible(t, add);
+      expect(find.text(ruleText(l, 'recipe8')), findsOneWidget);
+      await t.tap(add);
+      await t.pumpAndSettle();
+      expect(find.byType(RuleEditorDialog), findsOneWidget);
+      expect(find.text(ruleText(l, 'invalidHttpUrl')), findsOneWidget);
       expect(t.takeException(), isNull);
     });
   }
