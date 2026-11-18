@@ -83,6 +83,13 @@ function currentSessionKey() {
   return session ? session.startedAt || true : null;
 }
 
+function creditsIdentity(entry) {
+  if (Number.isInteger(entry.sessionIndex)) return entry.sessionIndex;
+  const channelId = entry.channelId?.trim();
+  return JSON.stringify([entry.platform, channelId ? 'id' : 'name',
+    channelId || entry.name.trim().toLowerCase()]);
+}
+
 function snapshot() {
   const groups = [];
   const recent = [...(session?.supporters || [])].reverse();
@@ -96,28 +103,45 @@ function snapshot() {
     const names = new Map();
     for (const entry of recent) {
       if (entry.type !== type || !entry.name) continue;
-      const channelId = entry.channelId?.trim();
-      const key = JSON.stringify([entry.platform, channelId ? 'id' : 'name',
-        channelId || entry.name.trim().toLowerCase()]);
+      const key = creditsIdentity(entry);
       // Repeated supporters use their newest appearance and position.
       names.delete(key);
-      names.set(key, {name: entry.name, platform: entry.platform});
+      names.set(key, {name: entry.name, platform: entry.platform, channelId: entry.channelId});
     }
-    if (names.size) groups.push({heading: copy().types[type], entries: [...names.values()]});
+    if (names.size) groups.push({key: 'support:' + type, heading: copy().types[type],
+      entries: [...names.values()]});
   }
   for (const group of rankedSupport(session, fields.currency)) {
-    groups.push({heading: rankingTitle(group), entries: group.entries.map(entry => ({
-      name: entry.name, platform: entry.platform, value: rankValue(group, entry.value)
+    groups.push({key: 'rank:' + group.type + ':' + (group.currency || ''),
+      heading: rankingTitle(group), entries: group.entries.map(entry => ({
+      ...entry, value: rankValue(group, entry.value)
     }))});
   }
   if (fields.showTopChatters && session?.topChatters?.length) {
-    groups.push({heading: copy().topChatters, entries: session.topChatters.map(entry => ({
-      name: entry.name, platform: entry.platform, value: number(entry.messages)
+    groups.push({key: 'chatters', heading: copy().topChatters, entries: session.topChatters.map(entry => ({
+      ...entry, value: number(entry.messages)
     }))});
   }
   const finalGroup = {heading: copy().thanks, text: fields.finalText ||
     (galleryDemo ? copy().farewell : '')};
   return {groups, finalGroup, speed: Math.min(200, Math.max(20, fields.speed || 60))};
+}
+
+function lostEntries(next) {
+  const counts = new Map();
+  const entryKey = (group, entry) => group.key + ':' + creditsIdentity(entry);
+  for (const group of next.groups) {
+    for (const entry of group.entries) {
+      const key = entryKey(group, entry);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+  }
+  return pass.groups.some(group => group.entries.some(entry => {
+    const key = entryKey(group, entry);
+    const count = counts.get(key) || 0;
+    counts.set(key, count - 1);
+    return count <= 0;
+  }));
 }
 
 function renderSection(group) {
@@ -221,9 +245,11 @@ configureScreen(() => {
 }, () => {
   if (sessionKey !== currentSessionKey()) {
     startPass();
-  } else if (session && !pass.groups.length) {
+  } else if (session) {
     const next = snapshot();
-    if (next.groups.length) startPass(next);
+    if ((!pass.groups.length && next.groups.length) || lostEntries(next)) {
+      startPass(next);
+    }
   }
 });
 ''';

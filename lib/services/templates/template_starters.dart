@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:airstream/services/overlay/templates/alert_moderation.dart';
+
 enum TemplateStarter { blank, chat, alerts, goal }
 
 Map<String, String> templateStarterFiles(TemplateStarter starter, String name) {
@@ -159,38 +161,99 @@ Airstream.on('delete', event => {
 setInterval(prune,1000);
 ''';
 
-const _alerts = r'''
+const _alerts = alertModerationScript +
+    r'''
 const content = document.querySelector('#content');
 let fields = {displaySeconds:6, accentColor:'#ffb15c', fontSize:28, sound:''};
-let language = 'en', active = false;
-const queue = [];
+let language = 'en', active = null;
+let queue = [];
 Airstream.on('settings', settings => { language = settings.appLanguageCode === 'es' ? 'es' : 'en'; });
 Airstream.on('fields', values => { fields = {...fields,...values}; content.style.fontSize = fields.fontSize + 'px'; content.style.setProperty('--accent',fields.accentColor); });
 const titles = {
   en:{superchat:'Super Chat',membership:'New member',bits:'Bits',subscription:'New subscriber',gift:'Gifted subscriptions',raid:'Raid',kicks:'Kicks',featured:'Featured message'},
   es:{superchat:'Super Chat',membership:'Nuevo miembro',bits:'Bits',subscription:'Nueva suscripción',gift:'Suscripciones regaladas',raid:'Incursión',kicks:'Kicks',featured:'Mensaje destacado'}
 };
+function addLine(card, value) {
+  if (value == null) return null;
+  const line = document.createElement('div');
+  line.textContent = String(value);
+  card.appendChild(line);
+  return line;
+}
+
+function finish() {
+  clearTimeout(active.timer);
+  active.card.remove();
+  active = null;
+  next();
+}
+
 function next() {
   if (active || !queue.length) return;
-  active = true;
-  const event = queue.shift();
-  const card = document.createElement('article'); card.classList.add('card','enter');
-  for (const value of [titles[language][event.alertType || event.kind] || (language === 'es' ? 'Alerta' : 'Alert'), event.author, event.amount || event.count || event.giftCount, event.message]) {
-    if (value == null) continue;
-    const line = document.createElement('div'); line.textContent = String(value); card.appendChild(line);
-  }
+  active = queue.shift();
+  const {event} = active;
+  const card = active.card = document.createElement('article');
+  card.classList.add('card','enter');
+  addLine(card, titles[language][event.alertType || event.kind] || (language === 'es' ? 'Alerta' : 'Alert'));
+  active.authorLine = addLine(card, event.author);
+  addLine(card, event.amount || event.count || event.giftCount);
+  active.messageLine = addLine(card, event.message);
   content.appendChild(card);
   if (fields.sound) {
-    const audio = new Audio(Airstream.mediaUrl(fields.sound));
-    audio.play().catch(() => { /* Browser autoplay permissions may block audio. */ });
+    active.audio = new Audio(Airstream.mediaUrl(fields.sound));
+    active.audio.play().catch(() => { /* Browser autoplay permissions may block audio. */ });
   }
-  setTimeout(() => {
+  active.timer = setTimeout(() => {
     card.classList.add('leave');
-    setTimeout(() => { card.remove(); active = false; next(); },300);
+    active.timer = setTimeout(finish,300);
   },fields.displaySeconds * 1000);
 }
+
+function redact(item, hideAuthor = false) {
+  item.event.message = null;
+  item.messageLine?.remove();
+  item.messageLine = null;
+  if (hideAuthor) {
+    Object.assign(item.event, {author: null, authorChannelId: '', authorAvatarUrl: null,
+      badgeLabel: null, badgeImageUrl: null});
+    item.authorLine?.remove();
+    item.authorLine = null;
+  }
+}
+
+function removeFeatures(matches) {
+  queue = queue.filter(({event}) => event.kind !== 'featured' || !matches(event));
+  if (active?.event.kind === 'featured' && matches(active.event)) {
+    active.audio?.pause();
+    finish();
+  }
+}
+
+Airstream.on('delete', deletion => {
+  const matches = event => matchesAlertModeration(event, deletion);
+  if (!Number.isInteger(deletion.sequence)) {
+    for (const item of [...queue, active]) {
+      if (item && item.event.kind !== 'featured' && matches(item.event)) redact(item);
+    }
+  }
+  removeFeatures(matches);
+});
+
+Airstream.on('filters', filters => {
+  const {blocksAuthor, blocksText} = alertBlockMatcher(filters);
+  for (const item of [...queue, active]) {
+    if (!item || item.event.kind === 'featured' || item.event.kind === 'custom') continue;
+    const hideAuthor = blocksAuthor(item.event);
+    if (hideAuthor || blocksText(item.event)) redact(item, hideAuthor);
+  }
+  removeFeatures(event => blocksAuthor(event) || blocksText(event));
+});
+
 // Test and replay events are intentionally shown like live alerts.
-for (const name of ['alert','featured']) Airstream.on(name, event => { queue.push(event); next(); });
+for (const name of ['alert','featured']) Airstream.on(name, event => {
+  queue.push({event: {...event}});
+  next();
+});
 ''';
 
 const _goal = r'''

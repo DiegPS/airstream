@@ -111,6 +111,35 @@ void main() {
     expect(service.currentState.phase, LiveCaptionsPhase.listening);
   });
 
+  test('a microphone stream ending cleanly leaves listening and can restart',
+      () async {
+    final root = await Directory.systemTemp.createTemp('airstream-captions-');
+    addTearDown(() => root.delete(recursive: true));
+    final capture = _FailingCapture();
+    final service = LiveCaptionsService(
+      modelCache: _InstalledCache(root),
+      audioCapture: capture,
+      workerEntrypoint: _releasingWorker,
+    );
+    addTearDown(service.dispose);
+    Future<void> start() => service.updateConfig(
+          enabled: true,
+          sourceLanguage: 'es',
+          targetLanguage: 'es',
+          denoise: true,
+        );
+    await start();
+    expect(service.currentState.phase, LiveCaptionsPhase.listening);
+    await capture.stream.close();
+    expect(service.currentState.phase, LiveCaptionsPhase.error);
+    expect(service.currentState.message, 'Microphone capture stopped.');
+
+    await start();
+    expect(capture.starts, 2);
+    expect(File('${root.path}/released').existsSync(), isTrue);
+    expect(service.currentState.phase, LiveCaptionsPhase.listening);
+  });
+
   test('enabling captions never downloads without explicit user action',
       () async {
     final root = await Directory.systemTemp.createTemp('airstream-captions-');
@@ -344,6 +373,7 @@ class _FailingCapture implements SpeechAudioCapture {
 }
 
 class _GatedCapture implements SpeechAudioCapture {
+  final _audio = StreamController<Uint8List>.broadcast();
   final entered = Completer<void>();
   final release = Completer<void>();
   final calls = <String>[];
@@ -356,14 +386,14 @@ class _GatedCapture implements SpeechAudioCapture {
       await release.future;
     }
     calls.add('started');
-    return const Stream.empty();
+    return _audio.stream;
   }
 
   @override
   Future<void> stop() async => calls.add('stop');
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() => _audio.close();
 }
 
 /// Stands in for the native worker: releasing its model takes a moment, and

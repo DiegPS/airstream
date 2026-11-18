@@ -681,6 +681,7 @@ class AppController {
       final filter = ChatFilter(settings);
       queue.applyFilter(filter);
       if (blocksChanged) {
+        _giveaway.applyFilter(filter);
         _sessionSummary.applyBlockFilter(filter);
         templateServer?.sessionChanged();
       }

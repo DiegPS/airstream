@@ -10,7 +10,7 @@ ${overlayPageLocaleScript((l) => l.obsPageTimerTitle)}
 (() => {
   const root=document.getElementById('timer'), digits=document.getElementById('remaining'), status=document.getElementById('status'), badge=document.getElementById('badge');
   const STRINGS={en:{paused:'Paused',ended:"Time's up!"},es:{paused:'En pausa',ended:'¡Se acabó el tiempo!'}};
-  let state={phase:'idle'},offset=0,language='en',socket=null,retry=0,badgeTimeout=0,closing=false;
+  let state={phase:'idle'},offset=0,language='en',socket=null,retry=0,badgeTimeout=0,refresh=0,closing=false;
   function format(ms){const s=Math.ceil(Math.max(0,ms)/1000),m=Math.floor(s/60),tail=String(s%60).padStart(2,'0');return m>=60?Math.floor(m/60)+':'+String(m%60).padStart(2,'0')+':'+tail:m+':'+tail;}
   function render(){const ms=state.phase==='running'?Math.max(0,state.endsAtMs-(Date.now()+offset)):state.phase==='paused'?state.remainingMs:0;
     root.hidden=state.phase==='idle';digits.textContent=format(ms);
@@ -18,19 +18,28 @@ ${overlayPageLocaleScript((l) => l.obsPageTimerTitle)}
     status.textContent=(STRINGS[language]||STRINGS.en)[phase]||'';
   }
   function clearBadge(){window.clearTimeout(badgeTimeout);badge.className='';badge.textContent='';}
+  function updateRefresh(){
+    window.clearInterval(refresh);
+    refresh=state.phase==='running'?window.setInterval(render,250):0;
+  }
   function connect(){
     const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');socket=ws;
     ws.addEventListener('open',()=>ws.send(JSON.stringify({type:'register',view:'timer'})));
     ws.addEventListener('message',event=>{if(ws!==socket)return;try{const e=JSON.parse(event.data);
-      if(e.type==='timer'&&e.data){state=e.data;offset=state.serverNowMs-Date.now();clearBadge();render();
+      if(e.type==='timer'&&e.data){state=e.data;offset=state.serverNowMs-Date.now();clearBadge();render();updateRefresh();
         if(!e.replay&&state.addedMs>0){badge.textContent='+'+format(state.addedMs);void badge.offsetWidth;badge.className='added';badgeTimeout=window.setTimeout(clearBadge,1500);}
       }else if(e.type==='settings'&&e.data){applyOverlayFont(e.data);language=e.data.appLanguageCode||'en';localizePage(language);render();}
       else if(e.type==='reload')window.location.reload();
     }catch(error){console.warn('Ignored malformed timer message',error);}});
-    ws.addEventListener('close',()=>{if(ws!==socket)return;clearBadge();if(!closing)retry=window.setTimeout(connect,3000);});
+    ws.addEventListener('close',()=>{
+      if(ws!==socket)return;
+      socket=null;state={phase:'idle'};offset=0;
+      clearBadge();updateRefresh();render();
+      if(!closing)retry=window.setTimeout(connect,3000);
+    });
     ws.addEventListener('error',()=>ws.close());
   }
-  const refresh=window.setInterval(render,250);connect();
+  connect();
   window.addEventListener('beforeunload',()=>{closing=true;window.clearInterval(refresh);window.clearTimeout(retry);clearBadge();socket?.close();});
 })();
 </script></body></html>''';

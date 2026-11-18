@@ -141,6 +141,14 @@ void main() {
       () => runGalleryChecks('stopped ticker'));
   test('credits group supporters by platform and channel identity',
       () => runGalleryChecks('credits identity'));
+  test(
+      'credits remove missing identities during rolling and reduced-motion passes',
+      () => runGalleryChecks('credits moderation'));
+  for (final overlay in ['poll', 'timer']) {
+    test(
+        '$overlay clears and stops ticking on disconnect, then renders a snapshot',
+        () => runGalleryChecks('$overlay disconnect'));
+  }
 }
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -354,6 +362,9 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     assert.deepEqual(errors, []);
   }
   return {nodes, win, errors, advance, send, sent, logo,
+    close: () => socket.close(),
+    open: () => socket.open(),
+    tickers: () => [...timers.values()].filter(timer => timer.repeat).length,
     reconnect: () => { socket.close(); advance(3000); socket.open(); },
     root: context.document.documentElement,
     title: () => context.document.title,
@@ -718,6 +729,64 @@ function checkCreditsIdentity() {
   assert.deepEqual(entries.map(node => node.textContent), ['Sam', 'Renamed Sam', 'Sam', 'SAM']);
 }
 
+function checkCreditsModeration() {
+  for (const reduced of [false, true]) {
+    const view = page('credits', 'en', {reduced});
+    view.fields({loop: false});
+    const blocked = {id: '1', platform: 'twitch', channelId: 'blocked', name: 'Sam',
+      type: 'bits', at: '2026-11-18T10:00:00Z'};
+    const allowed = {...blocked, id: '2', channelId: 'allowed'};
+    const state = {startedAt: '2026-11-18', supporters: [blocked, allowed]};
+    const display = view.nodes[reduced ? 'credits-page' : 'credits-roll'];
+    view.send('session', state, true);
+    const firstSection = display.children[0];
+    const rows = () => display.children[0].children[1].children;
+    assert.equal(rows().length, 2);
+    view.send('session', {...state, messages: 20});
+    assert.equal(display.children[0], firstSection);
+    view.send('session', {...state, supporters: [allowed]});
+    assert.equal(rows().length, 1);
+    assert.equal(rows()[0].textContent, 'Sam');
+  }
+
+  // An older supporter can be present in the rankings only, and the next
+  // supporter can have the same display name and platform.
+  const view = page('credits');
+  view.fields({loop: false});
+  const ranked = {platform: 'twitch', name: 'Sam', value: 100, sessionIndex: 1};
+  const state = {startedAt: '2026-11-18', top: {bits: [ranked]}};
+  const roll = view.nodes['credits-roll'];
+  view.send('session', state);
+  assert.match(roll.textContent, /Sam100/);
+  view.send('session', {...state, top: {bits: [{...ranked, value: 50, sessionIndex: 2}]}});
+  assert.match(roll.textContent, /Sam50/);
+}
+
+function checkPollAndTimerDisconnect(type) {
+  const view = page('/' + type);
+  const card = view.nodes[type];
+  const running = type === 'poll'
+    ? {question: 'Old poll', options: [], endsAt: Date.UTC(2026, 10, 18, 15)}
+    : {phase: 'running', endsAtMs: 9000, serverNowMs: 0, addedMs: 3000};
+  const visible = () => type === 'poll' ? card.classList.contains('visible') : !card.hidden;
+  view.send(type, running);
+  assert.equal(visible(), true);
+  assert.equal(view.tickers(), 1);
+  view.close();
+  assert.equal(visible(), false);
+  assert.equal(view.tickers(), 0);
+  assert.equal(type === 'poll' ? card.textContent : view.nodes.badge.textContent, '');
+  view.advance(3000);
+  view.open();
+  view.send('settings', {appLanguageCode: 'es'});
+  assert.equal(visible(), false);
+  view.send(type, {...running, question: 'New poll', endsAtMs: 12000}, true);
+  assert.equal(visible(), true);
+  assert.equal(view.tickers(), 1);
+  assert.equal(type === 'poll' ? card.children[1].textContent : view.nodes.remaining.textContent,
+    type === 'poll' ? 'New poll' : '0:12');
+}
+
 function checkPollTies() {
   const allNodes = node => [node, ...node.children.flatMap(allNodes)];
   for (const id of ['/poll', 'poll']) {
@@ -755,6 +824,9 @@ const regressions = {
   'mixed giveaway draws': checkMixedGiveawayDraws,
   'stopped ticker': checkStoppedTicker,
   'credits identity': checkCreditsIdentity,
+  'credits moderation': checkCreditsModeration,
+  'poll disconnect': () => checkPollAndTimerDisconnect('poll'),
+  'timer disconnect': () => checkPollAndTimerDisconnect('timer'),
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

@@ -59,6 +59,14 @@ void main() {
     expect((await library.createTemplate(long, files)).length, 40);
     expect((await library.createTemplate(long, files)).length, 40);
   });
+  test('the Alerts starter moderates visible and queued payloads', () async {
+    final files = templateStarterFiles(TemplateStarter.alerts, 'Example');
+    final script = File(p.join(temp.path, 'alerts-check.js'));
+    await script.writeAsString(
+        'const starter = ${jsonEncode(files['script.js'])};\n$_alertChecks');
+    final result = await Process.run('node', [script.path]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
   test('guarded editor writes atomically and only to small approved files',
       () async {
     final id = await library.createTemplate(
@@ -154,4 +162,63 @@ for (const criteria of [{scope: 'platform'},
   send('delete', {platform, scope: 'platform'});
   assert.deepEqual(rows, []);
 }
+''';
+
+const _alertChecks = r'''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const handlers = new Map();
+const timers = new Map();
+let nextTimer = 0;
+function element() {
+  return {
+    children: [], classList: {add() {}},
+    appendChild(child) { child.parent = this; this.children.push(child); },
+    remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); },
+  };
+}
+const content = element();
+const lines = () => content.children[0]?.children.map(node => node.textContent);
+vm.runInNewContext(starter, {
+  document: {querySelector: () => content, createElement: element},
+  Airstream: {on: (name, callback) => handlers.set(name, callback)},
+  setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; },
+  clearTimeout(id) { timers.delete(id); },
+});
+const send = (name, data) => handlers.get(name)?.(data);
+const fire = () => {
+  const [id, fn] = timers.entries().next().value;
+  timers.delete(id);
+  fn();
+};
+const alert = (id, author, message, extra) =>
+  send('alert', {id, kind: 'bits', platform: 'twitch', author, message, amount: 42, ...extra});
+const feature = (id, author, message) =>
+  send('featured', {id, kind: 'featured', platform: 'twitch', author, message});
+const remove = (id, extra) =>
+  send('delete', {scope: 'message', platform: 'twitch', messageId: id, ...extra});
+
+alert('live', 'Moderated', 'Deleted text');
+alert('waiting', 'BlockedUser', 'Also private');
+feature('deleted-feature', 'Someone', 'Queued deleted feature');
+feature('blocked-feature', 'Other', 'A HIDDEN—PHRASE here');
+feature('live-feature', 'Allowed', 'Live feature');
+alert('safe', 'Allowed', 'Visible alert');
+const liveCard = content.children[0];
+const deadline = [...timers.keys()];
+remove('live', {sequence: 12});
+assert.ok(lines().includes('Deleted text'));
+remove('live');
+assert.deepEqual(lines(), ['Bits', 'Moderated', '42']);
+assert.equal(content.children[0], liveCard);
+assert.deepEqual([...timers.keys()], deadline);
+remove('deleted-feature');
+send('filters', {users: ['blockeduser'], words: ['hidden phrase']});
+fire(); fire();
+assert.deepEqual(lines(), ['Bits', '42']);
+fire(); fire();
+assert.deepEqual(lines(), ['Featured message', 'Allowed', 'Live feature']);
+send('filters', {users: ['allowed'], words: []});
+assert.deepEqual(lines(), ['Bits', '42']);
+assert.equal(timers.size, 1);
 ''';

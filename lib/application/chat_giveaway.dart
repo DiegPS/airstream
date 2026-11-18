@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/services/speech/voice_command.dart';
 
 enum GiveawayPhase { open, closed, drawn }
@@ -169,7 +170,11 @@ class ChatGiveawayController {
       keyword: state.keyword,
       startedAt: started,
       endedAt: _endedAt ??= now.isBefore(started) ? started : now,
-      entrantCount: state.entrantCount,
+      // Past winners remain part of the record even if blocked after drawing.
+      entrantCount: state.entrantCount +
+          state.winners
+              .where((winner) => !_identities.contains(winner.identity))
+              .length,
       winners: state.winners,
     );
     // The same round may come back as a new object after a settings reload,
@@ -196,6 +201,7 @@ class ChatGiveawayController {
   // Batch immutable snapshots rather than copying up to 50,000 entries for
   // every arriving message. Published states never share this mutable list.
   final _entrants = <GiveawayEntrant>[];
+  ChatFilter? _filter;
   bool _dirty = false;
   String _keyword = '';
   ChatGiveaway? _current;
@@ -239,6 +245,8 @@ class ChatGiveawayController {
         message.isMembershipEvent ||
         message.membershipEventKind != null ||
         message.superChat != null ||
+        _filter?.blocksUser(message.author.name, message.author.channelId) ==
+            true ||
         (state.membersOnly && !message.isMembership)) {
       return;
     }
@@ -256,6 +264,25 @@ class ChatGiveawayController {
     _publishTimer ??= Timer(publishInterval, _publishNow);
   }
 
+  void applyFilter(ChatFilter filter) {
+    _filter = filter;
+    _removeBlockedEntrants();
+  }
+
+  void _removeBlockedEntrants() {
+    final filter = _filter;
+    if (filter == null) return;
+    final previousCount = _entrants.length;
+    _entrants.removeWhere((entrant) {
+      if (!filter.blocksUser(entrant.name, entrant.authorId)) return false;
+      _identities.remove(entrant.identity);
+      return true;
+    });
+    if (_entrants.length == previousCount) return;
+    _dirty = true;
+    _publishNow();
+  }
+
   void close() => _close(publish: true);
 
   void _close({required bool publish}) {
@@ -270,6 +297,7 @@ class ChatGiveawayController {
 
   List<GiveawayEntrant> drawMany(int count,
       {void Function(GiveawayEntrant, int)? onDraw}) {
+    _removeBlockedEntrants();
     final state = current;
     if (state == null) return const [];
     final won = state.winners.map((e) => e.identity).toSet();

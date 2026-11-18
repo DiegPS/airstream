@@ -85,6 +85,12 @@ class _PollOverlay extends RuleOverlay {
   @override
   void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
 
+  final giveaways = <Map<String, Object?>?>[];
+
+  @override
+  void broadcastGiveaway(Map<String, Object?>? giveaway) =>
+      giveaways.add(giveaway);
+
   @override
   Future<void> dispose() async {
     await _messages?.cancel();
@@ -134,6 +140,43 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: obs ?? FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test(
+      'blocking giveaway entrants republishes the count and excludes them from draws',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      const settings = SettingsModel(overlayEnabled: false);
+      app.applySettings(settings, connectChats: true);
+      fake.flushMicrotasks();
+      app.startGiveaway(keyword: 'go', membersOnly: false);
+      twitch.messageController
+          .add(queueMessage('BlockedViewer', 'go', id: 'one'));
+      twitch.messageController.add(queueMessage('OtherName', 'go', id: 'two'));
+      twitch.messageController
+          .add(queueMessage('AllowedViewer', 'go', id: 'three'));
+      fake.elapse(const Duration(milliseconds: 250));
+      expect(server.giveaways.last?['entrantCount'], 3);
+
+      app.applySettings(
+        settings.copyWith(blockedUsers: ['@BlockedViewer', 'two']),
+        connectChats: false,
+      );
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['entrantCount'], 1);
+      expect(app.drawGiveaways(10).map((entrant) => entrant.name),
+          ['AllowedViewer']);
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['winner'], {
+        'name': 'AllowedViewer',
+        'platform': 'twitch',
+      });
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
 
   test('blocked Kicks events reach accounting but never banners, OBS or speech',
       () {

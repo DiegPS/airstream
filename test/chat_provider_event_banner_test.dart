@@ -2,6 +2,7 @@ import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/ui/widgets/chat_provider_event_banner.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -187,6 +188,45 @@ void main() {
     expect(find.textContaining('FirstRaider'), findsNothing);
     expect(find.textContaining('SecondRaider'), findsOneWidget);
 
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+  });
+
+  testWidgets('block changes remove visible and queued provider events',
+      (tester) async {
+    ChatProviderEvent event(String author, String text) => ChatProviderEvent(
+          platform: Platform.kick,
+          kind: ChatProviderEventKind.reward,
+          id: author,
+          timestamp: DateTime.utc(2026),
+          authorName: author,
+          text: text,
+        );
+    Future<void> show(ChatProviderEvent value,
+            [SettingsModel settings = const SettingsModel()]) =>
+        tester.pumpWidget(_app(TransientChatProviderEventBanner(
+          event: value,
+          settings: settings,
+          visibleDuration: const Duration(seconds: 2),
+        )));
+
+    final allowed = event('AllowedViewer', 'Hello');
+    await show(event('BlockedViewer', 'Goodbye'));
+    await show(event('OtherViewer', 'hidden phrase'));
+    await show(allowed);
+    expect(find.textContaining('BlockedViewer'), findsOneWidget);
+
+    await show(
+      allowed,
+      const SettingsModel(
+        blockedUsers: ['@BlockedViewer'],
+        blockedWords: ['hidden phrase'],
+      ),
+    );
+    expect(find.textContaining('BlockedViewer'), findsNothing);
+    expect(find.textContaining('hidden phrase'), findsNothing);
+    expect(find.textContaining('AllowedViewer'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     expect(find.byType(ChatProviderEventBanner), findsNothing);

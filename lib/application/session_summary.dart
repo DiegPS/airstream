@@ -275,13 +275,14 @@ class SessionSummaryCollector {
       'chatters': _chatters.length,
       ...(_templateSupports ??= _buildTemplateSupports()),
       'topChatters': [
-        for (final (_, chatter) in chatters
+        for (final (index, chatter) in chatters
             .where((entry) => _isPublic(entry.$2.name, entry.$2.channelId))
             .take(10))
           {
             'platform': chatter.platform.name,
             'name': chatter.name,
             'messages': chatter.count,
+            'sessionIndex': index,
           },
       ],
     };
@@ -331,6 +332,7 @@ class SessionSummaryCollector {
       final total = totals.putIfAbsent(
           entry.identity, () => _SupportTotal(supporter, entry.index));
       total.value += value;
+      if (entry.index < total.sessionIndex) total.sessionIndex = entry.index;
     }
 
     return {
@@ -367,6 +369,7 @@ class SessionSummaryCollector {
           'platform': total.first.platform.name,
           'name': total.first.name,
           'value': total.value,
+          'sessionIndex': total.sessionIndex,
         },
     ];
   }
@@ -453,8 +456,10 @@ class _ParticipantTotal {
 }
 
 class _SupportTotal {
-  _SupportTotal(this.first, this.index);
+  _SupportTotal(this.first, this.index) : sessionIndex = index;
   final SessionSupporter first;
   final int index;
+  // Keep this identity if a subsequent event has an earlier timestamp.
+  int sessionIndex;
   num value = 0;
 }

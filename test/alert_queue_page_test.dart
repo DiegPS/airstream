@@ -57,8 +57,11 @@ void main() {
       () => runPage(_activityChecks, view: 'featured'));
   test('font policy switches update live without reloading or clearing cards',
       () => runPage(_harness + _fontChecks));
-  test('pinned featured text changes language without rebuilding or retiming',
-      () => runPage(_harness + _languageChecks));
+  for (final pinned in [true, false]) {
+    test(
+        '${pinned ? 'pinned' : 'timed'} featured text changes language without rebuilding or retiming',
+        () => runPage('$_harness\nconst pinned = $pinned;\n$_languageChecks'));
+  }
   test('a video error releases and removes the alert media',
       () => runPage(_harness + _videoErrorChecks));
 
@@ -616,35 +619,39 @@ assert.equal(run('queue[0].id'), 'waiting');
 const _languageChecks = r'''
 run('renderAlert = realRenderAlert');
 op('resume');
-socket.deliver({type: 'settings', data: {featuredSeconds: 0, appLanguageCode: 'en'}});
+socket.deliver({type: 'settings', data: {featuredSeconds: pinned ? 0 : 7, appLanguageCode: 'en'}});
 socket.deliver({type: 'alert', data: {
   id: 'pinned', kind: 'featured', platform: 'youtube',
   stickerUrl: 'https://example.invalid/sticker.png', deliveryId: 'delivery',
 }});
-const card = featuredStage.firstElementChild;
-const sticker = featuredStage.querySelector('.alert-sticker');
-const avatar = featuredStage.querySelector('.alert-avatar-fallback');
-const title = featuredStage.querySelector('.alert-title');
-const kicker = featuredStage.querySelector('.alert-kicker');
+const target = pinned ? featuredStage : stage;
+const card = target.firstElementChild;
+const sticker = target.querySelector('.alert-sticker');
+const avatar = target.querySelector('.alert-avatar-fallback');
+const title = target.querySelector('.alert-title');
+const kicker = target.querySelector('.alert-kicker');
 assert.ok(sticker);
 assert.equal(avatar.textContent, 'SO');
 assert.equal(title.textContent, 'Someone');
 assert.equal(kicker.textContent, 'YouTube · From chat');
-const shownAt = run('pinnedShownAt');
-const hideTimer = run('pinnedHideTimer');
+const shownAtName = pinned ? 'pinnedShownAt' : 'featuredShownAt';
+const hideTimerName = pinned ? 'pinnedHideTimer' : 'hideTimer';
+const shownAt = run(shownAtName);
+const hideTimer = run(hideTimerName);
+if (!pinned) assert.ok(timers.has(hideTimer));
 const paintCount = paints.length;
 
 socket.deliver({type: 'settings', data: {appLanguageCode: 'es'}});
-assert.equal(featuredStage.firstElementChild, card);
-assert.equal(featuredStage.querySelector('.alert-sticker'), sticker);
-assert.equal(featuredStage.querySelector('.alert-title'), title);
-assert.equal(featuredStage.querySelector('.alert-kicker'), kicker);
-assert.equal(featuredStage.querySelector('.alert-avatar-fallback'), avatar);
+assert.equal(target.firstElementChild, card);
+assert.equal(target.querySelector('.alert-sticker'), sticker);
+assert.equal(target.querySelector('.alert-title'), title);
+assert.equal(target.querySelector('.alert-kicker'), kicker);
+assert.equal(target.querySelector('.alert-avatar-fallback'), avatar);
 assert.equal(avatar.textContent, 'AL');
 assert.equal(title.textContent, 'Alguien');
 assert.equal(kicker.textContent, 'YouTube · Del chat');
-assert.equal(run('pinnedShownAt'), shownAt);
-assert.equal(run('pinnedHideTimer'), hideTimer);
+assert.equal(run(shownAtName), shownAt);
+assert.equal(run(hideTimerName), hideTimer);
 assert.equal(paints.length, paintCount);
 ''';
 

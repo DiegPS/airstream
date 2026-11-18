@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/ui/widgets/chat_bubble.dart' show chatTextHyphens;
 import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
@@ -12,10 +14,12 @@ class TransientChatProviderEventBanner extends StatefulWidget {
   const TransientChatProviderEventBanner({
     super.key,
     required this.event,
+    this.settings = const SettingsModel(),
     this.visibleDuration = const Duration(seconds: 6),
   });
 
   final ChatProviderEvent? event;
+  final SettingsModel settings;
   final Duration visibleDuration;
 
   @override
@@ -31,23 +35,41 @@ class _TransientChatProviderEventBannerState
   Timer? _hideTimer;
   ChatProviderEvent? _visibleEvent;
   final _pending = <ChatProviderEvent>[];
+  late ChatFilter _filter;
+  int _blockRevision = 0;
 
   @override
   void initState() {
     super.initState();
+    _filter = ChatFilter(widget.settings);
     _enqueue(widget.event);
   }
 
   @override
   void didUpdateWidget(TransientChatProviderEventBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!ChatFilter.sameBlockLists(oldWidget.settings, widget.settings)) {
+      _filter = ChatFilter(widget.settings);
+      _pending.removeWhere(_filter.blocksProviderEvent);
+      // Clear outgoing animations too, as they can still show blocked events.
+      _blockRevision++;
+      final visible = _visibleEvent;
+      if (visible != null && _filter.blocksProviderEvent(visible)) {
+        _hideTimer?.cancel();
+        _advance();
+      }
+    }
     if (_eventKey(widget.event) != _eventKey(oldWidget.event)) {
       _enqueue(widget.event);
     }
   }
 
   void _enqueue(ChatProviderEvent? event) {
-    if (event == null || event.data['duplicatesMessage'] == true) return;
+    if (event == null ||
+        event.data['duplicatesMessage'] == true ||
+        _filter.blocksProviderEvent(event)) {
+      return;
+    }
     if (_visibleEvent == null) {
       _display(event);
       return;
@@ -62,11 +84,13 @@ class _TransientChatProviderEventBannerState
     _visibleEvent = event;
     _hideTimer = Timer(widget.visibleDuration, () {
       if (!mounted) return;
-      setState(() {
-        _visibleEvent = null;
-        if (_pending.isNotEmpty) _display(_pending.removeAt(0));
-      });
+      setState(_advance);
     });
+  }
+
+  void _advance() {
+    _visibleEvent = null;
+    if (_pending.isNotEmpty) _display(_pending.removeAt(0));
   }
 
   static String? _eventKey(ChatProviderEvent? event) => event == null
@@ -81,6 +105,7 @@ class _TransientChatProviderEventBannerState
 
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
+        key: ValueKey(_blockRevision),
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,

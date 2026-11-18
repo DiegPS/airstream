@@ -796,6 +796,35 @@ void main() {
     );
   });
 
+  test('Kick gifts without a transaction or timestamp have distinct ids',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final received = service.appEvents.take(4).toList();
+    await service.connect('creator');
+
+    for (final extras in [
+      <String, Object?>{},
+      <String, Object?>{},
+      {'created_at': '2026-09-06T12:00:00Z'},
+      {'created_at': '2026-09-06T12:00:00Z'},
+    ]) {
+      transport.eventController.add(kick.parseKickEvent('KicksGifted', {
+        'sender': {'id': 1, 'username': 'supporter'},
+        'gift': {'gift_id': 'hell_yeah', 'name': 'Hell Yeah', 'amount': 3},
+        ...extras,
+      }));
+    }
+
+    final events = await received;
+    expect(events.map((event) => event.kind),
+        everyElement(ChatProviderEventKind.support));
+    expect(events[0].id, isNot(events[1].id));
+    expect(events[2].timestamp, DateTime.utc(2026, 9, 6, 12));
+    expect(events[2].id, events[3].id);
+  });
+
   test('Kick converts rewards, goals, hosts and lifecycle by concrete type',
       () async {
     final transport = _FakeKickTransport();

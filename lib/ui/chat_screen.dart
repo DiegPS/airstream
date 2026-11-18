@@ -489,6 +489,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: TransientChatProviderEventBanner(
                     key: _providerEventBannerKey,
                     event: providerEvent,
+                    settings: settings,
                     visibleDuration: Duration(
                       seconds: settings.providerEventBannerSeconds,
                     ),

@@ -110,11 +110,13 @@ ${overlayPageLocaleScript((l) => l.obsPagePollTitle)}
 
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-    socket = new WebSocket(protocol + location.host + '/ws');
-    socket.addEventListener('open', () => {
-      socket.send(JSON.stringify({ type: 'register', view: 'poll' }));
+    const ws = new WebSocket(protocol + location.host + '/ws');
+    socket = ws;
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'register', view: 'poll' }));
     });
-    socket.addEventListener('message', (event) => {
+    ws.addEventListener('message', (event) => {
+      if (ws !== socket) return;
       try {
         const envelope = JSON.parse(event.data);
         if (envelope.type === 'settings' && envelope.data) {
@@ -132,10 +134,14 @@ ${overlayPageLocaleScript((l) => l.obsPagePollTitle)}
         console.warn('Ignored malformed poll message', error);
       }
     });
-    socket.addEventListener('close', () => {
+    ws.addEventListener('close', () => {
+      if (ws !== socket) return;
+      socket = null;
+      poll = null;
+      render();
       if (!closing) retry = window.setTimeout(connect, 3000);
     });
-    socket.addEventListener('error', () => socket.close());
+    ws.addEventListener('error', () => ws.close());
   }
 
   connect();

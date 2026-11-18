@@ -351,6 +351,17 @@ class LiveCaptionsService {
       rethrow;
     }
     if (!_isCurrent(revision)) return;
+    void captureStopped([Object? error]) {
+      if (!_isCurrent(revision)) return;
+      ++_revision;
+      unawaited(_serialize(_stop));
+      _emit(LiveCaptionsState(
+        phase: LiveCaptionsPhase.error,
+        message: 'Microphone capture stopped.',
+        error: error?.toString(),
+      ));
+    }
+
     _audioSubscription = stream.listen(
       (bytes) {
         if (!_isCurrent(revision)) return;
@@ -359,16 +370,8 @@ class LiveCaptionsService {
           'bytes': TransferableTypedData.fromList([bytes]),
         });
       },
-      onError: (Object error) {
-        if (!_isCurrent(revision)) return;
-        ++_revision;
-        unawaited(_serialize(_stop));
-        _emit(LiveCaptionsState(
-          phase: LiveCaptionsPhase.error,
-          message: 'Microphone capture stopped.',
-          error: error.toString(),
-        ));
-      },
+      onError: (Object error) => captureStopped(error),
+      onDone: captureStopped,
     );
     _emit(const LiveCaptionsState(
       phase: LiveCaptionsPhase.listening,

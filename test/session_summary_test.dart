@@ -194,8 +194,18 @@ void main() {
     expect(state['supporterCount'], 8);
     expect(state['superchatCounts'], {r'MX$': 1});
     expect(state['topChatters'], [
-      {'platform': 'youtube', 'name': 'Donor', 'messages': 1},
-      {'platform': 'twitch', 'name': 'Cheerer', 'messages': 1},
+      {
+        'platform': 'youtube',
+        'name': 'Donor',
+        'messages': 1,
+        'sessionIndex': 0
+      },
+      {
+        'platform': 'twitch',
+        'name': 'Cheerer',
+        'messages': 1,
+        'sessionIndex': 1
+      },
     ]);
     final supporters = (state['supporters'] as List).cast<Map>();
     expect(supporters.map((s) => s['id']).toSet(), hasLength(8));
@@ -261,18 +271,33 @@ void main() {
     }
     final state = collector.templateState(live: true)!;
     final top = state['top'] as Map;
-    List<Map<String, Object>> tie(String platform) => [
-          {'platform': platform, 'name': 'Earlier', 'value': 5},
-          {'platform': platform, 'name': 'Later', 'value': 5},
+    List<Map<String, Object>> tie(String platform, int index) => [
+          {
+            'platform': platform,
+            'name': 'Earlier',
+            'value': 5,
+            'sessionIndex': index + 4
+          },
+          {
+            'platform': platform,
+            'name': 'Later',
+            'value': 5,
+            'sessionIndex': index
+          },
         ];
-    expect((top['bits'] as List).take(2), tie('twitch'));
+    expect((top['bits'] as List).take(2), tie('twitch', 1));
     expect(top['bits'], hasLength(5));
-    expect(top['gift'], tie('twitch'));
-    expect(top['kicks'], tie('kick'));
+    expect(top['gift'], tie('twitch', 0));
+    expect(top['kicks'], tie('kick', 3));
     expect(top['superchat'], {
-      r'$': tie('youtube'),
+      r'$': tie('youtube', 2),
       r'MX$': [
-        {'platform': 'youtube', 'name': 'Later', 'value': 900}
+        {
+          'platform': 'youtube',
+          'name': 'Later',
+          'value': 900,
+          'sessionIndex': 12
+        }
       ],
     });
     expect(state['topChatters'], hasLength(10));

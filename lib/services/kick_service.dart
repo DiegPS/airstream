@@ -498,8 +498,14 @@ class KickService {
         transactionId,
       kick.KickGoalEvent(:final goalId) => goalId,
       kick.KickLivestreamEvent(:final livestreamId) => livestreamId,
-      kick.KickKicksGiftedEvent(:final sender, :final gift, :final createdAt) =>
-        '${sender.id}:${sender.username}:${gift.id}:${createdAt?.toIso8601String() ?? ''}',
+      kick.KickKicksGiftedEvent(
+        :final sender,
+        :final gift,
+        :final createdAt?
+      ) =>
+        '${sender.id}:${sender.username}:${gift.id}:${createdAt.toIso8601String()}',
+      kick.KickKicksGiftedEvent() =>
+        'kicks:local:${timestamp.microsecondsSinceEpoch}:${++_localEventSequence}',
       _ => event.raw['id']?.toString() ?? '',
     };
     return ChatProviderEvent(

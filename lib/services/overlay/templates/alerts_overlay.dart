@@ -409,18 +409,23 @@ function applySettings(next) {
       schedulePinnedHide();
     }
   }
-  if (pinnedFeatured && settings.appLanguageCode !== previousLanguage) {
+  if (settings.appLanguageCode !== previousLanguage) {
     const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
-    const {title, kicker} = featuredText(pinnedFeatured, strings);
-    featuredStage.querySelector('.alert-title').textContent = title;
-    featuredStage.querySelector('.alert-kicker').textContent = kicker;
-    const fallback = featuredStage.querySelector('.alert-avatar-fallback');
-    if (fallback) fallback.textContent = initials(title);
-    const avatar = featuredStage.querySelector('img.alert-avatar');
-    if (avatar) avatar.alt = title;
+    if (pinnedFeatured) updateFeaturedLabels(pinnedFeatured, featuredStage, strings);
+    if (active?.kind === 'featured') updateFeaturedLabels(active, stage, strings);
   }
   localizePage(settings.appLanguageCode || 'en');
   applyAlertStyle();
+}
+
+function updateFeaturedLabels(alert, target, strings) {
+  const {title, kicker} = featuredText(alert, strings);
+  target.querySelector('.alert-title').textContent = title;
+  target.querySelector('.alert-kicker').textContent = kicker;
+  const fallback = target.querySelector('.alert-avatar-fallback');
+  if (fallback) fallback.textContent = initials(title);
+  const avatar = target.querySelector('img.alert-avatar');
+  if (avatar) avatar.alt = title;
 }
 
 function applyAlertStyle() {
