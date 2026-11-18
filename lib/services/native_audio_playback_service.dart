@@ -35,15 +35,19 @@ class NativeAudioPlaybackService {
   Process? _process;
   bool _disposed = false;
 
+  bool get isPlaying => _activePlayback != null || _process != null;
+
   Future<void> startKeepAlive() async {}
 
   Future<void> playFile(
     File file, {
     Duration timeout = const Duration(seconds: 20),
     double? volume,
+    bool Function()? canStart,
   }) async {
-    if (_disposed) return;
+    if (_disposed || canStart?.call() == false) return;
     await stop();
+    if (_disposed || canStart?.call() == false) return;
 
     if (Platform.isWindows && volume != null) {
       await _playMci(file, volume, timeout);

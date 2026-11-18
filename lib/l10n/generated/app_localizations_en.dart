@@ -1372,11 +1372,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Whole words; uppercase and lowercase are the same.';
 
   @override
-  String get highlightSound => 'Play a sound';
+  String get highlightSound => 'Highlight sounds';
 
   @override
   String get highlightSoundDescription =>
-      'A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.';
+      'Sounds play at most once every 3 seconds. They stay silent while the voice reader speaks.';
 
   @override
   String get badgeFirstInSession => 'First message this stream';
@@ -3328,4 +3328,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get featuredKeepVisible => 'Keep visible until removed';
+
+  @override
+  String get ttsWhatToRead => 'What to read';
+
+  @override
+  String get ttsReaderRoles => 'Roles';
+
+  @override
+  String get ttsRoleEveryone => 'Everyone';
+
+  @override
+  String get ttsRoleModerator => 'Moderator';
+
+  @override
+  String get ttsRoleVip => 'VIP';
+
+  @override
+  String get ttsRoleOwner => 'Owner';
+
+  @override
+  String get ttsReaderPlatforms => 'Platforms';
+
+  @override
+  String get ttsAlwaysReadSupport => 'Always read paid support';
+
+  @override
+  String get ttsSkipEmoteOnly => 'Skip emote-only messages';
+
+  @override
+  String get ttsLinks => 'Links';
+
+  @override
+  String get ttsLinksRead => 'Read the message';
+
+  @override
+  String get ttsLinksSay => 'Say “link”';
+
+  @override
+  String get ttsLinksSkip => 'Skip the message';
+
+  @override
+  String get ttsSpokenLink => 'link';
+
+  @override
+  String get highlightSoundMention => 'Mention';
+
+  @override
+  String get highlightSoundWord => 'Highlighted word';
+
+  @override
+  String get highlightSoundFirstMessage => 'First message';
+
+  @override
+  String get highlightSoundPriority =>
+      'If several highlights match, the mention takes priority, then the word, then the first message.';
+
+  @override
+  String get sessionExportChat => 'Export chat (CSV)';
+
+  @override
+  String get sessionExportParticipants => 'Export participants (CSV)';
+
+  @override
+  String get sessionExportFailed => 'Could not save the CSV file.';
+
+  @override
+  String sessionExportChatScope(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Chat export includes the $count messages still in the chat buffer.',
+      one: 'Chat export includes 1 retained message.',
+      zero: 'No chat messages are retained.',
+    );
+    return '$_temp0';
+  }
 }

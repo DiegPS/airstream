@@ -1,6 +1,97 @@
 part of 'package:airstream/ui/chat_screen.dart';
 
 extension _AudioSettingsTabBuilder on _SettingsSidebarState {
+  Widget _buildWhatToRead(
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+  ) {
+    final roles = {
+      TtsRole.everyone: l.ttsRoleEveryone,
+      TtsRole.member: l.member,
+      TtsRole.moderator: l.ttsRoleModerator,
+      TtsRole.vip: l.ttsRoleVip,
+      TtsRole.owner: l.ttsRoleOwner,
+    };
+    const platforms = {
+      Platform.youtube: 'YouTube',
+      Platform.twitch: 'Twitch',
+      Platform.kick: 'Kick',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.ttsWhatToRead,
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        _label(l.ttsReaderRoles),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final role in roles.entries)
+              FilterChip(
+                key: Key('tts-role-${role.key.name}'),
+                label: Text(role.value),
+                selected: s.ttsRoles.contains(role.key),
+                onSelected: (selected) {
+                  final next = {...s.ttsRoles};
+                  if (selected && role.key == TtsRole.everyone) {
+                    next
+                      ..clear()
+                      ..add(TtsRole.everyone);
+                  } else if (selected) {
+                    next
+                      ..remove(TtsRole.everyone)
+                      ..add(role.key);
+                  } else {
+                    next.remove(role.key);
+                  }
+                  notifier.update(s.copyWith(ttsRoles: next));
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        _label(l.ttsReaderPlatforms),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final platform in platforms.entries)
+              FilterChip(
+                key: Key('tts-platform-${platform.key.name}'),
+                label: Text(platform.value),
+                selected: s.ttsPlatforms.contains(platform.key),
+                onSelected: (selected) {
+                  final next = {...s.ttsPlatforms};
+                  selected ? next.add(platform.key) : next.remove(platform.key);
+                  notifier.update(s.copyWith(ttsPlatforms: next));
+                },
+              ),
+          ],
+        ),
+        _switchRow(l.ttsAlwaysReadSupport, s.ttsAlwaysReadSupport,
+            (v) => notifier.update(s.copyWith(ttsAlwaysReadSupport: v))),
+        KeyedSubtree(
+          key: const Key('tts-links'),
+          child: _dropdownRow(
+            l.ttsLinks,
+            s.ttsLinks.name,
+            TtsLinks.values.map((link) => link.name).toList(),
+            (v) => notifier
+                .update(s.copyWith(ttsLinks: TtsLinks.values.byName(v))),
+            optionLabel: (v) => switch (TtsLinks.values.byName(v)) {
+              TtsLinks.read => l.ttsLinksRead,
+              TtsLinks.sayLink => l.ttsLinksSay,
+              TtsLinks.skip => l.ttsLinksSkip,
+            },
+          ),
+        ),
+        _switchRow(l.ttsSkipEmoteOnly, s.ttsSkipEmoteOnly,
+            (v) => notifier.update(s.copyWith(ttsSkipEmoteOnly: v))),
+      ],
+    );
+  }
+
   Widget _buildAudioTab(
     WidgetRef ref,
     BuildContext context,
@@ -297,14 +388,11 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _switchRow(
-                l.membersOnly,
-                s.ttsMembersOnly,
-                (v) => notifier.update(s.copyWith(ttsMembersOnly: v)),
-              ),
+              _buildWhatToRead(l, s, notifier),
               const SizedBox(height: 8),
               StyledSliderRow(
                 label: l.ttsUserCooldown,
+                wrapLabel: true,
                 value: s.ttsUserCooldownSeconds.toDouble(),
                 min: 0,
                 max: 60,
@@ -321,6 +409,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
               const SizedBox(height: 8),
               StyledSliderRow(
                 label: l.ttsMaxCharacters,
+                wrapLabel: true,
                 value: s.ttsMaxCharacters.toDouble(),
                 min: 40,
                 max: ttsMaxCharactersLimit.toDouble(),

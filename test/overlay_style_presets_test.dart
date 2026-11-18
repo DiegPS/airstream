@@ -1,4 +1,6 @@
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/settings/name_color_mode.dart';
 import 'package:airstream/settings/overlay_style_presets.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -133,7 +135,7 @@ SettingsModel _different() {
     blockedWords: ['raid'],
     highlightMentions: !d.highlightMentions,
     highlightWords: ['raid'],
-    highlightSound: !d.highlightSound,
+    highlightSounds: const {HighlightKind.word: 'coin'},
     highlightFirstMessages: !d.highlightFirstMessages,
     saveChatLog: !d.saveChatLog,
     shortcutSilenceTts: '${d.shortcutSilenceTts}-custom',
@@ -142,7 +144,11 @@ SettingsModel _different() {
       'Gaming': {'fontSize': 22}
     },
     ttsEnabled: !d.ttsEnabled,
-    ttsMembersOnly: !d.ttsMembersOnly,
+    ttsRoles: {TtsRole.member, TtsRole.vip},
+    ttsPlatforms: {Platform.twitch},
+    ttsLinks: TtsLinks.sayLink,
+    ttsAlwaysReadSupport: !d.ttsAlwaysReadSupport,
+    ttsSkipEmoteOnly: !d.ttsSkipEmoteOnly,
     ttsCommandMode: !d.ttsCommandMode,
     ttsCommandIgnoreCase: !d.ttsCommandIgnoreCase,
     ttsCommandPrefix: '${d.ttsCommandPrefix}-custom',

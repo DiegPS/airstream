@@ -2568,13 +2568,13 @@ abstract class AppLocalizations {
   /// No description provided for @highlightSound.
   ///
   /// In en, this message translates to:
-  /// **'Play a sound'**
+  /// **'Highlight sounds'**
   String get highlightSound;
 
   /// No description provided for @highlightSoundDescription.
   ///
   /// In en, this message translates to:
-  /// **'A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.'**
+  /// **'Sounds play at most once every 3 seconds. They stay silent while the voice reader speaks.'**
   String get highlightSoundDescription;
 
   /// No description provided for @badgeFirstInSession.
@@ -5414,6 +5414,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep visible until removed'**
   String get featuredKeepVisible;
+
+  /// No description provided for @ttsWhatToRead.
+  ///
+  /// In en, this message translates to:
+  /// **'What to read'**
+  String get ttsWhatToRead;
+
+  /// No description provided for @ttsReaderRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get ttsReaderRoles;
+
+  /// No description provided for @ttsRoleEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get ttsRoleEveryone;
+
+  /// No description provided for @ttsRoleModerator.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderator'**
+  String get ttsRoleModerator;
+
+  /// No description provided for @ttsRoleVip.
+  ///
+  /// In en, this message translates to:
+  /// **'VIP'**
+  String get ttsRoleVip;
+
+  /// No description provided for @ttsRoleOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get ttsRoleOwner;
+
+  /// No description provided for @ttsReaderPlatforms.
+  ///
+  /// In en, this message translates to:
+  /// **'Platforms'**
+  String get ttsReaderPlatforms;
+
+  /// No description provided for @ttsAlwaysReadSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Always read paid support'**
+  String get ttsAlwaysReadSupport;
+
+  /// No description provided for @ttsSkipEmoteOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip emote-only messages'**
+  String get ttsSkipEmoteOnly;
+
+  /// No description provided for @ttsLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get ttsLinks;
+
+  /// No description provided for @ttsLinksRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the message'**
+  String get ttsLinksRead;
+
+  /// No description provided for @ttsLinksSay.
+  ///
+  /// In en, this message translates to:
+  /// **'Say “link”'**
+  String get ttsLinksSay;
+
+  /// No description provided for @ttsLinksSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip the message'**
+  String get ttsLinksSkip;
+
+  /// No description provided for @ttsSpokenLink.
+  ///
+  /// In en, this message translates to:
+  /// **'link'**
+  String get ttsSpokenLink;
+
+  /// No description provided for @highlightSoundMention.
+  ///
+  /// In en, this message translates to:
+  /// **'Mention'**
+  String get highlightSoundMention;
+
+  /// No description provided for @highlightSoundWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlighted word'**
+  String get highlightSoundWord;
+
+  /// No description provided for @highlightSoundFirstMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'First message'**
+  String get highlightSoundFirstMessage;
+
+  /// No description provided for @highlightSoundPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'If several highlights match, the mention takes priority, then the word, then the first message.'**
+  String get highlightSoundPriority;
+
+  /// No description provided for @sessionExportChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Export chat (CSV)'**
+  String get sessionExportChat;
+
+  /// No description provided for @sessionExportParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Export participants (CSV)'**
+  String get sessionExportParticipants;
+
+  /// No description provided for @sessionExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the CSV file.'**
+  String get sessionExportFailed;
+
+  /// No description provided for @sessionExportChatScope.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{Chat export includes the {count} messages still in the chat buffer.}}'**
+  String sessionExportChatScope(int count);
 }
 
 class _AppLocalizationsDelegate

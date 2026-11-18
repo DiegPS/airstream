@@ -1,4 +1,76 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
+import 'package:airstream/settings/settings_model.dart';
+
+final _ttsUrl = RegExp(
+  r'''\b(?:https?://|www\.)[^\s<>"']+''',
+  caseSensitive: false,
+);
+final _ttsEmoji = RegExp(
+  // The lint checks this pattern without Unicode mode.
+  // ignore: valid_regexps
+  r'(?:[0-9#*]\uFE0F?\u20E3|\p{Regional_Indicator}{2}|'
+  r'\p{Emoji_Presentation}|\p{Extended_Pictographic})'
+  r'[\uFE0E\uFE0F]?(?:\p{Emoji_Modifier})?'
+  r'(?:[\u{E0020}-\u{E007E}]+\u{E007F})?'
+  r'(?:\u200D(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})'
+  r'[\uFE0E\uFE0F]?(?:\p{Emoji_Modifier})?)*',
+  unicode: true,
+);
+
+bool ttsAllows(ChatMessage message, SettingsModel settings) {
+  final roles = settings.ttsRoles;
+  final allowedRole = roles.contains(TtsRole.everyone) ||
+      (message.isMembership && roles.contains(TtsRole.member)) ||
+      (message.isModerator && roles.contains(TtsRole.moderator)) ||
+      (message.isVip && roles.contains(TtsRole.vip)) ||
+      (message.isOwner && roles.contains(TtsRole.owner));
+  final support = settings.ttsAlwaysReadSupport &&
+      message.superChat?.amount.trim().isNotEmpty == true;
+  return (support ||
+          (allowedRole && settings.ttsPlatforms.contains(message.platform))) &&
+      (settings.ttsLinks != TtsLinks.skip ||
+          !_ttsUrl.hasMatch(message.ttsText)) &&
+      (!settings.ttsSkipEmoteOnly || !isTtsEmoteOnly(message));
+}
+
+bool isTtsEmoteOnly(ChatMessage message) {
+  var hasEmote = false;
+  for (final item in message.items) {
+    if (item.isEmoji) {
+      hasEmote = true;
+      continue;
+    }
+    final text = item.text.trim();
+    if (text.isEmpty) continue;
+    if (text.replaceAll(_ttsEmoji, '').trim().isNotEmpty) return false;
+    hasEmote = true;
+  }
+  return hasEmote;
+}
+
+String replaceTtsLinks(String text, String linkWord) =>
+    text.replaceAllMapped(_ttsUrl, (match) {
+      final url = match[0]!;
+      var end = url.length;
+      while (end > 0) {
+        final last = url[end - 1];
+        if ('.!,?;:'.contains(last)) {
+          end--;
+          continue;
+        }
+        final open = const {')': '(', ']': '[', '}': '{'}[last];
+        if (open != null) {
+          final prefix = url.substring(0, end);
+          if (last.allMatches(prefix).length > open.allMatches(prefix).length) {
+            end--;
+            continue;
+          }
+        }
+        break;
+      }
+      return '$linkWord${url.substring(end)}';
+    });
 
 const ttsSessionMessageTolerance = Duration(seconds: 2);
 

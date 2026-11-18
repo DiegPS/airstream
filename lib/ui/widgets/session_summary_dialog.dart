@@ -1,4 +1,8 @@
+import 'dart:io' show File;
+
 import 'package:airstream/application/app_providers.dart';
+import 'package:airstream/application/session_csv.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -67,20 +71,66 @@ String sessionSummaryText(
 }
 
 Future<void> showSessionSummaryDialog(BuildContext context, WidgetRef ref) {
-  final summary = ref.read(appControllerProvider).sessionSummary;
+  final controller = ref.read(appControllerProvider);
+  final summary = controller.sessionSummary;
+  final chat = controller.sessionChat;
   return showDialog<void>(
     context: context,
-    builder: (context) => _SessionSummaryDialog(summary: summary),
+    builder: (context) => SessionSummaryDialog(summary: summary, chat: chat),
   );
 }
 
-class _SessionSummaryDialog extends StatelessWidget {
-  const _SessionSummaryDialog({required this.summary});
+typedef SaveSessionCsv = Future<void> Function(String name, Uint8List bytes);
+
+Future<void> _saveSessionCsv(String name, Uint8List bytes) async {
+  final location = await getSaveLocation(
+    suggestedName: name,
+    acceptedTypeGroups: const [
+      XTypeGroup(label: 'CSV', extensions: ['csv'])
+    ],
+  );
+  if (location != null) await File(location.path).writeAsBytes(bytes);
+}
+
+class SessionSummaryDialog extends StatefulWidget {
+  const SessionSummaryDialog({
+    super.key,
+    required this.summary,
+    required this.chat,
+    this.saveCsv = _saveSessionCsv,
+  });
 
   final SessionSummary summary;
+  final List<ChatMessage> chat;
+  final SaveSessionCsv saveCsv;
+
+  @override
+  State<SessionSummaryDialog> createState() => _SessionSummaryDialogState();
+}
+
+class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
+  bool _saving = false;
+
+  Future<void> _export(String name, Uint8List Function() buildCsv) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await widget.saveCsv(name, buildCsv());
+    } catch (_) {
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.sessionExportFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final summary = widget.summary;
     final l = AppLocalizations.of(context)!;
     final now = DateTime.now();
     const muted = TextStyle(color: Colors.white54, fontSize: 12);
@@ -95,61 +145,90 @@ class _SessionSummaryDialog extends StatelessWidget {
       title: Text(l.sessionSummary),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
-        child: summary.startedAt == null || summary.isEmpty
-            ? Text(l.sessionSummaryEmpty, style: muted)
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (summary.startedAt != null) ...[
+                Text(l.sessionExportChatScope(widget.chat.length),
+                    style: muted),
+                Wrap(
+                  spacing: 8,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _Stat(
-                          l.sessionDuration,
-                          sessionDurationText(l, summary.duration(now)),
-                        ),
-                        _Stat(l.sessionMessagesLabel, '${summary.messages}'),
-                        _Stat(l.sessionChatters, '${summary.chatters}'),
-                        for (final entry in summary.messagesByPlatform.entries)
-                          _Stat(_platformName(entry.key), '${entry.value}'),
-                      ],
+                    TextButton(
+                      key: const Key('session-export-chat'),
+                      onPressed: _saving || widget.chat.isEmpty
+                          ? null
+                          : () => _export('airstream-chat.csv',
+                              () => SessionCsv.chat(widget.chat)),
+                      child: Text(l.sessionExportChat),
                     ),
-                    if (summary.topChatters.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(l.sessionTopChatters, style: heading),
-                      const SizedBox(height: 6),
-                      for (final (index, chatter)
-                          in summary.topChatters.indexed)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '${index + 1}. ${chatter.name} · '
-                            '${_platformName(chatter.platform)} · '
-                            '${l.sessionMessages(chatter.messages)}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ),
-                    ],
-                    const SizedBox(height: 16),
-                    Text(l.sessionSupporters, style: heading),
-                    const SizedBox(height: 6),
-                    if (summary.supporters.isEmpty)
-                      Text(l.sessionNoSupporters, style: muted)
-                    else
-                      for (final supporter in summary.supporters)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '${sessionSupporterText(l, supporter)} · '
-                            '${_platformName(supporter.platform)}',
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ),
+                    TextButton(
+                      key: const Key('session-export-participants'),
+                      onPressed: _saving || summary.participants.isEmpty
+                          ? null
+                          : () => _export(
+                              'airstream-participants.csv',
+                              () => SessionCsv.participants(
+                                  summary.participants)),
+                      child: Text(l.sessionExportParticipants),
+                    ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
+              ],
+              if (summary.startedAt == null || summary.isEmpty)
+                Text(l.sessionSummaryEmpty, style: muted)
+              else ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _Stat(
+                      l.sessionDuration,
+                      sessionDurationText(l, summary.duration(now)),
+                    ),
+                    _Stat(l.sessionMessagesLabel, '${summary.messages}'),
+                    _Stat(l.sessionChatters, '${summary.chatters}'),
+                    for (final entry in summary.messagesByPlatform.entries)
+                      _Stat(_platformName(entry.key), '${entry.value}'),
+                  ],
+                ),
+                if (summary.topChatters.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(l.sessionTopChatters, style: heading),
+                  const SizedBox(height: 6),
+                  for (final (index, chatter) in summary.topChatters.indexed)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '${index + 1}. ${chatter.name} · '
+                        '${_platformName(chatter.platform)} · '
+                        '${l.sessionMessages(chatter.messages)}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 16),
+                Text(l.sessionSupporters, style: heading),
+                const SizedBox(height: 6),
+                if (summary.supporters.isEmpty)
+                  Text(l.sessionNoSupporters, style: muted)
+                else
+                  for (final supporter in summary.supporters)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '${sessionSupporterText(l, supporter)} · '
+                        '${_platformName(supporter.platform)}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+              ],
+            ],
+          ),
+        ),
       ),
       actions: [
         if (summary.startedAt != null && !summary.isEmpty)

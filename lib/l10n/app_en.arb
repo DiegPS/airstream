@@ -565,8 +565,8 @@
   "highlightWords": "Words to highlight",
   "highlightWordsHint": "One word or phrase per line",
   "highlightWordsHelp": "Whole words; uppercase and lowercase are the same.",
-  "highlightSound": "Play a sound",
-  "highlightSoundDescription": "A short tone for highlighted messages, at most every 3 seconds. Silent while the voice reader speaks.",
+  "highlightSound": "Highlight sounds",
+  "highlightSoundDescription": "Sounds play at most once every 3 seconds. They stay silent while the voice reader speaks.",
   "badgeFirstInSession": "First message this stream",
   "highlightFirstMessages": "First message of each viewer",
   "highlightFirstMessagesDescription": "Mark the first message each viewer sends after you start the chat, to welcome them.",
@@ -1288,6 +1288,35 @@
   "featuredFontScale": "Featured text size",
   "featuredKeepVisible": "Keep visible until removed",
   "@alertQueueWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsWhatToRead": "What to read",
+  "ttsReaderRoles": "Roles",
+  "ttsRoleEveryone": "Everyone",
+  "ttsRoleModerator": "Moderator",
+  "ttsRoleVip": "VIP",
+  "ttsRoleOwner": "Owner",
+  "ttsReaderPlatforms": "Platforms",
+  "ttsAlwaysReadSupport": "Always read paid support",
+  "ttsSkipEmoteOnly": "Skip emote-only messages",
+  "ttsLinks": "Links",
+  "ttsLinksRead": "Read the message",
+  "ttsLinksSay": "Say “link”",
+  "ttsLinksSkip": "Skip the message",
+  "ttsSpokenLink": "link",
+  "highlightSoundMention": "Mention",
+  "highlightSoundWord": "Highlighted word",
+  "highlightSoundFirstMessage": "First message",
+  "highlightSoundPriority": "If several highlights match, the mention takes priority, then the word, then the first message.",
+  "sessionExportChat": "Export chat (CSV)",
+  "sessionExportParticipants": "Export participants (CSV)",
+  "sessionExportFailed": "Could not save the CSV file.",
+  "sessionExportChatScope": "{count, plural, =0{No chat messages are retained.} =1{Chat export includes 1 retained message.} other{Chat export includes the {count} messages still in the chat buffer.}}",
+  "@sessionExportChatScope": {
     "placeholders": {
       "count": {
         "type": "int"

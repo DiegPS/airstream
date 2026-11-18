@@ -138,6 +138,7 @@ class AppController {
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
       ),
       _chat.messages.listen(_audio.handleChatMessage),
+      _chat.providerEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
         if (_poll.hasOpenPoll && _poll.handleMessage(m)) return;
         _overlayFeed.add(m);
@@ -338,6 +339,9 @@ class AppController {
 
   /// What happened since the chat was last started.
   SessionSummary get sessionSummary => _sessionSummary.summary;
+  List<ChatMessage> _stoppedSessionChat = const [];
+  List<ChatMessage> get sessionChat =>
+      _chatRunning ? _chat.bufferedMessages : _stoppedSessionChat;
 
   Stream<AlertQueueStatus> get alertQueueStatusStream =>
       _overlay.alertQueueStatusStream;
@@ -462,8 +466,10 @@ class AppController {
       if (connectChats) {
         _ruleAdapter.startSession();
         _sessionSummary.start();
+        _stoppedSessionChat = const [];
         _overlay.clearRecentAlerts();
       } else {
+        _stoppedSessionChat = _chat.bufferedMessages;
         _sessionSummary.stop();
         _chatConnected = false;
       }

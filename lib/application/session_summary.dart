@@ -53,6 +53,24 @@ class SessionSupporter {
   final int? count;
 }
 
+class SessionParticipant {
+  const SessionParticipant({
+    required this.platform,
+    required this.name,
+    required this.channelId,
+    required this.messages,
+    required this.supports,
+    required this.totals,
+  });
+
+  final Platform platform;
+  final String name;
+  final String channelId;
+  final int messages;
+  final int supports;
+  final Map<String, num> totals;
+}
+
 class SessionChatter {
   const SessionChatter(this.platform, this.name, this.messages);
 
@@ -70,6 +88,7 @@ class SessionSummary {
     this.chatters = 0,
     this.topChatters = const [],
     this.supporters = const [],
+    this.participants = const [],
   });
 
   final DateTime? startedAt;
@@ -78,6 +97,7 @@ class SessionSummary {
   final int chatters;
   final List<SessionChatter> topChatters;
   final List<SessionSupporter> supporters;
+  final List<SessionParticipant> participants;
 
   int get messages =>
       messagesByPlatform.values.fold(0, (total, count) => total + count);
@@ -102,9 +122,14 @@ class SessionSummaryCollector {
   DateTime? _startedAt;
   DateTime? _endedAt;
   final _messages = <Platform, int>{};
-  final _chatters = <String, ({Platform platform, String name, int count})>{};
-  final _supporters =
-      <({SessionSupporter supporter, String identity, bool inSummary})>[];
+  final _chatters = <String,
+      ({Platform platform, String name, String channelId, int count})>{};
+  final _supporters = <({
+    SessionSupporter supporter,
+    String identity,
+    String channelId,
+    bool inSummary
+  })>[];
   int _nextSupporter = 0;
   Map<String, Object?>? _templateSupports;
   final _seenEvents = <String>{};
@@ -145,6 +170,7 @@ class SessionSummaryCollector {
       _chatters[key] = (
         platform: message.platform,
         name: message.author.name,
+        channelId: message.author.channelId,
         count: (previous?.count ?? 0) + 1,
       );
     }
@@ -177,6 +203,7 @@ class SessionSummaryCollector {
         count: type == 'gift' ? (gifts ?? 1) : (bits ?? gifts),
       ),
       identity: key,
+      channelId: message.author.channelId,
       inSummary: countsAsChat || message.isMembershipEvent,
     ));
     if (type != null) _templateSupports = null;
@@ -208,6 +235,7 @@ class SessionSummaryCollector {
         count: event.count,
       ),
       identity: _identity(event.platform, event.authorName),
+      channelId: event.authorChannelId,
       inSummary: legacy != null,
     ));
     if (kind != null) _templateSupports = null;
@@ -327,6 +355,56 @@ class SessionSummaryCollector {
     ];
   }
 
+  List<SessionParticipant> _exportParticipants() {
+    final participants = <String, _ParticipantTotal>{};
+    // Name-only provider events can use a chatter's identity when unambiguous.
+    final keysByName = <String, String?>{};
+    for (final entry in _chatters.entries) {
+      final chatter = entry.value;
+      participants[entry.key] = _ParticipantTotal(
+        chatter.platform,
+        chatter.name,
+        chatter.channelId,
+        chatter.count,
+      );
+      final nameKey = _identity(chatter.platform, chatter.name);
+      keysByName[nameKey] = keysByName.containsKey(nameKey) ? null : entry.key;
+    }
+    for (final entry in _supporters) {
+      if (!entry.inSummary) continue;
+      final support = entry.supporter;
+      final nameKey = _identity(support.platform, support.name);
+      final key = entry.channelId.isNotEmpty
+          ? _identity(support.platform, entry.channelId)
+          : keysByName[nameKey] ?? entry.identity;
+      final participant = participants.putIfAbsent(
+          key,
+          () => _ParticipantTotal(
+              support.platform, support.name, entry.channelId, 0));
+      participant.supports++;
+      final unit = support.currency ??
+          switch (support.type) {
+            'bits' => 'Bits',
+            'kicks' => 'Kicks',
+            _ => null,
+          };
+      final value = support.value;
+      if (unit != null && value != null) {
+        participant.totals
+            .update(unit, (total) => total + value, ifAbsent: () => value);
+      }
+    }
+    return List.unmodifiable(
+        participants.values.map((participant) => SessionParticipant(
+              platform: participant.platform,
+              name: participant.name,
+              channelId: participant.channelId,
+              messages: participant.messages,
+              supports: participant.supports,
+              totals: Map.unmodifiable(participant.totals),
+            )));
+  }
+
   SessionSummary get summary {
     final chatters = _chatters.values.toList()
       ..sort((a, b) => b.count.compareTo(a.count));
@@ -339,11 +417,23 @@ class SessionSummaryCollector {
         for (final chatter in chatters.take(topChatterCount))
           SessionChatter(chatter.platform, chatter.name, chatter.count),
       ],
+      participants: _exportParticipants(),
       supporters: List.unmodifiable(_supporters
           .where((entry) => entry.inSummary)
           .map((entry) => entry.supporter)),
     );
   }
+}
+
+class _ParticipantTotal {
+  _ParticipantTotal(this.platform, this.name, this.channelId, this.messages);
+
+  final Platform platform;
+  final String name;
+  final String channelId;
+  final int messages;
+  int supports = 0;
+  final totals = <String, num>{};
 }
 
 class _SupportTotal {

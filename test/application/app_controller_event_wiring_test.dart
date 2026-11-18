@@ -78,6 +78,43 @@ void main() {
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
 
+  test('session chat export keeps the moderated buffer after disconnect',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final app = makeController(twitch, RuleOverlay());
+    addTearDown(app.dispose);
+    const settings = SettingsModel(
+      overlayEnabled: false,
+      twitchChannel: 'channel',
+      maxMessages: 2,
+    );
+    app.applySettings(settings, connectChats: true);
+    final old = queueMessage('Ana', 'old');
+    final removed = queueMessage('Beto', 'removed');
+    final retained = queueMessage('Carla', 'retained');
+    twitch.messageController
+      ..add(old)
+      ..add(removed)
+      ..add(retained);
+    await settleCoordinatorTasks();
+    expect(app.sessionSummary.messages, 3);
+    expect(app.sessionChat.map((message) => message.plainText),
+        ['removed', 'retained']);
+    twitch.moderationController.add(ChatModerationEvent.author(
+      platform: removed.platform,
+      authorChannelId: removed.author.channelId,
+      authorName: removed.author.name,
+    ));
+    await settleCoordinatorTasks();
+    app.applySettings(settings, connectChats: false);
+    expect(await app.messageListStream.first, isEmpty);
+    expect(app.sessionChat.map((message) => message.plainText), ['retained']);
+    expect(app.sessionSummary.participants.length, 3);
+    app.applySettings(settings, connectChats: true);
+    expect(app.sessionChat, isEmpty);
+    expect(app.sessionSummary.participants, isEmpty);
+  });
+
   test('hidden submissions stay local until poll.ended publishes the winner',
       () async {
     final twitch = FakeChannelChatClient();

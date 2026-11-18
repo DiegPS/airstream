@@ -38,6 +38,7 @@ import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/tts_service.dart'
     show TtsLoadPhase, TtsLoadState;
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/settings/chat_fonts.dart';
 import 'package:airstream/settings/name_color_mode.dart';
 import 'package:airstream/settings/alert_type_options.dart';

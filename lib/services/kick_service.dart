@@ -492,6 +492,10 @@ class KickService {
       id: id.isEmpty ? event.eventName : id,
       timestamp: timestamp.toUtc(),
       authorName: authorName,
+      authorChannelId: switch (event) {
+        kick.KickKicksGiftedEvent(:final sender) => sender.slug,
+        _ => '',
+      },
       text: text,
       count: count,
       data: Map<String, Object?>.unmodifiable({

@@ -115,6 +115,7 @@ class TtsService {
   Stream<bool> get busyStream => _busyController.stream;
   TtsLoadState get currentLoadState => _loadState;
   bool get isBusy => _busy;
+  bool get isPlayingAudio => _audioPlayback.isPlaying;
   Stream<Object> get playbackErrors => _playbackErrorController.stream;
   TtsModelDefinition get selectedModel => TtsModelCatalog.byId(_modelId);
 

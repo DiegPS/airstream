@@ -1384,11 +1384,11 @@ class AppLocalizationsEs extends AppLocalizations {
       'Palabras completas; da igual mayúsculas o minúsculas.';
 
   @override
-  String get highlightSound => 'Reproducir un sonido';
+  String get highlightSound => 'Sonidos de resaltado';
 
   @override
   String get highlightSoundDescription =>
-      'Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz.';
+      'Los sonidos se reproducen como mucho una vez cada 3 segundos. Se silencian mientras habla el lector de voz.';
 
   @override
   String get badgeFirstInSession => 'Primer mensaje en el directo';
@@ -3364,4 +3364,81 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get featuredKeepVisible => 'Mantener visible hasta quitarlo';
+
+  @override
+  String get ttsWhatToRead => 'Qué leer';
+
+  @override
+  String get ttsReaderRoles => 'Roles';
+
+  @override
+  String get ttsRoleEveryone => 'Todos';
+
+  @override
+  String get ttsRoleModerator => 'Moderador';
+
+  @override
+  String get ttsRoleVip => 'VIP';
+
+  @override
+  String get ttsRoleOwner => 'Dueño';
+
+  @override
+  String get ttsReaderPlatforms => 'Plataformas';
+
+  @override
+  String get ttsAlwaysReadSupport => 'Leer siempre los apoyos con importe';
+
+  @override
+  String get ttsSkipEmoteOnly => 'Omitir mensajes de solo emoticonos';
+
+  @override
+  String get ttsLinks => 'Enlaces';
+
+  @override
+  String get ttsLinksRead => 'Leer el mensaje';
+
+  @override
+  String get ttsLinksSay => 'Decir «enlace»';
+
+  @override
+  String get ttsLinksSkip => 'Omitir el mensaje';
+
+  @override
+  String get ttsSpokenLink => 'enlace';
+
+  @override
+  String get highlightSoundMention => 'Mención';
+
+  @override
+  String get highlightSoundWord => 'Palabra resaltada';
+
+  @override
+  String get highlightSoundFirstMessage => 'Primer mensaje';
+
+  @override
+  String get highlightSoundPriority =>
+      'Si coinciden varios resaltados, tiene prioridad la mención, luego la palabra y por último el primer mensaje.';
+
+  @override
+  String get sessionExportChat => 'Exportar chat (CSV)';
+
+  @override
+  String get sessionExportParticipants => 'Exportar participantes (CSV)';
+
+  @override
+  String get sessionExportFailed => 'No se pudo guardar el archivo CSV.';
+
+  @override
+  String sessionExportChatScope(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'La exportación incluye los $count mensajes de chat que se conservan.',
+      one: 'La exportación incluye 1 mensaje de chat conservado.',
+      zero: 'No hay mensajes de chat conservados.',
+    );
+    return '$_temp0';
+  }
 }

@@ -1,6 +1,53 @@
 part of 'package:airstream/ui/chat_screen.dart';
 
 extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
+  Widget _buildHighlightSounds(
+    AppLocalizations l,
+    SettingsModel s,
+    SettingsNotifier notifier,
+  ) {
+    final library = MediaLibraryEntries.sanitize(s.mediaLibrary)
+      ..removeWhere((_, item) => item['kind'] != 'audio');
+    final labels = {
+      HighlightSounds.none: l.alertSoundNone,
+      'chime': l.alertSoundChime,
+      'coin': l.alertSoundCoin,
+      'fanfare': l.alertSoundFanfare,
+      for (final item in library.entries)
+        item.key: l.mediaLibraryName(item.value['name'] as String),
+    };
+    final kinds = {
+      HighlightKind.mention: l.highlightSoundMention,
+      HighlightKind.word: l.highlightSoundWord,
+      HighlightKind.firstMessage: l.highlightSoundFirstMessage,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(l.highlightSound),
+        Text(l.highlightSoundDescription,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        for (final entry in kinds.entries)
+          KeyedSubtree(
+            key: Key('highlight-sound-${entry.key.name}'),
+            child: _dropdownRow(
+              entry.value,
+              labels.containsKey(s.highlightSounds[entry.key])
+                  ? s.highlightSounds[entry.key]!
+                  : HighlightSounds.none,
+              labels.keys.toList(),
+              (v) => notifier.update(s.copyWith(
+                highlightSounds: {...s.highlightSounds, entry.key: v},
+              )),
+              optionLabel: (v) => labels[v]!,
+            ),
+          ),
+        Text(l.highlightSoundPriority,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+      ],
+    );
+  }
+
   Widget _buildChannelsTab(
     WidgetRef ref,
     BuildContext context,
@@ -424,12 +471,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
               s.highlightFirstMessages,
               (v) => notifier.update(s.copyWith(highlightFirstMessages: v)),
             ),
-            _switchTileWithSubtitle(
-              l.highlightSound,
-              l.highlightSoundDescription,
-              s.highlightSound,
-              (v) => notifier.update(s.copyWith(highlightSound: v)),
-            ),
+            const SizedBox(height: 8),
+            _buildHighlightSounds(l, s, notifier),
           ],
         ),
         UiCard(

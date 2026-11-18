@@ -1,6 +1,8 @@
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/voice_command.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -232,12 +234,18 @@ void main() {
     audio.applySettings(
       const SettingsModel(
         twitchChannel: 'xqc',
-        highlightSound: true,
+        highlightSounds: {
+          HighlightKind.mention: 'coin',
+          HighlightKind.word: '1234567890abcdef',
+          HighlightKind.firstMessage: 'fanfare',
+        },
         highlightWords: ['pregunta'],
       ),
       connectChats: false,
     );
-    ChatMessage message(String id, String text) => ChatMessage(
+    ChatMessage message(String id, String text, {bool first = false}) =>
+        ChatMessage(
+          isFirstInSession: first,
           platform: Platform.twitch,
           id: id,
           author: const ChatAuthor(name: 'viewer', channelId: 'viewer'),
@@ -247,7 +255,7 @@ void main() {
 
     audio.handleChatMessage(message('1', 'hola a todos'));
     expect(alert.plays, 0);
-    audio.handleChatMessage(message('2', '@xqc una pregunta'));
+    audio.handleChatMessage(message('2', '@xqc una pregunta', first: true));
     expect(alert.plays, 1);
     now = now.add(const Duration(seconds: 1));
     audio.handleChatMessage(message('3', 'otra pregunta'));
@@ -258,7 +266,10 @@ void main() {
     expect(alert.plays, 1, reason: 'the tone would cut the voice reader');
     tts.busy = false;
     audio.handleChatMessage(message('5', 'última pregunta'));
-    expect(alert.plays, 2);
+    expect(alert.sources, ['coin', '1234567890abcdef']);
+    now = now.add(const Duration(seconds: 3));
+    audio.handleChatMessage(message('first', 'hola', first: true));
+    expect(alert.sources, ['coin', '1234567890abcdef', 'fanfare']);
 
     audio.applySettings(
       const SettingsModel(highlightWords: ['pregunta']),
@@ -266,7 +277,46 @@ void main() {
     );
     now = now.add(const Duration(seconds: 10));
     audio.handleChatMessage(message('6', 'pregunta sin sonido'));
-    expect(alert.plays, 2, reason: 'the sound is off');
+    expect(alert.plays, 3, reason: 'the sound is off');
+  });
+
+  test('paid Kick events opt in and use the same speech checks', () {
+    const settings = SettingsModel(
+      ttsEnabled: true,
+      ttsRoles: {},
+      ttsPlatforms: {},
+      ttsLinks: TtsLinks.sayLink,
+      appLanguageCode: 'es',
+      ttsIgnoredUsers: ['ignored-id'],
+      ttsMaxCharacters: 40,
+      ttsUserCooldownSeconds: 60,
+    );
+    ChatProviderEvent event(String id,
+            {String name = 'Ana', String channel = 'ana'}) =>
+        ChatProviderEvent(
+          platform: Platform.kick,
+          kind: ChatProviderEventKind.support,
+          id: id,
+          timestamp: DateTime.now(),
+          authorName: name,
+          authorChannelId: channel,
+          count: 10,
+          text:
+              'hola https://example.com/long-path ${List.filled(60, 'x').join()}',
+        );
+    coordinator.applySettings(settings, connectChats: false);
+    coordinator.handleProviderEvent(event('off'));
+    expect(tts.spoken, isEmpty);
+
+    coordinator.applySettings(
+      settings.copyWith(ttsAlwaysReadSupport: true),
+      connectChats: false,
+    );
+    coordinator.handleProviderEvent(event('ignored', channel: 'ignored-id'));
+    coordinator.handleProviderEvent(event('yes'));
+    coordinator.handleProviderEvent(event('cooldown'));
+    expect(
+        tts.spoken, ['Ana dice: hola enlace ${List.filled(28, 'x').join()}…']);
   });
 
   test(

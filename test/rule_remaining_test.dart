@@ -32,7 +32,9 @@ class Playback extends NativeAudioPlaybackService {
   int stops = 0;
   @override
   Future<void> playFile(File file,
-      {Duration timeout = const Duration(seconds: 20), double? volume}) async {
+      {Duration timeout = const Duration(seconds: 20),
+      double? volume,
+      bool Function()? canStart}) async {
     files.add(file);
     volumes.add(volume);
   }

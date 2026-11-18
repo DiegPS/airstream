@@ -1,5 +1,6 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/pipeline/chat_highlighter.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -8,6 +9,7 @@ ChatMessage _message(
   String author = 'viewer',
   bool owner = false,
   bool membershipEvent = false,
+  bool first = false,
 }) =>
     ChatMessage(
       platform: Platform.twitch,
@@ -15,6 +17,7 @@ ChatMessage _message(
       author: ChatAuthor(name: author, channelId: author),
       items: [MessageItem.text(text)],
       isOwner: owner,
+      isFirstInSession: first,
       isMembershipEvent: membershipEvent,
       timestamp: DateTime.utc(2026, 11, 15),
     );
@@ -68,16 +71,54 @@ void main() {
     expect(names, isEmpty);
   });
 
+  test('mentions outrank keywords, which outrank first session messages', () {
+    expect(highlighter.highlightKind(_message('xqc pregunta', first: true)),
+        HighlightKind.mention);
+    expect(highlighter.highlightKind(_message('pregunta', first: true)),
+        HighlightKind.word);
+    expect(highlighter.highlightKind(_message('hola', first: true)),
+        HighlightKind.firstMessage);
+    expect(highlighter.highlightKind(_message('hola')), isNull);
+    final noFirst = ChatHighlighter.fromSettings(
+      const SettingsModel(highlightFirstMessages: false),
+    );
+    expect(noFirst.highlightKind(_message('hola', first: true)), isNull);
+  });
+
+  test('legacy tones preserve the original trigger kinds', () {
+    expect(SettingsModel.fromJson({'highlightSound': true}).highlightSounds, {
+      HighlightKind.mention: 'chime',
+      HighlightKind.word: 'chime',
+      HighlightKind.firstMessage: 'none',
+    });
+    expect(SettingsModel.fromJson({'highlightSound': false}).highlightSounds,
+        HighlightSounds.defaults);
+    expect(
+        SettingsModel.fromJson({
+          'highlightSound': true,
+          'highlightSounds': {
+            'mention': '../wav',
+            'word': 42,
+            'other': 'chime'
+          },
+        }).highlightSounds,
+        HighlightSounds.defaults);
+  });
+
   test('highlight settings survive a save and reload', () {
     const settings = SettingsModel(
       highlightMentions: false,
       highlightWords: ['pregunta', 'sorteo'],
-      highlightSound: true,
+      highlightSounds: {
+        HighlightKind.mention: 'coin',
+        HighlightKind.word: '1234567890abcdef',
+        HighlightKind.firstMessage: 'fanfare',
+      },
     );
     final restored = SettingsModel.fromJsonString(settings.toJsonString());
     expect(restored.highlightMentions, isFalse);
     expect(restored.highlightWords, ['pregunta', 'sorteo']);
-    expect(restored.highlightSound, isTrue);
+    expect(restored.highlightSounds, settings.highlightSounds);
 
     final corrupt = SettingsModel.fromJson({'highlightWords': 'not-a-list'});
     expect(corrupt.highlightWords, isEmpty);

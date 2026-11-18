@@ -1,5 +1,7 @@
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/models/chat_message.dart';
 import 'chat_fonts.dart';
+import 'chat_reading_options.dart';
 import 'name_color_mode.dart';
 import 'settings_model_codec.dart';
 
@@ -84,7 +86,7 @@ class SettingsModel {
   final List<String> blockedWords;
   final bool highlightMentions;
   final List<String> highlightWords;
-  final bool highlightSound;
+  final Map<HighlightKind, String> highlightSounds;
   final bool highlightFirstMessages;
   final bool saveChatLog;
   final String shortcutSilenceTts;
@@ -93,7 +95,11 @@ class SettingsModel {
 
   // TTS
   final bool ttsEnabled;
-  final bool ttsMembersOnly;
+  final Set<TtsRole> ttsRoles;
+  final bool ttsAlwaysReadSupport;
+  final Set<Platform> ttsPlatforms;
+  final TtsLinks ttsLinks;
+  final bool ttsSkipEmoteOnly;
   final bool ttsCommandMode;
   final bool ttsCommandIgnoreCase;
   final String ttsCommandPrefix;
@@ -248,14 +254,22 @@ class SettingsModel {
     this.blockedWords = const [],
     this.highlightMentions = true,
     this.highlightWords = const [],
-    this.highlightSound = false,
+    this.highlightSounds = HighlightSounds.defaults,
     this.highlightFirstMessages = true,
     this.saveChatLog = false,
     this.shortcutSilenceTts = '',
     this.shortcutToggleTts = '',
     this.profiles = const {},
     this.ttsEnabled = false,
-    this.ttsMembersOnly = false,
+    this.ttsRoles = const {TtsRole.everyone},
+    this.ttsAlwaysReadSupport = false,
+    this.ttsPlatforms = const {
+      Platform.youtube,
+      Platform.twitch,
+      Platform.kick
+    },
+    this.ttsLinks = TtsLinks.read,
+    this.ttsSkipEmoteOnly = false,
     this.ttsCommandMode = false,
     this.ttsCommandIgnoreCase = true,
     this.ttsCommandPrefix = '!v',
@@ -406,14 +420,18 @@ class SettingsModel {
     List<String>? blockedWords,
     bool? highlightMentions,
     List<String>? highlightWords,
-    bool? highlightSound,
+    Map<HighlightKind, String>? highlightSounds,
     bool? highlightFirstMessages,
     bool? saveChatLog,
     String? shortcutSilenceTts,
     String? shortcutToggleTts,
     Map<String, Map<String, dynamic>>? profiles,
     bool? ttsEnabled,
-    bool? ttsMembersOnly,
+    Set<TtsRole>? ttsRoles,
+    bool? ttsAlwaysReadSupport,
+    Set<Platform>? ttsPlatforms,
+    TtsLinks? ttsLinks,
+    bool? ttsSkipEmoteOnly,
     bool? ttsCommandMode,
     bool? ttsCommandIgnoreCase,
     String? ttsCommandPrefix,
@@ -569,7 +587,7 @@ class SettingsModel {
         blockedWords: blockedWords ?? this.blockedWords,
         highlightMentions: highlightMentions ?? this.highlightMentions,
         highlightWords: highlightWords ?? this.highlightWords,
-        highlightSound: highlightSound ?? this.highlightSound,
+        highlightSounds: highlightSounds ?? this.highlightSounds,
         highlightFirstMessages:
             highlightFirstMessages ?? this.highlightFirstMessages,
         saveChatLog: saveChatLog ?? this.saveChatLog,
@@ -577,7 +595,11 @@ class SettingsModel {
         shortcutToggleTts: shortcutToggleTts ?? this.shortcutToggleTts,
         profiles: profiles ?? this.profiles,
         ttsEnabled: ttsEnabled ?? this.ttsEnabled,
-        ttsMembersOnly: ttsMembersOnly ?? this.ttsMembersOnly,
+        ttsRoles: ttsRoles ?? this.ttsRoles,
+        ttsAlwaysReadSupport: ttsAlwaysReadSupport ?? this.ttsAlwaysReadSupport,
+        ttsPlatforms: ttsPlatforms ?? this.ttsPlatforms,
+        ttsLinks: ttsLinks ?? this.ttsLinks,
+        ttsSkipEmoteOnly: ttsSkipEmoteOnly ?? this.ttsSkipEmoteOnly,
         ttsCommandMode: ttsCommandMode ?? this.ttsCommandMode,
         ttsCommandIgnoreCase: ttsCommandIgnoreCase ?? this.ttsCommandIgnoreCase,
         ttsCommandPrefix: ttsCommandPrefix ?? this.ttsCommandPrefix,

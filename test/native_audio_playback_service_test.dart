@@ -1,4 +1,4 @@
-import 'package:airstream/services/alert_sound_player.dart';
+import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -53,7 +53,7 @@ void main() {
   );
 
   test('the highlight chime is a short valid WAV', () {
-    final wav = ChimeSoundPlayer.chimeWav();
+    final wav = AlertSounds.highlightChimeWav();
     expect(String.fromCharCodes(wav.sublist(0, 4)), 'RIFF');
     expect(String.fromCharCodes(wav.sublist(8, 12)), 'WAVE');
     final data = ByteData.sublistView(wav);

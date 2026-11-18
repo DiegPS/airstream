@@ -9,6 +9,14 @@ import 'package:airstream/settings/settings_model.dart';
 abstract final class SettingsProfiles {
   static const maxProfiles = 20;
 
+  static const _readerFilterKeys = {
+    'ttsRoles',
+    'ttsPlatforms',
+    'ttsAlwaysReadSupport',
+    'ttsLinks',
+    'ttsSkipEmoteOnly',
+  };
+
   static const _connectionKeys = {
     'appLanguageCode',
     'connectChatOnLaunch',
@@ -51,7 +59,12 @@ abstract final class SettingsProfiles {
     Map<String, dynamic> profile,
   ) =>
       SettingsModel.fromJson({
-        ...current.toJson(),
+        for (final entry in current.toJson().entries)
+          if (!(_readerFilterKeys.contains(entry.key) &&
+                  profile['ttsMembersOnly'] is bool) &&
+              !(entry.key == 'highlightSounds' &&
+                  profile['highlightSound'] is bool))
+            entry.key: entry.value,
         for (final entry in profile.entries)
           if (!_isConnectionKey(entry.key)) entry.key: entry.value,
       }).copyWith(

@@ -1,6 +1,8 @@
 import 'package:airstream/application/rules/rule_model.dart';
 import 'dart:convert';
 
+import 'package:airstream/models/chat_message.dart';
+import 'chat_reading_options.dart';
 import 'settings_model.dart';
 import 'chat_fonts.dart';
 import 'name_color_mode.dart';
@@ -57,14 +59,28 @@ abstract final class SettingsModelCodec {
         'blockedWords': model.blockedWords,
         'highlightMentions': model.highlightMentions,
         'highlightWords': model.highlightWords,
-        'highlightSound': model.highlightSound,
+        'highlightSounds': {
+          for (final kind in HighlightKind.values)
+            kind.name:
+                HighlightSounds.sanitizeSource(model.highlightSounds[kind]),
+        },
         'highlightFirstMessages': model.highlightFirstMessages,
         'saveChatLog': model.saveChatLog,
         'shortcutSilenceTts': model.shortcutSilenceTts,
         'shortcutToggleTts': model.shortcutToggleTts,
         'profiles': model.profiles,
         'ttsEnabled': model.ttsEnabled,
-        'ttsMembersOnly': model.ttsMembersOnly,
+        'ttsRoles': [
+          for (final role in TtsRole.values)
+            if (model.ttsRoles.contains(role)) role.name
+        ],
+        'ttsAlwaysReadSupport': model.ttsAlwaysReadSupport,
+        'ttsPlatforms': [
+          for (final platform in Platform.values)
+            if (model.ttsPlatforms.contains(platform)) platform.name
+        ],
+        'ttsLinks': model.ttsLinks.name,
+        'ttsSkipEmoteOnly': model.ttsSkipEmoteOnly,
         'ttsCommandMode': model.ttsCommandMode,
         'ttsCommandIgnoreCase': model.ttsCommandIgnoreCase,
         'ttsCommandPrefix': model.ttsCommandPrefix,
@@ -243,7 +259,10 @@ abstract final class SettingsModelCodec {
       blockedWords: List<String>.from(j['blockedWords'] as List? ?? []),
       highlightMentions: j['highlightMentions'] as bool? ?? true,
       highlightWords: List<String>.from(j['highlightWords'] as List? ?? []),
-      highlightSound: j['highlightSound'] as bool? ?? false,
+      highlightSounds: HighlightSounds.fromJson(
+        j['highlightSounds'],
+        legacy: source['highlightSound'] == true,
+      ),
       highlightFirstMessages: j['highlightFirstMessages'] as bool? ?? true,
       saveChatLog: j['saveChatLog'] as bool? ?? false,
       shortcutSilenceTts: j['shortcutSilenceTts'] as String? ?? '',
@@ -254,7 +273,15 @@ abstract final class SettingsModelCodec {
             e.key.toString(): Map<String, dynamic>.from(e.value as Map),
       },
       ttsEnabled: j['ttsEnabled'] as bool? ?? false,
-      ttsMembersOnly: j['ttsMembersOnly'] as bool? ?? false,
+      ttsRoles: _enumSet(j['ttsRoles'], TtsRole.values,
+          fallback: source['ttsMembersOnly'] == true
+              ? const {TtsRole.member}
+              : const {TtsRole.everyone}),
+      ttsAlwaysReadSupport: j['ttsAlwaysReadSupport'] == true,
+      ttsPlatforms: _enumSet(j['ttsPlatforms'], Platform.values,
+          fallback: const {Platform.youtube, Platform.twitch, Platform.kick}),
+      ttsLinks: TtsLinks.values.asNameMap()[j['ttsLinks']] ?? TtsLinks.read,
+      ttsSkipEmoteOnly: j['ttsSkipEmoteOnly'] == true,
       ttsCommandMode: j['ttsCommandMode'] as bool? ?? false,
       ttsCommandIgnoreCase: j['ttsCommandIgnoreCase'] as bool? ?? true,
       ttsCommandPrefix: j['ttsCommandPrefix'] as String? ?? '!v',
@@ -377,6 +404,17 @@ abstract final class SettingsModelCodec {
     );
   }
 
+  static Set<T> _enumSet<T extends Enum>(Object? raw, List<T> values,
+      {required Set<T> fallback}) {
+    if (raw is! List) return fallback;
+    if (raw.isEmpty) return const {};
+    final selected = {
+      for (final value in values)
+        if (raw.contains(value.name)) value
+    };
+    return selected.isEmpty ? fallback : Set.unmodifiable(selected);
+  }
+
   static Map<String, dynamic> _sanitizeJson(Map<String, dynamic> source) {
     final schema = toJson(const SettingsModel());
     final sanitized = <String, dynamic>{};
@@ -384,6 +422,14 @@ abstract final class SettingsModelCodec {
     for (final entry in source.entries) {
       final expected = schema[entry.key];
       final value = entry.value;
+      if (entry.key == 'highlightSounds') {
+        if (value is Map) sanitized[entry.key] = value;
+        continue;
+      }
+      if (entry.key == 'ttsRoles' || entry.key == 'ttsPlatforms') {
+        if (value is List) sanitized[entry.key] = value;
+        continue;
+      }
       if (entry.key == 'mediaLibrary') {
         sanitized[entry.key] = MediaLibraryEntries.sanitize(value);
         continue;

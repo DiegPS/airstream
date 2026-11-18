@@ -29,6 +29,7 @@ class ChatProviderEvent {
     required this.id,
     required this.timestamp,
     this.authorName = '',
+    this.authorChannelId = '',
     this.text = '',
     this.count,
     this.data = const {},
@@ -39,6 +40,7 @@ class ChatProviderEvent {
   final String id;
   final DateTime timestamp;
   final String authorName;
+  final String authorChannelId;
   final String text;
   final int? count;
   final Map<String, Object?> data;

@@ -6,6 +6,10 @@ import 'package:airstream/services/alert_sound_player.dart';
 import 'package:airstream/application/coordinator_notice.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/voice_command.dart';
@@ -20,6 +24,7 @@ abstract interface class TtsClient {
   Stream<Object> get playbackErrors;
   TtsLoadState get currentLoadState;
   bool get isBusy;
+  bool get isPlayingAudio;
   Future<void> updateConfig({
     required bool enabled,
     required String modelId,
@@ -65,6 +70,8 @@ class TtsServiceAdapter implements TtsClient {
   TtsLoadState get currentLoadState => service.currentLoadState;
   @override
   bool get isBusy => service.isBusy;
+  @override
+  bool get isPlayingAudio => service.isPlayingAudio;
   @override
   Future<void> updateConfig({
     required bool enabled,
@@ -136,7 +143,7 @@ class AudioCoordinator {
     String? Function(String value)? youtubeVideoIdFromUrl,
   })  : _tts = tts,
         _captions = captions,
-        _alertSound = alertSound ?? ChimeSoundPlayer(),
+        _alertSound = alertSound ?? HighlightSoundPlayer(),
         _clock = clock ?? DateTime.now,
         _youtubeVideoIdFromUrl =
             youtubeVideoIdFromUrl ?? YouTubeService.videoIdFromUrl {
@@ -158,6 +165,7 @@ class AudioCoordinator {
   ChatHighlighter _highlighter = ChatHighlighter(ownNames: [], words: []);
   final _ttsCooldown = TtsAuthorCooldown();
   DateTime? _lastAlertAt;
+  bool _hasHighlightSound = false;
 
   /// At most one highlight sound in this window: a burst of matches (or the
   /// chat history loaded on connect) must not turn into a string of chimes.
@@ -219,6 +227,8 @@ class AudioCoordinator {
     _lastSettings = settings;
     _lastConnectChats = connectChats;
     _highlighter = ChatHighlighter.fromSettings(settings);
+    _hasHighlightSound = settings.highlightSounds.values
+        .any((sound) => sound != HighlightSounds.none);
 
     // Reconfiguring stops, reloads or checks models on disk, so it only
     // happens when a setting those services use changes, not on every
@@ -325,9 +335,41 @@ class AudioCoordinator {
 
   void handleChatMessage(ChatMessage message) {
     _maybePlayHighlightSound(message);
+    _maybeReadChatMessage(message);
+  }
+
+  void handleProviderEvent(ChatProviderEvent event) {
     final settings = _lastSettings;
-    if (settings == null || !settings.ttsEnabled) return;
-    if (settings.ttsMembersOnly && !message.isMembership) return;
+    if (settings == null ||
+        !settings.ttsEnabled ||
+        !settings.ttsAlwaysReadSupport ||
+        event.platform != Platform.kick ||
+        event.kind != ChatProviderEventKind.support ||
+        event.count == null ||
+        event.authorName.trim().isEmpty) {
+      return;
+    }
+    final amount = '${event.count} Kicks';
+    _maybeReadChatMessage(ChatMessage(
+      platform: event.platform,
+      id: 'provider-support:${event.id}',
+      author:
+          ChatAuthor(name: event.authorName, channelId: event.authorChannelId),
+      items: [
+        MessageItem.text(event.text.trim().isEmpty ? amount : event.text)
+      ],
+      timestamp: event.timestamp,
+      superChat: SuperChat(amount: amount, color: ''),
+    ));
+  }
+
+  void _maybeReadChatMessage(ChatMessage message) {
+    final settings = _lastSettings;
+    if (settings == null ||
+        !settings.ttsEnabled ||
+        !ttsAllows(message, settings)) {
+      return;
+    }
     if (!isTtsMessageFresh(message, _ttsSessionStartedAt)) return;
     if (isTtsIgnoredAuthor(message.author, settings.ttsIgnoredUsers)) return;
 
@@ -359,6 +401,11 @@ class AudioCoordinator {
     )) {
       return;
     }
+    if (settings.ttsLinks == TtsLinks.sayLink) {
+      final l = lookupAppLocalizations(
+          Locale(settings.appLanguageCode == 'es' ? 'es' : 'en'));
+      text = replaceTtsLinks(text, l.ttsSpokenLink);
+    }
     text = limitTtsText(text, settings.ttsMaxCharacters);
 
     _rememberSpokenMessage(speakKey);
@@ -371,16 +418,32 @@ class AudioCoordinator {
 
   void _maybePlayHighlightSound(ChatMessage message) {
     final settings = _lastSettings;
-    if (settings == null || !settings.highlightSound) return;
-    if (!isTtsMessageFresh(message, _ttsSessionStartedAt)) return;
-    // Windows plays one sound per app: the tone would cut the voice reader.
-    if (_tts.isBusy) return;
-    if (!_highlighter.matches(message)) return;
+    if (settings == null ||
+        !_hasHighlightSound ||
+        !isTtsMessageFresh(message, _ttsSessionStartedAt) ||
+        _tts.isBusy) {
+      return;
+    }
+    final kind = _highlighter.highlightKind(message);
+    final source = settings.highlightSounds[kind];
+    if (source == null || source == HighlightSounds.none) return;
     final now = _clock();
     final last = _lastAlertAt;
     if (last != null && now.difference(last) < highlightSoundInterval) return;
     _lastAlertAt = now;
-    unawaited(_alertSound.play().catchError((Object error, StackTrace stack) {
+    unawaited(_alertSound
+        .play(
+      source,
+      library: settings.mediaLibrary,
+      // The triggering message may now be queued for synthesis. The
+      // tone still gets a chance to play before playback actually starts.
+      canStart: () =>
+          !_disposed &&
+          _lastAlertAt == now &&
+          _lastSettings?.highlightSounds[kind] == source &&
+          !_tts.isPlayingAudio,
+    )
+        .catchError((Object error, StackTrace stack) {
       AppLogger.warning(
         'Highlight sound could not play',
         error: error,

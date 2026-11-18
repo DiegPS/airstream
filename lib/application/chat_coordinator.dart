@@ -298,6 +298,7 @@ class ChatCoordinator {
   bool _disposed = false;
 
   Stream<ChatMessage> get messages => _pipeline.stream;
+  List<ChatMessage> get bufferedMessages => _pipeline.buffer;
 
   Stream<List<ChatMessage>> get messageListStream async* {
     yield List<ChatMessage>.from(_pipeline.buffer);

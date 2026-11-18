@@ -147,6 +147,8 @@ class FakeTtsClient implements TtsClient {
   @override
   bool get isBusy => busy;
   @override
+  bool get isPlayingAudio => busy;
+  @override
   Future<void> updateConfig({
     required bool enabled,
     required String modelId,
@@ -445,11 +447,18 @@ class FakeObsClient implements ObsClient {
 Future<void> settleCoordinatorTasks() => Future<void>.delayed(Duration.zero);
 
 class FakeAlertSound implements AlertSoundClient {
-  int plays = 0;
+  final sources = <String>[];
+  int get plays => sources.length;
   bool disposed = false;
 
   @override
-  Future<void> play() async => plays++;
+  Future<void> play(
+    String source, {
+    required Map<String, Map<String, dynamic>> library,
+    required bool Function() canStart,
+  }) async {
+    if (canStart()) sources.add(source);
+  }
 
   @override
   Future<void> dispose() async => disposed = true;

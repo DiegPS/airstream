@@ -84,6 +84,8 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
       }
       await ref.read(settingsProvider.notifier).update(s.copyWith(
           mediaLibrary: {...s.mediaLibrary}..remove(id),
+          highlightSounds: {...s.highlightSounds}
+            ..removeWhere((_, source) => source == id),
           alertTypeOptions: AlertTypeOptions.sanitize(options)));
     } catch (_) {
       if (mounted) _errors.add(AppLocalizations.of(context)!.mediaRejectType);

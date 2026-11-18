@@ -417,8 +417,8 @@
   "highlightWords": "Palabras a resaltar",
   "highlightWordsHint": "Una palabra o frase por línea",
   "highlightWordsHelp": "Palabras completas; da igual mayúsculas o minúsculas.",
-  "highlightSound": "Reproducir un sonido",
-  "highlightSoundDescription": "Un tono corto con los mensajes resaltados, como mucho cada 3 segundos. No suena mientras habla el lector de voz.",
+  "highlightSound": "Sonidos de resaltado",
+  "highlightSoundDescription": "Los sonidos se reproducen como mucho una vez cada 3 segundos. Se silencian mientras habla el lector de voz.",
   "badgeFirstInSession": "Primer mensaje en el directo",
   "highlightFirstMessages": "Primer mensaje de cada persona",
   "highlightFirstMessagesDescription": "Marca el primer mensaje que envía cada persona desde que inicias el chat, para darle la bienvenida.",
@@ -1084,5 +1084,34 @@
   "featuredUrlCopied": "Enlace de la página de destacados copiado",
   "featuredRemove": "Quitar destacado",
   "featuredFontScale": "Tamaño del texto destacado",
-  "featuredKeepVisible": "Mantener visible hasta quitarlo"
+  "featuredKeepVisible": "Mantener visible hasta quitarlo",
+  "ttsWhatToRead": "Qué leer",
+  "ttsReaderRoles": "Roles",
+  "ttsRoleEveryone": "Todos",
+  "ttsRoleModerator": "Moderador",
+  "ttsRoleVip": "VIP",
+  "ttsRoleOwner": "Dueño",
+  "ttsReaderPlatforms": "Plataformas",
+  "ttsAlwaysReadSupport": "Leer siempre los apoyos con importe",
+  "ttsSkipEmoteOnly": "Omitir mensajes de solo emoticonos",
+  "ttsLinks": "Enlaces",
+  "ttsLinksRead": "Leer el mensaje",
+  "ttsLinksSay": "Decir «enlace»",
+  "ttsLinksSkip": "Omitir el mensaje",
+  "ttsSpokenLink": "enlace",
+  "highlightSoundMention": "Mención",
+  "highlightSoundWord": "Palabra resaltada",
+  "highlightSoundFirstMessage": "Primer mensaje",
+  "highlightSoundPriority": "Si coinciden varios resaltados, tiene prioridad la mención, luego la palabra y por último el primer mensaje.",
+  "sessionExportChat": "Exportar chat (CSV)",
+  "sessionExportParticipants": "Exportar participantes (CSV)",
+  "sessionExportFailed": "No se pudo guardar el archivo CSV.",
+  "sessionExportChatScope": "{count, plural, =0{No hay mensajes de chat conservados.} =1{La exportación incluye 1 mensaje de chat conservado.} other{La exportación incluye los {count} mensajes de chat que se conservan.}}",
+  "@sessionExportChatScope": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

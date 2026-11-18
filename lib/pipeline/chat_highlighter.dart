@@ -1,5 +1,6 @@
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/pipeline/word_matching.dart';
+import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 /// Decides which chat messages stand out for the streamer: mentions of their
@@ -8,6 +9,7 @@ class ChatHighlighter {
   ChatHighlighter({
     required Iterable<String> ownNames,
     required Iterable<String> words,
+    this.firstMessages = false,
   })  : _ownNames = {
           for (final name in ownNames)
             if (WordMatching.normalize(name) case final normalized
@@ -25,10 +27,12 @@ class ChatHighlighter {
       ChatHighlighter(
         ownNames: settings.highlightMentions ? ownChannelNames(settings) : [],
         words: settings.highlightWords,
+        firstMessages: settings.highlightFirstMessages,
       );
 
   final Set<String> _ownNames;
   final Set<String> _words;
+  final bool firstMessages;
 
   bool get isEnabled => _ownNames.isNotEmpty || _words.isNotEmpty;
 
@@ -47,15 +51,25 @@ class ChatHighlighter {
     if (!isEnabled || message.isOwner || message.isMembershipEvent) {
       return false;
     }
-    final author = WordMatching.normalize(message.author.name);
-    if (_ownNames.contains(author)) return false;
-    final text = WordMatching.prepare(message.plainText);
-    for (final name in _ownNames) {
-      if (WordMatching.containsPhrase(text, name)) return true;
+    final kind = highlightKind(message);
+    return kind == HighlightKind.mention || kind == HighlightKind.word;
+  }
+
+  /// A mention takes precedence over a word, then a first session message.
+  HighlightKind? highlightKind(ChatMessage message) {
+    if (message.isOwner || message.isMembershipEvent) return null;
+    if (isEnabled &&
+        !_ownNames.contains(WordMatching.normalize(message.author.name))) {
+      final text = WordMatching.prepare(message.plainText);
+      if (_ownNames.any((name) => WordMatching.containsPhrase(text, name))) {
+        return HighlightKind.mention;
+      }
+      if (_words.any((word) => WordMatching.containsPhrase(text, word))) {
+        return HighlightKind.word;
+      }
     }
-    for (final word in _words) {
-      if (WordMatching.containsPhrase(text, word)) return true;
-    }
-    return false;
+    return firstMessages && message.isFirstInSession
+        ? HighlightKind.firstMessage
+        : null;
   }
 }
