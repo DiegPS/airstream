@@ -200,6 +200,87 @@ void main() {
     expect(transitions, ['obs.streamStarted', 'obs.recordingStarted']);
   });
 
+  test('OBS initialization preserves newer scene, stream and recording events',
+      () async {
+    final readingStats = Completer<void>();
+    final initialStats = Completer<ObsStatsSnapshot>();
+    final client = _FakeObsClient()..streaming = false;
+    client.statsOverride = () {
+      if (client.statsCalls > 1) {
+        return Future.value(const ObsStatsSnapshot(activeFps: 60));
+      }
+      readingStats.complete();
+      return initialStats.future;
+    };
+    late void Function(dynamic) deliver;
+    final service = ObsService(
+      connector: (
+          {required url,
+          required password,
+          required onDone,
+          required onEvent}) async {
+        deliver = onEvent;
+        return client;
+      },
+      statsPollInterval: const Duration(hours: 1),
+    );
+    addTearDown(service.dispose);
+    final connecting = service.connect(host: 'localhost:4455', password: '');
+    await readingStats.future;
+    deliver(const _FakeObsEvent(
+        'CurrentProgramSceneChanged', {'sceneName': 'BRB'}));
+    deliver(const _FakeObsEvent('StreamStateChanged', {
+      'outputActive': true,
+      'outputReconnecting': true,
+    }));
+    deliver(const _FakeObsEvent('RecordStateChanged', {
+      'outputActive': true,
+      'outputState': 'OBS_WEBSOCKET_OUTPUT_PAUSED',
+    }));
+    await Future<void>.delayed(Duration.zero);
+    initialStats.complete(const ObsStatsSnapshot(activeFps: 25));
+    await connecting;
+
+    final state = service.currentState;
+    expect(state.connected, isTrue);
+    expect(
+      (
+        state.currentScene,
+        state.outputActive,
+        state.reconnecting,
+        state.recordingActive,
+        state.recordingPaused
+      ),
+      ('BRB', true, true, true, true),
+    );
+  });
+
+  test('a slow OBS disconnect cannot overwrite a newer connection', () async {
+    final closing = Completer<void>();
+    final first = _FakeObsClient()..closeDelay = closing.future;
+    final second = _FakeObsClient();
+    final service = ObsService(
+      connector: (
+              {required url,
+              required password,
+              required onDone,
+              required onEvent}) async =>
+          url.contains('4455') ? first : second,
+      statsPollInterval: const Duration(hours: 1),
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    final disconnecting = service.disconnect();
+    expect(first.closeCount, 1);
+    await service.connect(host: 'localhost:4456', password: '');
+    expect(service.currentState.connected, isTrue);
+    closing.complete();
+    await disconnecting;
+    expect(service.currentState.connected, isTrue);
+    expect(service.currentState.host, 'localhost:4456');
+    expect(second.closeCount, 0);
+  });
+
   test('OBS switches to the scene a spoken name refers to', () async {
     final client = _FakeObsClient();
     final service = ObsService(
@@ -797,6 +878,10 @@ class _FakeObsClient implements ObsClient {
   List<String> scenes = const ['Main', 'BRB', 'Escena-Juego', 'Charla Final'];
   @override
   Future<List<String>> sceneNames() async => scenes;
+  Future<void>? closeDelay;
   @override
-  Future<void> close() async => closeCount++;
+  Future<void> close() async {
+    closeCount++;
+    await closeDelay;
+  }
 }

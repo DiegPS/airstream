@@ -62,6 +62,26 @@ void main() {
         [true, false, true]);
   });
 
+  test('invalid dual YouTube ignores late statuses and cannot retry', () async {
+    const settings = SettingsModel(
+      youtubeEnabled: true,
+      youtubeDualStreamEnabled: true,
+      youtubeHorizontalUrl: 'https://www.youtube.com/watch?v=abcdefghijk',
+      youtubeVerticalUrl: 'https://youtu.be/abcdefghijk',
+    );
+    coordinator.applySettings(settings, connectChats: true);
+    horizontal.statusController.add((ServiceStatus.connecting, null));
+    vertical.statusController.add((ServiceStatus.error, 'late failure'));
+    coordinator.retryPlatform('youtubeHorizontal');
+    coordinator.retryPlatform('youtubeVertical');
+    coordinator.retryConnections();
+
+    final statuses = await coordinator.connectionStatusStream.first;
+    expect(statuses['youtubeHorizontal'], (ServiceStatus.idle, null));
+    expect(statuses['youtubeVertical'], (ServiceStatus.idle, null));
+    expect((horizontal.connectCount, vertical.connectCount), (0, 0));
+  });
+
   test('dual YouTube waits and retries each pending broadcast independently',
       () {
     fakeAsync((fake) {

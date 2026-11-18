@@ -175,6 +175,16 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     return offset == null ? message : '$message (offset $offset)';
   }
 
+  /// Evaluates a change against the current settings once they are writable.
+  Future<void> updateLatest(SettingsModel Function(SettingsModel) change) {
+    if (!mounted) return Future<void>.value();
+    final restore = _restoreInProgress;
+    if (restore != null) return restore.then((_) => updateLatest(change));
+    if (!_loaded) return ready.then((_) => updateLatest(change));
+    final next = change(state);
+    return identical(next, state) ? Future<void>.value() : update(next);
+  }
+
   Future<void> update(SettingsModel settings) {
     final restore = _restoreInProgress;
     if (restore != null) {

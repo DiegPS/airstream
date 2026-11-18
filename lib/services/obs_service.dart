@@ -136,6 +136,7 @@ class ObsService {
   _ObsMetricsSample? _lastMetricsSample;
   DateTime? _lastObservedDropAt;
   bool _statsPollInFlight = false;
+  int _sceneEventRevision = 0;
   int _streamEventRevision = 0, _recordEventRevision = 0;
   int _consecutivePollFailures = 0;
   String _connectionPassword = '';
@@ -285,6 +286,7 @@ class ObsService {
     _connectionPassword = password;
     AppLogger.registerSecret(password);
     await _closeCurrentSocket();
+    if (generation != _generation) return;
     _emit(
       _state.copyWith(
         connected: false,
@@ -326,6 +328,9 @@ class ObsService {
       }
 
       _obs = obs;
+      final sceneRevision = _sceneEventRevision;
+      final streamRevision = _streamEventRevision;
+      final recordRevision = _recordEventRevision;
       await obs.subscribeOutputsAndScenes();
 
       final currentScene = await obs.currentProgramScene();
@@ -334,9 +339,13 @@ class ObsService {
       final stats = await obs.stats();
 
       if (generation != _generation) {
-        await obs.close();
+        await _closeSocket(obs);
         return;
       }
+      if (!identical(_obs, obs)) return;
+
+      final useStream = streamRevision == _streamEventRevision;
+      final useRecord = recordRevision == _recordEventRevision;
 
       final metrics = _computeMetrics(
         streamStatus: streamStatus,
@@ -350,22 +359,25 @@ class ObsService {
           connectionGeneration: generation,
           connected: true,
           connecting: false,
-          currentScene: currentScene,
-          outputActive: streamStatus.outputActive,
-          recordingActive: recordStatus.outputActive,
-          recordingPaused: recordStatus.outputPaused,
-          recordingDurationMs: recordStatus.outputDuration,
-          recordingBytes: recordStatus.outputBytes,
-          reconnecting: streamStatus.outputReconnecting,
+          currentScene:
+              sceneRevision == _sceneEventRevision ? currentScene : null,
+          outputActive: useStream ? streamStatus.outputActive : null,
+          recordingActive: useRecord ? recordStatus.outputActive : null,
+          recordingPaused: useRecord ? recordStatus.outputPaused : null,
+          recordingDurationMs: useRecord ? recordStatus.outputDuration : null,
+          recordingBytes: useRecord ? recordStatus.outputBytes : null,
+          reconnecting: useStream ? streamStatus.outputReconnecting : null,
           bitrateKbps: metrics.bitrateKbps,
           fps: metrics.fps,
           droppedFrames: metrics.droppedFrames,
           dropPercentage: metrics.dropPercentage,
           dropTrend: dropTrend,
-          statusMessage: _streamStatusLabel(
-            outputActive: streamStatus.outputActive,
-            reconnecting: streamStatus.outputReconnecting,
-          ),
+          statusMessage: useStream
+              ? _streamStatusLabel(
+                  outputActive: streamStatus.outputActive,
+                  reconnecting: streamStatus.outputReconnecting,
+                )
+              : null,
           clearError: true,
           host: trimmedHost,
         ),
@@ -408,11 +420,12 @@ class ObsService {
   }
 
   Future<void> disconnect() async {
-    ++_generation;
+    final generation = ++_generation;
     LogSanitizer.forgetSecret(_connectionPassword);
     _connectionPassword = '';
     _stopStatsPolling();
     await _closeCurrentSocket();
+    if (generation != _generation) return;
     _emit(
       _state.copyWith(
         connected: false,
@@ -496,6 +509,7 @@ class ObsService {
                 data['currentProgramScene'])
             ?.toString();
         if (sceneName == null || sceneName.isEmpty) return;
+        _sceneEventRevision++;
         _emit(_state.copyWith(currentScene: sceneName));
         break;
       case 'StreamStateChanged':
@@ -551,7 +565,9 @@ class ObsService {
   }
 
   Future<void> _pollStatsOnce(int generation) async {
-    if (_statsPollInFlight || generation != _generation) return;
+    if (!_state.connected || _statsPollInFlight || generation != _generation) {
+      return;
+    }
     final obs = _obs;
     if (obs == null) return;
 

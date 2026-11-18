@@ -9,12 +9,8 @@ class _ConnectionDots extends ConsumerWidget {
     final settings = ref.watch(
       settingsProvider.select(
         (s) => (
-          youtubeEnabled: s.youtubeEnabled,
+          youtubeConfigured: hasConfiguredYoutubeChat(s),
           youtubeDualStreamEnabled: s.youtubeDualStreamEnabled,
-          youtubeHorizontalUrl: s.youtubeHorizontalUrl,
-          youtubeVerticalUrl: s.youtubeVerticalUrl,
-          youtubeHandle: s.youtubeHandle,
-          youtubeLiveId: s.youtubeLiveId,
           twitchEnabled: s.twitchEnabled,
           twitchChannel: s.twitchChannel,
           kickEnabled: s.kickEnabled,
@@ -25,15 +21,8 @@ class _ConnectionDots extends ConsumerWidget {
     final metadata = ref.watch(youtubeMetadataProvider).valueOrNull;
     final platformMetadata =
         ref.watch(platformMetadataProvider).valueOrNull ?? const {};
-    final youtubeConfigured = settings.youtubeEnabled &&
-        (settings.youtubeDualStreamEnabled
-            ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
-                settings.youtubeVerticalUrl.trim().isNotEmpty
-            : settings.youtubeHandle.trim().isNotEmpty ||
-                settings.youtubeLiveId.trim().isNotEmpty);
-
     final platforms = <(String, bool, String, String)>[
-      ('YT', youtubeConfigured, 'youtube', 'YouTube'),
+      ('YT', settings.youtubeConfigured, 'youtube', 'YouTube'),
       (
         'TW',
         settings.twitchEnabled && settings.twitchChannel.isNotEmpty,

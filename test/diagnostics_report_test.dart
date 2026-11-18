@@ -79,8 +79,8 @@ void main() {
                   DiagnosticsSnapshot(
                       settings: settings.copyWith(
                           youtubeDualStreamEnabled: true,
-                          youtubeHorizontalUrl: 'a',
-                          youtubeVerticalUrl: 'b'),
+                          youtubeHorizontalUrl: 'https://youtu.be/dQw4w9WgXcQ',
+                          youtubeVerticalUrl: 'https://youtu.be/aqz-KE-bpKQ'),
                       connections: {
                         'youtubeHorizontal': (state, null),
                         'youtubeVertical': (state, null)

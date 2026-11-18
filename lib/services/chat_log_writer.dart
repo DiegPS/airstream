@@ -82,6 +82,12 @@ class ChatLogWriter {
         '_${two(now.hour)}-${two(now.minute)}-${two(now.second)}.txt';
     final file = File(p.join(directory.path, name));
     final sink = file.openWrite(mode: FileMode.append);
+    // An asynchronous write can fail before a caller asks to end the session.
+    unawaited(
+        sink.done.then<void>((_) {}, onError: (Object error, StackTrace stack) {
+      AppLogger.warning('Chat log sink failed',
+          error: error, stackTrace: stack);
+    }));
     // IOSink opens asynchronously. Wait for its open before caching it.
     await sink.addStream(const Stream<List<int>>.empty());
     return (file: file, sink: sink);
@@ -98,8 +104,19 @@ class ChatLogWriter {
       // The failure was logged when the first line was written.
       return;
     }
-    await sink.flush();
-    await sink.close();
+    try {
+      await sink.flush();
+    } catch (error, stack) {
+      AppLogger.warning('Chat log flush failed',
+          error: error, stackTrace: stack);
+    } finally {
+      try {
+        await sink.close();
+      } catch (error, stack) {
+        AppLogger.warning('Chat log close failed',
+            error: error, stackTrace: stack);
+      }
+    }
   }
 
   /// `[21:05:13] [Twitch] Ana: hola`, in local time.

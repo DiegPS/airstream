@@ -351,15 +351,9 @@ class ChatCoordinator {
     if (!connectChats && _lastConnectChats == true) _pipeline.endSession();
     _lastConnectChats = connectChats;
 
-    final horizontalId = _youtubeVideoIdFromUrl(settings.youtubeHorizontalUrl);
-    final verticalId = _youtubeVideoIdFromUrl(settings.youtubeVerticalUrl);
-    final hasYoutubeTarget = settings.youtubeEnabled &&
-        (settings.youtubeDualStreamEnabled
-            ? horizontalId != null &&
-                verticalId != null &&
-                horizontalId != verticalId
-            : settings.youtubeHandle.isNotEmpty ||
-                settings.youtubeLiveId.isNotEmpty);
+    final dualVideoIds = _dualYoutubeVideoIds(settings);
+    final hasYoutubeTarget =
+        dualVideoIds != null || hasSingleYoutubeChat(settings);
     final hasTwitchTarget =
         settings.twitchEnabled && settings.twitchChannel.isNotEmpty;
     final hasKickTarget = settings.kickEnabled && settings.kickSlug.isNotEmpty;
@@ -396,19 +390,19 @@ class ChatCoordinator {
       _updateStatus('youtubeHorizontal', (ServiceStatus.idle, null));
       _updateStatus('youtubeVertical', (ServiceStatus.idle, null));
       if (connectChats && hasYoutubeTarget) {
-        if (settings.youtubeDualStreamEnabled) {
+        if (dualVideoIds != null) {
           _youtubeBadgeValue = '2 streams';
           _emitYoutubeBadgeValue();
           unawaited(_connectYoutubeStream(
             service: _youtubeHorizontal,
             statusKey: 'youtubeHorizontal',
-            url: settings.youtubeHorizontalUrl,
+            videoId: dualVideoIds.horizontal,
             generation: horizontalGeneration,
           ));
           unawaited(_connectYoutubeStream(
             service: _youtubeVertical,
             statusKey: 'youtubeVertical',
-            url: settings.youtubeVerticalUrl,
+            videoId: dualVideoIds.vertical,
             generation: verticalGeneration,
           ));
         } else {
@@ -466,17 +460,20 @@ class ChatCoordinator {
     if (canRetryYoutube('youtube')) {
       unawaited(_connectYoutube(settings, _nextGeneration('youtube')));
     }
-    for (final entry in [
-      ('youtubeHorizontal', _youtubeHorizontal, settings.youtubeHorizontalUrl),
-      ('youtubeVertical', _youtubeVertical, settings.youtubeVerticalUrl),
-    ]) {
-      if (canRetryYoutube(entry.$1)) {
-        unawaited(_connectYoutubeStream(
-          service: entry.$2,
-          statusKey: entry.$1,
-          url: entry.$3,
-          generation: _nextGeneration(entry.$1),
-        ));
+    final dualVideoIds = _dualYoutubeVideoIds(settings);
+    if (dualVideoIds != null) {
+      for (final entry in [
+        ('youtubeHorizontal', _youtubeHorizontal, dualVideoIds.horizontal),
+        ('youtubeVertical', _youtubeVertical, dualVideoIds.vertical),
+      ]) {
+        if (canRetryYoutube(entry.$1)) {
+          unawaited(_connectYoutubeStream(
+            service: entry.$2,
+            statusKey: entry.$1,
+            videoId: entry.$3,
+            generation: _nextGeneration(entry.$1),
+          ));
+        }
       }
     }
     for (final entry in [
@@ -507,17 +504,14 @@ class ChatCoordinator {
       case 'youtube':
         unawaited(_connectYoutube(settings, generation));
       case 'youtubeHorizontal':
-        unawaited(_connectYoutubeStream(
-          service: _youtubeHorizontal,
-          statusKey: platform,
-          url: settings.youtubeHorizontalUrl,
-          generation: generation,
-        ));
       case 'youtubeVertical':
+        final ids = _dualYoutubeVideoIds(settings);
+        if (ids == null) return;
+        final horizontal = platform == 'youtubeHorizontal';
         unawaited(_connectYoutubeStream(
-          service: _youtubeVertical,
+          service: horizontal ? _youtubeHorizontal : _youtubeVertical,
           statusKey: platform,
-          url: settings.youtubeVerticalUrl,
+          videoId: horizontal ? ids.horizontal : ids.vertical,
           generation: generation,
         ));
       case 'twitch':
@@ -568,17 +562,9 @@ class ChatCoordinator {
   Future<void> _connectYoutubeStream({
     required YouTubeChatClient service,
     required String statusKey,
-    required String url,
+    required String videoId,
     required int generation,
   }) async {
-    final videoId = _youtubeVideoIdFromUrl(url);
-    if (videoId == null) {
-      _updateStatus(
-        statusKey,
-        (ServiceStatus.error, 'A valid YouTube video URL is required.'),
-      );
-      return;
-    }
     try {
       await service.connect(liveId: videoId);
     } catch (error, stack) {
@@ -591,7 +577,7 @@ class ChatCoordinator {
         retry: () => _connectYoutubeStream(
           service: service,
           statusKey: statusKey,
-          url: url,
+          videoId: videoId,
           generation: generation,
         ),
       );
@@ -671,20 +657,20 @@ class ChatCoordinator {
     _updateStatus(platform, status);
   }
 
+  ({String horizontal, String vertical})? _dualYoutubeVideoIds(
+    SettingsModel settings,
+  ) =>
+      configuredDualYoutubeVideoIds(settings,
+          videoIdFromUrl: _youtubeVideoIdFromUrl);
+
   bool _isPlatformConfigured(String platform) {
     final settings = _lastSettings;
     if (settings == null) return false;
     return switch (platform) {
-      'youtube' => settings.youtubeEnabled &&
-          !settings.youtubeDualStreamEnabled &&
-          (settings.youtubeHandle.trim().isNotEmpty ||
-              settings.youtubeLiveId.trim().isNotEmpty),
-      'youtubeHorizontal' => settings.youtubeEnabled &&
-          settings.youtubeDualStreamEnabled &&
-          _youtubeVideoIdFromUrl(settings.youtubeHorizontalUrl) != null,
-      'youtubeVertical' => settings.youtubeEnabled &&
-          settings.youtubeDualStreamEnabled &&
-          _youtubeVideoIdFromUrl(settings.youtubeVerticalUrl) != null,
+      'youtube' => hasSingleYoutubeChat(settings),
+      'youtubeHorizontal' ||
+      'youtubeVertical' =>
+        _dualYoutubeVideoIds(settings) != null,
       'twitch' =>
         settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty,
       'kick' => settings.kickEnabled && settings.kickSlug.trim().isNotEmpty,

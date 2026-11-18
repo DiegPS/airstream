@@ -123,8 +123,7 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
     };
     final configured = switch (platform) {
       'youtube' => s.youtubeDualStreamEnabled
-          ? s.youtubeHorizontalUrl.trim().isNotEmpty ||
-              s.youtubeVerticalUrl.trim().isNotEmpty
+          ? configuredDualYoutubeVideoIds(s) != null
           : s.youtubeHandle.trim().isNotEmpty ||
               s.youtubeLiveId.trim().isNotEmpty,
       'twitch' => s.twitchChannel.trim().isNotEmpty,

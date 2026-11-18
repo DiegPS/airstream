@@ -219,12 +219,15 @@ final goalTrackingProvider = Provider<void>((ref) {
   final sub =
       ref.watch(appControllerProvider).goalIncrements.listen((contribution) {
     final (increments, origin) = contribution;
-    final settings = ref.read(settingsProvider);
-    if (!settings.goals.values.any((g) => (increments[g['type']] ?? 0) > 0)) {
-      return;
-    }
-    unawaited(origin.run(() => ref.read(settingsProvider.notifier).update(
-        settings.copyWith(goals: Goals.advance(settings.goals, increments)))));
+    final notifier = ref.read(settingsProvider.notifier);
+    unawaited(origin.run(() => notifier.updateLatest((settings) {
+          if (!settings.goals.values
+              .any((goal) => (increments[goal['type']] ?? 0) > 0)) {
+            return settings;
+          }
+          return settings.copyWith(
+              goals: Goals.advance(settings.goals, increments));
+        })));
   });
   ref.onDispose(() {
     unawaited(sub.cancel());
@@ -255,13 +258,11 @@ final subathonTrackingProvider = Provider<void>((ref) {
   final sub =
       ref.watch(appControllerProvider).goalIncrements.listen((contribution) {
     final (increments, origin) = contribution;
-    final s = ref.read(settingsProvider);
-    final result = SubathonTimer.applyIncrements(
-        s, DateTime.now().millisecondsSinceEpoch, increments);
-    if (!identical(result.settings, s)) {
-      unawaited(origin.run(
-          () => ref.read(settingsProvider.notifier).update(result.settings)));
-    }
+    final notifier = ref.read(settingsProvider.notifier);
+    unawaited(origin.run(() => notifier.updateLatest((settings) =>
+        SubathonTimer.applyIncrements(
+                settings, DateTime.now().millisecondsSinceEpoch, increments)
+            .settings)));
   });
   ref.onDispose(() {
     disposed = true;

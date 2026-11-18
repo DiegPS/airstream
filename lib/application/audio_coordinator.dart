@@ -7,6 +7,7 @@ import 'package:airstream/application/coordinator_notice.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:flutter/widgets.dart' show Locale;
@@ -221,6 +222,7 @@ class AudioCoordinator {
   void applySettings(SettingsModel settings, {required bool connectChats}) {
     if (_disposed) return;
     final previous = _lastSettings;
+    final wasChatRequested = _lastConnectChats == true;
     final connectionChanged = previous == null ||
         _lastConnectChats == null ||
         _lastConnectChats != connectChats;
@@ -254,17 +256,22 @@ class AudioCoordinator {
     final kickChanged = connectionChanged ||
         previous.kickEnabled != settings.kickEnabled ||
         previous.kickSlug != settings.kickSlug;
-    final horizontalYoutubeId =
-        _youtubeVideoIdFromUrl(settings.youtubeHorizontalUrl);
-    final verticalYoutubeId =
-        _youtubeVideoIdFromUrl(settings.youtubeVerticalUrl);
-    final hasYoutubeTarget = settings.youtubeEnabled &&
-        (settings.youtubeDualStreamEnabled
-            ? horizontalYoutubeId != null &&
-                verticalYoutubeId != null &&
-                horizontalYoutubeId != verticalYoutubeId
-            : settings.youtubeHandle.isNotEmpty ||
-                settings.youtubeLiveId.isNotEmpty);
+    if (wasChatRequested && connectionChanged) {
+      _tts.cancelWhere((tag) => tag is ChatMessage);
+    } else if (wasChatRequested &&
+        (youtubeChanged || twitchChanged || kickChanged)) {
+      _tts.cancelWhere((tag) =>
+          tag is ChatMessage &&
+          switch (tag.platform) {
+            Platform.youtube => youtubeChanged,
+            Platform.twitch => twitchChanged,
+            Platform.kick => kickChanged,
+          });
+    }
+    final hasYoutubeTarget = hasSingleYoutubeChat(settings) ||
+        configuredDualYoutubeVideoIds(settings,
+                videoIdFromUrl: _youtubeVideoIdFromUrl) !=
+            null;
     final hasTwitchTarget =
         settings.twitchEnabled && settings.twitchChannel.isNotEmpty;
     final hasKickTarget = settings.kickEnabled && settings.kickSlug.isNotEmpty;

@@ -55,10 +55,22 @@ abstract final class SettingsInputNormalizer {
       youtube.YoutubeId.tryParseVideoUrl(value)?.liveId;
 
   /// Whether both values are distinct explicit YouTube video URLs.
-  static bool distinctYoutubeVideoUrls(String first, String second) {
-    final firstId = youtubeVideoId(first);
-    final secondId = youtubeVideoId(second);
-    return firstId != null && secondId != null && firstId != secondId;
+  static bool distinctYoutubeVideoUrls(String first, String second) =>
+      distinctYoutubeVideoIds(first, second) != null;
+
+  static ({String horizontal, String vertical})? distinctYoutubeVideoIds(
+    String horizontal,
+    String vertical, {
+    String? Function(String) videoIdFromUrl = youtubeVideoId,
+  }) {
+    final horizontalId = videoIdFromUrl(horizontal);
+    final verticalId = videoIdFromUrl(vertical);
+    if (horizontalId == null ||
+        verticalId == null ||
+        horizontalId == verticalId) {
+      return null;
+    }
+    return (horizontal: horizontalId, vertical: verticalId);
   }
 
   /// The valid TCP port in [value], or [fallback] when invalid.

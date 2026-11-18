@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/models/chat_message.dart';
@@ -82,6 +84,34 @@ void main() {
     expect(Directory('${root.path}/Chat').existsSync(), isFalse);
   });
 
+  test('a failed log flush still closes the sink without escaping', () async {
+    final sink = _FailingSink();
+    await IOOverrides.runZoned(() async {
+      final log = writer();
+      await log.startSession(enabled: true);
+      log.write(_message('Ana', 'hola'));
+      await log.endSession();
+    }, createFile: (path) => _SinkFile(path, sink));
+    expect(sink.flushed, isTrue);
+    expect(sink.closed, isTrue);
+  });
+
+  test('an asynchronous log sink error is handled before the session ends',
+      () async {
+    late final _FailingSink sink;
+    await IOOverrides.runZoned(() async {
+      sink = _FailingSink();
+      final log = writer();
+      await log.startSession(enabled: true);
+      log.write(_message('Ana', 'hola'));
+      await sink.written.future;
+      sink.completion.completeError(const FileSystemException('Disk full'));
+      await Future<void>.delayed(Duration.zero);
+      await log.endSession();
+    }, createFile: (path) => _SinkFile(path, sink));
+    expect(sink.closed, isTrue);
+  });
+
   test('turning it off mid-session closes the file', () async {
     final log = writer();
     await log.startSession(enabled: true);
@@ -93,4 +123,45 @@ void main() {
     expect(await log.currentFile!.readAsLines(),
         ['[21:05:13] [Twitch] Ana: antes']);
   });
+}
+
+class _SinkFile extends Fake implements File {
+  _SinkFile(this.path, this.sink);
+
+  @override
+  final String path;
+  final IOSink sink;
+
+  @override
+  IOSink openWrite({FileMode mode = FileMode.write, Encoding? encoding}) =>
+      sink;
+}
+
+class _FailingSink extends Fake implements IOSink {
+  final completion = Completer<void>();
+  final written = Completer<void>();
+  bool flushed = false;
+  bool closed = false;
+
+  @override
+  Future<void> get done => completion.future;
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) => stream.drain<void>();
+
+  @override
+  void writeln([Object? object = '']) => written.complete();
+
+  @override
+  Future<void> flush() async {
+    flushed = true;
+    throw const FileSystemException('Disk full');
+  }
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    if (!completion.isCompleted) completion.complete();
+    throw const FileSystemException('Disk full');
+  }
 }

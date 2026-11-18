@@ -130,6 +130,31 @@ void main() {
     );
   });
 
+  test('invalid and duplicate dual YouTube URLs are not configured', () {
+    for (final vertical in [
+      'https://example.com/video',
+      'https://youtu.be/dQw4w9WgXcQ',
+    ]) {
+      final settings = SettingsModel(
+        youtubeDualStreamEnabled: true,
+        youtubeHorizontalUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+        youtubeVerticalUrl: vertical,
+      );
+      expect(
+        (
+          hasStartableChat(settings),
+          resolveChatSessionPhase(
+            requested: true,
+            settings: settings,
+            statuses: const {'youtubeHorizontal': (ServiceStatus.idle, null)},
+          )
+        ),
+        (false, ChatSessionPhase.idle),
+        reason: vertical,
+      );
+    }
+  });
+
   test('tracks horizontal and vertical YouTube streams independently', () {
     const settings = SettingsModel(
       youtubeDualStreamEnabled: true,

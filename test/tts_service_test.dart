@@ -2,14 +2,19 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:airstream/application/audio_coordinator.dart';
+import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/native_audio_playback_service.dart';
 
 import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/services/tts/sherpa_tts_engine.dart';
 import 'package:airstream/services/tts_model_cache.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
+import 'application/coordinator_fakes.dart' show FakeCaptionsClient;
 
 void main() {
   test('normalizes URLs and caps speech by Unicode code points', () {
@@ -122,6 +127,54 @@ void main() {
     }
   });
 
+  test(
+      'stopping chat interrupts playback and the untagged utterance still plays',
+      () async {
+    final root =
+        await Directory.systemTemp.createTemp('airstream-tts-session-');
+    addTearDown(() => root.delete(recursive: true));
+    final player = _InterruptiblePlayback();
+    final service = TtsService(
+      engine: _ReadySherpaEngine(),
+      modelCache: TtsModelCache(
+        rootDirectory: root,
+        client:
+            MockClient((_) async => throw StateError('Unexpected download')),
+      ),
+      audioPlayback: player,
+      temporaryDirectory: () async => root,
+    );
+    final audio = AudioCoordinator(
+      tts: TtsServiceAdapter(service),
+      captions: FakeCaptionsClient(),
+    );
+    addTearDown(audio.dispose);
+    const settings = SettingsModel(
+      ttsEnabled: true,
+      twitchEnabled: true,
+      twitchChannel: 'channel',
+    );
+    audio.applySettings(settings, connectChats: true);
+    for (final id in ['first', 'second']) {
+      audio.handleChatMessage(ChatMessage(
+        platform: Platform.twitch,
+        id: id,
+        author: ChatAuthor(name: id, channelId: id),
+        items: [MessageItem.text(id)],
+        timestamp: DateTime.now().toUtc(),
+      ));
+    }
+    await player.started.future;
+    service.speak('Announcement');
+    expect(service.queuedTexts, ['second says: second', 'Announcement']);
+    final finished = service.busyStream.firstWhere((busy) => !busy);
+    audio.applySettings(settings, connectChats: false);
+    expect(player.interrupted.isCompleted, isTrue);
+    expect(service.queuedTexts, ['Announcement']);
+    await finished;
+    expect(player.playCount, 2);
+  });
+
   test('withdraws queued speech whose message was moderated', () async {
     final root = await Directory.systemTemp.createTemp('airstream-tts-cancel-');
     final cache = TtsModelCache(
@@ -177,6 +230,30 @@ class _GatedPlayback extends NativeAudioPlaybackService {
     entered.complete();
     await resume.future;
     if (canStart?.call() != false) starts++;
+  }
+}
+
+class _InterruptiblePlayback extends NativeAudioPlaybackService {
+  final started = Completer<void>();
+  final interrupted = Completer<void>();
+  int playCount = 0;
+
+  @override
+  Future<void> playFile(
+    File file, {
+    Duration timeout = const Duration(seconds: 20),
+    double? volume,
+    bool Function()? canStart,
+  }) async {
+    if (++playCount == 1) {
+      started.complete();
+      await interrupted.future;
+    }
+  }
+
+  @override
+  Future<void> stop() async {
+    if (started.isCompleted && !interrupted.isCompleted) interrupted.complete();
   }
 }
 

@@ -938,6 +938,65 @@ void main() {
     });
   }
 
+  test('contributions during restore accumulate on the restored goal and timer',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final app = makeController(twitch, RuleOverlay());
+    addTearDown(app.dispose);
+    final notifier = SettingsNotifier(
+      secureStore: _RestoreSecureStore(),
+      settingsRepository: _RestoreSettingsRepository('{}'),
+    );
+    await notifier.ready;
+    final deadline = DateTime.now().millisecondsSinceEpoch + 120000;
+    const initial = SettingsModel(overlayEnabled: false, goals: {
+      'bits': {'title': 'Bits', 'type': 'bits', 'current': 20, 'target': 100},
+    });
+    await notifier.update(initial.copyWith(
+      subathonPhase: 'running',
+      subathonEndsAtMs: deadline - 60000,
+      subathonSecondsPer100Bits: 2,
+    ));
+    final container = ProviderContainer(overrides: [
+      appControllerProvider.overrideWithValue(app),
+      settingsProvider.overrideWith((ref) => notifier),
+    ]);
+    addTearDown(container.dispose);
+    container.read(goalTrackingProvider);
+    container.read(subathonTrackingProvider);
+
+    await notifier.restoreBackup((current, commit) async {
+      final received = app.goalIncrements.take(2).drain<void>();
+      for (final id in ['first', 'second']) {
+        twitch.messageController.add(ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+          items: const [MessageItem.text('Cheer!')],
+          timestamp: DateTime.utc(2026),
+          superChat: const SuperChat(amount: '1 Bits', color: '#ffffff'),
+        ));
+      }
+      await received;
+      expect(notifier.state.goals['bits']?['current'], 20);
+      await commit(current.copyWith(
+        goals: {
+          'bits': {...current.goals['bits']!, 'current': 80},
+        },
+        subathonEndsAtMs: deadline,
+        subathonSecondsPer100Bits: 10,
+      ));
+    });
+    await settleCoordinatorTasks();
+    expect(
+      (
+        notifier.state.goals['bits']?['current'],
+        notifier.state.subathonEndsAtMs
+      ),
+      (82, deadline + 200),
+    );
+  });
+
   test('a viewer-funded goal does not start the stream', () async {
     final twitch = FakeChannelChatClient();
     final obs = FakeObsClient()..state = const ObsState(connected: true);

@@ -5,6 +5,7 @@ import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/voice_command.dart';
+import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -52,6 +53,40 @@ void main() {
     await settleCoordinatorTasks();
     expect(tts.updateCount, 2);
   });
+
+  for (final (operation, connect, channel) in [
+    ('stopping chat', false, 'original'),
+    ('replacing a channel', true, 'replacement'),
+    ('removing a channel', true, ''),
+  ]) {
+    test('$operation cancels chat speech and preserves announcements and tests',
+        () async {
+      const settings = SettingsModel(
+        ttsEnabled: true,
+        twitchEnabled: true,
+        twitchChannel: 'original',
+      );
+      tts.loadState = const TtsLoadState(phase: TtsLoadPhase.ready);
+      coordinator.applySettings(settings, connectChats: true);
+      for (final id in ['current', 'queued']) {
+        coordinator.handleChatMessage(ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+          items: [MessageItem.text(id)],
+          timestamp: DateTime.now().toUtc(),
+        ));
+      }
+      coordinator.ruleSpeak('Announcement');
+      expect(coordinator.testTts('Voice test'), isTrue);
+      expect(tts.spoken, hasLength(4));
+
+      coordinator.applySettings(settings.copyWith(twitchChannel: channel),
+          connectChats: connect);
+
+      expect(tts.spoken, ['Announcement', 'Voice test']);
+    });
+  }
 
   test('forwards playback errors, captions, and voice commands', () async {
     coordinator.applySettings(

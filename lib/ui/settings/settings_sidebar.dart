@@ -730,7 +730,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
       );
     }
     return _sidebarHeader(
-      youtubeValue: chatRequested && s.youtubeEnabled
+      youtubeValue: chatRequested &&
+              s.youtubeEnabled &&
+              (!s.youtubeDualStreamEnabled ||
+                  configuredDualYoutubeVideoIds(s) != null)
           ? (s.youtubeDualStreamEnabled
               ? l.youtubeDualMode
               : (youtubeBadgeValue ?? _youtubeInputValue(s)))

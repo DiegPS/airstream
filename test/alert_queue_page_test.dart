@@ -25,8 +25,12 @@ void main() {
       () => runPage(_queueChecks));
   test('expiry, skip, clear and hide release the active alert sound',
       () => runPage(_harness + _audioChecks));
-  test('alerts fallback uses featured duration and replaces pinned cards',
+  test('alerts advance independently while a featured card is pinned',
       () => runPage(_harness + _featuredChecks));
+  test('socket close clears timed and pinned featured cards on alerts',
+      () => runPage(_harness + _featuredCloseChecks));
+  test('a video error releases and removes the alert media',
+      () => runPage(_harness + _videoErrorChecks));
 
   test('featured page applies settings and sends a paint acknowledgement', () {
     final html = featuredOverlayHtml();
@@ -54,9 +58,11 @@ const _harness = r'''
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const frames = [];
+const paints = [];
 const sounds = [];
 const timers = new Map();
 const videos = [];
+const createdVideos = [];
 let timer = 0;
 let lastDelay;
 
@@ -67,19 +73,28 @@ class Media {
   load() { this.reloaded = true; }
   play() { return Promise.resolve(); }
 }
+class Video extends Media {
+  listeners = {};
+  addEventListener(type, callback) { this.listeners[type] = callback; }
+  remove() { this.removed = true; }
+}
 class Audio extends Media {
   constructor(url) { super(); this.url = url; sounds.push(this); }
 }
-const stage = {
+const stages = [];
+function element() { return {
   style: {}, firstElementChild: null,
+  appendChild(child) { this.firstElementChild ??= child; },
+  append(...children) { children.forEach(child => this.appendChild(child)); },
   querySelectorAll: () => videos.splice(0),
-  replaceChildren() { this.firstElementChild = null; },
-};
+  replaceChildren(child = null) { this.firstElementChild = child; },
+}; }
+const root = { className: '', appendChild(child) { stages.push(child); } };
 class WebSocket extends EventTarget {
   static OPEN = 1;
   readyState = WebSocket.OPEN;
   send(data) { frames.push(JSON.parse(data)); }
-  close() { this.dispatchEvent(new Event('close')); }
+  close() { this.readyState = 3; this.dispatchEvent(new Event('close')); }
   deliver(envelope) {
     this.dispatchEvent(new MessageEvent('message', {data: JSON.stringify(envelope)}));
   }
@@ -93,19 +108,26 @@ window.setTimeout = (fn, delay) => {
 window.clearTimeout = (id) => timers.delete(id);
 const document = {
   documentElement: {},
-  getElementById: () => ({ appendChild() {} }),
-  createElement: () => stage,
+  getElementById: () => root,
+  createElement: (tag) => {
+    if (tag !== 'video') return element();
+    const video = new Video();
+    createdVideos.push(video);
+    return video;
+  },
 };
 const context = vm.createContext({
-  window, document, WebSocket, Audio, stage, videos, Media, console,
+  window, document, WebSocket, Audio, videos, Media, console,
   location: {protocol: 'http:', host: 'localhost:8080'},
-  requestAnimationFrame() {},
+  requestAnimationFrame(fn) { paints.push(fn); },
   Date: { now: () => 1000 },
 });
 vm.runInContext(page, context);
 const run = (code) => vm.runInContext(code, context);
-run(`renderAlert = (alert) => {
-  stage.firstElementChild = {id: alert.id};
+const [stage, featuredStage] = stages;
+run(`const realRenderAlert = renderAlert;
+renderAlert = (alert, target = stage) => {
+  target.firstElementChild = {id: alert.id, isConnected: true};
   videos.push(new Media());
 };`);
 const socket = run('socket');
@@ -215,26 +237,69 @@ alert('timed', 'featured');
 assert.equal(lastDelay, 11000);
 finish();
 socket.deliver({type: 'settings', data: {featuredSeconds: 0}});
-alert('pinned', 'featured');
+socket.deliver({type: 'alert', data: {
+  id: 'pinned', kind: 'featured', deliveryId: 'pinned-delivery',
+}});
 assert.equal(timers.size, 0);
 alert('regular');
-op('skip');
-assert.equal(stage.firstElementChild.id, 'pinned');
-status(false, 1, true);
-alert('replacement', 'featured');
-assert.equal(stage.firstElementChild.id, 'replacement');
-assert.equal(timers.size, 0);
-socket.deliver({type: 'featuredHide'});
 assert.equal(stage.firstElementChild.id, 'regular');
-assert.equal(lastDelay, 20000);
-alert('older', 'featured');
-alert('newest', 'featured');
-status(false, 1, true);
+assert.equal(featuredStage.firstElementChild.id, 'pinned');
+paints.shift()();
+paints.shift()();
+assert.deepEqual(frames.at(-1), {
+  type: 'featuredRendered', deliveryId: 'pinned-delivery',
+});
+alert('next');
+op('skip');
+assert.equal(stage.firstElementChild.id, 'next');
+assert.equal(featuredStage.firstElementChild.id, 'pinned');
+alert('after-skip');
 finish();
-assert.equal(stage.firstElementChild.id, 'newest');
-assert.equal(timers.size, 0);
+assert.equal(stage.firstElementChild.id, 'after-skip');
+assert.equal(featuredStage.firstElementChild.id, 'pinned');
+alert('replacement', 'featured');
+assert.equal(featuredStage.firstElementChild.id, 'replacement');
+assert.equal(stage.firstElementChild.id, 'after-skip');
+socket.deliver({type: 'featuredHide'});
+assert.equal(featuredStage.firstElementChild, null);
+assert.equal(stage.firstElementChild.id, 'after-skip');
+finish();
+alert('duration-changed', 'featured');
 socket.deliver({type: 'settings', data: {featuredSeconds: 8}});
 assert.equal(lastDelay, 8000);
-finish();
+[...timers.values()][0]();
+assert.equal(featuredStage.firstElementChild, null);
 assert.equal(stage.firstElementChild, null);
+''';
+
+const _featuredCloseChecks = r'''
+op('resume');
+alert('timed', 'featured');
+alert('waiting');
+socket.close();
+assert.equal(stage.firstElementChild, null);
+assert.equal(run('queue.length'), 1);
+assert.equal(run('queue[0].id'), 'waiting');
+const reconnect = timers.get(run('retryTimer'));
+reconnect();
+const nextSocket = run('socket');
+nextSocket.deliver({type: 'alertControl', op: 'resume'});
+nextSocket.deliver({type: 'settings', data: {featuredSeconds: 0}});
+nextSocket.deliver({type: 'alert', data: {id: 'pinned', kind: 'featured'}});
+assert.equal(featuredStage.firstElementChild.id, 'pinned');
+nextSocket.close();
+assert.equal(featuredStage.firstElementChild, null);
+assert.equal(stage.firstElementChild.id, 'waiting');
+''';
+
+const _videoErrorChecks = r'''
+run('renderAlert = realRenderAlert');
+op('resume');
+alert('video', 'bits', { mediaKind: 'video', media: 'my-video' });
+const video = createdVideos.at(-1);
+assert.ok(video);
+assert.doesNotThrow(() => video.listeners.error());
+for (const key of ['stopped', 'released', 'reloaded', 'removed']) {
+  assert.equal(video[key], true);
+}
 ''';

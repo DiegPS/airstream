@@ -64,7 +64,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
     String? twitchError,
     String? kickError,
   ) {
-    final dualYoutube = s.youtubeDualStreamEnabled && s.youtubeEnabled;
+    final dualYoutube = s.youtubeDualStreamEnabled;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -299,13 +299,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
             _youtubeDualModeRow(
               l: l,
               enabled: dualYoutube,
-              // Both broadcasts connect only while YouTube is enabled, and
-              // YouTube's own switch is hidden in this mode.
               onChanged: (enabled) => notifier.update(
-                s.copyWith(
-                  youtubeDualStreamEnabled: enabled,
-                  youtubeEnabled: enabled || s.youtubeEnabled,
-                ),
+                s.copyWith(youtubeDualStreamEnabled: enabled),
               ),
             ),
             if (dualYoutube) ...[
@@ -364,8 +359,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     ),
                   ),
                   Switch(
-                    value: _dualYoutubeUrlsAreValid && s.youtubeEnabled,
-                    onChanged: _dualYoutubeUrlsAreValid
+                    value: s.youtubeEnabled,
+                    onChanged: s.youtubeEnabled || _dualYoutubeUrlsAreValid
                         ? (value) => notifier.update(
                               s.copyWith(youtubeEnabled: value),
                             )

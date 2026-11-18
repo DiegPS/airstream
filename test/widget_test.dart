@@ -1160,7 +1160,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('dual YouTube mode turns YouTube back on',
+  testWidgets('selecting dual YouTube mode leaves the connection switch off',
       (WidgetTester tester) async {
     final settings = _RecordingSettings(
       const SettingsModel(overlayEnabled: false, youtubeEnabled: false),
@@ -1188,7 +1188,55 @@ void main() {
     await tester.pump();
 
     expect(settings.state.youtubeDualStreamEnabled, isTrue);
+    expect(settings.state.youtubeEnabled, isFalse);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('turning off dual YouTube keeps both URL fields and the mode',
+      (tester) async {
+    final settings = _RecordingSettings(const SettingsModel(
+      overlayEnabled: false,
+      youtubeEnabled: true,
+      youtubeDualStreamEnabled: true,
+      youtubeHorizontalUrl: 'https://youtu.be/dQw4w9WgXcQ',
+      youtubeVerticalUrl: 'https://youtu.be/aqz-KE-bpKQ',
+    ));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [settingsProvider.overrideWith((ref) => settings)],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+
+    final connectionSwitch = find.descendant(
+      of: find
+          .ancestor(of: find.text('YouTube'), matching: find.byType(Row))
+          .first,
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(connectionSwitch);
+    await tester.tap(connectionSwitch);
+    await tester.pump();
+
+    expect(settings.state.youtubeEnabled, isFalse);
+    expect(settings.state.youtubeDualStreamEnabled, isTrue);
+    expect(find.text('Horizontal stream URL'), findsOneWidget);
+    expect(find.text('Vertical stream URL'), findsOneWidget);
+    final modeSwitch = find.descendant(
+      of: find
+          .ancestor(
+            of: find.text('Horizontal + vertical'),
+            matching: find.byType(Row),
+          )
+          .first,
+      matching: find.byType(Switch),
+    );
+    expect(tester.widget<Switch>(modeSwitch).value, isTrue);
+
+    await tester.tap(connectionSwitch);
+    await tester.pump();
     expect(settings.state.youtubeEnabled, isTrue);
+    expect(settings.state.youtubeVerticalUrl, 'https://youtu.be/aqz-KE-bpKQ');
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

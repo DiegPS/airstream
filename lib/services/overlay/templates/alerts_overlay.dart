@@ -25,6 +25,23 @@ String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
     justify-content: center;
     padding: 48px;
   }
+  .featured-stage { display: none; }
+  #root.has-pinned-featured {
+    display: grid;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+  .has-pinned-featured .alert-stage {
+    padding: clamp(8px, 3vh, 24px) clamp(8px, 5vw, 48px);
+    overflow: hidden;
+  }
+  .has-pinned-featured .featured-stage { display: flex; }
+  .has-pinned-featured .featured-stage.above-alerts { grid-row: 1; }
+  .has-pinned-featured .alert-card {
+    min-width: min(360px, 100%);
+    max-height: 100%;
+    overflow: auto;
+  }
+  .has-pinned-featured .alert-media { max-height: min(220px, 24vh); }
   .alert-card {
     min-width: 360px;
     max-width: min(760px, 90vw);
@@ -229,7 +246,7 @@ function typeOption(alert) {
   return alert.kind === 'featured' ? {} : alert.option || (settings.alertTypeOptions || {})[alert.alertType] || {};
 }
 
-function renderAlert(alert) {
+function renderAlert(alert, target = stage) {
   const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
   const author = String(alert.author || strings.someone);
@@ -311,7 +328,7 @@ function renderAlert(alert) {
       medium.muted = !option.mediaAudio;
       medium.preload = 'none';
       medium.src = url;
-      medium.addEventListener('error', () => { releaseVideo(medium); medium.remove(); }, { once: true });
+      medium.addEventListener('error', () => { releaseMedia(medium); medium.remove(); }, { once: true });
     }
     copy.appendChild(medium);
   }
@@ -331,17 +348,22 @@ function renderAlert(alert) {
   }
   card.appendChild(copy);
   if (stickerUrl) card.appendChild(createImage('alert-sticker', stickerUrl, ''));
-  clearMedia();
-  stage.replaceChildren(card);
+  if (target === stage) clearMedia();
+  target.replaceChildren(card);
 }
 
 const root = document.getElementById('root');
 const stage = document.createElement('div');
 stage.className = 'alert-stage';
 root.appendChild(stage);
+const featuredStage = document.createElement('div');
+root.appendChild(featuredStage);
 let settings = { ...DEFAULT_SETTINGS };
 let queue = [];
 let active = null;
+let pinnedFeatured = null;
+let pinnedShownAt = 0;
+let pinnedHideTimer = 0;
 let activeSound = null;
 let paused = false;
 let queueReady = false;
@@ -351,16 +373,29 @@ let featuredShownAt = 0;
 let retryTimer = 0;
 let socket = null;
 let shuttingDown = false;
+const acknowledgedFeatured = new WeakSet();
 
 function applySettings(next) {
   applyOverlayFont(next);
   const previousFeaturedSeconds = settings.featuredSeconds;
   settings = { ...settings, ...next };
-  if (active?.kind === 'featured' && settings.featuredSeconds !== previousFeaturedSeconds) {
-    scheduleFeaturedHide();
+  if (settings.featuredSeconds !== previousFeaturedSeconds) {
+    if (active?.kind === 'featured') {
+      if (featuredDuration() > 0) {
+        scheduleFeaturedHide();
+      } else {
+        showPinnedFeatured(active, featuredShownAt);
+        finishAlert();
+      }
+    } else if (pinnedFeatured) {
+      schedulePinnedHide();
+    }
   }
   localizePage(settings.appLanguageCode || 'en');
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
+  featuredStage.style.fontSize = stage.style.fontSize;
+  featuredStage.className = 'alert-stage featured-stage' +
+    (settings.alertPosition === 'bottom' ? ' above-alerts' : '');
   stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
 }
 
@@ -368,7 +403,13 @@ const MAX_PENDING_ALERTS = 20;
 
 function enqueueAlert(alert) {
   if (alert.kind === 'featured') {
+    clearPinnedFeatured();
     queue = queue.filter(pending => pending.kind !== 'featured');
+    if (queueReady && !(featuredDuration() > 0)) {
+      showPinnedFeatured(alert);
+      if (active?.kind === 'featured') finishAlert();
+      return;
+    }
     queue.unshift(alert);
     if (queue.length > MAX_PENDING_ALERTS) {
       const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
@@ -431,8 +472,7 @@ function controlQueue(op) {
   if (op === 'pause' || op === 'resume') {
     paused = op === 'pause';
     queueReady = true;
-  } else if (op === 'skip' && active &&
-      (active.kind !== 'featured' || hideTimer !== 0)) {
+  } else if (op === 'skip' && active) {
     finishAlert();
     return;
   } else if (op === 'clear') {
@@ -445,19 +485,68 @@ function controlQueue(op) {
 
 function hideFeatured() {
   queue = queue.filter(alert => alert.kind !== 'featured');
+  clearPinnedFeatured();
   preloadNextImage();
   if (active?.kind === 'featured') finishAlert();
   else reportQueue();
 }
 
+function featuredDuration() {
+  return Number(settings.featuredSeconds ?? DEFAULT_SETTINGS.featuredSeconds);
+}
+
+function clearPinnedFeatured() {
+  if (!pinnedFeatured) return;
+  window.clearTimeout(pinnedHideTimer);
+  pinnedHideTimer = 0;
+  pinnedFeatured = null;
+  featuredStage.replaceChildren();
+  root.className = '';
+}
+
+function schedulePinnedHide() {
+  window.clearTimeout(pinnedHideTimer);
+  const seconds = featuredDuration();
+  pinnedHideTimer = seconds > 0 ? window.setTimeout(clearPinnedFeatured,
+    Math.max(0, seconds * 1000 - (Date.now() - pinnedShownAt))) : 0;
+}
+
+function showPinnedFeatured(alert, shownAt = Date.now()) {
+  pinnedFeatured = alert;
+  pinnedShownAt = shownAt;
+  root.className = 'has-pinned-featured';
+  renderAlert(alert, featuredStage);
+  schedulePinnedHide();
+  acknowledgeFeatured(alert, featuredStage, () => pinnedFeatured);
+}
+
 function scheduleFeaturedHide() {
   window.clearTimeout(hideTimer);
-  const seconds = Number(settings.featuredSeconds ?? DEFAULT_SETTINGS.featuredSeconds);
-  hideTimer = seconds > 0 ? window.setTimeout(
-    finishAlert, Math.max(0, seconds * 1000 - (Date.now() - featuredShownAt))) : 0;
+  hideTimer = window.setTimeout(finishAlert,
+    Math.max(0, featuredDuration() * 1000 - (Date.now() - featuredShownAt)));
+}
+
+function acknowledgeFeatured(displayed, target, getDisplayed) {
+  if (!displayed.deliveryId) return;
+  const connection = displayed.deliverySocket;
+  // Confirm only after the card has reached a browser paint frame.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (getDisplayed() === displayed && !acknowledgedFeatured.has(displayed) &&
+        connection === socket && connection.readyState === WebSocket.OPEN &&
+        target.firstElementChild?.isConnected) {
+      connection.send(JSON.stringify({
+        type: 'featuredRendered', deliveryId: displayed.deliveryId,
+      }));
+      acknowledgedFeatured.add(displayed);
+    }
+  }));
 }
 
 function showNext() {
+  if (queueReady && queue[0]?.kind === 'featured' && !(featuredDuration() > 0)) {
+    showPinnedFeatured(queue.shift());
+    preloadNextImage();
+  }
   // Pausing holds alerts, not a message the streamer just chose to feature
   // (featured cards always sit at the front of the queue).
   if (!queueReady || active || queue.length === 0 ||
@@ -483,19 +572,8 @@ function showNext() {
       audio.play().catch(() => {});
     }
   }
-  const displayed = active;
-  const connection = displayed.deliverySocket;
-  // Confirm only after the queued card has reached a browser paint frame.
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (active === displayed && displayed.deliveryId &&
-        connection === socket && connection.readyState === WebSocket.OPEN &&
-        stage.firstElementChild && stage.firstElementChild.isConnected) {
-      connection.send(JSON.stringify({
-        type: 'featuredRendered', deliveryId: displayed.deliveryId,
-      }));
-    }
-  }));
   if (active.kind === 'featured') {
+    acknowledgeFeatured(active, stage, () => active);
     featuredShownAt = Date.now();
     scheduleFeaturedHide();
   } else {
@@ -515,7 +593,7 @@ function connect() {
   connection.addEventListener('open', () => {
     connection.send(JSON.stringify({ type: 'register', view: 'alerts' }));
   });
-  socket.addEventListener('message', (event) => {
+  connection.addEventListener('message', (event) => {
     try {
       const envelope = JSON.parse(event.data);
       if (envelope.type === 'settings') applySettings(envelope.data || {});
@@ -532,9 +610,10 @@ function connect() {
       console.warn('Ignored malformed alert message', error);
     }
   });
-  socket.addEventListener('close', () => {
-    // The app already reported these as not shown; ordinary alerts stay.
-    queue = queue.filter((alert) => alert.kind !== 'featured');
+  connection.addEventListener('close', () => {
+    if (socket !== connection) return;
+    queueReady = false;
+    hideFeatured();
     if (!shuttingDown) retryTimer = window.setTimeout(connect, 3000);
   });
   connection.addEventListener('error', () => connection.close());
@@ -546,6 +625,7 @@ window.addEventListener('beforeunload', () => {
   shuttingDown = true;
   window.clearTimeout(hideTimer);
   window.clearTimeout(retryTimer);
+  clearPinnedFeatured();
   stopActiveSound();
   clearMedia();
   if (socket) socket.close();

@@ -1,4 +1,5 @@
 import 'package:airstream/services/kick_service.dart';
+import 'package:airstream/settings/settings_input_normalizer.dart';
 import 'package:airstream/settings/settings_model.dart';
 
 enum ChatSessionPhase {
@@ -29,19 +30,11 @@ ChatSessionPhase resolveChatSessionPhase({
   if (!requested) return ChatSessionPhase.idle;
 
   final configured = <String>[
-    if (settings.youtubeEnabled &&
-        !settings.youtubeDualStreamEnabled &&
-        (settings.youtubeHandle.trim().isNotEmpty ||
-            settings.youtubeLiveId.trim().isNotEmpty))
-      'youtube',
-    if (settings.youtubeEnabled &&
-        settings.youtubeDualStreamEnabled &&
-        settings.youtubeHorizontalUrl.trim().isNotEmpty)
+    if (hasSingleYoutubeChat(settings)) 'youtube',
+    if (configuredDualYoutubeVideoIds(settings) != null) ...[
       'youtubeHorizontal',
-    if (settings.youtubeEnabled &&
-        settings.youtubeDualStreamEnabled &&
-        settings.youtubeVerticalUrl.trim().isNotEmpty)
       'youtubeVertical',
+    ],
     if (settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty)
       'twitch',
     if (settings.kickEnabled && settings.kickSlug.trim().isNotEmpty) 'kick',
@@ -93,16 +86,34 @@ ChatSessionPhase resolveChatSessionPhase({
 }
 
 /// Whether [settings] name at least one enabled chat that can be started.
-bool hasStartableChat(SettingsModel settings) {
-  final youtube = settings.youtubeEnabled &&
-      (settings.youtubeDualStreamEnabled
-          ? settings.youtubeHorizontalUrl.trim().isNotEmpty &&
-              settings.youtubeVerticalUrl.trim().isNotEmpty
-          : settings.youtubeHandle.trim().isNotEmpty ||
-              settings.youtubeLiveId.trim().isNotEmpty);
-  return youtube ||
-      (settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty) ||
-      (settings.kickEnabled && settings.kickSlug.trim().isNotEmpty);
+bool hasStartableChat(SettingsModel settings) =>
+    hasConfiguredYoutubeChat(settings) ||
+    (settings.twitchEnabled && settings.twitchChannel.trim().isNotEmpty) ||
+    (settings.kickEnabled && settings.kickSlug.trim().isNotEmpty);
+
+bool hasConfiguredYoutubeChat(SettingsModel settings) =>
+    hasSingleYoutubeChat(settings) ||
+    configuredDualYoutubeVideoIds(settings) != null;
+
+bool hasSingleYoutubeChat(SettingsModel settings) =>
+    settings.youtubeEnabled &&
+    !settings.youtubeDualStreamEnabled &&
+    (settings.youtubeHandle.trim().isNotEmpty ||
+        settings.youtubeLiveId.trim().isNotEmpty);
+
+({String horizontal, String vertical})? configuredDualYoutubeVideoIds(
+  SettingsModel settings, {
+  String? Function(String) videoIdFromUrl =
+      SettingsInputNormalizer.youtubeVideoId,
+}) {
+  if (!settings.youtubeEnabled || !settings.youtubeDualStreamEnabled) {
+    return null;
+  }
+  return SettingsInputNormalizer.distinctYoutubeVideoIds(
+    settings.youtubeHorizontalUrl,
+    settings.youtubeVerticalUrl,
+    videoIdFromUrl: videoIdFromUrl,
+  );
 }
 
 /// Status detail while YouTube waits for the channel to go live.
