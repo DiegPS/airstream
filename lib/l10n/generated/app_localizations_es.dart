@@ -1432,7 +1432,87 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get pollDescription =>
-      'Pregunta a tu chat en todas las plataformas a la vez: se vota escribiendo !1, !2…';
+      'Haz una pregunta en todos tus chats y elige cómo se vota.';
+
+  @override
+  String get pollMode => 'Modo de votación';
+
+  @override
+  String get pollModeNumbered => 'Numerada';
+
+  @override
+  String get pollModeWord => 'Por palabra';
+
+  @override
+  String get pollModeYesNo => 'Sí / No';
+
+  @override
+  String get pollModeRating => 'Valoración del 1 al 10';
+
+  @override
+  String get pollModeFreeAnswer => 'Respuesta libre';
+
+  @override
+  String get pollYes => 'Sí';
+
+  @override
+  String get pollNo => 'No';
+
+  @override
+  String get pollOptions => 'Opciones de votación';
+
+  @override
+  String get pollAllowed => 'Quién puede votar';
+
+  @override
+  String get pollAllowChange => 'Permitir cambiar el voto';
+
+  @override
+  String get pollHideResults => 'Ocultar resultados hasta el final';
+
+  @override
+  String get pollResultsHidden => 'Resultados al final';
+
+  @override
+  String get pollResultsHiddenOnPages =>
+      'Los resultados se ocultan en las páginas hasta que termine la encuesta.';
+
+  @override
+  String get pollCommand => 'Comando de respuesta';
+
+  @override
+  String get pollInvalidCommand =>
+      'Escribe un comando como !r que no esté reservado por la lista de turnos.';
+
+  @override
+  String get pollAmbiguousOptions =>
+      'Escribe opciones que se distingan sin tildes, mayúsculas ni espacios de más.';
+
+  @override
+  String get pollOptionTooLong => 'Cada opción admite hasta 40 caracteres.';
+
+  @override
+  String get pollInvalidInput =>
+      'Escribe una pregunta y completa al menos dos opciones si el modo lo requiere.';
+
+  @override
+  String get pollAverage => 'Promedio';
+
+  @override
+  String get pollDistinctAnswers => 'Respuestas distintas';
+
+  @override
+  String get pollHowToVote => 'Escribe en el chat';
+
+  @override
+  String get pollAnswerExample => 'tu respuesta';
+
+  @override
+  String get pollNoAnswers => 'Todavía no hay respuestas';
+
+  @override
+  String get galleryPollDescription =>
+      'Muestra cómo votar, el recuento en directo y los resultados finales.';
 
   @override
   String get pollQuestionHint => 'Pregunta';

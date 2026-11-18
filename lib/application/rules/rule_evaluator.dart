@@ -103,6 +103,8 @@ String resolveRuleText(
     'count': '${e.count}',
     if (e.note != null) 'note': e.note!,
     if (e.position != null) 'position': '${e.position}',
+    if (e.winner != null) 'winner': e.winner!,
+    if (e.total != null) 'total': '${e.total}',
     'months': '${e.months}',
     'scene': e.scene,
     'args': e.args,

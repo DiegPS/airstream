@@ -2646,8 +2646,158 @@ abstract class AppLocalizations {
   /// No description provided for @pollDescription.
   ///
   /// In en, this message translates to:
-  /// **'Ask your chat on every platform at once: viewers vote by typing !1, !2…'**
+  /// **'Ask viewers across all your chats and choose how they vote.'**
   String get pollDescription;
+
+  /// No description provided for @pollMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting mode'**
+  String get pollMode;
+
+  /// No description provided for @pollModeNumbered.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbered'**
+  String get pollModeNumbered;
+
+  /// No description provided for @pollModeWord.
+  ///
+  /// In en, this message translates to:
+  /// **'By word'**
+  String get pollModeWord;
+
+  /// No description provided for @pollModeYesNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes / No'**
+  String get pollModeYesNo;
+
+  /// No description provided for @pollModeRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating 1–10'**
+  String get pollModeRating;
+
+  /// No description provided for @pollModeFreeAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Free answer'**
+  String get pollModeFreeAnswer;
+
+  /// No description provided for @pollYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get pollYes;
+
+  /// No description provided for @pollNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get pollNo;
+
+  /// No description provided for @pollOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Voting options'**
+  String get pollOptions;
+
+  /// No description provided for @pollAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can vote'**
+  String get pollAllowed;
+
+  /// No description provided for @pollAllowChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow vote changes'**
+  String get pollAllowChange;
+
+  /// No description provided for @pollHideResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide results until the end'**
+  String get pollHideResults;
+
+  /// No description provided for @pollResultsHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Results at the end'**
+  String get pollResultsHidden;
+
+  /// No description provided for @pollResultsHiddenOnPages.
+  ///
+  /// In en, this message translates to:
+  /// **'Results are hidden from pages until the poll ends.'**
+  String get pollResultsHiddenOnPages;
+
+  /// No description provided for @pollCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer command'**
+  String get pollCommand;
+
+  /// No description provided for @pollInvalidCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a command like !r that isn’t reserved by the queue.'**
+  String get pollInvalidCommand;
+
+  /// No description provided for @pollAmbiguousOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter options that differ even without accents, case or extra spaces.'**
+  String get pollAmbiguousOptions;
+
+  /// No description provided for @pollOptionTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Each option can have up to 40 characters.'**
+  String get pollOptionTooLong;
+
+  /// No description provided for @pollInvalidInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a question and fill in at least two options if required.'**
+  String get pollInvalidInput;
+
+  /// No description provided for @pollAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Average'**
+  String get pollAverage;
+
+  /// No description provided for @pollDistinctAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Distinct answers'**
+  String get pollDistinctAnswers;
+
+  /// No description provided for @pollHowToVote.
+  ///
+  /// In en, this message translates to:
+  /// **'Type in chat'**
+  String get pollHowToVote;
+
+  /// No description provided for @pollAnswerExample.
+  ///
+  /// In en, this message translates to:
+  /// **'your answer'**
+  String get pollAnswerExample;
+
+  /// No description provided for @pollNoAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'No answers yet'**
+  String get pollNoAnswers;
+
+  /// No description provided for @galleryPollDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show voting instructions, live tallies, and final results.'**
+  String get galleryPollDescription;
 
   /// No description provided for @pollQuestionHint.
   ///

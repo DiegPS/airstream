@@ -3,6 +3,8 @@ import 'dart:async';
 
 import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'package:intl/intl.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
@@ -23,6 +25,13 @@ class PollCard extends ConsumerStatefulWidget {
 class _PollCardState extends ConsumerState<PollCard> {
   final _question = TextEditingController();
   final _options = [TextEditingController(), TextEditingController()];
+  final _command = TextEditingController(text: ChatPoll.defaultCommand);
+  PollMode _mode = PollMode.numbered;
+  QueueRole _allowed = QueueRole.everyone;
+  bool _hideResults = false;
+  bool _allowChange = true;
+  bool _showOptions = false;
+  PollInputError? _error;
   int? _minutes;
   Timer? _ticker;
 
@@ -30,24 +39,63 @@ class _PollCardState extends ConsumerState<PollCard> {
   void dispose() {
     _ticker?.cancel();
     _question.dispose();
+    _command.dispose();
     for (final option in _options) {
       option.dispose();
     }
     super.dispose();
   }
 
+  bool get _usesOptions => _mode == PollMode.numbered || _mode == PollMode.word;
+
   bool get _canStart =>
       _question.text.trim().isNotEmpty &&
-      _options.where((o) => o.text.trim().isNotEmpty).length >=
-          ChatPoll.minOptions;
+      (!_usesOptions ||
+          _options.where((o) => o.text.trim().isNotEmpty).length >=
+              ChatPoll.minOptions);
 
-  void _start() {
-    ref.read(appControllerProvider).startPoll(
-          question: _question.text,
-          options: [for (final option in _options) option.text],
-          duration: _minutes == null ? null : Duration(minutes: _minutes!),
-        );
+  void _start(AppLocalizations l) {
+    try {
+      ref.read(appControllerProvider).startPoll(
+            question: _question.text,
+            options: [for (final option in _options) option.text],
+            duration: _minutes == null ? null : Duration(minutes: _minutes!),
+            mode: _mode,
+            allowed: _allowed,
+            hideResults: _hideResults,
+            allowChange: _allowChange,
+            command: _command.text,
+            language: l.localeName,
+          );
+    } on ArgumentError catch (error) {
+      final code = error.invalidValue;
+      setState(() =>
+          _error = code is PollInputError ? code : PollInputError.invalid);
+    }
   }
+
+  String _modeLabel(AppLocalizations l, PollMode mode) => switch (mode) {
+        PollMode.numbered => l.pollModeNumbered,
+        PollMode.word => l.pollModeWord,
+        PollMode.yesNo => l.pollModeYesNo,
+        PollMode.rating => l.pollModeRating,
+        PollMode.freeAnswer => l.pollModeFreeAnswer,
+      };
+
+  String _roleLabel(AppLocalizations l, QueueRole role) => switch (role) {
+        QueueRole.everyone => l.queueEveryone,
+        QueueRole.member => l.queueMembers,
+        QueueRole.vip => l.queueVip,
+        QueueRole.moderator => l.queueModerators,
+      };
+
+  String _errorLabel(AppLocalizations l, PollInputError error) =>
+      switch (error) {
+        PollInputError.ambiguousOptions => l.pollAmbiguousOptions,
+        PollInputError.optionTooLong => l.pollOptionTooLong,
+        PollInputError.invalidCommand => l.pollInvalidCommand,
+        PollInputError.invalid => l.pollInvalidInput,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -78,53 +126,71 @@ class _PollCardState extends ConsumerState<PollCard> {
   }
 
   List<Widget> _editor(AppLocalizations l) => [
+        _selection(
+          l.pollMode,
+          _mode,
+          PollMode.values,
+          (mode) => _modeLabel(l, mode),
+          (mode) => setState(() {
+            _mode = mode;
+            _error = null;
+          }),
+          key: const Key('poll-mode'),
+        ),
+        const SizedBox(height: 8),
         _input(_question, l.pollQuestionHint, key: const Key('poll-question')),
         const SizedBox(height: 8),
-        for (var i = 0; i < _options.length; i++) ...[
-          Row(
-            children: [
-              SizedBox(
-                width: 28,
-                child: Text(
-                  '!${i + 1}',
-                  style: const TextStyle(
-                    color: _accent,
-                    fontWeight: FontWeight.w800,
+        if (_mode == PollMode.freeAnswer)
+          _input(_command, l.pollCommand,
+              key: const Key('poll-command'), label: l.pollCommand),
+        if (_usesOptions) ...[
+          for (var i = 0; i < _options.length; i++) ...[
+            Row(
+              children: [
+                if (_mode == PollMode.numbered)
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      '!${i + 1}',
+                      style: const TextStyle(
+                        color: _accent,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: _input(
+                    _options[i],
+                    l.pollOptionHint(i + 1),
+                    key: Key('poll-option-$i'),
                   ),
                 ),
-              ),
-              Expanded(
-                child: _input(
-                  _options[i],
-                  l.pollOptionHint(i + 1),
-                  key: Key('poll-option-$i'),
-                ),
-              ),
-              if (_options.length > ChatPoll.minOptions)
-                IconButton(
-                  tooltip: l.pollRemoveOption,
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                  color: Colors.white38,
-                  onPressed: () => setState(() {
-                    _options.removeAt(i).dispose();
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-        ],
-        Row(
-          children: [
-            if (_options.length < ChatPoll.maxOptions)
-              TextButton.icon(
+                if (_options.length > ChatPoll.minOptions)
+                  IconButton(
+                    tooltip: l.pollRemoveOption,
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    color: Colors.white38,
+                    onPressed: () => setState(() {
+                      _options.removeAt(i).dispose();
+                      _error = null;
+                    }),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (_options.length < ChatPoll.maxOptions)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
                 key: const Key('poll-add-option'),
                 onPressed: () =>
                     setState(() => _options.add(TextEditingController())),
                 icon: const Icon(Icons.add_rounded, size: 16),
                 label: Text(l.pollAddOption),
               ),
-          ],
-        ),
+            ),
+        ],
         Row(
           children: [
             Expanded(
@@ -151,12 +217,59 @@ class _PollCardState extends ConsumerState<PollCard> {
             ),
           ],
         ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Semantics(
+            expanded: _showOptions,
+            child: TextButton.icon(
+              key: const Key('poll-settings'),
+              onPressed: () => setState(() => _showOptions = !_showOptions),
+              icon: Icon(_showOptions ? Icons.expand_less : Icons.expand_more),
+              label: Text(l.pollOptions),
+            ),
+          ),
+        ),
+        if (_showOptions)
+          Material(
+            type: MaterialType.transparency,
+            child: Column(
+              children: [
+                _selection(
+                    l.pollAllowed,
+                    _allowed,
+                    QueueRole.values,
+                    (role) => _roleLabel(l, role),
+                    (role) => setState(() => _allowed = role)),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(l.pollHideResults),
+                  value: _hideResults,
+                  onChanged: (hidden) => setState(() => _hideResults = hidden),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(l.pollAllowChange),
+                  value: _allowChange,
+                  onChanged: (allow) => setState(() => _allowChange = allow),
+                ),
+              ],
+            ),
+          ),
+        if (_error case final error?)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(_errorLabel(l, error),
+                key: const Key('poll-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             key: const Key('poll-start'),
-            onPressed: _canStart ? _start : null,
+            onPressed: _canStart ? () => _start(l) : null,
             icon: const Icon(Icons.play_arrow_rounded, size: 18),
             label: Text(l.pollStart),
             style: ElevatedButton.styleFrom(
@@ -168,10 +281,40 @@ class _PollCardState extends ConsumerState<PollCard> {
         ),
       ];
 
+  Widget _selection<T>(
+    String label,
+    T value,
+    List<T> values,
+    String Function(T) name,
+    ValueChanged<T> update, {
+    Key? key,
+  }) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          DropdownButton<T>(
+            key: key,
+            value: value,
+            isDense: true,
+            isExpanded: true,
+            dropdownColor: const Color(0xFF1E1E1E),
+            items: [
+              for (final item in values)
+                DropdownMenuItem(
+                    value: item,
+                    child: Text(name(item), overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: (value) {
+              if (value != null) update(value);
+            },
+          ),
+        ],
+      );
+
   List<Widget> _results(AppLocalizations l, ChatPoll poll) {
-    final counts = poll.counts;
     final total = poll.total;
-    final leader = counts.fold<int>(0, (a, b) => a > b ? a : b);
     final endsAt = poll.endsAt;
     final status = poll.closed
         ? l.pollClosed
@@ -190,43 +333,13 @@ class _PollCardState extends ConsumerState<PollCard> {
         ),
       ),
       const SizedBox(height: 8),
-      for (var i = 0; i < poll.options.length; i++) ...[
-        Row(
-          children: [
-            Text(
-              '!${i + 1} ',
-              style:
-                  const TextStyle(color: _accent, fontWeight: FontWeight.w800),
-            ),
-            Expanded(
-              child: Text(
-                poll.options[i],
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ),
-            Text(
-              '${total == 0 ? 0 : (counts[i] * 100 / total).round()}% · '
-              '${counts[i]}',
-              key: Key('poll-count-$i'),
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
+      ..._tally(l, poll),
+      if (!poll.closed && poll.hideResults)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(l.pollResultsHiddenOnPages,
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: total == 0 ? 0 : counts[i] / total,
-            minHeight: 6,
-            backgroundColor: Colors.white12,
-            color: counts[i] > 0 && counts[i] == leader
-                ? const Color(0xFFFFC83D)
-                : _accent,
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
       Text(
         '${l.pollVotes(total)} · $status',
         key: const Key('poll-status'),
@@ -262,6 +375,108 @@ class _PollCardState extends ConsumerState<PollCard> {
     ];
   }
 
+  List<Widget> _tally(AppLocalizations l, ChatPoll poll) {
+    if (poll.mode == PollMode.freeAnswer) {
+      final answers = poll.answers;
+      return [
+        if (answers.top.isEmpty) Text(l.pollNoAnswers),
+        for (final (index, answer) in answers.top.indexed)
+          _resultRow('${index + 1}.', answer.text, '${answer.votes}'),
+        if (answers.distinct > 0)
+          Text('${l.pollDistinctAnswers}: ${answers.distinct}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 8),
+      ];
+    }
+    final counts = poll.counts;
+    if (poll.mode == PollMode.rating) {
+      final average = poll.average;
+      final formatted = average == null
+          ? '—'
+          : NumberFormat('0.0', l.localeName).format(average);
+      final peak = counts.fold<int>(1, (a, b) => a > b ? a : b);
+      return [
+        Text('${l.pollAverage}: $formatted', key: const Key('poll-average')),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final (index, count) in counts.indexed)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    children: [
+                      Text('$count',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10)),
+                      SizedBox(
+                        height: 32,
+                        width: double.infinity,
+                        child: ColoredBox(
+                          color: Colors.white12,
+                          child: FractionallySizedBox(
+                            alignment: Alignment.bottomCenter,
+                            heightFactor: count / peak,
+                            child: const ColoredBox(color: _accent),
+                          ),
+                        ),
+                      ),
+                      Text('${index + 1}',
+                          style: const TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ];
+    }
+    final leader = counts.fold<int>(0, (a, b) => a > b ? a : b);
+    final total = poll.total;
+    return [
+      for (final (index, count) in counts.indexed) ...[
+        _resultRow(
+            poll.mode == PollMode.word ? '' : '!${index + 1}',
+            poll.options[index],
+            '${total == 0 ? 0 : (count * 100 / total).round()}% · $count',
+            key: Key('poll-count-$index')),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: total == 0 ? 0 : count / total,
+            minHeight: 6,
+            backgroundColor: Colors.white12,
+            color: count > 0 && count == leader
+                ? const Color(0xFFFFC83D)
+                : _accent,
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    ];
+  }
+
+  Widget _resultRow(String prefix, String label, String count, {Key? key}) =>
+      Row(
+        children: [
+          if (prefix.isNotEmpty)
+            Text('$prefix ',
+                style: const TextStyle(
+                    color: _accent, fontWeight: FontWeight.w800)),
+          Expanded(
+            child: Text(label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          const SizedBox(width: 6),
+          Text(count,
+              key: key,
+              style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        ],
+      );
+
   Widget _overlayHint(AppLocalizations l) {
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
         OverlayServerPhase.ready;
@@ -284,14 +499,16 @@ class _PollCardState extends ConsumerState<PollCard> {
         });
   }
 
-  Widget _input(TextEditingController controller, String hint, {Key? key}) =>
+  Widget _input(TextEditingController controller, String hint,
+          {Key? key, String? label}) =>
       TextField(
         key: key,
         controller: controller,
-        onChanged: (_) => setState(() {}),
+        onChanged: (_) => setState(() => _error = null),
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
+          labelText: label,
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
           filled: true,

@@ -7,12 +7,14 @@ import 'package:fake_async/fake_async.dart';
 import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
+import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/chat_queue.dart';
 import '../chat_queue_test.dart' show queueMessage;
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'coordinator_fakes.dart';
@@ -28,6 +30,33 @@ class RuleOverlay extends OverlayServer {
         reason: 'feed receives chat before the first rule action');
     triggers.add({'name': name, 'data': data, 'rule': rule});
     return true;
+  }
+}
+
+class _PollOverlay extends RuleOverlay {
+  final chat = <String>[];
+  final polls = <Map<String, Object?>?>[];
+  StreamSubscription<ChatMessage>? _messages;
+
+  @override
+  Future<void> start({
+    required Stream<ChatMessage> messages,
+    required SettingsModel settings,
+    int port = 8080,
+  }) async {
+    _messages = messages.listen((message) {
+      feedSeen = true;
+      chat.add(message.plainText);
+    });
+  }
+
+  @override
+  void broadcastPoll(Map<String, Object?>? poll) => polls.add(poll);
+
+  @override
+  Future<void> dispose() async {
+    await _messages?.cancel();
+    await super.dispose();
   }
 }
 
@@ -48,6 +77,76 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test('hidden submissions stay local until poll.ended publishes the winner',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final server = _PollOverlay();
+    final app = makeController(twitch, server);
+    addTearDown(app.dispose);
+    app.applySettings(
+        SettingsModel(
+          overlayEnabled: true,
+          queueState: const QueueState(status: QueueStatus.open),
+          queueOptions: const QueueOptions(command: '!reply'),
+          rules: [
+            {
+              ...RuleSchema.newRule('chat.command', id: 'echo'),
+              'enabled': true,
+              'trigger': {'type': 'chat.command', 'command': '!reply'},
+              'actions': [
+                {
+                  'id': 'echo',
+                  'type': 'template.trigger',
+                  'name': 'echo',
+                  'data': '{message}'
+                },
+              ],
+            },
+            {
+              ...RuleSchema.newRule('poll.ended', id: 'result'),
+              'enabled': true,
+              'actions': [
+                {
+                  'id': 'out',
+                  'type': 'template.trigger',
+                  'name': 'result',
+                  'data': '{winner}/{total}'
+                },
+              ],
+            },
+          ],
+        ),
+        connectChats: false);
+    app.startPoll(
+        question: 'Q',
+        mode: PollMode.freeAnswer,
+        command: '!reply',
+        hideResults: true);
+    const answer = '<b>Private answer</b>';
+    twitch.messageController.add(queueMessage('Viewer', '!reply $answer'));
+    twitch.messageController.add(queueMessage('Viewer', 'Ordinary chat'));
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    expect(server.chat, ['Ordinary chat']);
+    expect(app.queue.current.entries, isEmpty);
+    expect(server.triggers, isEmpty);
+    expect(server.polls.last?['total'], 1);
+    expect(server.polls.last?.containsKey('answers'), false);
+    final messages = await app.messageListStream.first;
+    final submission = messages
+        .singleWhere((message) => message.plainText == '!reply $answer');
+    expect(app.featureMessageOnStream(submission).status,
+        FeaturedMessageStatus.noReceiver);
+    final completed = app.rules.historyStream.firstWhere((runs) =>
+        runs.any((run) => run.event.type == 'poll.ended' && run.completed));
+    app.endPoll();
+    app.endPoll();
+    await completed.timeout(const Duration(seconds: 2));
+    expect(server.polls.last?['answers'], [
+      {'text': answer, 'votes': 1}
+    ]);
+    expect(server.triggers.single['data'], '$answer/1');
+  });
 
   test(
       'queue joins from chat trigger rules, move players and save coalesced state',

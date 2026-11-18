@@ -1,3 +1,5 @@
+import 'poll_results.dart';
+
 String pollOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +11,8 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
   html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
   body { display: flex; align-items: flex-start; justify-content: center; padding: 24px; font-family: system-ui, sans-serif; }
   #poll {
+    --poll-muted: rgba(255,255,255,.7);
+    --poll-track: rgba(255,255,255,.12);
     width: min(560px, 100%);
     padding: 18px 20px;
     border-radius: 14px;
@@ -31,6 +35,9 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
   .fill { height: 100%; border-radius: 6px; background: #53FC18; transition: width 300ms ease; }
   .option.leader .fill { background: #FFC83D; }
   .footer { margin-top: 14px; color: rgba(255, 255, 255, .7); font-size: 14px; font-weight: 600; }
+$pollResultsCss
+  .instructions { margin: 8px 0 0; color: var(--poll-muted); overflow-wrap: anywhere; }
+  .answer.winner, .average.winner { color: #FFC83D; }
 </style>
 </head>
 <body>
@@ -43,6 +50,8 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
     en: { poll: 'Poll', vote: 'Vote in chat with', votes: (n) => n === 1 ? '1 vote' : n + ' votes', left: (s) => clock(s) + ' left', closed: 'Final results' },
     es: { poll: 'Encuesta', vote: 'Vota en el chat con', votes: (n) => n === 1 ? '1 voto' : n + ' votos', left: (s) => 'Quedan ' + clock(s), closed: 'Resultados finales' },
   };
+  $pollLabelsScript
+  $pollResultsScript
   const card = document.getElementById('poll');
   let language = 'en';
   let poll = null;
@@ -51,7 +60,7 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
   let ticker = 0;
   let closing = false;
 
-  function text(tag, className, value) {
+  function textElement(tag, className, value) {
     const node = document.createElement(tag);
     if (className) node.className = className;
     node.textContent = value;
@@ -75,26 +84,16 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
       return;
     }
     const strings = STRINGS[language] || STRINGS.en;
-    const leader = Math.max(0, ...poll.options.map((o) => o.votes));
-    const nodes = [text('div', 'kicker', strings.poll), text('div', 'question', poll.question)];
-    poll.options.forEach((option, index) => {
-      const row = document.createElement('div');
-      row.className = 'option' + (option.votes > 0 && option.votes === leader ? ' leader' : '');
-      const head = document.createElement('div');
-      head.className = 'row';
-      const label = document.createElement('span');
-      label.append(text('span', 'command', '!' + (index + 1)), document.createTextNode(option.label));
-      head.append(label, text('span', 'count', option.percent + '% · ' + option.votes));
-      const bar = document.createElement('div');
-      bar.className = 'bar';
-      const fill = document.createElement('div');
-      fill.className = 'fill';
-      fill.style.width = option.percent + '%';
-      bar.appendChild(fill);
-      row.append(head, bar);
-      nodes.push(row);
-    });
-    const footer = text('div', 'footer', '');
+    const labels = pollLabels[language] || pollLabels.en;
+    const nodes = [
+      textElement('div', 'kicker', strings.poll),
+      textElement('div', 'question', poll.question),
+      ...pollResultNodes(poll, language),
+    ];
+    if (!poll.closed && pollMode(poll) !== 'numbered') {
+      nodes.push(textElement('div', 'instructions', pollInstructions(poll, labels)));
+    }
+    const footer = textElement('div', 'footer', '');
     nodes.push(footer);
     card.replaceChildren(...nodes);
     const update = () => { footer.textContent = footerText(strings); };
@@ -106,9 +105,9 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
     socket = new WebSocket(protocol + location.host + '/ws');
-  socket.addEventListener('open', () => {
-    socket.send(JSON.stringify({ type: 'register', view: 'poll' }));
-  });
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify({ type: 'register', view: 'poll' }));
+    });
     socket.addEventListener('message', (event) => {
       try {
         const envelope = JSON.parse(event.data);

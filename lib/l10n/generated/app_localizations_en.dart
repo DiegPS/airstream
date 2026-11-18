@@ -1420,7 +1420,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pollDescription =>
-      'Ask your chat on every platform at once: viewers vote by typing !1, !2…';
+      'Ask viewers across all your chats and choose how they vote.';
+
+  @override
+  String get pollMode => 'Voting mode';
+
+  @override
+  String get pollModeNumbered => 'Numbered';
+
+  @override
+  String get pollModeWord => 'By word';
+
+  @override
+  String get pollModeYesNo => 'Yes / No';
+
+  @override
+  String get pollModeRating => 'Rating 1–10';
+
+  @override
+  String get pollModeFreeAnswer => 'Free answer';
+
+  @override
+  String get pollYes => 'Yes';
+
+  @override
+  String get pollNo => 'No';
+
+  @override
+  String get pollOptions => 'Voting options';
+
+  @override
+  String get pollAllowed => 'Who can vote';
+
+  @override
+  String get pollAllowChange => 'Allow vote changes';
+
+  @override
+  String get pollHideResults => 'Hide results until the end';
+
+  @override
+  String get pollResultsHidden => 'Results at the end';
+
+  @override
+  String get pollResultsHiddenOnPages =>
+      'Results are hidden from pages until the poll ends.';
+
+  @override
+  String get pollCommand => 'Answer command';
+
+  @override
+  String get pollInvalidCommand =>
+      'Enter a command like !r that isn’t reserved by the queue.';
+
+  @override
+  String get pollAmbiguousOptions =>
+      'Enter options that differ even without accents, case or extra spaces.';
+
+  @override
+  String get pollOptionTooLong => 'Each option can have up to 40 characters.';
+
+  @override
+  String get pollInvalidInput =>
+      'Enter a question and fill in at least two options if required.';
+
+  @override
+  String get pollAverage => 'Average';
+
+  @override
+  String get pollDistinctAnswers => 'Distinct answers';
+
+  @override
+  String get pollHowToVote => 'Type in chat';
+
+  @override
+  String get pollAnswerExample => 'your answer';
+
+  @override
+  String get pollNoAnswers => 'No answers yet';
+
+  @override
+  String get galleryPollDescription =>
+      'Show voting instructions, live tallies, and final results.';
 
   @override
   String get pollQuestionHint => 'Question';

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:airstream/services/overlay/templates/poll_overlay.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -17,6 +18,7 @@ void main() {
     'latest-support': ['Latest support', 'Último apoyo'],
     'top-supporters': ['Top of the stream', 'Top del directo'],
     'queue-list': ['Queue', 'Lista de turnos'],
+    'poll': ['Poll', 'Encuesta'],
   };
   const widgets = {
     'recent-support': (480, 640),
@@ -24,9 +26,10 @@ void main() {
     'latest-support': (640, 160),
     'top-supporters': (560, 480),
     'queue-list': (480, 720),
+    'poll': (640, 480),
   };
 
-  test('all nine gallery items build valid localized manifests and files', () {
+  test('all ten gallery items build valid localized manifests and files', () {
     expect(galleryCatalog.keys, orderedEquals(names.keys));
     expect(galleryCatalog.values.map((i) => i.id), orderedEquals(names.keys));
     for (final (i, language) in ['en', 'es'].indexed) {
@@ -113,7 +116,8 @@ void main() {
           'ticker',
           'latest-support',
           'top-supporters',
-          'queue-list'
+          'queue-list',
+          'poll',
         ])
           id: {
             'en': galleryCatalog[id]!.buildFiles('en'),
@@ -124,6 +128,7 @@ void main() {
       await script.writeAsString('const sdk = ${jsonEncode(sdkV1())};\n'
           'const screens = ${jsonEncode(screens)};\n'
           'const widgets = ${jsonEncode(widgets)};\n'
+          'const pollPage = ${jsonEncode(pollOverlayHtml())};\n'
           '$_nodeChecks');
       final result =
           await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
@@ -201,8 +206,11 @@ class Element extends EventTarget {
 }
 
 function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
+  const builtInPoll = id === '/poll';
   const item = (screens[id] || widgets[id]);
-  const files = item[lang];
+  const files = builtInPoll
+    ? {'index.html': pollPage, 'script.js': pollPage.split('<script>')[1].split('</script>')[0]}
+    : item[lang];
   const nodes = Object.fromEntries([...files['index.html'].matchAll(/<([a-z0-9]+)\b[^>]*\bid="([^"]+)"([^>]*)>/g)]
     .map(([, tag, key, attributes]) => {
       const node = new Element(tag);
@@ -219,6 +227,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
   motion.matches = reduced;
   const win = new EventTarget();
   let socket;
+  const sent = [];
   const context = {
     Date: class extends Date {
       constructor(...args) { super(...(args.length ? args : [now])); }
@@ -240,10 +249,10 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
       if (url === './values.json') return {ok: true, json: async () => values};
       return {ok: url.startsWith('/media/'), headers: {get: () => url.endsWith('a') ? 'video/mp4' : 'image/png'}};
     },
-    console: {...console, error: error => errors.push(error)},
+    console: {...console, error: error => errors.push(error), warn: error => errors.push(error)},
     WebSocket: class {
       constructor() { socket = this; }
-      send() {}
+      send(data) { sent.push(JSON.parse(data)); }
       addEventListener(name, fn) { this[name] = fn; }
     },
     setInterval(fn, ms) { timers.set(++nextTimer, {fn, at: now + ms, repeat: ms}); return nextTimer; },
@@ -251,11 +260,16 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     clearInterval: key => timers.delete(key), clearTimeout: key => timers.delete(key),
     queueMicrotask
   };
-  context.window = Object.assign(win, {innerWidth: 960, innerHeight: 640, matchMedia: () => motion});
+  context.window = Object.assign(win, {innerWidth: 960, innerHeight: 640, matchMedia: () => motion,
+    setInterval: context.setInterval, clearInterval: context.clearInterval,
+    setTimeout: context.setTimeout, clearTimeout: context.clearTimeout});
   vm.createContext(context);
-  vm.runInContext(sdk, context);
-  context.Airstream = win.Airstream;
+  if (!builtInPoll) {
+    vm.runInContext(sdk, context);
+    context.Airstream = win.Airstream;
+  }
   vm.runInContext(files['script.js'], context);
+  if (builtInPoll) socket.open();
 
   function send(type, data, replay = false) {
     socket.message({data: JSON.stringify({type, data, replay})});
@@ -276,11 +290,98 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     now = end;
     assert.deepEqual(errors, []);
   }
-  return {nodes, win, errors, advance, send, logo, root: context.document.documentElement,
+  return {nodes, win, errors, advance, send, sent, logo, root: context.document.documentElement,
     fields: values => send('fields', {...item.fields, language: lang, ...values})};
 }
 
 const literal = '<img src=x onerror=evil()> 🌙';
+
+function checkPoll() {
+  const allNodes = node => [node, ...node.children.flatMap(allNodes)];
+  const options = [
+    {label: literal, votes: 784, percent: 100},
+    {label: 'Other choice', votes: 0, percent: 0},
+  ];
+  const withResults = [
+    ['numbered', {options}, '!1', '784'],
+    ['word', {options}, literal, '784'],
+    ['yesNo', {options: options.map((o, i) => ({...o, label: i ? 'No' : 'Yes'}))}, '!1', '784'],
+    ['rating', {options: [], average: 8.7, distribution: [0, 0, 0, 0, 0, 0, 0, 0, 784, 0]}, '1–10', '784'],
+    ['freeAnswer', {options: [], command: '!reply', answers: [{text: literal, votes: 784}], distinct: 951}, '!reply', '784'],
+  ];
+  for (const [id, name] of [['/poll', 'Built-in /poll'], ['poll', 'Gallery Poll']]) {
+    const builtIn = id === '/poll';
+    for (const lang of ['en', 'es']) {
+      const view = page(id, lang);
+      const {nodes} = view;
+      const results = builtIn ? nodes.poll : nodes.results;
+      const instructions = () => builtIn
+        ? allNodes(results).find(n => n.className === 'instructions')?.textContent || results.textContent
+        : nodes.instructions.textContent;
+      const status = () => builtIn
+        ? allNodes(results).find(n => n.className === 'footer').textContent
+        : nodes.status.textContent;
+      if (builtIn) {
+        assert.deepEqual(view.sent, [{type: 'register', view: 'poll'}]);
+        view.send('settings', {appLanguageCode: lang});
+      } else {
+        view.fields({theme: 'warm', font: 'Outfit', accent: '#234567', logo: '0123456789abcdef'});
+        assert.equal(view.root.dataset.theme, 'warm');
+        assert.equal(view.root.style['--font'], '"Outfit"');
+        assert.equal(view.root.style['--custom-accent'], '#234567');
+        assert.equal(view.logo.children[0].src, '/media/0123456789abcdef');
+      }
+      for (const [mode, data, hint, score] of withResults) {
+        const state = {mode, question: 'Question ' + literal, total: 17, closed: false, ...data};
+        // Even if optional result fields arrive together with a hidden flag,
+        // the DOM must never show those results.
+        view.send('poll', {...state, hidden: true}, true);
+        assert.match(results.textContent, lang === 'es' ? /Resultados al final/ : /Results at the end/);
+        assert.match(status(), /17/);
+        assert.ok(!results.textContent.includes(score));
+        assert.ok(!results.textContent.includes('951'));
+        assert.ok(!results.textContent.match(/8[.,]7|100%/));
+        assert.equal(allNodes(results).filter(n =>
+          /^(bar|count|distribution|average|answers|distinct)$/.test(n.className || '')).length, 0);
+        if (mode === 'freeAnswer') {
+          assert.ok(!allNodes(results).some(n => n.textContent === literal));
+        }
+        assert.ok(instructions().includes(hint));
+
+        view.send('poll', mode === 'numbered' ? Object.fromEntries(
+          Object.entries(state).filter(([key]) => key !== 'mode')) : state);
+        assert.ok(!results.textContent.includes('Results at the end'));
+        assert.ok(results.textContent.includes(score));
+        if (mode === 'rating') {
+          assert.equal(allNodes(results).filter(n => n.className === 'bucket').length, 10);
+          assert.match(results.textContent, lang === 'es' ? /8,7/ : /8\.7/);
+        }
+        if (mode === 'freeAnswer' || mode === 'word' || mode === 'numbered') {
+          assert.ok(allNodes(results).some(n => n.tagName === 'BDI' && n.textContent === literal));
+        }
+        assert.ok(!allNodes(results).some(n => n.tagName === 'IMG'));
+        view.send('poll', {...state, hidden: false, closed: true});
+        assert.ok(allNodes(results).some(n => n.className?.split(' ').includes('winner')));
+      }
+      view.send('poll', {question: 'Timed', options, total: 17, closed: false,
+        endsAt: new Date('2026-11-17T12:00:03Z').getTime()});
+      const before = status();
+      view.advance(1000);
+      assert.notEqual(status(), before);
+      view.send('poll', null);
+      assert.equal(builtIn ? nodes.poll.classList.contains('visible') : !nodes.stage.hidden, false);
+    }
+    console.log(name + ': five modes, legacy shape, hidden results, safe text, timer and winners passed (en/es).');
+  }
+  for (const lang of ['en', 'es']) {
+    const demo = page('poll', lang, {demo: true, reduced: true});
+    demo.advance(3000);
+    assert.equal(demo.nodes.stage.hidden, false);
+    assert.ok(demo.nodes.results.textContent.includes('Adventure'));
+  }
+}
+checkPoll();
+
 const support = (type, name, day, id = name) =>
   ({type, name, id, platform: 'twitch', at: '2026-11-' + day + 'T10:00:00Z'});
 const gift = support('gift', literal, 16);

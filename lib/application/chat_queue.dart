@@ -19,7 +19,21 @@ const _moderatorCommands = {
 
 enum QueueStatus { closed, open, paused }
 
-enum QueueRole { everyone, member, vip, moderator }
+enum QueueRole {
+  everyone,
+  member,
+  vip,
+  moderator;
+
+  bool allows(ChatMessage message) =>
+      message.isOwner ||
+      switch (this) {
+        everyone => true,
+        member => message.isMembership,
+        vip => message.isVip,
+        moderator => message.isModerator,
+      };
+}
 
 class QueueOptions {
   const QueueOptions({
@@ -379,7 +393,7 @@ class ChatQueueController {
     }
     if (_status != QueueStatus.open ||
         command != _command ||
-        !(_allows(message) || message.isOwner)) {
+        !_options.role.allows(message)) {
       return;
     }
     final identity = _identity(message);
@@ -420,13 +434,6 @@ class ChatQueueController {
     _changed();
     onJoined?.call(entry, position + 1);
   }
-
-  bool _allows(ChatMessage message) => switch (_options.role) {
-        QueueRole.everyone => true,
-        QueueRole.member => message.isMembership,
-        QueueRole.vip => message.isVip,
-        QueueRole.moderator => message.isModerator,
-      };
 
   static String _identity(ChatMessage message) {
     final id = message.author.channelId.trim();

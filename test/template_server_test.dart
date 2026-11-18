@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_queue.dart';
@@ -14,12 +15,15 @@ import 'package:flutter_test/flutter_test.dart';
 class Client {
   Client(this.socket) {
     sub = socket.listen((raw) {
-      frames.add(jsonDecode(raw as String) as Map);
+      final wire = raw as String;
+      rawFrames.add(wire);
+      frames.add(jsonDecode(wire) as Map);
     });
   }
   final WebSocket socket;
   late StreamSubscription<dynamic> sub;
   final frames = <Map>[];
+  final rawFrames = <String>[];
   void send(Map value) => socket.add(jsonEncode(value));
   Future<Map> next(String type) async {
     for (var i = 0; i < 150; i++) {
@@ -187,6 +191,101 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 275));
     for (final c in [plain, custom, gallery, reopened]) {
       expect(c.frames.where((f) => f['type'] == 'queue'), isEmpty);
+    }
+  });
+
+  test('hidden poll snapshots redact results on both live and replayed wires',
+      () async {
+    final controller = ChatPollController(publishInterval: Duration.zero);
+    addTearDown(controller.dispose);
+    final subscription = controller.states
+        .listen((poll) => server.broadcastPoll(poll?.toOverlayJson()));
+    addTearDown(subscription.cancel);
+    final page = await connect('poll');
+    final template = await connect('custom', 'one');
+    final gallery = await connect('gallery', 'poll');
+    final publicClients = [page, template, gallery];
+    const answer = '<img src=x onerror=hiddenVote()>';
+    for (final (mode, vote, resultKeys) in [
+      (PollMode.numbered, '!1', ['votes', 'percent']),
+      (PollMode.word, 'Red', ['votes', 'percent']),
+      (PollMode.yesNo, 'y', ['votes', 'percent']),
+      (PollMode.rating, '9', ['average', 'distribution']),
+      (PollMode.freeAnswer, '!r $answer', ['answers', 'distinct']),
+    ]) {
+      controller.start(
+          question: 'Q',
+          mode: mode,
+          options: ['Red', 'Blue'],
+          hideResults: true);
+      for (final client in publicClients) {
+        final opening = await client.next('poll');
+        expect(opening['data']['total'], 0);
+      }
+      controller.handleMessage(queueMessage('Viewer', vote));
+
+      void expectHidden(Client client, Map frame) {
+        final data = frame['data'] as Map;
+        expect(data, {
+          'question': 'Q',
+          'options': [
+            for (final label in controller.current!.options) {'label': label}
+          ],
+          'total': 1,
+          'closed': false,
+          'endsAt': null,
+          'mode': mode.name,
+          'hidden': true,
+          'allowed': 'everyone',
+          if (mode == PollMode.freeAnswer) 'command': '!r',
+        });
+        final raw = client.rawFrames.singleWhere(
+          (raw) =>
+              raw.contains('"type":"poll"') &&
+              raw.contains('"total":1') &&
+              raw.contains('"hidden":true') &&
+              raw.contains('"mode":"${mode.name}"'),
+        );
+        expect(
+            raw,
+            isNot(matches(RegExp(
+                r'"(votes|percent|average|distribution|answers|distinct)"'))));
+        expect(raw, isNot(contains(answer)));
+      }
+
+      for (final client in publicClients) {
+        expectHidden(client, await client.next('poll'));
+      }
+      final lateClients = [
+        await connect('poll'),
+        await connect('custom', 'two')
+      ];
+      for (final client in lateClients) {
+        final replay = await client.next('poll');
+        expect(replay['replay'], true);
+        expectHidden(client, replay);
+      }
+      controller.end();
+      for (final client in [...publicClients, ...lateClients]) {
+        final end = await client.next('poll');
+        final data = end['data'] as Map;
+        expect(data['closed'], true);
+        expect(data['hidden'], false);
+        expect(data['total'], 1);
+        final result = (data['options'] as List).isEmpty
+            ? data
+            : (data['options'] as List).first as Map;
+        expect(result.keys, containsAll(resultKeys));
+        if (mode == PollMode.freeAnswer) {
+          expect(data['answers'], [
+            {'text': answer, 'votes': 1}
+          ]);
+        }
+      }
+      for (final client in lateClients) {
+        await client.close();
+        clients.remove(client);
+      }
     }
   });
 

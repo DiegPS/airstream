@@ -96,7 +96,14 @@ interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage
 interface Goal { id:string; title:string; type:'subs'|'bits'|'kicks'|'manual'; current:number; target:number; percent:number; reached:boolean; }
 interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; remainingMs:number; serverNowMs:number; addedMs:number; }
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; }
-interface Poll { question:string; options:{label:string; votes:number; percent:number}[]; total:number; closed:boolean; endsAt:number|null; }
+interface Poll {
+ question:string; options:{label:string; votes?:number; percent?:number}[];
+ total:number; closed:boolean; endsAt:number|null;
+ mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean;
+ allowed?:'everyone'|'member'|'vip'|'moderator';
+ average?:number|null; distribution?:number[];
+ answers?:{text:string; votes:number}[]; distinct?:number; command?:string;
+}
 interface Caption { text:string; }
 interface SessionSupporter {
  id:string; platform:Platform; name:string; type:AlertType;
@@ -240,7 +247,8 @@ Events and WHEN they fire:
 - goals: full array whenever goals update and on connection; 0..3 goals, percent clamped 0..100, reached indicates current >= target.
 - timer: snapshot on connection or timer change/addition, Timer below. Millisecond epoch endsAtMs/serverNowMs; remainingMs and addedMs are durations. addedMs is 0 on restoration; avoid duplicate time-added celebrations. Draw your own lightweight tick with timerRemaining().
 - giveaway: state on connection/change, Giveaway or null. No id/title/membersOnly/entrant list is exposed. drawId changes on draw, winner is name/platform only; phase drawn plus replay:false can animate a new draw.
-- poll: state on connection/change, Poll or null. No id is exposed. options have label/votes/rounded integer percent; endsAt is epoch milliseconds or null for untimed.
+- poll: state on connection/change, Poll or null. endsAt is epoch milliseconds or null for untimed. total counts voters in every mode. Default numbered polls retain the original shape. Treat absent mode, hidden and allowed as numbered, false and everyone.
+  When hidden is true, options have only label. votes, percent, average, distribution, answers and distinct are omitted until close. Rating results give an average rounded to one decimal (null with no votes) and ten counts in score order (1 through 10). Free answers give the command, up to ten ranked {text,votes} groups and the number of distinct groups. Render questions, labels and answers using textContent.
 - queue: state on registration (replay) and on change, coalesced to at most once every 250 ms. entries are in queue order; playing lists up to ten active players, oldest first. joinedAt is an ISO timestamp. Use id and meta.replay to avoid animating rows already shown, and textContent for names and notes.
 - session: state on registration (replay) and on change, coalesced to at most once per second. Available once chat has been started and retained after it stops until the next start. live means a chat provider is connected. The 50 newest supporters use stable ids; latest covers all seven alert types even when older than that list. top ranks five per category by total, breaking ties by earliest support. Super Chats are grouped by the currency notation in amount, with no conversion; unknown currency has no ranking. Gifts rank by count; bits, kicks and raids expose bits, kicks and viewers as value. topChatters contains up to ten and excludes the channel owner. Render names and amounts with textContent. Use id and meta.replay to avoid animating rows already shown.
   endedAt is the ISO timestamp when chat was stopped, or null while the session is running. supporterCount counts distinct supporters across the full session. superchatCounts counts Super Chat events per known currency across the full session.
@@ -286,7 +294,14 @@ interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage
 interface Goal { id:string; title:string; type:'subs'|'bits'|'kicks'|'manual'; current:number; target:number; percent:number; reached:boolean; }
 interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; remainingMs:number; serverNowMs:number; addedMs:number; }
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; }
-interface Poll { question:string; options:{label:string; votes:number; percent:number}[]; total:number; closed:boolean; endsAt:number|null; }
+interface Poll {
+ question:string; options:{label:string; votes?:number; percent?:number}[];
+ total:number; closed:boolean; endsAt:number|null;
+ mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean;
+ allowed?:'everyone'|'member'|'vip'|'moderator';
+ average?:number|null; distribution?:number[];
+ answers?:{text:string; votes:number}[]; distinct?:number; command?:string;
+}
 interface Caption { text:string; }
 interface SessionSupporter {
  id:string; platform:Platform; name:string; type:AlertType;

@@ -275,6 +275,8 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         count: e.count,
         note: e.note,
         position: e.position,
+        winner: e.winner,
+        total: e.total,
         months: e.months,
         scene: e.scene,
         goalId: e.goalId,
@@ -299,6 +301,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
       if (meaningful) ...['user', 'message'],
       if (type == 'queue.joined') ...['user', 'note', 'position'],
       if (type == 'queue.next') ...['user', 'count'],
+      if (type == 'poll.ended') ...['winner', 'total'],
       if (type == 'chat.command') ...[
         'args',
         for (var i = 1; i <= 9; i++) 'arg$i'

@@ -8,6 +8,7 @@ import 'be_right_back.dart';
 import 'credits.dart';
 import 'gallery_base.dart';
 import 'latest_support.dart';
+import 'poll_widget.dart';
 import 'recent_support.dart';
 import 'queue_list.dart';
 import 'starting_soon.dart';
@@ -151,5 +152,16 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
     description: (l) => l.galleryQueueDescription,
     files: queueListFiles,
     fields: queueListFields,
+  ),
+  'poll': GalleryItem(
+    id: 'poll',
+    version: 1,
+    kind: GalleryKind.widget,
+    width: 640,
+    height: 480,
+    name: (l) => l.pollTitle,
+    description: (l) => l.galleryPollDescription,
+    files: pollWidgetFiles,
+    fields: (_) => const [],
   ),
 });

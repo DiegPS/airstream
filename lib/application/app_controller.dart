@@ -134,13 +134,13 @@ class AppController {
       _chat.messages.listen(_giveaway.handleMessage),
       _giveaway.states.listen(
           (state) => _overlay.broadcastGiveaway(state?.toOverlayJson())),
-      _chat.messages.listen(_poll.handleMessage),
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
       ),
-      _chat.messages.listen(_overlayFeed.add),
       _chat.messages.listen(_audio.handleChatMessage),
       _chat.messages.listen((m) {
+        if (_poll.hasOpenPoll && _poll.handleMessage(m)) return;
+        _overlayFeed.add(m);
         queue.handleMessage(m);
         if (rules.active) {
           for (final e in _ruleAdapter.message(m,
@@ -162,12 +162,11 @@ class AppController {
           _winnerEvent(0);
         }
       }),
-      _poll.states.listen((p) {
-        if (rules.active && _pollWasOpen && p?.closed == true) {
-          rules.handle(RuleEvent(
-              type: 'poll.ended', eventId: 'poll_${++_ruleEventSequence}'));
+      _poll.ended.listen((poll) {
+        if (rules.active) {
+          rules.handle(RuleEvent.pollEnded(poll,
+              eventId: 'poll_${++_ruleEventSequence}'));
         }
-        _pollWasOpen = p != null && !p.closed;
       }),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
@@ -252,7 +251,6 @@ class AppController {
   }
 
   int _settingsDepth = 0, _lastDrawId = 0, _ruleEventSequence = 0;
-  bool _pollWasOpen = false;
   Timer? _ruleEndTimer;
   void _winnerEvent(int depth) {
     final g = _giveaway.current;
@@ -331,7 +329,9 @@ class AppController {
   bool reloadOverlay() => _overlay.reload();
   bool testOverlayAlert(String kind) => _overlay.testAlert(kind);
   FeaturedMessageDelivery featureMessageOnStream(ChatMessage message) =>
-      _overlay.featureMessage(message);
+      _poll.isPrivateVote(message)
+          ? FeaturedMessageDelivery.noReceiver()
+          : _overlay.featureMessage(message);
 
   /// Where session chat logs are saved.
   Future<Directory> chatLogDirectory() => ChatLogWriter.defaultDirectory();
@@ -352,10 +352,26 @@ class AppController {
   Stream<ChatPoll?> get pollStream => _poll.states;
   void startPoll({
     required String question,
-    required List<String> options,
+    List<String> options = const [],
     Duration? duration,
+    PollMode mode = PollMode.numbered,
+    bool hideResults = false,
+    QueueRole allowed = QueueRole.everyone,
+    bool allowChange = true,
+    String command = ChatPoll.defaultCommand,
+    String? language,
   }) =>
-      _poll.start(question: question, options: options, duration: duration);
+      _poll.start(
+        question: question,
+        options: options,
+        duration: duration,
+        mode: mode,
+        hideResults: hideResults,
+        allowed: allowed,
+        allowChange: allowChange,
+        command: command,
+        language: language ?? _lastSettings?.appLanguageCode ?? 'en',
+      );
   void endPoll() => _poll.end();
   void clearPoll() => _poll.clear();
 

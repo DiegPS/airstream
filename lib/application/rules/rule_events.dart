@@ -1,3 +1,4 @@
+import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
 
@@ -20,11 +21,21 @@ class RuleEvent {
       this.count = 0,
       this.note,
       this.position,
+      this.winner,
+      this.total,
       this.months = 0,
       this.scene = '',
       this.goalId = '',
       this.chainDepth = 0,
       this.message});
+
+  factory RuleEvent.pollEnded(ChatPoll poll, {String eventId = ''}) =>
+      RuleEvent(
+        type: 'poll.ended',
+        eventId: eventId,
+        winner: poll.winner,
+        total: poll.total,
+      );
   final String type,
       platform,
       eventId,
@@ -36,8 +47,8 @@ class RuleEvent {
   final RuleAuthor author;
   final num? amount;
   final int count, months, chainDepth;
-  final String? note;
-  final int? position;
+  final String? note, winner;
+  final int? position, total;
   final ChatMessage? message;
   String get command => text.trim().split(RegExp(r'\s+')).first.toLowerCase();
   String get args {

@@ -430,6 +430,8 @@ class RuleEngine {
       currency: r'$',
       note: type == 'queue.joined' ? 'Player 🎮' : null,
       position: type == 'queue.joined' ? 3 : null,
+      winner: type == 'poll.ended' ? 'Adventure' : null,
+      total: type == 'poll.ended' ? 12 : null,
       count: switch (type) {
         'queue.next' => 2,
         'support.gift' => 5,

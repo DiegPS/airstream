@@ -2119,9 +2119,10 @@ void main() {
                     (widget.key! as ValueKey<String>)
                         .value
                         .startsWith('gallery-item-'))),
-            findsNWidgets(9));
+            findsNWidgets(10));
         expect(
             find.byKey(const Key('gallery-item-queue-list')), findsOneWidget);
+        expect(find.byKey(const Key('gallery-item-poll')), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       });
@@ -2193,6 +2194,7 @@ void main() {
         'ticker': spanish ? 'Barra informativa' : 'Ticker',
         'latest-support': spanish ? 'Último apoyo' : 'Latest support',
         'top-supporters': spanish ? 'Top del directo' : 'Top of the stream',
+        'poll': spanish ? 'Encuesta' : 'Poll',
       };
       for (final entry in names.entries) {
         final item = find.byKey(Key('gallery-item-${entry.key}'));
