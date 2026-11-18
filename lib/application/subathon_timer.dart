@@ -53,7 +53,12 @@ abstract final class SubathonTimer {
   static SettingsModel addSeconds(SettingsModel s, int now, int seconds) {
     s = normalize(s, now);
     if (!['running', 'paused'].contains(s.subathonPhase)) return s;
-    final ms = _cap(s, math.max(0, remaining(s, now) + seconds * 1000));
+    final before = remaining(s, now);
+    final adjusted = before + seconds * 1000;
+    final ms = seconds > 0
+        ? math.max(before, _cap(s, adjusted))
+        : math.max(0, adjusted);
+    if (ms == before) return s;
     return s.subathonPhase == 'running'
         ? normalize(s.copyWith(subathonEndsAtMs: now + ms), now)
         : s.copyWith(subathonRemainingMs: ms);

@@ -111,6 +111,8 @@ void main() {
     expect(TemplateManifest('custom', {'height': 10}).height, 32);
   });
 
+  test('both poll pages highlight every tied choice and free answer',
+      () => runGalleryChecks('poll ties'));
   test('gallery screens and widgets work with SDK v1 in Node',
       () => runGalleryChecks('gallery'));
   test('word cloud removes message, author and platform token batches',
@@ -387,7 +389,7 @@ function checkPoll() {
         assert.equal(view.logo.children[0].src, '/media/0123456789abcdef');
       }
       for (const [mode, data, hint, score] of withResults) {
-        const state = {mode, question: 'Question ' + literal, total: 17, closed: false, ...data};
+        const state = {mode, leaderIndices: [0], question: 'Question ' + literal, total: 17, closed: false, ...data};
         // Even if optional result fields arrive together with a hidden flag,
         // the DOM must never show those results.
         view.send('poll', {...state, hidden: true}, true);
@@ -622,7 +624,31 @@ function checkCreditsIdentity() {
   assert.deepEqual(entries.map(node => node.textContent), ['Sam', 'Renamed Sam', 'Sam', 'SAM']);
 }
 
+function checkPollTies() {
+  const allNodes = node => [node, ...node.children.flatMap(allNodes)];
+  for (const id of ['/poll', 'poll']) {
+    const view = page(id, 'en');
+    const results = id === '/poll' ? view.nodes.poll : view.nodes.results;
+    for (const mode of ['numbered', 'freeAnswer']) {
+      const free = mode === 'freeAnswer';
+      const counts = [2, 2, 1];
+      view.send('poll', {
+        question: 'Tie', mode, total: 5, closed: true, leaderIndices: [0, 1],
+        options: free ? [] : counts.map((votes, i) => ({label: 'Choice ' + i, votes, percent: votes * 20})),
+        answers: free ? counts.map((votes, i) => ({text: 'Answer ' + i, votes})) : [],
+        distinct: 3,
+      });
+      const rows = allNodes(results).filter(node =>
+        node.className?.split(' ')[0] === (free ? 'answer' : 'option'));
+      assert.equal(rows.length, 3);
+      assert.deepEqual(rows.map(node => node.className.split(' ').includes('winner')),
+        [true, true, false]);
+    }
+  }
+}
+
 const regressions = {
+  'poll ties': checkPollTies,
   'word cloud': checkWordCloudModeration,
   goals: checkGoalReset,
   snapshots: checkEmptySnapshots,

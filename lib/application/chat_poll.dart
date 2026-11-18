@@ -16,7 +16,7 @@ typedef _FreeVote = ({String normalized, String original});
 
 /// A poll viewers can answer from any connected chat.
 class ChatPoll {
-  const ChatPoll({
+  ChatPoll({
     required this.question,
     this.options = const [],
     this.votes = const {},
@@ -50,7 +50,11 @@ class ChatPoll {
   final DateTime? endsAt;
   final bool closed;
 
-  List<int> get counts {
+  List<int> get counts => List.of(_counts);
+
+  late final List<int> _counts = _countVotes();
+
+  List<int> _countVotes() {
     final counts =
         List<int>.filled(mode == PollMode.rating ? 10 : options.length, 0);
     for (final choice in votes.values) {
@@ -66,6 +70,13 @@ class ChatPoll {
       : votes.values.fold(0, (sum, choice) => sum + choice + 1) / total;
 
   ({List<PollAnswer> top, int distinct}) get answers {
+    final ranked = _rankedAnswers;
+    return (top: ranked.take(10).toList(), distinct: ranked.length);
+  }
+
+  late final List<PollAnswer> _rankedAnswers = _rankAnswers();
+
+  List<PollAnswer> _rankAnswers() {
     final groups = <String, Map<String, int>>{};
     for (final vote in freeVotes.values) {
       final spellings = groups.putIfAbsent(vote.normalized, () => {});
@@ -90,19 +101,36 @@ class ChatPoll {
       final byVotes = b.votes.compareTo(a.votes);
       return byVotes == 0 ? a.text.compareTo(b.text) : byVotes;
     });
-    return (top: ranked.take(10).toList(), distinct: groups.length);
+    return ranked;
+  }
+
+  late final List<int> _leaderIndices = _findLeaders(mode == PollMode.freeAnswer
+      ? _rankedAnswers.map((a) => a.votes)
+      : _counts);
+
+  static List<int> _findLeaders(Iterable<int> counts) {
+    var most = 0;
+    final leaders = <int>[];
+    for (final (index, count) in counts.indexed) {
+      if (count == 0 || count < most) continue;
+      if (count > most) {
+        most = count;
+        leaders.clear();
+      }
+      leaders.add(index);
+    }
+    return leaders;
   }
 
   String get winner {
     if (total == 0) return '';
     if (mode == PollMode.rating) return average!.toStringAsFixed(1);
-    if (mode == PollMode.freeAnswer) return answers.top.first.text;
-    final results = counts;
-    var winner = 0;
-    for (var i = 1; i < results.length; i++) {
-      if (results[i] > results[winner]) winner = i;
+    if (mode == PollMode.freeAnswer) {
+      return _leaderIndices
+          .map((index) => _rankedAnswers[index].text)
+          .join(' / ');
     }
-    return options[winner];
+    return _leaderIndices.map((index) => options[index]).join(' / ');
   }
 
   ChatPoll _copyWith({
@@ -131,7 +159,7 @@ class ChatPoll {
         !hideResults &&
         allowed == QueueRole.everyone &&
         allowChange;
-    final counts = hidden ? null : this.counts;
+    final counts = hidden ? null : _counts;
     final average = hidden ? null : this.average;
     final answers =
         !hidden && mode == PollMode.freeAnswer ? this.answers : null;
@@ -149,6 +177,11 @@ class ChatPoll {
       ],
       'total': total,
       'closed': closed,
+      if (!hidden && mode != PollMode.rating)
+        'leaderIndices': [
+          for (final index in _leaderIndices)
+            if (answers == null || index < answers.top.length) index,
+        ],
       'endsAt': endsAt?.millisecondsSinceEpoch,
       if (!classic) ...{
         'mode': mode.name,

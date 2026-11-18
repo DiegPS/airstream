@@ -426,7 +426,8 @@ class OverlayServer {
   void _sendAutomaticAlert(Map<String, Object?> data) {
     if (!_settings.alertPlatforms.contains(data['platform'])) return;
     data = _withAlertOption(data);
-    final sent = _broadcastEnvelope({'type': 'alert', 'data': data});
+    final sent = _broadcastEnvelope({'type': 'alert', 'data': data},
+        requireDeliveryTo: 'alerts');
     if (!sent) return;
     _recentAlerts.insert(0, Map.unmodifiable(data));
     if (_recentAlerts.length > 30) _recentAlerts.removeLast();
@@ -527,7 +528,6 @@ class OverlayServer {
         rulesApi: _rulesApi.call,
         templates: () => templateLibrary,
         galleryLanguage: () => _settings.appLanguageCode,
-        settings: () => _settings,
         mediaLibrary: () => _mediaLibrary ??= _loadMediaLibrary(),
         tierSound: _tierSound,
         customSound: (type) {
@@ -1201,15 +1201,19 @@ class OverlayServer {
     client.sink.add(jsonEncode({'type': type, 'data': data, 'replay': true}));
   }
 
-  bool _broadcastEnvelope(Map<String, dynamic> envelope, {String? view}) {
+  bool _broadcastEnvelope(Map<String, dynamic> envelope,
+      {String? view, String? requireDeliveryTo}) {
     if (_clients.isEmpty) return false;
     var sent = false;
     final json = jsonEncode(envelope);
     for (final client in List.of(_clients)) {
-      if (view != null && _views[client] != view) continue;
+      final clientView = _views[client];
+      if (view != null && clientView != view) continue;
       try {
         client.sink.add(json);
-        sent = true;
+        if (requireDeliveryTo == null || clientView == requireDeliveryTo) {
+          sent = true;
+        }
       } catch (_) {
         // A failed send means the browser disconnected before its close event.
         _removeClient(client);

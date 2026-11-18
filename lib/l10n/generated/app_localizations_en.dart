@@ -2698,6 +2698,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kdiscard': 'Discard changes?',
         'kclose': 'Close',
         'ksave': 'Save',
+        'ksaveFailed': 'Could not save the rule. Try again.',
         'kname': 'Name',
         'kwhen': 'When',
         'kif': 'If',

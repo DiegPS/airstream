@@ -56,24 +56,22 @@ if (failures.length) { console.error(failures.join('\n')); process.exit(1); }
 Map<String, String> _pageScripts() {
   final sources = <String, String>{'sdk/v1.js': sdkV1()};
   final inline = RegExp(r'<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>');
-  for (final google in [false, true]) {
-    final pages = {
-      'alerts': alertsOverlayHtml(googleFontsAllowed: google),
-      'captions': captionsOverlayHtml(googleFontsAllowed: google),
-      'chat': chatOverlayHtml(googleFontsAllowed: google),
-      'clock': clockOverlayHtml(googleFontsAllowed: google),
-      'featured': featuredOverlayHtml(googleFontsAllowed: google),
-      'giveaway': giveawayOverlayHtml(googleFontsAllowed: google),
-      'goals': goalsOverlayHtml(googleFontsAllowed: google),
-      'poll': pollOverlayHtml(googleFontsAllowed: google),
-      'timer': timerOverlayHtml(googleFontsAllowed: google),
-    };
-    for (final page in pages.entries) {
-      final scripts = inline.allMatches(page.value).toList();
-      expect(scripts, isNotEmpty, reason: page.key);
-      for (var i = 0; i < scripts.length; i++) {
-        sources['${page.key}${google ? '+google' : ''}#$i'] = scripts[i][1]!;
-      }
+  final pages = {
+    'alerts': alertsOverlayHtml(),
+    'captions': captionsOverlayHtml(),
+    'chat': chatOverlayHtml(),
+    'clock': clockOverlayHtml(),
+    'featured': featuredOverlayHtml(),
+    'giveaway': giveawayOverlayHtml(),
+    'goals': goalsOverlayHtml(),
+    'poll': pollOverlayHtml(),
+    'timer': timerOverlayHtml(),
+  };
+  for (final page in pages.entries) {
+    final scripts = inline.allMatches(page.value).toList();
+    expect(scripts, isNotEmpty, reason: page.key);
+    for (var i = 0; i < scripts.length; i++) {
+      sources['${page.key}#$i'] = scripts[i][1]!;
     }
   }
   for (final item in galleryCatalog.values) {

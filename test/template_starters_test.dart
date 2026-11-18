@@ -33,6 +33,16 @@ void main() {
       expect(files['script.js'], isNot(contains('innerHTML')));
     });
   }
+  test('the Chat starter moderates only the targeted YouTube orientation',
+      () async {
+    final files = templateStarterFiles(TemplateStarter.chat, 'Example');
+    final script = File(p.join(temp.path, 'chat-check.js'));
+    await script.writeAsString(
+        'const starter = ${jsonEncode(files['script.js'])};\n$_chatChecks');
+    final result = await Process.run('node', [script.path]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
+
   test('ids normalize accents symbols empty names collisions and long names',
       () async {
     expect(templateId('Mi Chat ñ'), 'mi-chat-n');
@@ -106,3 +116,42 @@ void main() {
     expect(await library.get(id), isNull);
   });
 }
+
+const _chatChecks = r'''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const handlers = new Map();
+const rows = [];
+const content = {appendChild: node => rows.push(node)};
+const context = vm.createContext({
+  document: {
+    querySelector: () => content,
+    createElement: () => ({
+      classList: {add() {}}, style: {}, appendChild() {},
+      remove() { rows.splice(rows.indexOf(this), 1); },
+    }),
+  },
+  Airstream: {
+    on: (name, callback) => handlers.set(name, callback),
+    platformColor: () => '#fff', renderMessage: () => ({}),
+  },
+  setInterval() {},
+});
+vm.runInContext(starter, context);
+const send = (name, data) => handlers.get(name)(data);
+const platform = 'youtube';
+const youtubeStreamOrientation = 'vertical';
+for (const criteria of [{scope: 'platform'},
+                        {scope: 'message', messageId: 'same'},
+                        {scope: 'author', authorChannelId: 'same'}]) {
+  for (const orientation of ['horizontal', 'vertical']) {
+    send('chat', {platform, id: 'same', authorChannelId: 'same',
+      youtubeStreamOrientation: orientation});
+  }
+  const horizontal = rows[0];
+  send('delete', {platform, youtubeStreamOrientation, ...criteria});
+  assert.deepEqual(rows, [horizontal]);
+  send('delete', {platform, scope: 'platform'});
+  assert.deepEqual(rows, []);
+}
+''';

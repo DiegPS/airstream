@@ -1,7 +1,7 @@
 import 'overlay_font.dart';
 
-String featuredOverlayHtml({bool googleFontsAllowed = false}) => _featuredPage
-    .replaceFirst('/* OVERLAY_FONT */', overlayFontScript(googleFontsAllowed));
+String featuredOverlayHtml() =>
+    _featuredPage.replaceFirst('/* OVERLAY_FONT */', overlayFontScript);
 
 const _featuredPage = r'''<!doctype html>
 <html lang="en">

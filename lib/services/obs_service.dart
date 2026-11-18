@@ -470,6 +470,7 @@ class ObsService {
     if (generation != _generation || obs == null || !identical(_obs, obs)) {
       return;
     }
+    ++_generation;
     _obs = null;
     _stopStatsPolling();
     _emit(

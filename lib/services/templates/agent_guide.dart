@@ -101,7 +101,7 @@ interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount
 interface Poll {
  question:string; options:{label:string; votes?:number; percent?:number}[];
  total:number; closed:boolean; endsAt:number|null;
- mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean;
+ mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean; leaderIndices?:number[];
  allowed?:'everyone'|'member'|'vip'|'moderator';
  average?:number|null; distribution?:number[];
  answers?:{text:string; votes:number}[]; distinct?:number; command?:string;
@@ -305,7 +305,7 @@ interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount
 interface Poll {
  question:string; options:{label:string; votes?:number; percent?:number}[];
  total:number; closed:boolean; endsAt:number|null;
- mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean;
+ mode?:'numbered'|'word'|'yesNo'|'rating'|'freeAnswer'; hidden?:boolean; leaderIndices?:number[];
  allowed?:'everyone'|'member'|'vip'|'moderator';
  average?:number|null; distribution?:number[];
  answers?:{text:string; votes:number}[]; distinct?:number; command?:string;

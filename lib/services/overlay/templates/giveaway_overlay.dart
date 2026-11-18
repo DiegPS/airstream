@@ -1,7 +1,6 @@
 import 'overlay_font.dart';
 
-String giveawayOverlayHtml({bool googleFontsAllowed = false}) =>
-    '''<!DOCTYPE html>
+String giveawayOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Airstream Giveaway</title><style>
 * { box-sizing: border-box; }
@@ -15,7 +14,7 @@ p { margin:0;color:#ccc;font-size:17px; }
 .dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
 ::selection { background:#53FC18;color:#141414; }
 </style></head><body><div id="giveaway" hidden role="status" aria-live="polite"></div><script>
-${overlayFontScript(googleFontsAllowed)}
+$overlayFontScript
 (() => {
   const STRINGS = {
     en: { title: 'Airstream Giveaway', participants: (n) => group(n) + ' participants', closed: 'Entries closed', winner: 'Winner', drawing: 'Drawing…' },

@@ -320,6 +320,49 @@ void main() {
     });
   });
 
+  test('countdown expiry during a full restore preserves the restored clock',
+      () {
+    fakeAsync((fake) {
+      DateTime now() => DateTime.utc(2026).add(fake.elapsed);
+      final sounds = _ClockSounds();
+      final app = makeController(FakeChannelChatClient(), RuleOverlay(),
+          clock: now, clockSounds: sounds);
+      final original = const LiveClock(durationSeconds: 2, sound: 'chime')
+          .start(now().millisecondsSinceEpoch);
+      const restored = LiveClock(durationSeconds: 15, label: 'Restored');
+      final notifier = SettingsNotifier(
+        secureStore: _RestoreSecureStore(),
+        settingsRepository: _RestoreSettingsRepository(
+          SettingsDocumentCodec.encode(
+              SettingsModel(overlayEnabled: false, clock: original)),
+        ),
+      );
+      fake.flushMicrotasks();
+      app.ruleSettingsWriter = notifier.update;
+      app.clockExpiryWriter = notifier.updateLatest;
+      final remove = notifier.addListener((settings) => app.applySettings(
+          settings,
+          connectChats: false,
+          restoringBackup: notifier.publishingRestore));
+
+      var committed = false;
+      unawaited(notifier.restoreBackup((current, commit) async {
+        fake.elapse(const Duration(seconds: 2));
+        expect(notifier.state.clock.phase, ClockPhase.running);
+        await commit(current.copyWith(clock: restored));
+        committed = true;
+      }));
+      fake.flushMicrotasks();
+      expect(committed, isTrue);
+      expect(notifier.state.clock, same(restored));
+      expect(sounds.played, isEmpty);
+      remove();
+      notifier.dispose();
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test('a countdown that ended while the app was closed ends silently', () {
     fakeAsync((fake) {
       final server = RuleOverlay()..feedSeen = true;
@@ -1148,6 +1191,55 @@ void main() {
     expect(c.rules.history.map((r) => r.event.chainDepth), [2, 1, 0]);
     expect(c.rules.history.every((r) => r.completed), true);
   });
+  test('startup subathon normalization does not run ended rules', () async {
+    final server = RuleOverlay()..feedSeen = true;
+    final app = makeController(FakeChannelChatClient(), server);
+    addTearDown(app.dispose);
+    final notifier = SettingsNotifier(
+      secureStore: _RestoreSecureStore(),
+      settingsRepository:
+          _RestoreSettingsRepository(SettingsDocumentCodec.encode(
+        SettingsModel(
+          overlayEnabled: false,
+          rulesEnabled: true,
+          rules: [
+            {
+              ...RuleSchema.newRule('subathon.ended', id: 'finish'),
+              'enabled': true,
+              'actions': [
+                {'id': 'send', 'type': 'template.trigger', 'name': 'finish'},
+              ],
+            },
+          ],
+          subathonPhase: 'running',
+          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch - 60000,
+        ),
+      )),
+    );
+    final container = ProviderContainer(overrides: [
+      appControllerProvider.overrideWithValue(app),
+      settingsProvider.overrideWith((ref) => notifier),
+    ]);
+    addTearDown(container.dispose);
+    await notifier.ready;
+    expect(notifier.state.subathonPhase, 'running');
+    notifier.addListener(
+        (settings) => app.applySettings(settings, connectChats: false));
+    container.read(subathonTrackingProvider);
+    await settleCoordinatorTasks();
+    expect(notifier.state.subathonPhase, 'ended');
+    expect(app.rules.history, isEmpty);
+    expect(server.triggers, isEmpty);
+
+    await notifier.update(notifier.state.copyWith(
+      subathonPhase: 'running',
+      subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch + 60000,
+    ));
+    await notifier.update(notifier.state.copyWith(subathonPhase: 'ended'));
+    await settleCoordinatorTasks();
+    expect(app.rules.history, hasLength(1));
+  });
+
   test('subathon ended owns exactly one timer only with an enabled rule', () {
     fakeAsync((a) {
       final c = makeController(FakeChannelChatClient(), OverlayServer());

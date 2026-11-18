@@ -200,6 +200,7 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
   c.ruleSettingsWriter =
       (settings) => ref.read(settingsProvider.notifier).update(settings);
   final notifier = ref.read(settingsProvider.notifier);
+  c.clockExpiryWriter = notifier.updateLatest;
   c.queueSettingsWriter = notifier.saveQueueState;
   ref.onDispose(() => unawaited(c.dispose()));
   return c;
@@ -236,12 +237,9 @@ final goalTrackingProvider = Provider<void>((ref) {
 
 final subathonTrackingProvider = Provider<void>((ref) {
   void normalize() {
-    final s = ref.read(settingsProvider);
-    final next =
-        SubathonTimer.normalize(s, DateTime.now().millisecondsSinceEpoch);
-    if (!identical(s, next)) {
-      unawaited(ref.read(settingsProvider.notifier).update(next));
-    }
+    final notifier = ref.read(settingsProvider.notifier);
+    unawaited(notifier.updateLatest((settings) => SubathonTimer.normalize(
+        settings, DateTime.now().millisecondsSinceEpoch)));
   }
 
   ref.listen(settingsInitializationProvider, (_, next) {

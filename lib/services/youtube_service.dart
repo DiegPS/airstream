@@ -127,7 +127,7 @@ class YouTubeService {
     );
     _chatErrorSub = chat.chatErrors.listen(
       (e) {
-        if (generation == _generation && _chat == chat) {
+        if (generation == _generation && _chat == chat && !_liveEnded) {
           AppLogger.warning('YouTube chat reported an error', error: e);
           _emit(ServiceStatus.error, e.toString());
         }
@@ -185,6 +185,7 @@ class YouTubeService {
         }
         _liveEnded = true;
         _emit(ServiceStatus.ended, null);
+        chat.stop();
         if (!_appEventController.isClosed) {
           _appEventController.add(ChatProviderEvent(
             platform: Platform.youtube,

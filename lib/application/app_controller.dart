@@ -208,6 +208,8 @@ class AppController {
   late final RuleEngine rules;
   final _ruleAdapter = RuleEventAdapter();
   Future<void> Function(SettingsModel)? ruleSettingsWriter;
+  Future<void> Function(SettingsModel Function(SettingsModel))?
+      clockExpiryWriter;
   Future<void> Function(QueueState)? queueSettingsWriter;
   Future<void>? _queueWrite;
   bool _publishingQueueSettings = false;
@@ -267,6 +269,7 @@ class AppController {
   /// A countdown that ended while the app was closed is marked ended on
   /// launch without running clock.ended rules or the end sound.
   bool _clockEndSilently = false;
+  (LiveClock, int)? _pendingClockEnd;
   final DateTime Function() _clockNow;
   late final RuleSoundPlayer _clockSounds;
 
@@ -289,11 +292,11 @@ class AppController {
     if (settings == null || _disposed || ruleSettingsWriter == null) return;
     final now = _clockNow().millisecondsSinceEpoch;
     final current = settings.clock;
-    final expired = current.expire(now);
     // Commit a deadline that has already passed before accepting a restart/reset.
-    if (!identical(expired, current)) {
-      await _writeClock(settings, expired, depth);
+    if (!identical(current.expire(now), current)) {
+      final expired = await _expireClock(current.anchorMs, depth);
       if (!_disposed &&
+          expired != null &&
           identical(_lastSettings?.clock, expired) &&
           (op == 'start' || op == 'reset')) {
         await operateClock(op, seconds: seconds, depth: depth);
@@ -302,7 +305,7 @@ class AppController {
     }
     final next = current.perform(op, now, seconds: seconds);
     if (!identical(next, current)) {
-      await _writeClock(settings, next, depth);
+      await _writeRuleSettings(settings.copyWith(clock: next), depth);
     }
   }
 
@@ -321,17 +324,30 @@ class AppController {
     }
   }
 
-  Future<void> _writeClock(SettingsModel settings, LiveClock next, int depth) {
-    final persisted = _writeRuleSettings(settings.copyWith(clock: next), depth);
-    if (identical(_lastSettings?.clock, next) &&
-        next.phase == ClockPhase.ended) {
-      if (_clockEndSilently) {
-        _clockEndSilently = false;
-      } else {
-        _clockEnded(next, depth);
-      }
+  Future<LiveClock?> _expireClock(int deadline, int depth) async {
+    LiveClock? expired;
+    SettingsModel change(SettingsModel settings) {
+      final clock = settings.clock;
+      if (_disposed || clock.anchorMs != deadline) return settings;
+      final next = clock.expire(_clockNow().millisecondsSinceEpoch);
+      if (identical(next, clock)) return settings;
+      expired = next;
+      _pendingClockEnd = (next, depth);
+      return settings.copyWith(clock: next);
     }
-    return persisted;
+
+    final writeLatest = clockExpiryWriter;
+    try {
+      if (writeLatest != null) {
+        await writeLatest(change);
+      } else if (_lastSettings case final settings?) {
+        final next = change(settings);
+        if (!identical(next, settings)) await _writeRuleSettings(next, depth);
+      }
+      return expired;
+    } finally {
+      if (identical(_pendingClockEnd?.$1, expired)) _pendingClockEnd = null;
+    }
   }
 
   void _clockEnded(LiveClock clock, int depth) {
@@ -362,12 +378,17 @@ class AppController {
         () {
       final current = _lastSettings;
       if (_disposed || current == null) return;
-      final next = current.clock.expire(_clockNow().millisecondsSinceEpoch);
-      if (identical(next, current.clock)) {
-        _scheduleClockEnd(current.clock, depth);
+      final latest = current.clock;
+      if (latest.mode != ClockMode.countdown ||
+          latest.phase != ClockPhase.running ||
+          latest.anchorMs != clock.anchorMs) {
+        return;
+      }
+      if (latest.anchorMs > _clockNow().millisecondsSinceEpoch) {
+        _scheduleClockEnd(latest, depth);
       } else if (ruleSettingsWriter != null) {
-        unawaited(_writeClock(current, next, depth).catchError(
-            (Object error, StackTrace stack) => AppLogger.warning(
+        unawaited(_expireClock(clock.anchorMs, depth).then<void>((_) {},
+            onError: (Object error, StackTrace stack) => AppLogger.warning(
                 'Timer persistence failed',
                 error: error,
                 stackTrace: stack)));
@@ -613,8 +634,8 @@ class AppController {
     rules.updateSettings(enabled: settings.rulesEnabled, rules: settings.rules);
     templateServer?.rulesEngine = rules;
     _trackClock(restoringBackup ? null : previous?.clock, settings.clock);
-    if (restoringBackup) {
-      // A deadline that elapsed before the restore is part of its baseline.
+    if (restoringBackup || previous == null) {
+      // Deadlines that elapsed before startup or restore are part of the baseline.
       _silentSubathonDeadline = settings.subathonPhase == 'running' &&
               settings.subathonEndsAtMs <= DateTime.now().millisecondsSinceEpoch
           ? settings.subathonEndsAtMs
@@ -704,6 +725,17 @@ class AppController {
       messages: _overlayFeed.stream,
     );
     _obs.applySettings(settings, previous: previous);
+    if (_pendingClockEnd case (final clock, final depth)
+        when identical(settings.clock, clock)) {
+      _pendingClockEnd = null;
+      final silent = _clockEndSilently;
+      _clockEndSilently = false;
+      if (!silent) {
+        scheduleMicrotask(() {
+          if (!_disposed) _clockEnded(clock, depth);
+        });
+      }
+    }
   }
 
   void _emitNotice(CoordinatorNotice notice) {

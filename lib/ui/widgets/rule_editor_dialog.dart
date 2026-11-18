@@ -107,6 +107,38 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         notice = null;
       });
 
+  Future<void> _save() async {
+    setState(() {
+      saving = true;
+      notice = null;
+    });
+    try {
+      final clean = RuleSchema.sanitize([
+        {...draft, 'invalid': false}
+      ]).single;
+      final current = ref.read(settingsProvider);
+      final id = clean['id'];
+      final rules = [
+        for (final rule in current.rules) rule['id'] == id ? clean : rule,
+        if (!current.rules.any((rule) => rule['id'] == id)) clean,
+      ];
+      await ref
+          .read(settingsProvider.notifier)
+          .update(current.copyWith(rules: RuleSchema.sanitize(rules)));
+      if (mounted) {
+        setState(() {
+          draft = clean;
+          baseline = jsonEncode(clean);
+          saved = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => notice = 'saveFailed');
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   Future<void> close() async {
     if (dirty || !saved) {
       final l = AppLocalizations.of(context)!;
@@ -764,37 +796,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                         minimumSize:
                                             const WidgetStatePropertyAll(
                                                 Size(100, 40))),
-                                    onPressed: valid && !saving
-                                        ? () async {
-                                            setState(() => saving = true);
-                                            final clean = RuleSchema.sanitize([
-                                              {...draft, 'invalid': false}
-                                            ]).single;
-                                            final current =
-                                                ref.read(settingsProvider);
-                                            await ref
-                                                .read(settingsProvider.notifier)
-                                                .update(current.copyWith(
-                                                    rules: RuleSchema.sanitize([
-                                                  for (final r in current.rules)
-                                                    if (r['id'] == clean['id'])
-                                                      clean
-                                                    else
-                                                      r,
-                                                  if (!current.rules.any((r) =>
-                                                      r['id'] == clean['id']))
-                                                    clean
-                                                ])));
-                                            if (mounted) {
-                                              setState(() {
-                                                draft = clean;
-                                                baseline = jsonEncode(clean);
-                                                saved = true;
-                                                saving = false;
-                                              });
-                                            }
-                                          }
-                                        : null,
+                                    onPressed: valid && !saving ? _save : null,
                                     child: Text(ruleText(l, 'save')))
                               ]),
                         ])))));

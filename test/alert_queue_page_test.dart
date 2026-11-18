@@ -23,12 +23,16 @@ void main() {
   test(
       'alerts queue preserves playing video and its timer across settings broadcasts',
       () => runPage(_queueChecks));
-  test('expiry, skip, clear and hide release the active alert sound',
+  test('clearing waiting alerts leaves active sound until expiry, skip or hide',
       () => runPage(_harness + _audioChecks));
   test('alerts advance independently while a featured card is pinned',
       () => runPage(_harness + _featuredChecks));
   test('socket close clears timed and pinned featured cards on alerts',
       () => runPage(_harness + _featuredCloseChecks));
+  test('font policy switches update live without reloading or clearing cards',
+      () => runPage(_harness + _fontChecks));
+  test('pinned featured text changes language without rebuilding or retiming',
+      () => runPage(_harness + _languageChecks));
   test('a video error releases and removes the alert media',
       () => runPage(_harness + _videoErrorChecks));
 
@@ -65,6 +69,7 @@ const videos = [];
 const createdVideos = [];
 let timer = 0;
 let lastDelay;
+let reloads = 0;
 
 class Media {
   stopped = false;
@@ -83,11 +88,21 @@ class Audio extends Media {
 }
 const stages = [];
 function element() { return {
-  style: {}, firstElementChild: null,
-  appendChild(child) { this.firstElementChild ??= child; },
+  style: {}, children: [],
+  get firstElementChild() { return this.children[0] ?? null; },
+  set firstElementChild(child) { this.replaceChildren(...(child ? [child] : [])); },
+  appendChild(child) { child.parent = this; this.children.push(child); },
   append(...children) { children.forEach(child => this.appendChild(child)); },
+  addEventListener() {},
+  remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); },
+  querySelector(selector) {
+    const [tag, className] = selector.split('.');
+    return this.children.flatMap(child =>
+      (!tag || child.tagName === tag) && child.className?.split(' ').includes(className)
+        ? [child] : [child.querySelector?.(selector)]).find(Boolean) || null;
+  },
   querySelectorAll: () => videos.splice(0),
-  replaceChildren(child = null) { this.firstElementChild = child; },
+  replaceChildren(...children) { this.children = []; this.append(...children); },
 }; }
 const root = { className: '', appendChild(child) { stages.push(child); } };
 class WebSocket extends EventTarget {
@@ -107,10 +122,14 @@ window.setTimeout = (fn, delay) => {
 };
 window.clearTimeout = (id) => timers.delete(id);
 const document = {
-  documentElement: {},
+  documentElement: {style: {
+    setProperty(name, value) { this[name] = value; },
+    removeProperty(name) { delete this[name]; },
+  }},
+  head: element(),
   getElementById: () => root,
   createElement: (tag) => {
-    if (tag !== 'video') return element();
+    if (tag !== 'video') return Object.assign(element(), {tagName: tag});
     const video = new Video();
     createdVideos.push(video);
     return video;
@@ -118,7 +137,7 @@ const document = {
 };
 const context = vm.createContext({
   window, document, WebSocket, Audio, videos, Media, console,
-  location: {protocol: 'http:', host: 'localhost:8080'},
+  location: {protocol: 'http:', host: 'localhost:8080', reload() { reloads++; }},
   requestAnimationFrame(fn) { paints.push(fn); },
   Date: { now: () => 1000 },
 });
@@ -219,10 +238,12 @@ alert('waiting');
 op('clear');
 assert.equal(stage.firstElementChild.id, 'third');
 status(false, 0, true);
+assert.equal(sounds[2].stopped, false);
+assert.equal(sounds[2].released, undefined);
+finish();
 for (const key of ['stopped', 'released', 'reloaded']) {
   assert.equal(sounds[2][key], true);
 }
-finish();
 alert('fourth', 'bits', {sound: 'coin'});
 window.dispatchEvent(new Event('beforeunload'));
 for (const key of ['stopped', 'released', 'reloaded']) {
@@ -290,6 +311,71 @@ assert.equal(featuredStage.firstElementChild.id, 'pinned');
 nextSocket.close();
 assert.equal(featuredStage.firstElementChild, null);
 assert.equal(stage.firstElementChild.id, 'waiting');
+''';
+
+const _fontChecks = r'''
+op('resume');
+socket.deliver({type: 'settings', data: {
+  featuredSeconds: 0, chatFontFamily: 'Arial', googleFontStylesheet: null,
+}});
+assert.equal(document.head.children.length, 0);
+alert('pinned', 'featured');
+alert('active');
+alert('waiting');
+const pinned = featuredStage.firstElementChild;
+const active = stage.firstElementChild;
+const timerBefore = run('hideTimer');
+const stylesheet = 'https://fonts.googleapis.com/css2?family=Inter';
+socket.deliver({type: 'settings', data: {
+  chatFontFamily: 'Inter', googleFontStylesheet: stylesheet,
+}});
+assert.equal(document.head.children.length, 1);
+assert.equal(document.head.children[0].href, stylesheet);
+assert.match(document.documentElement.style['--overlay-font-family'], /Inter/);
+socket.deliver({type: 'settings', data: {
+  chatFontFamily: 'Inter', googleFontStylesheet: null,
+}});
+assert.equal(document.head.children.length, 0);
+assert.equal(reloads, 0);
+assert.equal(stage.firstElementChild, active);
+assert.equal(featuredStage.firstElementChild, pinned);
+assert.equal(run('hideTimer'), timerBefore);
+assert.equal(run('queue[0].id'), 'waiting');
+''';
+
+const _languageChecks = r'''
+run('renderAlert = realRenderAlert');
+op('resume');
+socket.deliver({type: 'settings', data: {featuredSeconds: 0, appLanguageCode: 'en'}});
+socket.deliver({type: 'alert', data: {
+  id: 'pinned', kind: 'featured', platform: 'youtube',
+  stickerUrl: 'https://example.invalid/sticker.png', deliveryId: 'delivery',
+}});
+const card = featuredStage.firstElementChild;
+const sticker = featuredStage.querySelector('.alert-sticker');
+const avatar = featuredStage.querySelector('.alert-avatar-fallback');
+const title = featuredStage.querySelector('.alert-title');
+const kicker = featuredStage.querySelector('.alert-kicker');
+assert.ok(sticker);
+assert.equal(avatar.textContent, 'SO');
+assert.equal(title.textContent, 'Someone');
+assert.equal(kicker.textContent, 'YouTube · From chat');
+const shownAt = run('pinnedShownAt');
+const hideTimer = run('pinnedHideTimer');
+const paintCount = paints.length;
+
+socket.deliver({type: 'settings', data: {appLanguageCode: 'es'}});
+assert.equal(featuredStage.firstElementChild, card);
+assert.equal(featuredStage.querySelector('.alert-sticker'), sticker);
+assert.equal(featuredStage.querySelector('.alert-title'), title);
+assert.equal(featuredStage.querySelector('.alert-kicker'), kicker);
+assert.equal(featuredStage.querySelector('.alert-avatar-fallback'), avatar);
+assert.equal(avatar.textContent, 'AL');
+assert.equal(title.textContent, 'Alguien');
+assert.equal(kicker.textContent, 'YouTube · Del chat');
+assert.equal(run('pinnedShownAt'), shownAt);
+assert.equal(run('pinnedHideTimer'), hideTimer);
+assert.equal(paints.length, paintCount);
 ''';
 
 const _videoErrorChecks = r'''

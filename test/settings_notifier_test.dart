@@ -374,6 +374,36 @@ void main() {
     expect(secure.password, 'original');
   });
 
+  test('a malformed settings import logs only the offset', () async {
+    final directory = await Directory.systemTemp.createTemp('invalid-import-');
+    addTearDown(() => directory.delete(recursive: true));
+    await AppLogger.initialize(directory: directory);
+    final notifier = SettingsNotifier(
+      secureStore: _MemorySecureSettingsStore(),
+      settingsRepository: _MemorySettingsRepository('{}'),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+
+    const source = '{"note":"private-source","obsPassword":"truncated password';
+    final offset = () {
+      try {
+        jsonDecode(source);
+      } on FormatException catch (error) {
+        return error.offset;
+      }
+      fail('Expected malformed JSON');
+    }();
+    await expectLater(notifier.importSettings(source), throwsFormatException);
+    await AppLogger.flush();
+    final log = await File(
+      '${directory.path}${Platform.pathSeparator}airstream.log',
+    ).readAsLines();
+    expect(log.last, endsWith('WARN Settings import failed (offset $offset)'));
+    expect(log.join('\n'), isNot(contains('private-source')));
+    expect(log.join('\n'), isNot(contains('truncated password')));
+  });
+
   test('invalid settings log the offset without source, including on recovery',
       () async {
     final directory =

@@ -200,6 +200,42 @@ void main() {
     expect(transitions, ['obs.streamStarted', 'obs.recordingStarted']);
   });
 
+  test('a stats response after socket close cannot republish OBS metrics',
+      () async {
+    final client = _FakeObsClient();
+    late void Function() socketClosed;
+    late void Function(dynamic) deliver;
+    final service = ObsService(
+      connector: (
+          {required url,
+          required password,
+          required onDone,
+          required onEvent}) async {
+        socketClosed = onDone;
+        deliver = onEvent;
+        return client;
+      },
+      statsPollInterval: const Duration(hours: 1),
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    final started = Completer<void>();
+    final response = Completer<ObsStatsSnapshot>();
+    client.statsOverride = () {
+      started.complete();
+      return response.future;
+    };
+    deliver(const _FakeObsEvent('StreamStateChanged', {'outputActive': false}));
+    await started.future;
+    socketClosed();
+    response.complete(const ObsStatsSnapshot(activeFps: 42));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(service.currentState.connected, isFalse);
+    expect(service.currentState.statusMessage, 'Disconnected');
+    expect(service.currentState.fps, 0);
+  });
+
   test('OBS initialization preserves newer scene, stream and recording events',
       () async {
     final readingStats = Completer<void>();

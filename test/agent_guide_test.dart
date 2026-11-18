@@ -346,8 +346,7 @@ console.log('PASS: demo seeded every support type and two currencies, then evolv
             const SettingsModel(), now.millisecondsSinceEpoch),
         'giveaway':
             ChatGiveaway(keyword: '!test', membersOnly: false).toOverlayJson(),
-        'poll':
-            const ChatPoll(question: 'Q', options: ['A', 'B']).toOverlayJson(),
+        'poll': ChatPoll(question: 'Q', options: ['A', 'B']).toOverlayJson(),
         'caption': {'text': 'Caption'},
         'fields': <String, Object?>{},
       };

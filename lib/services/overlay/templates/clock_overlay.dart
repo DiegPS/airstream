@@ -16,7 +16,7 @@ Map<String, String> _clockStrings(AppLocalizations l) => {
       'ended': l.clockEnded,
     };
 
-String clockOverlayHtml({bool googleFontsAllowed = false}) => '''<!doctype html>
+String clockOverlayHtml() => '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Airstream Timer</title><style>
 * { box-sizing: border-box; }
@@ -44,7 +44,7 @@ body { margin: 0; padding: 20px; background: transparent; color: #fff; overflow:
 </style></head><body>
 <section id="clock" hidden><div id="label"></div><div id="value"></div><div id="status"></div></section>
 <script>
-${overlayFontScript(googleFontsAllowed)}
+$overlayFontScript
 (() => {
   const root = document.getElementById('clock'), label = document.getElementById('label'),
     value = document.getElementById('value'), status = document.getElementById('status');

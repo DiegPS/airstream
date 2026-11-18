@@ -29,6 +29,57 @@ void main() {
     expect(socket.closed, isTrue);
   });
 
+  for (final stop in [true, false]) {
+    test(
+        'Twitch invalidates a channel change during socket close (${stop ? 'Stop' : 'newer channel'})',
+        () async {
+      final closeGate = Completer<void>();
+      final oldSocket = _FakeTwitchSocket(closeGate: closeGate.future);
+      final sockets = <_FakeTwitchSocket>[];
+      final service = TwitchService(
+        socketFactory: (_) {
+          final socket = sockets.isEmpty ? oldSocket : _FakeTwitchSocket();
+          sockets.add(socket);
+          return socket;
+        },
+        httpClient: MockClient((_) async => http.Response('[]', 200)),
+      );
+      addTearDown(service.dispose);
+      await service.connect('old');
+      final superseded = service.connect('superseded');
+      await oldSocket.closing.future;
+      final latest = stop ? service.disconnect() : service.connect('latest');
+      closeGate.complete();
+      await Future.wait([superseded, latest]);
+
+      expect(sockets, hasLength(stop ? 1 : 2));
+      expect(sockets.expand((socket) => socket.sent),
+          isNot(contains('JOIN #superseded\r\n')));
+      if (!stop) expect(sockets.last.sent, contains('JOIN #latest\r\n'));
+    });
+  }
+
+  test('Twitch closes a socket that becomes ready after Stop', () async {
+    final ready = Completer<void>();
+    final socket = _FakeTwitchSocket(ready: ready.future);
+    final dialing = Completer<void>();
+    final service = TwitchService(
+      socketFactory: (_) {
+        dialing.complete();
+        return socket;
+      },
+      httpClient: MockClient((_) async => http.Response('[]', 200)),
+    );
+    addTearDown(service.dispose);
+    final connecting = service.connect('channel');
+    await dialing.future;
+    await service.disconnect();
+    ready.complete();
+    await connecting;
+    expect(socket.closed, isTrue);
+    expect(socket.sent, isEmpty);
+  });
+
   test('Twitch reconnects after remote close without duplicating sockets',
       () async {
     final sockets = <_FakeTwitchSocket>[];
@@ -259,9 +310,15 @@ void main() {
     expect(service.currentMetadata?.viewerCount, 777);
   });
 
-  test('YouTube reports the explicit end of a live session', () async {
+  test('YouTube stops polling on ended and ignores late errors until retry',
+      () async {
     final chat = _FakeYouTubeTransport();
-    final service = YouTubeService(transportFactory: (_) => chat);
+    final retry = _FakeYouTubeTransport();
+    final transports = [chat, retry].iterator;
+    final service = YouTubeService(transportFactory: (_) {
+      transports.moveNext();
+      return transports.current;
+    });
     addTearDown(service.dispose);
     final statuses = <(ServiceStatus, String?)>[];
     service.statusStream.listen(statuses.add);
@@ -274,9 +331,17 @@ void main() {
 
     expect((await event).platform, app.Platform.youtube);
     expect(statuses.last.$1, ServiceStatus.ended);
+    expect(chat.stopped, isTrue);
     chat.pollController.add(DateTime.now().toUtc());
+    chat.chatErrorController.add(Exception('late poll error'));
     await Future<void>.delayed(Duration.zero);
     expect(statuses.last.$1, ServiceStatus.ended);
+    expect(
+        statuses.where((status) => status.$1 == ServiceStatus.error), isEmpty);
+    await service.connect(liveId: 'abcdefghijk');
+    await Future<void>.delayed(Duration.zero);
+    expect(statuses.last.$1, ServiceStatus.connected);
+    expect(retry.stopped, isFalse);
   });
 
   test('YouTube converts and deduplicates gifted membership events', () async {
@@ -876,8 +941,11 @@ Future<void> _eventually(bool Function() predicate) async {
 }
 
 class _FakeTwitchSocket implements TwitchSocket {
-  _FakeTwitchSocket({Future<void>? ready})
+  _FakeTwitchSocket({Future<void>? ready, this.closeGate})
       : _ready = ready ?? Future<void>.value();
+
+  final Future<void>? closeGate;
+  final closing = Completer<void>();
   final Future<void> _ready;
   final controller = StreamController<dynamic>();
   final sent = <String>[];
@@ -891,6 +959,8 @@ class _FakeTwitchSocket implements TwitchSocket {
   void add(String data) => sent.add(data);
   @override
   Future<void> close() async {
+    if (!closing.isCompleted) closing.complete();
+    if (closeGate != null) await closeGate;
     closed = true;
     if (!controller.isClosed) unawaited(controller.close());
   }

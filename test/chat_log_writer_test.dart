@@ -91,25 +91,59 @@ void main() {
       await log.startSession(enabled: true);
       log.write(_message('Ana', 'hola'));
       await log.endSession();
-    }, createFile: (path) => _SinkFile(path, sink));
+    }, createFile: (path) => _SinkFile(path, () => sink));
     expect(sink.flushed, isTrue);
     expect(sink.closed, isTrue);
   });
 
-  test('an asynchronous log sink error is handled before the session ends',
+  test(
+      'a failed open sink is closed without flushing and the next line reopens it',
       () async {
+    late final _FailingSink failed;
+    late final _FailingSink replacement;
+    final paths = <String>[];
+    var now = DateTime(2026, 11, 15, 21);
+    await IOOverrides.runZoned(() async {
+      failed = _FailingSink();
+      replacement = _FailingSink();
+      final log = ChatLogWriter(
+        directory: () async => Directory(root.path),
+        clock: () => now,
+      );
+      await log.startSession(enabled: true);
+      log.write(_message('Ana', 'hola'));
+      await failed.written.future;
+      failed.completion.completeError(const FileSystemException('Disk full'));
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 1));
+      log.write(_message('Beto', 'after recovery'));
+      await log.endSession();
+    },
+        createFile: (path) => _SinkFile(path, () {
+              paths.add(path);
+              return paths.length == 1 ? failed : replacement;
+            }));
+    expect(failed.closed, isTrue);
+    expect(failed.flushed, isFalse);
+    expect(paths, [paths.first, paths.first]);
+    expect(replacement.written.isCompleted, isTrue);
+    expect(replacement.closed, isTrue);
+  });
+
+  test('a sink error releases an already pending log flush', () async {
     late final _FailingSink sink;
     await IOOverrides.runZoned(() async {
-      sink = _FailingSink();
+      sink = _FailingSink(flushBlock: Completer<void>().future);
       final log = writer();
       await log.startSession(enabled: true);
       log.write(_message('Ana', 'hola'));
       await sink.written.future;
+      final closing = log.endSession();
+      await sink.flushing.future;
       sink.completion.completeError(const FileSystemException('Disk full'));
-      await Future<void>.delayed(Duration.zero);
-      await log.endSession();
-    }, createFile: (path) => _SinkFile(path, sink));
-    expect(sink.closed, isTrue);
+      await closing.timeout(const Duration(seconds: 1));
+      expect(sink.closed, isTrue);
+    }, createFile: (path) => _SinkFile(path, () => sink));
   });
 
   test('turning it off mid-session closes the file', () async {
@@ -126,18 +160,22 @@ void main() {
 }
 
 class _SinkFile extends Fake implements File {
-  _SinkFile(this.path, this.sink);
+  _SinkFile(this.path, this.createSink);
 
   @override
   final String path;
-  final IOSink sink;
+  final IOSink Function() createSink;
 
   @override
   IOSink openWrite({FileMode mode = FileMode.write, Encoding? encoding}) =>
-      sink;
+      createSink();
 }
 
 class _FailingSink extends Fake implements IOSink {
+  _FailingSink({this.flushBlock});
+
+  final Future<void>? flushBlock;
+  final flushing = Completer<void>();
   final completion = Completer<void>();
   final written = Completer<void>();
   bool flushed = false;
@@ -155,6 +193,8 @@ class _FailingSink extends Fake implements IOSink {
   @override
   Future<void> flush() async {
     flushed = true;
+    flushing.complete();
+    if (flushBlock != null) return flushBlock;
     throw const FileSystemException('Disk full');
   }
 

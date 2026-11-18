@@ -35,6 +35,21 @@ void main() {
     expect(safe, contains('https://example.invalid/ordinary'));
   });
 
+  test('redacts truncated JSON credentials through the end of their line', () {
+    final safe = LogSanitizer.sanitize([
+      r'{"obsPassword":"first secret with spaces\',
+      r'{"rulesWebhookToken":"second secret with \"quotes',
+      'offset 42',
+    ].join('\r\n'));
+    expect(
+        safe,
+        [
+          '{"obsPassword":<redacted>',
+          '{"rulesWebhookToken":<redacted>',
+          'offset 42',
+        ].join('\r\n'));
+  });
+
   test('rotates local log files without losing the newest entry', () async {
     final directory = await Directory.systemTemp.createTemp('airstream-logs-');
     addTearDown(() => directory.delete(recursive: true));

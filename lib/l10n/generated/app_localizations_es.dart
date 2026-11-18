@@ -2720,6 +2720,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kdiscard': '¿Descartar los cambios?',
         'kclose': 'Cerrar',
         'ksave': 'Guardar',
+        'ksaveFailed': 'No se pudo guardar la regla. Inténtalo de nuevo.',
         'kname': 'Nombre',
         'kwhen': 'Cuando',
         'kif': 'Si',

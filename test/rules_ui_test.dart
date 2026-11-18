@@ -22,9 +22,15 @@ class MemoryRulesSettings extends SettingsNotifier {
   MemoryRulesSettings(SettingsModel model) {
     state = model;
   }
+  bool failNextWrite = false;
+
   @override
   Future<void> update(SettingsModel next) async {
     state = next;
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('Write failed');
+    }
   }
 }
 
@@ -236,6 +242,42 @@ void main() {
     await t.pumpAndSettle();
     expect(settings.state.rules.length, 1);
   });
+  for (final (language, error) in [
+    ('en', 'Could not save the rule. Try again.'),
+    ('es', 'No se pudo guardar la regla. Inténtalo de nuevo.'),
+  ]) {
+    testWidgets(
+        'failed rule save shows feedback and can be retried ($language)',
+        (t) async {
+      await mount(t, language: language);
+      await t.tap(find.byKey(const Key('rules-recipes')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('recipe-add-1')));
+      await t.pumpAndSettle();
+      final scene = find.byKey(const Key('rule-action-0-scene'));
+      await visible(t, scene);
+      await t.enterText(scene, 'Welcome');
+      await t.pump();
+
+      settings.failNextWrite = true;
+      final save = find.byKey(const Key('rule-save'));
+      await t.tap(save);
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(find.text(error), findsOneWidget);
+      expect(t.widget<ElevatedButton>(save).onPressed, isNotNull);
+
+      await t.tap(save);
+      await t.pumpAndSettle();
+      expect(find.text(error), findsNothing);
+      expect(settings.state.rules, hasLength(1));
+      expect(settings.state.rules.single['actions'].first['scene'], 'Welcome');
+      expect(
+          t.widget<OutlinedButton>(find.byKey(const Key('rule-run'))).onPressed,
+          isNotNull);
+    });
+  }
+
   testWidgets(
       'chat OBS warning and invalid command disables save; simulation has no effects',
       (t) async {

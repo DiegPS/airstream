@@ -40,6 +40,52 @@ void main() {
         contains('<script src="/sdk/v1.js"></script>'));
   });
 
+  test('font policy changes send settings without a reload envelope', () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final alerts = _Socket(server)..register('alerts');
+    alerts.sink.frames.clear();
+    server.setSettings(const SettingsModel(chatFontFamily: 'Inter'));
+    server.setSettings(const SettingsModel(
+        chatFontFamily: 'Inter', chatFontInstalledOnly: true));
+    final frames = alerts.sink.frames;
+    expect(frames.map((event) => event['type']), ['settings', 'settings']);
+    expect(frames.first['data']['googleFontStylesheet'],
+        startsWith('https://fonts.googleapis.com/'));
+    expect(frames.last['data']['googleFontStylesheet'], isNull);
+  });
+
+  test(
+      'recent alerts require a successful alerts delivery while SDK still receives them',
+      () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final chat = _Socket(server)..register('chat');
+    final gallery = _Socket(server)..register('gallery', template: 'credits');
+    final failing = _Socket(server)..register('alerts');
+    failing.sink.fail = true;
+
+    void sendRaid(String id) => server.broadcastProviderEvent(ChatProviderEvent(
+        platform: Platform.twitch,
+        kind: ChatProviderEventKind.raid,
+        id: id,
+        timestamp: DateTime.utc(2026),
+        count: 5));
+
+    sendRaid('first');
+    expect(gallery.sink.frames.where((frame) => frame['type'] == 'alert'),
+        hasLength(1));
+    expect(chat.sink.frames.where((frame) => frame['type'] == 'alert'),
+        hasLength(1));
+    expect(server.recentAlertsSnapshot, isEmpty);
+
+    final alerts = _Socket(server)..register('alerts');
+    sendRaid('second');
+    final delivered = alerts.sink.frames
+        .singleWhere((frame) => frame['type'] == 'alert')['data'];
+    expect(server.recentAlertsSnapshot, [delivered]);
+  });
+
   test(
       'fresh server replays empty poll, giveaway, goals, timer and queue snapshots',
       () {
@@ -173,11 +219,12 @@ void main() {
 
   test(
       'test and replay require successful delivery to a registered alerts page',
-      () {
+      () async {
     final server = OverlayServer();
     addTearDown(server.dispose);
     final chat = _Socket(server)..register('chat');
     final unregistered = _Socket(server);
+    final initialAlerts = _Socket(server)..register('alerts');
     server.broadcastProviderEvent(ChatProviderEvent(
         platform: Platform.twitch,
         kind: ChatProviderEventKind.raid,
@@ -186,6 +233,7 @@ void main() {
         authorName: 'Viewer',
         count: 42));
     final recent = server.recentAlertsSnapshot.single;
+    await initialAlerts.disconnect();
     chat.sink.frames.clear();
     unregistered.sink.frames.clear();
 
@@ -241,6 +289,8 @@ class _Socket implements WebSocketChannel {
 
   @override
   Stream<String> get stream => _incoming.stream;
+
+  Future<void> disconnect() => _incoming.close();
 
   void register(String view, {String? template}) {
     _incoming.add(jsonEncode({

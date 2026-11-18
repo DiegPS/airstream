@@ -260,8 +260,16 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   Future<void> importSettings(String source, {Directory? mediaDirectory}) =>
       restoreBackup((current, commit) {
-        var next = SettingsProfiles.import(source, current,
-            mediaDirectory: mediaDirectory);
+        final SettingsModel imported;
+        try {
+          imported = SettingsProfiles.import(source, current,
+              mediaDirectory: mediaDirectory);
+        } on FormatException catch (error) {
+          AppLogger.warning(
+              _settingsDecodeMessage('Settings import failed', error));
+          rethrow;
+        }
+        var next = imported;
         next = enableRulesWebhook(next, next.rulesWebhookEnabled);
         if (current.appLanguageCode != next.appLanguageCode) {
           next = _localizeBuiltInDefaults(next);

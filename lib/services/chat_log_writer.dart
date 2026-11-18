@@ -6,6 +6,13 @@ import 'package:airstream/services/app_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+typedef _LogFile = ({
+  File file,
+  IOSink sink,
+  Completer<void> failed,
+  Future<void> Function() close,
+});
+
 /// Writes the chat of each session to a text file, one message per line.
 class ChatLogWriter {
   ChatLogWriter({
@@ -16,8 +23,9 @@ class ChatLogWriter {
 
   final Future<Directory> Function() _directory;
   final DateTime Function() _clock;
-  Future<({File file, IOSink sink})>? _opening;
+  Future<_LogFile>? _opening;
   File? _file;
+  File? _sessionFile;
   bool _enabled = false;
 
   /// Documents\Airstream\Chat, where people look for their files.
@@ -53,7 +61,7 @@ class ChatLogWriter {
 
   Future<void> _append(String line) async {
     final opening = _opening ??= _open();
-    final ({File file, IOSink sink}) opened;
+    final _LogFile opened;
     try {
       opened = await opening;
     } catch (error, stack) {
@@ -62,6 +70,8 @@ class ChatLogWriter {
           error: error, stackTrace: stack);
       return;
     }
+    if (opened.failed.isCompleted) return;
+    if (identical(_opening, opening)) _sessionFile = opened.file;
     if (identical(_opening, opening) || _opening == null) {
       _file = opened.file;
     }
@@ -73,49 +83,73 @@ class ChatLogWriter {
     }
   }
 
-  Future<({File file, IOSink sink})> _open() async {
+  Future<_LogFile> _open() {
+    late final Future<_LogFile> opening;
+    opening = _openFile(_sessionFile, () {
+      if (identical(_opening, opening)) _opening = null;
+    });
+    return opening;
+  }
+
+  Future<File> _newFile() async {
     final directory = await _directory();
     await directory.create(recursive: true);
     final now = _clock();
     String two(int value) => value.toString().padLeft(2, '0');
     final name = 'airstream-chat-${now.year}-${two(now.month)}-${two(now.day)}'
         '_${two(now.hour)}-${two(now.minute)}-${two(now.second)}.txt';
-    final file = File(p.join(directory.path, name));
+    return File(p.join(directory.path, name));
+  }
+
+  Future<_LogFile> _openFile(File? existing, void Function() invalidate) async {
+    final file = existing ?? await _newFile();
     final sink = file.openWrite(mode: FileMode.append);
+    final failed = Completer<void>();
+    Future<void>? closing;
+    Future<void> close() => closing ??= _closeSink(sink);
     // An asynchronous write can fail before a caller asks to end the session.
     unawaited(
         sink.done.then<void>((_) {}, onError: (Object error, StackTrace stack) {
+      failed.complete();
+      invalidate();
       AppLogger.warning('Chat log sink failed',
           error: error, stackTrace: stack);
+      unawaited(close());
     }));
     // IOSink opens asynchronously. Wait for its open before caching it.
     await sink.addStream(const Stream<List<int>>.empty());
-    return (file: file, sink: sink);
+    return (file: file, sink: sink, failed: failed, close: close);
   }
 
   Future<void> _close() async {
     final opening = _opening;
     _opening = null;
+    _sessionFile = null;
     if (opening == null) return;
-    final IOSink sink;
+    final _LogFile opened;
     try {
-      sink = (await opening).sink;
+      opened = await opening;
     } catch (_) {
       // The failure was logged when the first line was written.
       return;
     }
+    if (opened.failed.isCompleted) return;
     try {
-      await sink.flush();
+      await Future.any([opened.sink.flush(), opened.failed.future]);
     } catch (error, stack) {
       AppLogger.warning('Chat log flush failed',
           error: error, stackTrace: stack);
     } finally {
-      try {
-        await sink.close();
-      } catch (error, stack) {
-        AppLogger.warning('Chat log close failed',
-            error: error, stackTrace: stack);
-      }
+      if (!opened.failed.isCompleted) await opened.close();
+    }
+  }
+
+  Future<void> _closeSink(IOSink sink) async {
+    try {
+      await sink.close();
+    } catch (error, stack) {
+      AppLogger.warning('Chat log close failed',
+          error: error, stackTrace: stack);
     }
   }
 

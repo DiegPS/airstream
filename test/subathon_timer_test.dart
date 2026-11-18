@@ -68,6 +68,22 @@ void main() {
     expect(SubathonTimer.addSeconds(s, s.subathonEndsAtMs, 60).subathonPhase,
         'ended');
   });
+  test(
+      'manual changes above a lowered cap preserve time or subtract only the request',
+      () {
+    final lowered = SubathonTimer.start(
+      defaults.copyWith(subathonStartMinutes: 3),
+      now,
+    ).copyWith(subathonMaxRemainingMinutes: 2);
+    for (final timer in [lowered, SubathonTimer.pause(lowered, now)]) {
+      expect(SubathonTimer.addSeconds(timer, now, 60), same(timer));
+      expect(
+          SubathonTimer.remaining(
+              SubathonTimer.addSeconds(timer, now, -30), now),
+          150000);
+    }
+  });
+
   test('each rule preserves fractional hundreds in milliseconds', () {
     final s = SubathonTimer.start(
         defaults.copyWith(

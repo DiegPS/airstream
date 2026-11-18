@@ -1,8 +1,7 @@
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
 
-String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
-    '''<!DOCTYPE html>
+String alertsOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -130,7 +129,7 @@ String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
 <body>
 <div id="root"></div>
 <script>
-${overlayFontScript(googleFontsAllowed)}
+$overlayFontScript
 ${overlayPageLocaleScript((l) => l.obsPageAlertsTitle)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
@@ -246,23 +245,27 @@ function typeOption(alert) {
   return alert.kind === 'featured' ? {} : alert.option || (settings.alertTypeOptions || {})[alert.alertType] || {};
 }
 
+function featuredText(alert, strings) {
+  return {
+    title: String(alert.author || strings.someone),
+    kicker: platformLabel(alert.platform) + ' · ' + strings.fromChat,
+  };
+}
+
 function renderAlert(alert, target = stage) {
   const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
   const author = String(alert.author || strings.someone);
   const message = String(alert.message || '').trim();
-  const featured = alert.kind === 'featured';
-  let title = featured
-    ? author
-    : alert.kind === 'superchat'
-      ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
-      : author + ' ' + strings.becameMember;
-  let kicker = featured
-    ? platformLabel(alert.platform) + ' · ' + strings.fromChat
-    : alert.kind === 'superchat'
-      ? platformLabel(alert.platform) + ' Super Chat'
-      : platformLabel(alert.platform) + ' ' + strings.membership;
-  if (alert.kind === 'bits') {
+  let title = alert.kind === 'superchat'
+    ? author + ' ' + strings.sent + ' ' + (alert.amount || strings.superChat)
+    : author + ' ' + strings.becameMember;
+  let kicker = alert.kind === 'superchat'
+    ? platformLabel(alert.platform) + ' Super Chat'
+    : platformLabel(alert.platform) + ' ' + strings.membership;
+  if (alert.kind === 'featured') {
+    ({title, kicker} = featuredText(alert, strings));
+  } else if (alert.kind === 'bits') {
     title = author + ' ' + strings.sent + ' ' + (alert.amount || '');
     kicker = strings.bits;
   } else if (alert.kind === 'raid' || alert.kind === 'host') {
@@ -303,7 +306,7 @@ function renderAlert(alert, target = stage) {
       card.appendChild(createImage('alert-avatar', avatarUrl, author, (image) => {
         const fallback = document.createElement('div');
         fallback.className = 'alert-avatar alert-avatar-fallback';
-        fallback.textContent = initials(author);
+        fallback.textContent = initials(image.alt);
         image.replaceWith(fallback);
       }));
     } else {
@@ -378,6 +381,7 @@ const acknowledgedFeatured = new WeakSet();
 function applySettings(next) {
   applyOverlayFont(next);
   const previousFeaturedSeconds = settings.featuredSeconds;
+  const previousLanguage = settings.appLanguageCode;
   settings = { ...settings, ...next };
   if (settings.featuredSeconds !== previousFeaturedSeconds) {
     if (active?.kind === 'featured') {
@@ -390,6 +394,16 @@ function applySettings(next) {
     } else if (pinnedFeatured) {
       schedulePinnedHide();
     }
+  }
+  if (pinnedFeatured && settings.appLanguageCode !== previousLanguage) {
+    const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+    const {title, kicker} = featuredText(pinnedFeatured, strings);
+    featuredStage.querySelector('.alert-title').textContent = title;
+    featuredStage.querySelector('.alert-kicker').textContent = kicker;
+    const fallback = featuredStage.querySelector('.alert-avatar-fallback');
+    if (fallback) fallback.textContent = initials(title);
+    const avatar = featuredStage.querySelector('img.alert-avatar');
+    if (avatar) avatar.alt = title;
   }
   localizePage(settings.appLanguageCode || 'en');
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
@@ -477,7 +491,6 @@ function controlQueue(op) {
     return;
   } else if (op === 'clear') {
     queue = [];
-    stopActiveSound();
     preloadNextImage();
   }
   showNext();

@@ -319,6 +319,8 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
               mediaDirectory: media.directory,
             ));
         if (context.mounted) notify(l.settingsImported);
+      } on FormatException {
+        if (context.mounted) notify(l.settingsImportFailed);
       } catch (error, stack) {
         AppLogger.warning('Settings import failed',
             error: error, stackTrace: stack);

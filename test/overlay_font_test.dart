@@ -107,13 +107,12 @@ void main() {
     );
   });
 
-  test('all built-in pages subscribe to the font and use its current CSP',
+  test('built-in pages allow both Google font hosts and load fonts on settings',
       () async {
-    var settings = const SettingsModel(chatFontFamily: 'Arial');
-    final handler =
-        buildOverlayRoutes((_) => Response.ok(''), settings: () => settings);
-    const oldCsp = "default-src 'none'; img-src data: http: https:; "
-        "connect-src ws: wss:; style-src 'unsafe-inline'; script-src 'unsafe-inline'";
+    final handler = buildOverlayRoutes((_) => Response.ok(''));
+    const csp = "default-src 'none'; img-src data: http: https:; "
+        "connect-src ws: wss:; style-src 'unsafe-inline' https://fonts.googleapis.com; "
+        "script-src 'unsafe-inline'";
 
     for (final page in [
       'chat',
@@ -124,25 +123,18 @@ void main() {
       'goals',
       'timer',
       'clock',
-      'captions'
+      'captions',
     ]) {
-      final request = Request('GET', Uri.parse('http://localhost:8080/$page'));
+      final response = await handler(
+          Request('GET', Uri.parse('http://localhost:8080/$page')));
       final media = page == 'alerts' ? "; media-src 'self'" : '';
-      settings = const SettingsModel(chatFontFamily: 'Arial');
-      final installed = await handler(request);
-      expect(installed.headers['content-security-policy'], oldCsp + media);
-      final html = await installed.readAsString();
-      expect(html, contains('overlayGoogleFontsAllowed = false;'));
+      expect(response.headers['content-security-policy'],
+          '$csp$media; font-src https://fonts.gstatic.com');
+      final html = await response.readAsString();
       expect(html, contains('var(--overlay-font-family,'));
       expect(html, contains('settings.chatFontFamily'));
       expect(html, contains('settings.googleFontStylesheet'));
       expect(html, contains("style.setProperty('--overlay-font-family'"));
-      expect(
-          html, contains('Boolean(stylesheet) !== overlayGoogleFontsAllowed'));
-      expect(html, contains('location.reload()'));
-      expect(html,
-          contains('if (stylesheet && overlayFontLink?.href !== stylesheet)'));
-      expect(html, contains('if (overlayFontLink) overlayFontLink.remove()'));
       expect(html, contains("document.createElement('link')"));
       expect(
           html,
@@ -154,19 +146,6 @@ void main() {
         expect(html, isNot(contains('author.style.color = message.color')));
         expect(html, isNot(contains('.author-name.mod')));
       }
-      settings = const SettingsModel(chatFontFamily: 'Inter');
-      final google = await handler(request);
-      final googleStyleCsp = oldCsp.replaceFirst("style-src 'unsafe-inline'",
-          "style-src 'unsafe-inline' https://fonts.googleapis.com");
-      expect(
-        google.headers['content-security-policy'],
-        '$googleStyleCsp$media; font-src https://fonts.gstatic.com',
-      );
-      expect(await google.readAsString(),
-          contains('overlayGoogleFontsAllowed = true;'));
-      settings = settings.copyWith(chatFontInstalledOnly: true);
-      final custom = await handler(request);
-      expect(custom.headers['content-security-policy'], oldCsp + media);
     }
   });
 }

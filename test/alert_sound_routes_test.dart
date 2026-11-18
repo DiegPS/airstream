@@ -100,10 +100,13 @@ void main() {
 
     final alerts = (await get('/alerts')).$1;
     final chat = (await get('/')).$1;
+    const builtInCsp = "default-src 'none'; img-src data: http: https:; "
+        "connect-src ws: wss:; style-src 'unsafe-inline' https://fonts.googleapis.com; "
+        "script-src 'unsafe-inline'";
     expect(alerts.headers.value('content-security-policy'),
-        contains("media-src 'self'"));
+        "$builtInCsp; media-src 'self'; font-src https://fonts.gstatic.com");
     expect(chat.headers.value('content-security-policy'),
-        "default-src 'none'; img-src data: http: https:; connect-src ws: wss:; style-src 'unsafe-inline'; script-src 'unsafe-inline'");
+        '$builtInCsp; font-src https://fonts.gstatic.com');
   });
 }
 

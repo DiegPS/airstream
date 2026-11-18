@@ -10,8 +10,6 @@ import 'package:airstream/services/media_library.dart';
 import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'package:airstream/settings/alert_type_options.dart';
-import 'package:airstream/settings/settings_model.dart';
-import 'package:airstream/services/overlay/overlay_payload_encoder.dart';
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
 import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:airstream/services/overlay/templates/captions_overlay.dart';
@@ -27,7 +25,6 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
     Future<MediaLibrary> Function()? mediaLibrary,
     Future<TemplateLibrary> Function()? templates,
     String Function()? galleryLanguage,
-    SettingsModel Function()? settings,
     Handler? rulesApi}) {
   return const Pipeline().addHandler((Request request) async {
     final path = request.url.path;
@@ -96,9 +93,6 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
       }
       return webSocketHandler(request);
     }
-    final googleFontsAllowed = OverlayPayloadEncoder.googleFontStylesheet(
-            settings?.call() ?? const SettingsModel()) !=
-        null;
     final page = switch (path) {
       'alerts' => alertsOverlayHtml,
       'featured' => featuredOverlayHtml,
@@ -110,17 +104,11 @@ Handler buildOverlayRoutes(Handler webSocketHandler,
       'poll' => pollOverlayHtml,
       _ => chatOverlayHtml,
     };
-    return _htmlResponse(
-      page(googleFontsAllowed: googleFontsAllowed),
-      alerts: path == 'alerts',
-      googleFontsAllowed: googleFontsAllowed,
-    );
+    return _htmlResponse(page(), alerts: path == 'alerts');
   });
 }
 
-Response _htmlResponse(String html,
-        {required bool alerts, required bool googleFontsAllowed}) =>
-    Response.ok(
+Response _htmlResponse(String html, {required bool alerts}) => Response.ok(
       html,
       headers: {
         'content-type': 'text/html; charset=utf-8',
@@ -128,10 +116,8 @@ Response _htmlResponse(String html,
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff',
         'content-security-policy':
-            "default-src 'none'; img-src data: http: https:; connect-src ws: wss:; style-src 'unsafe-inline'"
-                "${googleFontsAllowed ? ' https://fonts.googleapis.com' : ''}; script-src 'unsafe-inline'"
-                "${alerts ? "; media-src 'self'" : ''}"
-                "${googleFontsAllowed ? '; font-src https://fonts.gstatic.com' : ''}",
+            "default-src 'none'; img-src data: http: https:; connect-src ws: wss:; style-src 'unsafe-inline' https://fonts.googleapis.com; script-src 'unsafe-inline'"
+                "${alerts ? "; media-src 'self'" : ''}; font-src https://fonts.gstatic.com",
       },
     );
 

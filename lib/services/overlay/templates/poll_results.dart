@@ -67,12 +67,13 @@ function pollResultNodes(poll, language) {
       labels.average + ': ' + average), distribution];
   }
 
+  const leaders = new Set(poll.leaderIndices || []);
   if (mode === 'freeAnswer') {
     const list = document.createElement('ol');
     list.className = 'answers';
     (poll.answers || []).forEach((answer, index) => {
       const row = document.createElement('li');
-      row.className = poll.closed && index === 0 ? 'answer winner' : 'answer';
+      row.className = poll.closed && leaders.has(index) ? 'answer winner' : 'answer';
       row.append(textElement('bdi', 'label', answer.text),
         textElement('span', 'count', answer.votes));
       list.appendChild(row);
@@ -82,9 +83,8 @@ function pollResultNodes(poll, language) {
     ] : [textElement('div', 'empty-answers', labels.noAnswers)];
   }
 
-  const leader = Math.max(0, ...options.map(option => option.votes || 0));
   return options.map((option, index) => {
-    const leading = leader > 0 && option.votes === leader;
+    const leading = leaders.has(index);
     return pollOption(option, mode, index, true, leading, poll.closed && leading);
   });
 }

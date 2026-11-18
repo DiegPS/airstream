@@ -141,7 +141,16 @@ Airstream.on('chat', message => {
 });
 Airstream.on('delete', event => {
   for (const item of [...messages]) {
-    if (item.message.platform === event.platform && (event.scope === 'platform' || (event.scope === 'author' ? item.message.authorChannelId === event.authorChannelId : item.message.id === event.messageId))) {
+    const message = item.message;
+    if (message.platform !== event.platform ||
+        (event.youtubeStreamOrientation &&
+         message.youtubeStreamOrientation !== event.youtubeStreamOrientation)) continue;
+    const matches = event.scope === 'platform' ||
+      (event.scope === 'message' && event.messageId && message.id === event.messageId) ||
+      (event.scope === 'author' &&
+       ((event.authorChannelId && message.authorChannelId === event.authorChannelId) ||
+        (event.authorName && String(message.author || '').toLowerCase() === String(event.authorName).toLowerCase())));
+    if (matches) {
       item.node.remove(); messages.splice(messages.indexOf(item),1);
     }
   }

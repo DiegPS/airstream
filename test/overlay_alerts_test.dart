@@ -385,6 +385,11 @@ void main() {
   test(
       'server resolves currency units, counts and grouped gifts into alert data',
       () async {
+    final registered = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'registered');
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    await registered;
     connection.server.setSettings(const SettingsModel(alertTypeOptions: {
       'superchat': {
         'sound': 'coin',
@@ -436,11 +441,6 @@ void main() {
       providerEvent(Platform.kick, ChatProviderEventKind.support, count: 25),
     ]);
     expect(kicks.last['data']['option'], {'animation': 'fade'});
-    final registered = connection.envelopes.stream
-        .firstWhere((e) => e['type'] == 'registered');
-    connection.socket!.sink
-        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
-    await registered;
     final replay = connection.nextAlert();
     connection.server.setSettings(const SettingsModel());
     expect(connection.server.replayRecentAlert(gift['id'] as String), isTrue);

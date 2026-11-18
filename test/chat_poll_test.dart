@@ -49,7 +49,7 @@ Future<void> _published() =>
     Future<void>.delayed(const Duration(milliseconds: 5));
 
 void main() {
-  test('classic numbered polls retain the exact original JSON', () {
+  test('classic numbered polls preserve the original JSON fields', () {
     final polls = ChatPollController(clock: () => DateTime.utc(1970));
     addTearDown(polls.dispose);
     polls.start(
@@ -62,11 +62,39 @@ void main() {
       ..handleMessage(_vote('Ana', '!2'))
       ..handleMessage(_vote('Chad', '!1'));
     expect(
-        jsonEncode(polls.current!.toOverlayJson()),
+        jsonEncode(polls.current!.toOverlayJson()..remove('leaderIndices')),
         '{"question":"Pick one","options":[{"label":"Red","votes":1,'
         '"percent":33},{"label":"Blue","votes":2,"percent":67}],"total":3,'
         '"closed":false,"endsAt":60000}');
   });
+
+  for (final mode in [PollMode.numbered, PollMode.freeAnswer]) {
+    test('poll.ended and the page payload use all tied leaders for $mode', () {
+      final polls = ChatPollController();
+      addTearDown(polls.dispose);
+      polls.start(
+          question: 'Q',
+          options: ['Red', 'Blue', 'Green'],
+          mode: mode,
+          hideResults: true);
+      final free = mode == PollMode.freeAnswer;
+      for (final (viewer, option, answer) in [
+        ('A', '!1', 'Red'),
+        ('B', '!2', 'Blue'),
+        ('C', '!1', 'Red'),
+        ('D', '!2', 'Blue'),
+        ('E', '!3', 'Green'),
+      ]) {
+        polls.handleMessage(_vote(viewer, free ? '!r $answer' : option));
+      }
+      expect(polls.current!.toOverlayJson(), isNot(contains('leaderIndices')));
+      polls.end();
+      final poll = polls.current!;
+      expect(poll.toOverlayJson()['leaderIndices'], [0, 1]);
+      expect(
+          RuleEvent.pollEnded(poll).winner, free ? 'Blue / Red' : 'Red / Blue');
+    });
+  }
 
   test('the hot path does not read chat text without an open poll', () async {
     final polls = ChatPollController();

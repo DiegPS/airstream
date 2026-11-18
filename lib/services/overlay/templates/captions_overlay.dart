@@ -1,8 +1,7 @@
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
 
-String captionsOverlayHtml({bool googleFontsAllowed = false}) =>
-    '''<!DOCTYPE html>
+String captionsOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -30,7 +29,7 @@ String captionsOverlayHtml({bool googleFontsAllowed = false}) =>
 <body>
 <div id="caption" role="status" aria-live="polite"></div>
 <script>
-${overlayFontScript(googleFontsAllowed)}
+$overlayFontScript
 ${overlayPageLocaleScript((l) => l.obsPageCaptionsTitle)}
 (() => {
   const caption = document.getElementById('caption');

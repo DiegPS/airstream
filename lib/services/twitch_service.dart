@@ -44,6 +44,9 @@ class TwitchService {
   late final StreamSubscription<twitch.TwitchFailure> _failureSubscription;
   late final StreamSubscription<twitch.TwitchEvent> _eventSubscription;
   bool _disposed = false;
+  int _generation = 0;
+  bool _preparingConnection = false;
+  Future<void> _lifecycle = Future<void>.value();
 
   Stream<ChatMessage> get messages => _messages.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statuses.stream;
@@ -51,9 +54,49 @@ class TwitchService {
   Stream<ChatProviderEvent> get appEvents => _appEvents.stream;
   Stream<twitch.TwitchEvent> get providerEvents => _client.events;
 
-  Future<void> connect(String channelName) => _client.connect(channelName);
+  Future<void> connect(String channelName) async {
+    final generation = ++_generation;
+    Future<void>? connecting;
+    await _serializeLifecycle(() async {
+      if (_disposed || generation != _generation) return;
+      // The library starts its new generation after awaiting its own socket
+      // close. Drain the old socket here so Stop can invalidate that launch.
+      _preparingConnection = true;
+      try {
+        await _client.disconnect();
+      } finally {
+        _preparingConnection = false;
+      }
+      if (_disposed || generation != _generation) return;
+      final started = Completer<void>();
+      final subscription = _client.connections.listen((update) {
+        if (update.state == twitch.TwitchConnectionState.connecting &&
+            !started.isCompleted) {
+          started.complete();
+        }
+      });
+      try {
+        final pending = connecting = _client.connect(channelName);
+        // Release the lifecycle queue as soon as the library owns the dial.
+        // Its generation check then closes any socket that becomes ready late.
+        await Future.any([started.future, pending]);
+      } finally {
+        await subscription.cancel();
+      }
+    });
+    await connecting;
+  }
 
-  Future<void> disconnect() => _client.disconnect();
+  Future<void> disconnect() {
+    ++_generation;
+    return _serializeLifecycle(_client.disconnect);
+  }
+
+  Future<void> _serializeLifecycle(Future<void> Function() operation) {
+    final next = _lifecycle.then((_) => operation());
+    _lifecycle = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
+  }
 
   Future<void> dispose() async {
     if (_disposed) return;
@@ -62,7 +105,7 @@ class TwitchService {
     await _connectionSubscription.cancel();
     await _failureSubscription.cancel();
     await _eventSubscription.cancel();
-    await _client.dispose();
+    await _serializeLifecycle(_client.dispose);
     await _messages.close();
     await _statuses.close();
     await _moderationEvents.close();
@@ -342,7 +385,7 @@ class TwitchService {
   }
 
   void _handleConnection(twitch.TwitchConnectionUpdate update) {
-    if (_statuses.isClosed) return;
+    if (_statuses.isClosed || _preparingConnection) return;
     final status = switch (update.state) {
       twitch.TwitchConnectionState.idle => ServiceStatus.idle,
       twitch.TwitchConnectionState.connecting => ServiceStatus.connecting,

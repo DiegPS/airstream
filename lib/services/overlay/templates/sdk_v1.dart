@@ -244,7 +244,7 @@ String sdkV1() => r"""
   setInterval(() => emit('caption',{text:'Demo caption — welcome to the stream!'}),6000);
   setInterval(() => { if (earlier) emit('delete',{platform:earlier.platform,scope:'message',messageId:earlier.id,authorChannelId:earlier.authorChannelId,authorName:'',youtubeStreamOrientation:earlier.youtubeStreamOrientation}); },20000);
   setInterval(() => { const m=chat(); emit('featured',{platform:m.platform,kind:'featured',alertType:null,id:m.id,author:m.author,authorAvatarUrl:null,authorChannelId:m.authorChannelId,badgeImageUrl:null,badgeLabel:null,message:m.text,amount:null,color:null,stickerUrl:null,timestamp:m.timestamp,membershipKind:null,months:null,giftCount:null}); },25000);
-  const poll={question:'Demo: which game next?',options:[{label:'Adventure',votes:3,percent:60},{label:'Racing',votes:2,percent:40}],total:5,closed:false,endsAt:Date.now()+45000};
+  const poll={question:'Demo: which game next?',leaderIndices:[0],options:[{label:'Adventure',votes:3,percent:60},{label:'Racing',votes:2,percent:40}],total:5,closed:false,endsAt:Date.now()+45000};
   setTimeout(() => emit('poll',poll),3000);
   setTimeout(() => emit('poll',{...poll,closed:true}),45000);
   const giveaway={keyword:'!demo',phase:'open',entrantCount:8,winner:null,drawId:0};

@@ -1,7 +1,7 @@
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
 
-String chatOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
+String chatOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -229,7 +229,7 @@ String chatOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <body>
 <div id="root"></div>
 <script>
-${overlayFontScript(googleFontsAllowed)}
+$overlayFontScript
 ${overlayPageLocaleScript((l) => l.obsPageChatTitle)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
