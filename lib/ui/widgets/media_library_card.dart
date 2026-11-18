@@ -1,14 +1,23 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/alert_type_options.dart';
 import 'settings_controls.dart';
-import 'dart:io';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/services/media_library.dart';
+import 'package:airstream/services/native_audio_playback_service.dart';
+import 'package:airstream/services/windows_video_thumbnail.dart';
 import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+final mediaPreviewAudioProvider =
+    Provider<NativeAudioPlaybackService Function()>(
+        (_) => NativeAudioPlaybackService.new);
 
 class MediaLibraryCard extends ConsumerStatefulWidget {
   const MediaLibraryCard({super.key});
@@ -18,6 +27,7 @@ class MediaLibraryCard extends ConsumerStatefulWidget {
 
 class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
   bool _busy = false;
+  String _query = '';
   final _errors = <String>[];
   String _reason(AppLocalizations l, String reason) => switch (reason) {
         'size' => l.mediaRejectSize,
@@ -42,10 +52,11 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
       final library = await ref.read(mediaLibraryProvider.future);
       for (final file in files) {
         try {
-          final entry = await library.import(file.path);
-          final s = ref.read(settingsProvider);
-          await ref.read(settingsProvider.notifier).update(s.copyWith(
-              mediaLibrary: {...s.mediaLibrary, entry.key: entry.value}));
+          await library.import(file.path, onImported: (entry) {
+            final s = ref.read(settingsProvider);
+            return ref.read(settingsProvider.notifier).update(s.copyWith(
+                mediaLibrary: {...s.mediaLibrary, entry.key: entry.value}));
+          });
         } on FormatException catch (e) {
           _errors.add('${file.name}: ${_reason(l, e.message)}');
         } on FileSystemException {
@@ -62,35 +73,155 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
   Future<void> _delete(String id) async {
     setState(() => _busy = true);
     try {
-      await (await ref.read(mediaLibraryProvider.future)).delete(id);
-      final s = ref.read(settingsProvider);
-      final options = AlertTypeOptions.sanitize(s.alertTypeOptions);
-      void detach(Map<String, dynamic> v) {
-        if (v['media'] == id) {
-          v.remove('media');
-          v.remove('mediaAudio');
-        }
-        if (v['soundMediaId'] == id) {
-          v.remove('soundMediaId');
-          if (v['sound'] == 'library') v.remove('sound');
-        }
-      }
-
-      for (final option in options.values) {
-        detach(option);
-        for (final tier in AlertTypeOptions.tiers(option)) {
-          detach(tier);
-        }
-      }
-      await ref.read(settingsProvider.notifier).update(s.copyWith(
-          mediaLibrary: {...s.mediaLibrary}..remove(id),
-          highlightSounds: {...s.highlightSounds}
-            ..removeWhere((_, source) => source == id),
-          alertTypeOptions: AlertTypeOptions.sanitize(options)));
+      final library = await ref.read(mediaLibraryProvider.future);
+      await library.delete(id, onDeleted: () => _removeReferences(id));
     } catch (_) {
       if (mounted) _errors.add(AppLocalizations.of(context)!.mediaRejectType);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _removeReferences(String id) async {
+    final s = ref.read(settingsProvider);
+    final options = AlertTypeOptions.sanitize(s.alertTypeOptions);
+    void detach(Map<String, dynamic> v) {
+      if (v['media'] == id) {
+        v.remove('media');
+        v.remove('mediaAudio');
+      }
+      if (v['soundMediaId'] == id) {
+        v.remove('soundMediaId');
+        if (v['sound'] == 'library') v.remove('sound');
+      }
+    }
+
+    for (final option in options.values) {
+      detach(option);
+      for (final tier in AlertTypeOptions.tiers(option)) {
+        detach(tier);
+      }
+    }
+    await ref.read(settingsProvider.notifier).update(s.copyWith(
+        mediaLibrary: {...s.mediaLibrary}..remove(id),
+        highlightSounds: {...s.highlightSounds}
+          ..removeWhere((_, source) => source == id),
+        alertTypeOptions: AlertTypeOptions.sanitize(options)));
+  }
+
+  Future<void> _rename(MapEntry<String, Map<String, dynamic>> entry) async {
+    final l = AppLocalizations.of(context)!;
+    final form = GlobalKey<FormState>();
+    var name = entry.value['name'] as String;
+    final renamed = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        void submit() {
+          if (form.currentState!.validate()) Navigator.pop(dialogContext, name);
+        }
+
+        return AlertDialog(
+          title: Text(l.mediaRename),
+          content: Form(
+            key: form,
+            child: TextFormField(
+              key: const Key('media-rename-name'),
+              initialValue: name,
+              autofocus: true,
+              maxLength: 80,
+              decoration: InputDecoration(labelText: l.mediaDisplayName),
+              onChanged: (value) => name = value,
+              onFieldSubmitted: (_) => submit(),
+              validator: (value) =>
+                  MediaLibraryEntries.displayName(value ?? '') == null
+                      ? l.mediaRenameInvalid
+                      : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              key: const Key('media-rename-save'),
+              onPressed: submit,
+              child: Text(l.ruleLabel('ksave')),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted || renamed == null) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(settingsProvider.notifier).renameMedia(entry.key, renamed);
+    } catch (_) {
+      _errors.add(l.mediaRenameFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _preview(
+    MediaLibrary library,
+    MapEntry<String, Map<String, dynamic>> entry,
+  ) async {
+    final kind = entry.value['kind'];
+    final player =
+        kind == 'audio' ? ref.read(mediaPreviewAudioProvider)() : null;
+    final volume = ref.read(settingsProvider).alertSoundVolume / 100;
+    final file = library.fileFor(entry);
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          final l = AppLocalizations.of(context)!;
+          return AlertDialog(
+            title: Text(entry.value['name'] as String),
+            scrollable: true,
+            content: FutureBuilder(
+              future: file,
+              builder: (_, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const LinearProgressIndicator();
+                }
+                final asset = snapshot.data;
+                if (asset == null) return Text(l.mediaPreviewUnavailable);
+                if (player != null) {
+                  return _AudioPreview(
+                      player: player, file: asset, volume: volume);
+                }
+                return SizedBox(
+                  width: 256,
+                  height: 160,
+                  child: kind == 'video'
+                      ? _VideoPreview(file: asset)
+                      : Image.file(
+                          asset,
+                          cacheWidth: 512,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              Text(l.mediaPreviewUnavailable),
+                        ),
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      try {
+        await player?.dispose();
+      } catch (_) {
+        AppLogger.warning('Could not close the media audio preview');
+      }
     }
   }
 
@@ -100,6 +231,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
     final entries =
         MediaLibraryEntries.sanitize(ref.watch(settingsProvider).mediaLibrary);
     final service = ref.watch(mediaLibraryProvider).valueOrNull;
+    final matches = MediaLibraryEntries.search(entries, _query).toList();
     final used = entries.values.fold<int>(0, (n, e) => n + (e['bytes'] as int));
     return UiCard(
         title: l.mediaLibraryTitle,
@@ -119,7 +251,19 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                   label: Text(l.mediaAdd))),
           for (final error in _errors)
             Text(error, style: const TextStyle(color: Color(0xFFFFB15C))),
-          for (final e in entries.entries)
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('media-search'),
+            onChanged: (value) => setState(() => _query = value),
+            decoration: settingsInput(hint: l.mediaSearch)
+                .copyWith(prefixIcon: const Icon(Icons.search, size: 18)),
+          ),
+          if (_query.trim().isNotEmpty && matches.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(l.mediaNoMatches),
+            ),
+          for (final e in matches)
             Padding(
                 key: Key('media-item-${e.key}'),
                 padding: const EdgeInsets.only(top: 12),
@@ -160,12 +304,115 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                                 color: Colors.white54, fontSize: 11)),
                       ])),
                   IconButton(
-                      key: Key('media-delete-${e.key}'),
-                      tooltip: l.mediaDelete,
-                      color: const Color(0xFFFF6B6B),
-                      onPressed: _busy ? null : () => _delete(e.key),
-                      icon: const Icon(Icons.delete_outline, size: 18)),
+                    key: Key('media-preview-${e.key}'),
+                    tooltip: l.mediaPreview,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _busy || service == null
+                        ? null
+                        : () => _preview(service, e),
+                    icon: const Icon(Icons.play_circle_outline, size: 18),
+                  ),
+                  IconButton(
+                    key: Key('media-rename-${e.key}'),
+                    tooltip: l.mediaRename,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _busy ? null : () => _rename(e),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                  ),
+                  IconButton(
+                    key: Key('media-delete-${e.key}'),
+                    tooltip: l.mediaDelete,
+                    visualDensity: VisualDensity.compact,
+                    color: const Color(0xFFFF6B6B),
+                    onPressed: _busy ? null : () => _delete(e.key),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                  ),
                 ])),
         ]);
   }
+}
+
+class _AudioPreview extends StatefulWidget {
+  const _AudioPreview(
+      {required this.player, required this.file, required this.volume});
+  final NativeAudioPlaybackService player;
+  final File file;
+  final double volume;
+
+  @override
+  State<_AudioPreview> createState() => _AudioPreviewState();
+}
+
+class _AudioPreviewState extends State<_AudioPreview> {
+  var _playing = false;
+  var _failed = false;
+
+  Future<void> _play() async {
+    setState(() {
+      _playing = true;
+      _failed = false;
+    });
+    try {
+      await widget.player.playFile(widget.file,
+          volume: widget.volume, timeout: const Duration(minutes: 2));
+    } on TimeoutException {
+      // The preview ends after two minutes.
+    } catch (_) {
+      _failed = true;
+    } finally {
+      if (mounted) setState(() => _playing = false);
+    }
+  }
+
+  Future<void> _stop() async {
+    try {
+      await widget.player.stop();
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      OutlinedButton.icon(
+        key: const Key('media-audio-preview-toggle'),
+        onPressed: _playing ? _stop : _play,
+        icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
+        label: Text(_playing ? l.mediaPreviewStop : l.mediaPreviewPlay),
+      ),
+      if (_failed) Text(l.mediaPreviewUnavailable),
+    ]);
+  }
+}
+
+class _VideoPreview extends StatefulWidget {
+  const _VideoPreview({required this.file});
+  final File file;
+
+  @override
+  State<_VideoPreview> createState() => _VideoPreviewState();
+}
+
+class _VideoPreviewState extends State<_VideoPreview> {
+  late final _thumbnail = videoThumbnail(widget.file);
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder(
+        future: _thumbnail,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final bytes = snapshot.data;
+          final unavailable =
+              Text(AppLocalizations.of(context)!.mediaPreviewUnavailable);
+          return bytes == null
+              ? Center(child: unavailable)
+              : Image.memory(bytes,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => unavailable);
+        },
+      );
 }

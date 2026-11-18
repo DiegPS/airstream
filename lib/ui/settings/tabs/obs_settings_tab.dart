@@ -18,6 +18,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         UiCard(
+          wrapHeader: _searchHeader('obs'),
           title: l.obsIntegration,
           icon: Icons.camera_indoor_rounded,
           description: l.obsDescription,
@@ -165,6 +166,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('server'),
           title: l.overlayServer,
           icon: Icons.desktop_windows_rounded,
           description: l.overlayServerDescription,
@@ -346,7 +348,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _section(l.alerts),
+              _searchSection('alerts', _section(l.alerts)),
               Text(
                 l.alertsDescription,
                 style: const TextStyle(color: Colors.white54, fontSize: 11),
@@ -420,7 +422,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               Text(l.alertSoundObsHint,
                   style: const TextStyle(color: Colors.white38, fontSize: 10)),
               const SizedBox(height: 8),
-              _section(l.alertPlatformFilter),
+              _searchSection('alertPlatforms', _section(l.alertPlatformFilter)),
               Material(
                 type: MaterialType.transparency,
                 child: Column(
@@ -449,7 +451,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 8),
-              _section(l.alertTypes),
+              _searchSection('alertTypes', _section(l.alertTypes)),
               for (final (id, label) in [
                 ('superchat', l.alertTypeSuperChat),
                 ('membership', l.alertTypeMembership),
@@ -490,7 +492,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 },
               ),
               const SizedBox(height: 12),
-              _section(l.featuredTitle),
+              _searchSection('featured', _section(l.featuredTitle)),
               _dropdownRow(
                 l.alertPosition,
                 s.featuredPosition,
@@ -533,8 +535,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(featuredSeconds: v.round())),
                 ),
               const SizedBox(height: 12),
-              const MediaLibraryCard(),
-              _section(l.overlayMode),
+              _searchSection('media', const MediaLibraryCard()),
+              _searchSection('overlayMode', _section(l.overlayMode)),
               _switchRow(
                 l.chromaKey,
                 s.overlayChromaMode,
@@ -562,7 +564,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
               const SizedBox(height: 12),
-              _section(l.platformDisplay),
+              _searchSection('overlayPlatforms', _section(l.platformDisplay)),
               _switchRow(
                 l.platformIcon,
                 s.overlayShowPlatformIcons,
@@ -585,9 +587,9 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              const OverlayStylePresetsCard(),
+              _searchSection('presets', const OverlayStylePresetsCard()),
               const SizedBox(height: 12),
-              _section(l.styleSettings),
+              _searchSection('overlayStyle', _section(l.styleSettings)),
               StyledSliderRow(
                 wrapLabel: true,
                 label: l.fontSize,
@@ -677,7 +679,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
               const SizedBox(height: 12),
-              _section(l.messageDesign),
+              _searchSection('overlayMessages', _section(l.messageDesign)),
               _switchRow(
                 l.bubbleBackground,
                 s.overlayShowBubble,
@@ -770,7 +772,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
               const SizedBox(height: 12),
-              _section(l.animation),
+              _searchSection('animations', _section(l.animation)),
               _dropdownRow(
                 l.entrance,
                 s.overlayAnimation,
@@ -790,7 +792,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ),
               const SizedBox(height: 12),
-              _section(l.transform3d),
+              _searchSection('transform', _section(l.transform3d)),
               _switchRow(
                 l.enable3dEffect,
                 s.overlayThreeDEnabled,
@@ -865,6 +867,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
             ],
           ],
         ),
+        if (!s.overlayEnabled)
+          _searchSection('media', const MediaLibraryCard()),
       ],
     );
   }

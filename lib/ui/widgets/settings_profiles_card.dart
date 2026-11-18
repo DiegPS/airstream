@@ -1,3 +1,8 @@
+import 'package:airstream/application/app_providers.dart';
+import 'package:airstream/services/media_library.dart';
+import 'package:airstream/services/system_backup.dart';
+import 'package:path_provider/path_provider.dart';
+
 import 'dart:io';
 
 import 'package:airstream/l10n/generated/app_localizations.dart';
@@ -160,13 +165,118 @@ class _SettingsProfilesCardState extends ConsumerState<SettingsProfilesCard> {
 }
 
 /// Exports, imports and resets the settings.
-class SettingsBackupCard extends ConsumerWidget {
+class SettingsBackupCard extends ConsumerStatefulWidget {
   const SettingsBackupCard({super.key});
+
+  @override
+  ConsumerState<SettingsBackupCard> createState() => _SettingsBackupCardState();
+}
+
+class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
+  bool _busy = false;
 
   static const _jsonType = XTypeGroup(label: 'JSON', extensions: ['json']);
 
+  XTypeGroup _backupType(AppLocalizations l, {bool import = false}) =>
+      XTypeGroup(label: l.backupFileType, extensions: [
+        'airstream-backup',
+        if (import) 'zip',
+      ]);
+
+  Future<SystemBackup> _service() async {
+    final (support, templates, media) = await (
+      getApplicationSupportDirectory(),
+      ref.read(templateLibraryProvider.future),
+      ref.read(mediaLibraryProvider.future),
+    ).wait;
+    return SystemBackup(
+      support: support,
+      templates: templates,
+      media: media,
+    );
+  }
+
+  String _errorMessage(AppLocalizations l, Object error, String fallback) =>
+      switch (error) {
+        FormatException(message: 'version') => l.backupUnsupportedVersion,
+        FormatException(message: 'path') => l.backupUnsafePath,
+        FormatException(message: 'size') => l.backupSizeLimit,
+        FormatException(message: 'media') => l.backupMediaInvalid,
+        FormatException(message: 'rollback') => l.backupRollbackError,
+        FormatException() => l.backupInvalid,
+        _ => fallback,
+      };
+
+  Future<void> _runBackup(Future<void> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool?> _review(
+    AppLocalizations l,
+    ValidatedSystemBackup backup,
+    Future<void> Function() restore,
+  ) {
+    var applying = false;
+    final created = backup.createdAt.toLocal();
+    final dates = MaterialLocalizations.of(context);
+    final date = dates.formatMediumDate(created);
+    final time = dates.formatTimeOfDay(TimeOfDay.fromDateTime(created));
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, refresh) => PopScope(
+          canPop: !applying,
+          child: AlertDialog(
+            scrollable: true,
+            title: Text(l.backupRestoreEverything),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l.backupRestoreContents(backup.rules, backup.templates,
+                    backup.media, '$date $time')),
+                const SizedBox(height: 12),
+                Text(l.backupRestoreReview),
+                if (applying) const LinearProgressIndicator(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    applying ? null : () => Navigator.pop(dialogContext, false),
+                child: Text(l.cancel),
+              ),
+              FilledButton(
+                key: const Key('backup-restore-confirm'),
+                onPressed: applying
+                    ? null
+                    : () async {
+                        refresh(() => applying = true);
+                        try {
+                          await restore();
+                        } finally {
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        }
+                      },
+                child: Text(l.backupRestoreConfirm),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final notifier = ref.read(settingsProvider.notifier);
     void notify(String text) => ScaffoldMessenger.of(context)
@@ -211,6 +321,67 @@ class SettingsBackupCard extends ConsumerWidget {
       }
     }
 
+    Future<void> exportEverything() => _runBackup(() async {
+          try {
+            final location = await getSaveLocation(
+              suggestedName: 'airstream.airstream-backup',
+              acceptedTypeGroups: [_backupType(l)],
+            );
+            if (location == null || !mounted) return;
+            final service = await _service();
+            await notifier.ready;
+            if (!mounted) return;
+            final path = location.path;
+            await service.exportCurrent(
+              path.toLowerCase().endsWith('.airstream-backup')
+                  ? path
+                  : '$path.airstream-backup',
+              () => ref.read(settingsProvider),
+            );
+            if (context.mounted) notify(l.backupExportDone);
+          } catch (error, stack) {
+            AppLogger.warning('Full backup export failed', stackTrace: stack);
+            if (context.mounted) {
+              notify(_errorMessage(l, error, l.backupExportError));
+            }
+          }
+        });
+
+    Future<void> restoreEverything() => _runBackup(() async {
+          ValidatedSystemBackup? backup;
+          try {
+            final file = await openFile(
+                acceptedTypeGroups: [_backupType(l, import: true)]);
+            if (file == null || !mounted) return;
+            final service = await _service();
+            final validated = backup = await service.validate(file.path);
+            if (!mounted) return;
+            Object? failure;
+            final applied = await _review(l, validated, () async {
+              try {
+                await service.restore(validated, notifier);
+              } catch (error, stack) {
+                AppLogger.warning('Full backup restore failed',
+                    stackTrace: stack);
+                failure = error;
+              }
+            });
+            if (!context.mounted || applied != true) return;
+            final error = failure;
+            notify(error == null
+                ? l.backupRestoreDone
+                : _errorMessage(l, error, l.backupRestoreError));
+          } catch (error, stack) {
+            AppLogger.warning('Full backup validation failed',
+                stackTrace: stack);
+            if (context.mounted) {
+              notify(_errorMessage(l, error, l.backupRestoreError));
+            }
+          } finally {
+            await backup?.dispose();
+          }
+        });
+
     Future<void> reset() async {
       final confirmed = await showDialog<bool>(
         context: context,
@@ -244,25 +415,38 @@ class SettingsBackupCard extends ConsumerWidget {
       icon: Icons.save_alt_rounded,
       description: l.settingsBackupDescription,
       children: [
+        if (_busy) const LinearProgressIndicator(),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
               key: const Key('settings-export'),
-              onPressed: export,
+              onPressed: _busy ? null : export,
               icon: const Icon(Icons.upload_file_rounded, size: 16),
               label: Text(l.settingsExport),
             ),
             OutlinedButton.icon(
               key: const Key('settings-import'),
-              onPressed: import,
+              onPressed: _busy ? null : import,
               icon: const Icon(Icons.download_rounded, size: 16),
               label: Text(l.settingsImport),
             ),
+            OutlinedButton.icon(
+              key: const Key('backup-export-everything'),
+              onPressed: _busy ? null : exportEverything,
+              icon: const Icon(Icons.archive_outlined, size: 16),
+              label: Text(l.backupExportEverything),
+            ),
+            OutlinedButton.icon(
+              key: const Key('backup-restore-everything'),
+              onPressed: _busy ? null : restoreEverything,
+              icon: const Icon(Icons.restore_rounded, size: 16),
+              label: Text(l.backupRestoreEverything),
+            ),
             TextButton.icon(
               key: const Key('settings-reset'),
-              onPressed: reset,
+              onPressed: _busy ? null : reset,
               icon: const Icon(Icons.restart_alt_rounded, size: 16),
               label: Text(l.settingsReset),
               style: TextButton.styleFrom(

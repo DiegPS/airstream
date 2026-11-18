@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:airstream/services/app_logger.dart';
+import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -53,6 +54,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   late final Future<void> ready;
   bool _loaded = false;
   Future<void> _updateQueue = Future<void>.value();
+  Future<void>? _restoreInProgress;
   String? _persistedObsPassword;
 
   Future<void> _load() async {
@@ -139,6 +141,11 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   }
 
   Future<void> update(SettingsModel settings) {
+    final restore = _restoreInProgress;
+    if (restore != null) {
+      final base = state;
+      return restore.then((_) => update(_rebase(base, settings, state)));
+    }
     if (!_loaded) {
       // The change was made on top of the defaults shown while loading.
       // Persisting it as-is would overwrite every saved setting, so replay
@@ -183,7 +190,58 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   Future<void> saveQueueState(QueueState queue) async {
     if (!_loaded) await ready;
+    final restore = _restoreInProgress;
+    if (restore != null) await restore;
     if (mounted) await _publishAndPersist(state.copyWith(queueState: queue));
+  }
+
+  Future<void> renameMedia(String id, String input) async {
+    await ready;
+    final restore = _restoreInProgress;
+    if (restore != null) await restore;
+    final name = MediaLibraryEntries.displayName(input);
+    if (name == null) throw const FormatException('name');
+    final entry = state.mediaLibrary[id];
+    if (entry == null) throw StateError('Media entry no longer exists.');
+    await update(state.copyWith(mediaLibrary: {
+      ...state.mediaLibrary,
+      id: {...entry, 'name': name},
+    }));
+  }
+
+  /// Holds settings updates until the restore commits or rolls back. The
+  /// caller commits only after it has staged and installed the file areas.
+  Future<void> restoreBackup(
+    Future<void> Function(
+      SettingsModel current,
+      Future<void> Function(SettingsModel) commit,
+    ) restore,
+  ) async {
+    await ready;
+    if (_restoreInProgress != null) {
+      throw StateError('A backup restore is already in progress.');
+    }
+    final finished = Completer<void>();
+    _restoreInProgress = finished.future;
+    try {
+      await _updateQueue;
+      await restore(state, (next) async {
+        // The backup leaves secure storage and the local webhook opt-in alone.
+        await _settingsRepository.write(SettingsDocumentCodec.encode(next));
+        if (mounted) {
+          try {
+            state = next;
+          } catch (error, stack) {
+            // Listener failures cannot undo a committed settings write.
+            AppLogger.warning('Could not notify a listener after restore',
+                error: error, stackTrace: stack);
+          }
+        }
+      });
+    } finally {
+      _restoreInProgress = null;
+      finished.complete();
+    }
   }
 
   _PendingPersist? _pendingPersist;

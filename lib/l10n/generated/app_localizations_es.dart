@@ -3620,4 +3620,128 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get galleryScoreboardColumn => 'Columna';
+
+  @override
+  String get backupExportEverything => 'Exportar todo';
+
+  @override
+  String get backupRestoreEverything => 'Restaurar todo';
+
+  @override
+  String get backupFileType => 'Copia de Airstream';
+
+  @override
+  String get backupRestoreReview =>
+      'Se reemplazarán tus ajustes, plantillas y biblioteca de medios. Airstream guardará antes una copia de tus datos actuales.';
+
+  @override
+  String backupRestoreContents(
+      int rules, int templates, int media, String created) {
+    return 'Ajustes\nReglas: $rules\nPlantillas: $templates\nArchivos multimedia: $media\nFecha de creación: $created';
+  }
+
+  @override
+  String get backupRestoreConfirm => 'Restaurar';
+
+  @override
+  String get backupExportDone => 'Se exportó la copia completa.';
+
+  @override
+  String get backupRestoreDone => 'Se restauró la copia completa.';
+
+  @override
+  String get backupExportError =>
+      'No se pudo exportar la copia completa. Revisa el destino y los archivos de tus bibliotecas.';
+
+  @override
+  String get backupRestoreError =>
+      'No se pudo restaurar la copia. Revisa el espacio disponible y cierra los programas que usan los archivos de las bibliotecas.';
+
+  @override
+  String get backupInvalid =>
+      'El archivo está dañado o no es una copia completa de Airstream.';
+
+  @override
+  String get backupUnsupportedVersion =>
+      'Esta versión de la copia no es compatible.';
+
+  @override
+  String get backupUnsafePath =>
+      'La copia contiene una ruta de archivo que no es segura.';
+
+  @override
+  String get backupSizeLimit =>
+      'Un archivo o una biblioteca supera los límites de la copia.';
+
+  @override
+  String get backupMediaInvalid =>
+      'Falta un archivo multimedia o no coincide con su entrada en la biblioteca.';
+
+  @override
+  String get backupRollbackError =>
+      'La restauración se interrumpió y no se pudo revertir de forma automática. La copia de seguridad y las carpetas originales siguen en el disco.';
+
+  @override
+  String get settingsSearchHint => 'Buscar ajustes';
+
+  @override
+  String get settingsSearchEmpty => 'No se encontraron ajustes';
+
+  @override
+  String get settingsSearchConnectionWords =>
+      'cuentas canales sesión transmisión';
+
+  @override
+  String get settingsSearchVoiceWords => 'tts texto a voz lector narración';
+
+  @override
+  String get settingsSearchCaptionWords =>
+      'subtítulos transcripción accesibilidad';
+
+  @override
+  String get settingsSearchBackupWords =>
+      'archivo zip migración recuperación respaldo';
+
+  @override
+  String get settingsSearchMediaWords =>
+      'recursos archivos mp3 mp4 imágenes video sonido';
+
+  @override
+  String get settingsSearchAppearanceWords => 'tema colores tipografía';
+
+  @override
+  String get settingsSearchRulesWords =>
+      'automatización webhook botones acciones';
+
+  @override
+  String get mediaSearch => 'Buscar medios por nombre';
+
+  @override
+  String get mediaNoMatches => 'No se encontraron medios';
+
+  @override
+  String get mediaPreview => 'Vista previa';
+
+  @override
+  String get mediaPreviewUnavailable =>
+      'No hay vista previa para este archivo.';
+
+  @override
+  String get mediaPreviewPlay => 'Reproducir';
+
+  @override
+  String get mediaPreviewStop => 'Detener';
+
+  @override
+  String get mediaRename => 'Cambiar nombre';
+
+  @override
+  String get mediaDisplayName => 'Nombre visible';
+
+  @override
+  String get mediaRenameInvalid =>
+      'Escribe un nombre sin barras ni caracteres de control.';
+
+  @override
+  String get mediaRenameFailed => 'No se pudo guardar el nombre nuevo.';
 }

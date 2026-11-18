@@ -1397,5 +1397,56 @@
   "galleryScoreboardHome": "Home",
   "galleryScoreboardAway": "Away",
   "galleryScoreboardRow": "Row",
-  "galleryScoreboardColumn": "Column"
+  "galleryScoreboardColumn": "Column",
+  "backupExportEverything": "Export everything",
+  "backupRestoreEverything": "Restore everything",
+  "backupFileType": "Airstream backup",
+  "backupRestoreReview": "This replaces your settings, templates and media library. Airstream saves a copy of your current data first.",
+  "backupRestoreContents": "Settings\nRules: {rules}\nTemplates: {templates}\nMedia files: {media}\nCreated: {created}",
+  "backupRestoreConfirm": "Restore",
+  "backupExportDone": "Full backup exported.",
+  "backupRestoreDone": "Full backup restored.",
+  "backupExportError": "Could not export the full backup. Check the destination and the files in your libraries.",
+  "backupRestoreError": "Could not restore the backup. Check disk space and close programs using the library files.",
+  "backupInvalid": "This file is damaged or is not an Airstream full backup.",
+  "backupUnsupportedVersion": "This backup version is not supported.",
+  "backupUnsafePath": "The backup contains an unsafe file path.",
+  "backupSizeLimit": "A file or library exceeds the backup size limits.",
+  "backupMediaInvalid": "A media file is missing or does not match its library entry.",
+  "backupRollbackError": "Restore was interrupted and automatic rollback failed. Your safety backup and original directories are still on disk.",
+  "settingsSearchHint": "Search settings",
+  "settingsSearchEmpty": "No matching settings",
+  "settingsSearchConnectionWords": "accounts channels login streaming",
+  "settingsSearchVoiceWords": "tts text to speech reader narration",
+  "settingsSearchCaptionWords": "subtitles transcription accessibility",
+  "settingsSearchBackupWords": "archive zip migration recovery",
+  "settingsSearchMediaWords": "assets files mp3 mp4 images video sound",
+  "settingsSearchAppearanceWords": "theme colors typography",
+  "settingsSearchRulesWords": "automation webhook stream deck actions",
+  "mediaSearch": "Search media by name",
+  "mediaNoMatches": "No matching media",
+  "mediaPreview": "Preview",
+  "mediaPreviewUnavailable": "Preview unavailable for this file.",
+  "mediaPreviewPlay": "Play",
+  "mediaPreviewStop": "Stop",
+  "mediaRename": "Rename",
+  "mediaDisplayName": "Display name",
+  "mediaRenameInvalid": "Enter a name without slashes or control characters.",
+  "mediaRenameFailed": "Could not save the new name.",
+  "@backupRestoreContents": {
+    "placeholders": {
+      "rules": {
+        "type": "int"
+      },
+      "templates": {
+        "type": "int"
+      },
+      "media": {
+        "type": "int"
+      },
+      "created": {
+        "type": "String"
+      }
+    }
+  }
 }

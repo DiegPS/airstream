@@ -6,6 +6,7 @@ import 'package:airstream/ui/widgets/goals_card.dart';
 import 'package:airstream/ui/widgets/subathon_card.dart';
 import 'package:airstream/ui/widgets/clock_card.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/media_library.dart';
 import 'dart:convert';
 import 'package:archive/archive.dart';
 import 'package:airstream/services/templates/template_starters.dart';
@@ -1454,8 +1455,10 @@ void main() {
       find.byKey(const Key('sidebar-connection-badges')),
     );
     final tabs = tester.getRect(find.byType(SidebarTabBar));
-    // 38 px title bar, then the same 12 px margin the block keeps below.
-    expect(badges.top, 38 + 12);
+    final search = tester.getRect(find.byKey(const Key('settings-search')));
+    // The 38 px title bar and 12 px margin precede the search field.
+    expect(search.top, 38 + 12);
+    expect(badges.top - search.bottom, 10);
     expect(tabs.top - badges.bottom, 10);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -2082,6 +2085,8 @@ void main() {
         final overrides = [
           appControllerProvider.overrideWithValue(app),
           alertQueueStatusProvider.overrideWith((ref) => queue.stream),
+          mediaLibraryProvider.overrideWith(
+              (ref) async => MediaLibrary(io.Directory('unused'), () => {})),
           settingsProvider.overrideWith((ref) => settings = _RecordingSettings(
               SettingsModel(appLanguageCode: language, overlayEnabled: ready))),
           overlayUrlProvider
@@ -2304,6 +2309,31 @@ void main() {
             find.byKey(const Key('gallery-item-word-cloud')), findsOneWidget);
         expect(
             find.byKey(const Key('gallery-item-emote-wall')), findsOneWidget);
+        final search = find.descendant(
+          of: find.byKey(const Key('settings-search')),
+          matching: find.byType(TextField),
+        );
+        expect(tester.widget<TextField>(search).decoration!.hintText,
+            l.settingsSearchHint);
+        await tester.enterText(
+            search, language == 'es' ? 'recuperacion zip' : 'archive zip');
+        await tester.pumpAndSettle();
+        expect(find.byType(SidebarTabBar), findsNothing);
+        final result = find.byKey(const Key('settings-search-result-backup'));
+        expect(result, findsOneWidget);
+        await tester.tap(result);
+        await tester.pumpAndSettle();
+        expect(
+            tester
+                .widget<SidebarTabBar>(find.byType(SidebarTabBar))
+                .selectedIndex,
+            7);
+        final backup = find.byKey(const Key('backup-card'));
+        expect(backup.hitTestable(), findsOneWidget);
+        expect(find.text(l.backupExportEverything), findsOneWidget);
+        expect(find.text(l.backupRestoreEverything), findsOneWidget);
+        expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+        await tester.pump(const Duration(seconds: 2));
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         await queue.close();

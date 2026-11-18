@@ -57,7 +57,7 @@ class NativeAudioPlaybackService {
       await _playWindows(file, timeout: timeout);
       return;
     }
-    await _playProcess(file, timeout: timeout);
+    await _playProcess(file, timeout: timeout, canStart: canStart);
   }
 
   _Mci? _mci;
@@ -98,11 +98,11 @@ class NativeAudioPlaybackService {
       await playback.future.timeout(timeout);
     } finally {
       if (_alias == alias) {
-        _mciCommand('close $alias');
         _alias = null;
         _completionTimer?.cancel();
         _completionTimer = null;
         _activePlayback = null;
+        _mciCommand('close $alias');
       }
     }
   }
@@ -138,15 +138,23 @@ class NativeAudioPlaybackService {
     }
   }
 
-  Future<void> _playProcess(File file, {required Duration timeout}) async {
+  Future<void> _playProcess(File file,
+      {required Duration timeout, bool Function()? canStart}) async {
     final command = Platform.isMacOS ? 'afplay' : 'aplay';
     final process = await Process.start(command, [file.absolute.path]);
+    if (_disposed || canStart?.call() == false) {
+      process.kill();
+      return;
+    }
     _process = process;
     try {
       final exitCode = await process.exitCode.timeout(timeout);
       if (exitCode != 0) {
         throw StateError('$command exited with code $exitCode.');
       }
+    } on TimeoutException {
+      process.kill();
+      rethrow;
     } finally {
       if (identical(_process, process)) _process = null;
     }
@@ -155,17 +163,20 @@ class NativeAudioPlaybackService {
   Future<void> stop() async {
     final alias = _alias;
     _alias = null;
-    if (alias != null) _mciCommand('close $alias');
-    _completionTimer?.cancel();
-    _completionTimer = null;
-    if (Platform.isWindows && _playSound != null) {
-      _windowsPlaySound(nullptr.cast<Utf16>(), 0, 0);
+    try {
+      if (alias != null) _mciCommand('close $alias');
+    } finally {
+      _completionTimer?.cancel();
+      _completionTimer = null;
+      if (Platform.isWindows && _playSound != null) {
+        _windowsPlaySound(nullptr.cast<Utf16>(), 0, 0);
+      }
+      _process?.kill();
+      _process = null;
+      final playback = _activePlayback;
+      _activePlayback = null;
+      if (playback != null && !playback.isCompleted) playback.complete();
     }
-    _process?.kill();
-    _process = null;
-    final playback = _activePlayback;
-    _activePlayback = null;
-    if (playback != null && !playback.isCompleted) playback.complete();
   }
 
   Future<void> dispose() async {

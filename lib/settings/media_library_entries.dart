@@ -22,6 +22,24 @@ abstract final class MediaLibraryEntries {
               : 5) *
       1024 *
       1024;
+
+  static String? displayName(String input) {
+    final name = input.trim();
+    if (name.isEmpty || RegExp(r'[\\/\x00-\x1f\x7f]').hasMatch(name)) {
+      return null;
+    }
+    return String.fromCharCodes(name.runes.take(80));
+  }
+
+  static Iterable<MapEntry<String, Map<String, dynamic>>> search(
+    Map<String, Map<String, dynamic>> entries,
+    String query,
+  ) {
+    final term = query.trim().toLowerCase();
+    return entries.entries.where((entry) =>
+        (entry.value['name'] as String).toLowerCase().contains(term));
+  }
+
   static Map<String, Map<String, dynamic>> sanitize(Object? raw) {
     final result = <String, Map<String, dynamic>>{};
     if (raw is! Map) return result;
@@ -49,7 +67,7 @@ abstract final class MediaLibraryEntries {
       }
       final base = p.basename(name);
       result[e.key as String] = {
-        'name': base.substring(0, base.length.clamp(0, 80)),
+        'name': String.fromCharCodes(base.runes.take(80)),
         'kind': kind,
         'ext': ext,
         'bytes': bytes,

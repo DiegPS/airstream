@@ -19,6 +19,10 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   final _visitedTabs = <int>{0};
   final _tabPages = <int, Widget>{};
   final _tabContents = <int, Widget>{};
+  final _search = TextEditingController();
+  final _sectionKeys = <String, GlobalKey>{};
+  final _highlightedSection = ValueNotifier<String?>(null);
+  Timer? _highlightTimer;
 
   /// Bumped to rebuild one tab's content.
   final _tabRevisions = List.generate(_tabCount, (_) => ValueNotifier<int>(0));
@@ -47,6 +51,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   @override
   void dispose() {
     _textSettingsDebounce?.cancel();
+    _highlightTimer?.cancel();
+    _highlightedSection.dispose();
+    _search.dispose();
 
     for (final node in _form.focusNodes) {
       node.removeListener(_handleFocusChange);
@@ -464,6 +471,77 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     if (_staleTabs.remove(index)) _tabRevisions[index].value++;
   }
 
+  Widget Function(Widget) _searchHeader(String id) =>
+      (header) => _searchSection(id, header);
+
+  Widget _searchSection(String id, Widget child) => ValueListenableBuilder(
+        key: _sectionKeys.putIfAbsent(id, GlobalKey.new),
+        valueListenable: _highlightedSection,
+        child: child,
+        builder: (_, highlighted, child) => AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: highlighted == id
+                  ? const Color(0xFF53FC18)
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: child,
+        ),
+      );
+
+  void _openSearchResult(SettingsSearchEntry entry) {
+    FocusScope.of(context).unfocus();
+    setState(_search.clear);
+    _selectTab(entry.tab);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _selectedTab != entry.tab) return;
+      final id = _sectionKeys[entry.id]?.currentContext != null
+          ? entry.id
+          : entry.fallback;
+      final anchor = _sectionKeys[id]?.currentContext;
+      if (anchor == null) return;
+      _highlightedSection.value = id;
+      _highlightTimer?.cancel();
+      _highlightTimer = Timer(const Duration(seconds: 2), () {
+        _highlightedSection.value = null;
+      });
+      unawaited(Scrollable.ensureVisible(anchor,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic));
+    });
+  }
+
+  Widget _searchResults(AppLocalizations l) {
+    final results = searchSettings(l, _search.text);
+    final tabs = settingsTabLabels(l);
+    return Material(
+      type: MaterialType.transparency,
+      child: ListView(
+        padding: const EdgeInsets.all(8),
+        children: [
+          if (results.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(l.settingsSearchEmpty),
+            ),
+          for (final entry in results)
+            ListTile(
+              key: Key('settings-search-result-${entry.id}'),
+              dense: true,
+              title: Text(entry.title),
+              subtitle: Text(tabs[entry.tab]),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _openSearchResult(entry),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// A tab page built once and kept: its scroll position, expanded cards and
   /// fields survive tab switches. Only the selected tab rebuilds when the
   /// data it shows changes.
@@ -612,19 +690,19 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                               onPressed: () => _selectTab(3),
                               child: Text(l.liveOpenObs))),
                     ]),
-              const RuleButtonsCard(),
-              const PollCard(),
-              const GiveawayCard(),
-              const QueueCard(),
-              const GoalsCard(),
-              const SubathonCard(),
-              const ClockCard(),
-              const RecentAlertsCard(),
+              _searchSection('ruleButtons', const RuleButtonsCard()),
+              _searchSection('poll', const PollCard()),
+              _searchSection('giveaway', const GiveawayCard()),
+              _searchSection('queue', const QueueCard()),
+              _searchSection('goals', const GoalsCard()),
+              _searchSection('subathon', const SubathonCard()),
+              _searchSection('clock', const ClockCard()),
+              _searchSection('recentAlerts', const RecentAlertsCard()),
             ]);
       case 5:
-        return const RulesCard();
+        return _searchSection('rules', const RulesCard());
       case 6:
-        return const TemplatesCard();
+        return _searchSection('templates', const TemplatesCard());
       default:
         return _buildSystemTab(ref, context, l, s, notifier);
     }
@@ -710,6 +788,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final searching = _search.text.trim().isNotEmpty;
     return SizedBox.expand(
       child: ColoredBox(
         color: const Color(0xFF141414),
@@ -722,27 +802,46 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Consumer(
-                    builder: (context, ref, _) => _header(context, ref),
+                  KeyedSubtree(
+                    key: const Key('settings-search'),
+                    child: _field(_search, l.settingsSearchHint,
+                        onChanged: (_) => setState(() {}),
+                        onClear: () => setState(_search.clear)),
                   ),
-                  Consumer(
-                    builder: (context, ref, _) => _tabBar(context, ref),
-                  ),
+                  if (!searching) ...[
+                    const SizedBox(height: 10),
+                    Consumer(
+                      builder: (context, ref, _) => _header(context, ref),
+                    ),
+                    Consumer(
+                      builder: (context, ref, _) => _tabBar(context, ref),
+                    ),
+                  ],
                 ],
               ),
             ),
             const Divider(height: 1, color: Color(0xFF242424)),
             Expanded(
-              child: IndexedStack(
-                index: _selectedTab,
-                sizing: StackFit.expand,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  for (var index = 0; index < _tabCount; index++)
-                    // Tabs are built the first time they are opened.
-                    // IndexedStack keeps hidden tabs out of focus traversal.
-                    _visitedTabs.contains(index)
-                        ? _tabPage(index)
-                        : const SizedBox.shrink(),
+                  Offstage(
+                    offstage: searching,
+                    child: ExcludeFocus(
+                      excluding: searching,
+                      child: IndexedStack(
+                        index: _selectedTab,
+                        sizing: StackFit.expand,
+                        children: [
+                          for (var index = 0; index < _tabCount; index++)
+                            _visitedTabs.contains(index)
+                                ? _tabPage(index)
+                                : const SizedBox.shrink(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (searching) _searchResults(l),
                 ],
               ),
             ),

@@ -5,6 +5,7 @@ class UiCard extends StatelessWidget {
   final IconData? icon;
   final String? description;
   final Widget? trailing;
+  final Widget Function(Widget)? wrapHeader;
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
@@ -18,6 +19,7 @@ class UiCard extends StatelessWidget {
     this.icon,
     this.description,
     this.trailing,
+    this.wrapHeader,
     required this.children,
     this.padding = const EdgeInsets.all(14),
     this.margin = const EdgeInsets.only(bottom: 12),
@@ -102,6 +104,26 @@ class UiCard extends StatelessWidget {
       );
     }
 
+    final header = Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 16, color: effectiveAccent),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: effectiveAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing!,
+      ],
+    );
     return Container(
       margin: margin,
       padding: padding,
@@ -113,26 +135,7 @@ class UiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: effectiveAccent),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: effectiveAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              if (trailing != null) trailing!,
-            ],
-          ),
+          wrapHeader?.call(header) ?? header,
           if (description != null) ...[
             const SizedBox(height: 4),
             Text(

@@ -25,6 +25,15 @@ class MediaLibrary {
       .fold(0, (n, e) => n + (e['bytes'] as int));
   Future<void> _tail = Future.value();
   Future<String> validate(String path) async {
+    final kind = await inspect(File(path));
+    if (!['image', 'video', 'audio'].contains(kind)) return kind;
+    if (usedBytes + await File(path).length() > totalLimit) return 'total';
+    return kind;
+  }
+
+  /// Checks a standalone file without consulting the current library quota.
+  static Future<String> inspect(File file) async {
+    final path = file.path;
     final ext = p.extension(path).toLowerCase().replaceFirst('.', '');
     final kind = MediaLibraryEntries.types[ext]?.$1;
     if (kind == null) return 'type';
@@ -33,10 +42,8 @@ class MediaLibrary {
           FileSystemEntityType.file) {
         return 'type';
       }
-      final file = File(path);
       final size = await file.length();
       if (size > MediaLibraryEntries.limit(kind)) return 'size';
-      if (usedBytes + size > totalLimit) return 'total';
       final handle = await file.open();
       late List<int> b;
       try {
@@ -68,54 +75,69 @@ class MediaLibrary {
     }
   }
 
-  Future<MapEntry<String, Map<String, dynamic>>> import(String path) {
-    final operation = _tail.then((_) async {
-      final kind = await validate(path);
-      if (!['image', 'video', 'audio'].contains(kind)) {
-        throw FormatException(kind);
-      }
-      await directory.create(recursive: true);
-      if (await FileSystemEntity.type(directory.path, followLinks: false) !=
-          FileSystemEntityType.directory) {
-        throw const FormatException('type');
-      }
-      final random = Random.secure();
-      String id;
-      do {
-        id = List.generate(
-                8, (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'))
-            .join();
-      } while (entries().containsKey(id) ||
-          _pending.containsKey(id) ||
-          await FileSystemEntity.type(
-                  p.join(directory.path,
-                      '$id.${p.extension(path).substring(1).toLowerCase()}'),
-                  followLinks: false) !=
-              FileSystemEntityType.notFound);
-      final ext = p.extension(path).substring(1).toLowerCase();
-      final name = p.basename(path);
-      final dest = File(p.join(directory.path, '$id.$ext'));
-      try {
-        await File(path).copy(dest.path);
-        final check = await validate(dest.path);
-        if (check != kind) throw FormatException(check);
-        final metadata = <String, dynamic>{
-          'name': String.fromCharCodes(name.runes.take(80)),
-          'kind': kind,
-          'ext': ext,
-          'bytes': await dest.length(),
-          'addedAt': DateTime.now().millisecondsSinceEpoch
-        };
-        _pending[id] = metadata;
-        return MapEntry(id, metadata);
-      } catch (_) {
-        if (await dest.exists()) await dest.delete();
-        rethrow;
-      }
-    });
+  void clearPendingImports() => _pending.clear();
+
+  /// Serializes library mutations with full backup snapshots and restores.
+  Future<T> withStableFiles<T>(Future<T> Function() work) {
+    final operation = _tail.then((_) => work());
     _tail = operation.then<void>((_) {}, onError: (Object e, StackTrace s) {});
     return operation;
   }
+
+  Future<MapEntry<String, Map<String, dynamic>>> import(
+    String path, {
+    Future<void> Function(MapEntry<String, Map<String, dynamic>>)? onImported,
+  }) =>
+      withStableFiles(() async {
+        final kind = await validate(path);
+        if (!['image', 'video', 'audio'].contains(kind)) {
+          throw FormatException(kind);
+        }
+        await directory.create(recursive: true);
+        if (await FileSystemEntity.type(directory.path, followLinks: false) !=
+            FileSystemEntityType.directory) {
+          throw const FormatException('type');
+        }
+        final random = Random.secure();
+        String id;
+        do {
+          id = List.generate(8,
+                  (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'))
+              .join();
+        } while (entries().containsKey(id) ||
+            _pending.containsKey(id) ||
+            await FileSystemEntity.type(
+                    p.join(directory.path,
+                        '$id.${p.extension(path).substring(1).toLowerCase()}'),
+                    followLinks: false) !=
+                FileSystemEntityType.notFound);
+        final ext = p.extension(path).substring(1).toLowerCase();
+        final name = p.basename(path);
+        final dest = File(p.join(directory.path, '$id.$ext'));
+        late final Map<String, dynamic> metadata;
+        try {
+          await File(path).copy(dest.path);
+          final check = await validate(dest.path);
+          if (check != kind) throw FormatException(check);
+          metadata = <String, dynamic>{
+            'name': String.fromCharCodes(name.runes.take(80)),
+            'kind': kind,
+            'ext': ext,
+            'bytes': await dest.length(),
+            'addedAt': DateTime.now().millisecondsSinceEpoch
+          };
+        } catch (_) {
+          if (await dest.exists()) await dest.delete();
+          rethrow;
+        }
+        _pending[id] = metadata;
+        final entry = MapEntry(id, metadata);
+        if (onImported != null) {
+          await onImported(entry);
+          _pending.remove(id);
+        }
+        return entry;
+      });
 
   Future<File?> fileFor(MapEntry<String, Map<String, dynamic>> entry) async {
     if (!MediaLibraryEntries.sanitize({entry.key: entry.value})
@@ -134,11 +156,13 @@ class MediaLibrary {
         : null;
   }
 
-  Future<void> delete(String id) async {
-    final entry = MediaLibraryEntries.sanitize(entries())[id];
-    if (entry == null) return;
-    final file = await fileFor(MapEntry(id, entry));
-    if (file != null) await file.delete();
-    _pending.remove(id);
-  }
+  Future<void> delete(String id, {Future<void> Function()? onDeleted}) =>
+      withStableFiles(() async {
+        final entry = MediaLibraryEntries.sanitize(entries())[id];
+        if (entry == null) return;
+        final file = await fileFor(MapEntry(id, entry));
+        if (file != null) await file.delete();
+        _pending.remove(id);
+        await onDeleted?.call();
+      });
 }

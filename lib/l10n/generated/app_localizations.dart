@@ -5870,6 +5870,217 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Column'**
   String get galleryScoreboardColumn;
+
+  /// No description provided for @backupExportEverything.
+  ///
+  /// In en, this message translates to:
+  /// **'Export everything'**
+  String get backupExportEverything;
+
+  /// No description provided for @backupRestoreEverything.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore everything'**
+  String get backupRestoreEverything;
+
+  /// No description provided for @backupFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Airstream backup'**
+  String get backupFileType;
+
+  /// No description provided for @backupRestoreReview.
+  ///
+  /// In en, this message translates to:
+  /// **'This replaces your settings, templates and media library. Airstream saves a copy of your current data first.'**
+  String get backupRestoreReview;
+
+  /// No description provided for @backupRestoreContents.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings\nRules: {rules}\nTemplates: {templates}\nMedia files: {media}\nCreated: {created}'**
+  String backupRestoreContents(
+      int rules, int templates, int media, String created);
+
+  /// No description provided for @backupRestoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get backupRestoreConfirm;
+
+  /// No description provided for @backupExportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Full backup exported.'**
+  String get backupExportDone;
+
+  /// No description provided for @backupRestoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Full backup restored.'**
+  String get backupRestoreDone;
+
+  /// No description provided for @backupExportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export the full backup. Check the destination and the files in your libraries.'**
+  String get backupExportError;
+
+  /// No description provided for @backupRestoreError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not restore the backup. Check disk space and close programs using the library files.'**
+  String get backupRestoreError;
+
+  /// No description provided for @backupInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is damaged or is not an Airstream full backup.'**
+  String get backupInvalid;
+
+  /// No description provided for @backupUnsupportedVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup version is not supported.'**
+  String get backupUnsupportedVersion;
+
+  /// No description provided for @backupUnsafePath.
+  ///
+  /// In en, this message translates to:
+  /// **'The backup contains an unsafe file path.'**
+  String get backupUnsafePath;
+
+  /// No description provided for @backupSizeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'A file or library exceeds the backup size limits.'**
+  String get backupSizeLimit;
+
+  /// No description provided for @backupMediaInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A media file is missing or does not match its library entry.'**
+  String get backupMediaInvalid;
+
+  /// No description provided for @backupRollbackError.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore was interrupted and automatic rollback failed. Your safety backup and original directories are still on disk.'**
+  String get backupRollbackError;
+
+  /// No description provided for @settingsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// No description provided for @settingsSearchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching settings'**
+  String get settingsSearchEmpty;
+
+  /// No description provided for @settingsSearchConnectionWords.
+  ///
+  /// In en, this message translates to:
+  /// **'accounts channels login streaming'**
+  String get settingsSearchConnectionWords;
+
+  /// No description provided for @settingsSearchVoiceWords.
+  ///
+  /// In en, this message translates to:
+  /// **'tts text to speech reader narration'**
+  String get settingsSearchVoiceWords;
+
+  /// No description provided for @settingsSearchCaptionWords.
+  ///
+  /// In en, this message translates to:
+  /// **'subtitles transcription accessibility'**
+  String get settingsSearchCaptionWords;
+
+  /// No description provided for @settingsSearchBackupWords.
+  ///
+  /// In en, this message translates to:
+  /// **'archive zip migration recovery'**
+  String get settingsSearchBackupWords;
+
+  /// No description provided for @settingsSearchMediaWords.
+  ///
+  /// In en, this message translates to:
+  /// **'assets files mp3 mp4 images video sound'**
+  String get settingsSearchMediaWords;
+
+  /// No description provided for @settingsSearchAppearanceWords.
+  ///
+  /// In en, this message translates to:
+  /// **'theme colors typography'**
+  String get settingsSearchAppearanceWords;
+
+  /// No description provided for @settingsSearchRulesWords.
+  ///
+  /// In en, this message translates to:
+  /// **'automation webhook stream deck actions'**
+  String get settingsSearchRulesWords;
+
+  /// No description provided for @mediaSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search media by name'**
+  String get mediaSearch;
+
+  /// No description provided for @mediaNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching media'**
+  String get mediaNoMatches;
+
+  /// No description provided for @mediaPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get mediaPreview;
+
+  /// No description provided for @mediaPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview unavailable for this file.'**
+  String get mediaPreviewUnavailable;
+
+  /// No description provided for @mediaPreviewPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get mediaPreviewPlay;
+
+  /// No description provided for @mediaPreviewStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get mediaPreviewStop;
+
+  /// No description provided for @mediaRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get mediaRename;
+
+  /// No description provided for @mediaDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get mediaDisplayName;
+
+  /// No description provided for @mediaRenameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name without slashes or control characters.'**
+  String get mediaRenameInvalid;
+
+  /// No description provided for @mediaRenameFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the new name.'**
+  String get mediaRenameFailed;
 }
 
 class _AppLocalizationsDelegate

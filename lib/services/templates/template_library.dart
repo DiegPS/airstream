@@ -182,6 +182,7 @@ class TemplateLibrary {
   final _timers = <String, Timer>{};
   final _pending = <String, TemplateChangeKind>{};
   StreamSubscription<FileSystemEvent>? _watch;
+  bool _watchRequested = false;
   Future<bool> exists() => root.exists();
   Future<void> ensureRoot() async {
     await root.create(recursive: true);
@@ -215,6 +216,7 @@ class TemplateLibrary {
   }
 
   Future<void> watch() async {
+    _watchRequested = true;
     if (_watch != null || !await exists()) return;
     // Another caller may have started it while awaiting exists.
     if (_watch != null) {
@@ -270,6 +272,7 @@ class TemplateLibrary {
   }
 
   Future<void> stopWatching() async {
+    _watchRequested = false;
     final sub = _watch;
     _watch = null;
     await sub?.cancel();
@@ -278,6 +281,23 @@ class TemplateLibrary {
     }
     _timers.clear();
     _pending.clear();
+  }
+
+  /// Suspend the watch before renaming its directory (particularly on Windows).
+  Future<bool> pauseForRestore() async {
+    final resume = _watchRequested;
+    await stopWatching();
+    return resume;
+  }
+
+  /// Directory replacement invalidates cached manifests and old watch handles.
+  Future<void> refreshAfterRestore(Set<String> changedIds,
+      {required bool resumeWatching}) async {
+    _cache.clear();
+    for (final id in changedIds) {
+      _changes.add(TemplateChange(id, TemplateChangeKind.list));
+    }
+    if (resumeWatching) await watch();
   }
 
   Future<List<TemplateInfo>> list() async {

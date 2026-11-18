@@ -12,8 +12,10 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _previewCard(ref, l),
-        _TextAndNamesCard(settings: s, onChanged: notifier.update),
+        _searchSection('textAndNames',
+            _TextAndNamesCard(settings: s, onChanged: notifier.update)),
         UiCard(
+          wrapHeader: _searchHeader('appearance'),
           title: l.appearance,
           icon: Icons.format_size_rounded,
           children: [
@@ -73,6 +75,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('messageDesign'),
           title: l.messageDesign,
           icon: Icons.layers_outlined,
           children: [
@@ -139,6 +142,7 @@ extension _StyleSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('platformDisplay'),
           title: l.platformDisplay,
           icon: Icons.account_circle_outlined,
           children: [

@@ -109,6 +109,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         UiCard(
+          wrapHeader: _searchHeader('voice'),
           title: l.ttsCardTitle,
           icon: Icons.record_voice_over_rounded,
           description: l.ttsDescription,
@@ -474,6 +475,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('captions'),
           title: l.localCaptions,
           icon: Icons.subtitles_rounded,
           description: l.captionsDescription,

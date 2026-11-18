@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:airstream/services/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract interface class SettingsRepository {
@@ -41,28 +42,57 @@ class SharedPreferencesSettingsRepository
   Future<void> write(String json) async {
     final preferences = await SharedPreferences.getInstance();
     jsonDecode(json); // Never replace a valid document with malformed JSON.
-    if (!await preferences.setString(stagingKey, json)) {
-      throw StateError('Could not stage settings.');
-    }
-    final previous = preferences.getString(settingsKey);
-    if (previous != null) {
-      try {
-        final decodedPrevious = jsonDecode(previous);
-        if (_containsSensitiveSettings(decodedPrevious)) {
-          await preferences.remove(backupKey);
-        } else {
-          if (!await preferences.setString(backupKey, previous)) {
+    final previous = {
+      for (final key in [settingsKey, backupKey, stagingKey])
+        key: preferences.getString(key),
+    };
+    try {
+      if (!await preferences.setString(stagingKey, json)) {
+        throw StateError('Could not stage settings.');
+      }
+      final primary = previous[settingsKey];
+      if (primary != null) {
+        try {
+          final decoded = jsonDecode(primary);
+          final saved = _containsSensitiveSettings(decoded)
+              ? await preferences.remove(backupKey)
+              : await preferences.setString(backupKey, primary);
+          if (!saved) {
             throw StateError('Could not back up settings.');
           }
+        } on FormatException {
+          // Preserve the last known-good backup instead of copying corruption.
         }
-      } on FormatException {
-        // Preserve the last known-good backup instead of copying corruption.
       }
+      if (!await preferences.setString(settingsKey, json)) {
+        throw StateError('Could not commit settings.');
+      }
+    } catch (_) {
+      // SharedPreferences changes its in-memory cache before I/O completes.
+      for (final entry in previous.entries) {
+        final value = entry.value;
+        if (preferences.getString(entry.key) == value) continue;
+        try {
+          final restored = value == null
+              ? await preferences.remove(entry.key)
+              : await preferences.setString(entry.key, value);
+          if (!restored) {
+            AppLogger.warning('Could not roll back a settings key');
+          }
+        } catch (_) {
+          AppLogger.warning('Could not roll back a settings key');
+        }
+      }
+      rethrow;
     }
-    if (!await preferences.setString(settingsKey, json)) {
-      throw StateError('Could not commit settings.');
+    // A leftover staging key is harmless once the primary is committed.
+    try {
+      if (!await preferences.remove(stagingKey)) {
+        AppLogger.warning('Could not clear staged settings');
+      }
+    } catch (_) {
+      AppLogger.warning('Could not clear staged settings');
     }
-    await preferences.remove(stagingKey);
   }
 
   bool _containsSensitiveSettings(Object? document) {

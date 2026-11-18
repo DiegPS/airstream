@@ -14,8 +14,9 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const DiagnosticsCard(),
+        _searchSection('diagnostics', const DiagnosticsCard()),
         UiCard(
+          wrapHeader: _searchHeader('window'),
           title: l.desktopWindow,
           icon: Icons.window_rounded,
           children: [
@@ -42,6 +43,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('language'),
           title: l.language,
           icon: Icons.language_rounded,
           children: [
@@ -55,6 +57,7 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('keyboard'),
           title: l.keyboardShortcuts,
           icon: Icons.keyboard_rounded,
           children: [
@@ -87,9 +90,10 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               ),
           ],
         ),
-        const GlobalShortcutsCard(),
+        _searchSection('globalShortcuts', const GlobalShortcutsCard()),
         UiCard(
           key: const Key('chat-log-card'),
+          wrapHeader: _searchHeader('chatLog'),
           title: l.chatLogTitle,
           icon: Icons.description_outlined,
           children: [
@@ -115,8 +119,8 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
             ),
           ],
         ),
-        const SettingsProfilesCard(),
-        const SettingsBackupCard(),
+        _searchSection('profiles', const SettingsProfilesCard()),
+        _searchSection('backup', const SettingsBackupCard()),
       ],
     );
   }

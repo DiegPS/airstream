@@ -69,6 +69,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         UiCard(
+          wrapHeader: _searchHeader('connections'),
           title: l.connections,
           icon: Icons.sensors_rounded,
           children: [
@@ -379,6 +380,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('filters'),
           title: l.filters,
           icon: Icons.filter_alt_outlined,
           description: l.filtersDescription,
@@ -431,6 +433,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
         ),
         UiCard(
           key: const Key('highlights-card'),
+          wrapHeader: _searchHeader('highlights'),
           title: l.highlights,
           icon: Icons.auto_awesome_outlined,
           description: l.highlightsDescription,
@@ -476,6 +479,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
           ],
         ),
         UiCard(
+          wrapHeader: _searchHeader('eventBanners'),
           title: l.eventBanners,
           icon: Icons.campaign_outlined,
           description: l.eventBannersDescription,

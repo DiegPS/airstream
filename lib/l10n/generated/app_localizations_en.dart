@@ -3583,4 +3583,125 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryScoreboardColumn => 'Column';
+
+  @override
+  String get backupExportEverything => 'Export everything';
+
+  @override
+  String get backupRestoreEverything => 'Restore everything';
+
+  @override
+  String get backupFileType => 'Airstream backup';
+
+  @override
+  String get backupRestoreReview =>
+      'This replaces your settings, templates and media library. Airstream saves a copy of your current data first.';
+
+  @override
+  String backupRestoreContents(
+      int rules, int templates, int media, String created) {
+    return 'Settings\nRules: $rules\nTemplates: $templates\nMedia files: $media\nCreated: $created';
+  }
+
+  @override
+  String get backupRestoreConfirm => 'Restore';
+
+  @override
+  String get backupExportDone => 'Full backup exported.';
+
+  @override
+  String get backupRestoreDone => 'Full backup restored.';
+
+  @override
+  String get backupExportError =>
+      'Could not export the full backup. Check the destination and the files in your libraries.';
+
+  @override
+  String get backupRestoreError =>
+      'Could not restore the backup. Check disk space and close programs using the library files.';
+
+  @override
+  String get backupInvalid =>
+      'This file is damaged or is not an Airstream full backup.';
+
+  @override
+  String get backupUnsupportedVersion =>
+      'This backup version is not supported.';
+
+  @override
+  String get backupUnsafePath => 'The backup contains an unsafe file path.';
+
+  @override
+  String get backupSizeLimit =>
+      'A file or library exceeds the backup size limits.';
+
+  @override
+  String get backupMediaInvalid =>
+      'A media file is missing or does not match its library entry.';
+
+  @override
+  String get backupRollbackError =>
+      'Restore was interrupted and automatic rollback failed. Your safety backup and original directories are still on disk.';
+
+  @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String get settingsSearchEmpty => 'No matching settings';
+
+  @override
+  String get settingsSearchConnectionWords =>
+      'accounts channels login streaming';
+
+  @override
+  String get settingsSearchVoiceWords => 'tts text to speech reader narration';
+
+  @override
+  String get settingsSearchCaptionWords =>
+      'subtitles transcription accessibility';
+
+  @override
+  String get settingsSearchBackupWords => 'archive zip migration recovery';
+
+  @override
+  String get settingsSearchMediaWords =>
+      'assets files mp3 mp4 images video sound';
+
+  @override
+  String get settingsSearchAppearanceWords => 'theme colors typography';
+
+  @override
+  String get settingsSearchRulesWords =>
+      'automation webhook stream deck actions';
+
+  @override
+  String get mediaSearch => 'Search media by name';
+
+  @override
+  String get mediaNoMatches => 'No matching media';
+
+  @override
+  String get mediaPreview => 'Preview';
+
+  @override
+  String get mediaPreviewUnavailable => 'Preview unavailable for this file.';
+
+  @override
+  String get mediaPreviewPlay => 'Play';
+
+  @override
+  String get mediaPreviewStop => 'Stop';
+
+  @override
+  String get mediaRename => 'Rename';
+
+  @override
+  String get mediaDisplayName => 'Display name';
+
+  @override
+  String get mediaRenameInvalid =>
+      'Enter a name without slashes or control characters.';
+
+  @override
+  String get mediaRenameFailed => 'Could not save the new name.';
 }
