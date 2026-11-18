@@ -15,6 +15,7 @@ class SessionSupporter {
     required this.kind,
     required this.id,
     required this.at,
+    this.channelId = '',
     this.type,
     this.currency,
     this.value,
@@ -25,6 +26,7 @@ class SessionSupporter {
 
   final Platform platform;
   final String name;
+  final String channelId;
   // The legacy kind drives the in-app summary wording.
   final SupportKind kind;
   final String id;
@@ -36,6 +38,7 @@ class SessionSupporter {
         'id': id,
         'platform': platform.name,
         'name': name,
+        if (channelId.isNotEmpty) 'channelId': channelId,
         'type': type,
         'amount': amount,
         'currency': currency,
@@ -124,12 +127,8 @@ class SessionSummaryCollector {
   final _messages = <Platform, int>{};
   final _chatters = <String,
       ({Platform platform, String name, String channelId, int count})>{};
-  final _supporters = <({
-    SessionSupporter supporter,
-    String identity,
-    String channelId,
-    bool inSummary
-  })>[];
+  final _supporters =
+      <({SessionSupporter supporter, String identity, bool inSummary})>[];
   int _nextSupporter = 0;
   Map<String, Object?>? _templateSupports;
   final _seenEvents = <String>{};
@@ -194,6 +193,7 @@ class SessionSummaryCollector {
         at: message.timestamp,
         platform: message.platform,
         name: message.author.name,
+        channelId: message.author.channelId,
         kind: legacy,
         type: type,
         amount: legacy == SupportKind.superChat ? amount : null,
@@ -203,7 +203,6 @@ class SessionSummaryCollector {
         count: type == 'gift' ? (gifts ?? 1) : (bits ?? gifts),
       ),
       identity: key,
-      channelId: message.author.channelId,
       inSummary: countsAsChat || message.isMembershipEvent,
     ));
     if (type != null) _templateSupports = null;
@@ -228,6 +227,7 @@ class SessionSummaryCollector {
         at: event.timestamp,
         platform: event.platform,
         name: event.authorName,
+        channelId: event.authorChannelId,
         kind: legacy ?? SupportKind.raid,
         type:
             kind == null ? null : supportAlertType(kind, event.platform, null),
@@ -235,7 +235,6 @@ class SessionSummaryCollector {
         count: event.count,
       ),
       identity: _identity(event.platform, event.authorName),
-      channelId: event.authorChannelId,
       inSummary: legacy != null,
     ));
     if (kind != null) _templateSupports = null;
@@ -374,13 +373,13 @@ class SessionSummaryCollector {
       if (!entry.inSummary) continue;
       final support = entry.supporter;
       final nameKey = _identity(support.platform, support.name);
-      final key = entry.channelId.isNotEmpty
-          ? _identity(support.platform, entry.channelId)
+      final key = support.channelId.isNotEmpty
+          ? _identity(support.platform, support.channelId)
           : keysByName[nameKey] ?? entry.identity;
       final participant = participants.putIfAbsent(
           key,
           () => _ParticipantTotal(
-              support.platform, support.name, entry.channelId, 0));
+              support.platform, support.name, support.channelId, 0));
       participant.supports++;
       final unit = support.currency ??
           switch (support.type) {

@@ -23,6 +23,7 @@ class MessagePipeline {
 
   void startSession() {
     _recordingSession = true;
+    _sessionAuthors.clear();
     _session.clear();
     _sessionTruncated = false;
   }
@@ -49,7 +50,6 @@ class MessagePipeline {
   void endSession() => _recordingSession = false;
 
   void clear() {
-    _sessionAuthors.clear();
     _buffer.clear();
     _seenIdKeys.clear();
     _seenContentKeys.clear();

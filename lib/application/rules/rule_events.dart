@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -6,6 +8,30 @@ class RuleAuthor {
   const RuleAuthor({this.name = '', this.id = '', this.roles = const []});
   final String name, id;
   final List<String> roles;
+}
+
+bool isViewerRuleEvent(String type) =>
+    type.startsWith('chat.') ||
+    type == 'queue.joined' ||
+    type.startsWith('support.');
+
+class RuleEventOrigin {
+  RuleEventOrigin({required this.viewer, required List<String> roles})
+      : roles = List.unmodifiable(roles);
+
+  final bool viewer;
+  final List<String> roles;
+
+  bool get isUnprivilegedViewer =>
+      viewer && !roles.contains('owner') && !roles.contains('moderator');
+
+  // Scope the cause to the run even if several rules overlap.
+  static final _zoneKey = Object();
+  static RuleEventOrigin? get current =>
+      Zone.current[_zoneKey] as RuleEventOrigin?;
+
+  T run<T>(T Function() action) =>
+      runZoned(action, zoneValues: {_zoneKey: this});
 }
 
 class RuleEvent {
@@ -27,7 +53,14 @@ class RuleEvent {
       this.scene = '',
       this.goalId = '',
       this.chainDepth = 0,
-      this.message});
+      RuleEventOrigin? origin,
+      this.message})
+      : _origin = origin;
+
+  final RuleEventOrigin? _origin;
+  RuleEventOrigin get origin =>
+      _origin ??
+      RuleEventOrigin(viewer: isViewerRuleEvent(type), roles: author.roles);
 
   factory RuleEvent.pollEnded(ChatPoll poll, {String eventId = ''}) =>
       RuleEvent(

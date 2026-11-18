@@ -85,6 +85,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     });
   }
 
+  final _editedYoutubeTargets = <TextEditingController>{};
+
   void _channelEdited() {
     _mutate(() {});
     // A running chat reconnects on every saved change, so it only picks up
@@ -110,11 +112,17 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         SettingsInputNormalizer.filterList(_form.highlightWords.text);
     final ttsIgnoredUsers =
         SettingsInputNormalizer.filterList(_form.ttsIgnoredUsers.text);
+    final primaryEdited = _editedYoutubeTargets.remove(_form.ytHandle);
+    final horizontalEdited =
+        _editedYoutubeTargets.remove(_form.ytHorizontalUrl);
+    final verticalEdited = _editedYoutubeTargets.remove(_form.ytVerticalUrl);
     final next = current.copyWith(
-      youtubeHandle: _form.ytHandle.text.trim(),
-      youtubeLiveId: '',
-      youtubeHorizontalUrl: _form.ytHorizontalUrl.text.trim(),
-      youtubeVerticalUrl: _form.ytVerticalUrl.text.trim(),
+      youtubeHandle: primaryEdited ? _form.ytHandle.text.trim() : null,
+      youtubeLiveId: primaryEdited ? '' : null,
+      youtubeHorizontalUrl:
+          horizontalEdited ? _form.ytHorizontalUrl.text.trim() : null,
+      youtubeVerticalUrl:
+          verticalEdited ? _form.ytVerticalUrl.text.trim() : null,
       twitchChannel: normalizedTwitch,
       kickSlug: normalizedKick,
       blockedUsers: blockedUsers,
@@ -146,6 +154,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     );
 
     if (current.youtubeHandle == next.youtubeHandle &&
+        current.youtubeLiveId == next.youtubeLiveId &&
         current.youtubeHorizontalUrl == next.youtubeHorizontalUrl &&
         current.youtubeVerticalUrl == next.youtubeVerticalUrl &&
         current.twitchChannel == next.twitchChannel &&
@@ -353,10 +362,14 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 AppLocalizations.of(context)!.youtubeStreamUrlHint,
                 focusNode: focusNode,
                 errorText: errorText,
-                onChanged: (_) => _mutate(() {}),
+                onChanged: (_) {
+                  _editedYoutubeTargets.add(controller);
+                  _mutate(() {});
+                },
                 onSubmitted: (_) => _saveTextSettings(),
                 onClear: () {
                   controller.clear();
+                  _editedYoutubeTargets.add(controller);
                   _mutate(() {});
                   _saveTextSettings();
                 },

@@ -493,7 +493,7 @@ void main() {
     expect(replacement.joined, isEmpty);
   });
 
-  test('Kick reports a transport timeout and leaves no active client',
+  test('Kick closes a transport that completes after factory timeout',
       () async {
     final pending = Completer<KickChatTransport>();
     final service = KickService(
@@ -512,6 +512,11 @@ void main() {
     );
     expect(statuses.last.$1, ServiceStatus.error);
     expect(statuses.last.$2, contains('TimeoutException'));
+    final lateClient = _FakeKickTransport();
+    pending.complete(lateClient);
+    await _eventually(() => lateClient.closeCount == 1);
+    expect(lateClient.joined, isEmpty);
+    expect(statuses.last.$1, ServiceStatus.error);
   });
 
   test('Kick converts subscription gifts once per correlated batch', () async {

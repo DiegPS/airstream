@@ -16,8 +16,7 @@ class ChatLogWriter {
 
   final Future<Directory> Function() _directory;
   final DateTime Function() _clock;
-  IOSink? _sink;
-  Future<IOSink?>? _opening;
+  Future<({File file, IOSink sink})>? _opening;
   File? _file;
   bool _enabled = false;
 
@@ -53,16 +52,28 @@ class ChatLogWriter {
   }
 
   Future<void> _append(String line) async {
+    final opening = _opening ??= _open();
+    final ({File file, IOSink sink}) opened;
     try {
-      final sink = await (_opening ??= _open());
-      sink?.writeln(line);
+      opened = await opening;
+    } catch (error, stack) {
+      if (identical(_opening, opening)) _opening = null;
+      AppLogger.warning('Chat log open failed',
+          error: error, stackTrace: stack);
+      return;
+    }
+    if (identical(_opening, opening) || _opening == null) {
+      _file = opened.file;
+    }
+    try {
+      opened.sink.writeln(line);
     } catch (error, stack) {
       AppLogger.warning('Chat log write failed',
           error: error, stackTrace: stack);
     }
   }
 
-  Future<IOSink?> _open() async {
+  Future<({File file, IOSink sink})> _open() async {
     final directory = await _directory();
     await directory.create(recursive: true);
     final now = _clock();
@@ -70,26 +81,25 @@ class ChatLogWriter {
     final name = 'airstream-chat-${now.year}-${two(now.month)}-${two(now.day)}'
         '_${two(now.hour)}-${two(now.minute)}-${two(now.second)}.txt';
     final file = File(p.join(directory.path, name));
-    _file = file;
-    return _sink = file.openWrite(mode: FileMode.append);
+    final sink = file.openWrite(mode: FileMode.append);
+    // IOSink opens asynchronously. Wait for its open before caching it.
+    await sink.addStream(const Stream<List<int>>.empty());
+    return (file: file, sink: sink);
   }
 
   Future<void> _close() async {
     final opening = _opening;
     _opening = null;
-    if (opening != null) {
-      try {
-        await opening;
-      } catch (_) {
-        // The failure was logged when the first line was written.
-      }
+    if (opening == null) return;
+    final IOSink sink;
+    try {
+      sink = (await opening).sink;
+    } catch (_) {
+      // The failure was logged when the first line was written.
+      return;
     }
-    final sink = _sink;
-    _sink = null;
-    if (sink != null) {
-      await sink.flush();
-      await sink.close();
-    }
+    await sink.flush();
+    await sink.close();
   }
 
   /// `[21:05:13] [Twitch] Ana: hola`, in local time.

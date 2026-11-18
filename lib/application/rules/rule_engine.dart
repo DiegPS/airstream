@@ -331,7 +331,7 @@ class RuleEngine {
       } else {
         if (a['type'] == 'obs.scene') run.previousScene ??= target.currentScene;
         try {
-          final pending = target.execute(a, run);
+          final pending = run.event.origin.run(() => target.execute(a, run));
           result = a['type'].toString().startsWith('obs.')
               ? await pending.timeout(const Duration(seconds: 5))
               : await pending;
@@ -374,7 +374,7 @@ class RuleEngine {
 
   String? _skipReason(Map<String, dynamic> action, Map<String, dynamic> rule,
       RuleEvent event, bool hasPreviousScene) {
-    if (blocksPublicStreamControl(action, rule)) return 'publicStreamControl';
+    if (blocksStreamControl(action, rule, event)) return 'publicStreamControl';
     if (action['type'] == 'obs.previousScene' && !hasPreviousScene) {
       return 'noPreviousScene';
     }

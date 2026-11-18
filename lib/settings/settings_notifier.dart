@@ -3,12 +3,14 @@ import 'package:airstream/application/chat_queue.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show PlatformDispatcher;
+import 'dart:io' show Directory;
 
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/media_library_entries.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
+import 'package:airstream/settings/settings_profiles.dart';
 import 'package:airstream/settings/settings_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -235,6 +237,17 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     }));
   }
 
+  Future<void> importSettings(String source, {Directory? mediaDirectory}) =>
+      restoreBackup((current, commit) {
+        var next = SettingsProfiles.import(source, current,
+            mediaDirectory: mediaDirectory);
+        next = enableRulesWebhook(next, next.rulesWebhookEnabled);
+        if (current.appLanguageCode != next.appLanguageCode) {
+          next = _localizeBuiltInDefaults(next);
+        }
+        return commit(next);
+      });
+
   /// Holds settings updates until the restore commits or rolls back. The
   /// caller commits only after it has staged and installed the file areas.
   Future<void> restoreBackup(
@@ -277,7 +290,8 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
 
   Future<void> _persist(SettingsModel settings, String? obsPassword) async {
     await ready;
-    if (obsPassword != null && _readObsPasswordOnEdit) {
+    if (obsPassword != null) _obsPasswordToRetry = obsPassword;
+    if (_obsPasswordToRetry != null && _readObsPasswordOnEdit) {
       try {
         _persistedObsPassword = await _secureStore.readObsPassword() ?? '';
         _readObsPasswordOnEdit = false;
@@ -286,7 +300,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
             error: error, stackTrace: stack);
       }
     }
-    final password = obsPassword ?? _obsPasswordToRetry;
+    final password = _obsPasswordToRetry;
     if (password != null && _persistedObsPassword != null) {
       if (password != _persistedObsPassword) {
         await _writeObsPassword(password);

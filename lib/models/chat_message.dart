@@ -274,6 +274,7 @@ class ChatMessage {
   ChatMessage copyWith(
           {ChatAuthor? author,
           List<MessageItem>? items,
+          ChatReplyContext? reply,
           bool? isFirstInSession}) =>
       ChatMessage(
         platform: platform,
@@ -292,7 +293,7 @@ class ChatMessage {
         membershipMonths: membershipMonths,
         membershipGiftCount: membershipGiftCount,
         timestamp: timestamp,
-        reply: reply,
+        reply: reply ?? this.reply,
         sharedSource: sharedSource,
         isAction: isAction,
         providerRoomId: providerRoomId,

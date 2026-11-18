@@ -74,7 +74,7 @@ class OverlayServer {
   }
 
   final _templates = <WebSocketChannel, String>{};
-  final _galleryViews = <WebSocketChannel>{};
+  final _galleryViews = <WebSocketChannel, GalleryItem>{};
   final _sessionClients = <WebSocketChannel, String?>{};
   Timer? _sessionTimer;
   String _sessionJson = 'null';
@@ -197,7 +197,7 @@ class OverlayServer {
     final recipients = [
       for (final entry in _templates.entries)
         if (id == null || entry.value == id) entry.key,
-      if (id == null) ..._galleryViews,
+      if (id == null) ..._galleryViews.keys,
     ];
     if (recipients.isEmpty) return false;
     final json = jsonEncode(envelope);
@@ -557,9 +557,26 @@ class OverlayServer {
     );
   }
 
+  void _sendGalleryFields(WebSocketChannel client, GalleryItem item) {
+    client.sink.add(jsonEncode({
+      'type': 'fields',
+      'data': item.defaults(_settings.appLanguageCode),
+      'replay': true,
+    }));
+  }
+
   void setSettings(SettingsModel settings) {
     final previous = _settings;
     _settings = settings;
+    if (previous.appLanguageCode != settings.appLanguageCode) {
+      for (final entry in _galleryViews.entries.toList()) {
+        try {
+          _sendGalleryFields(entry.key, entry.value);
+        } catch (_) {
+          _removeClient(entry.key);
+        }
+      }
+    }
     _updateGoals(settings);
     _updateTimer(settings);
     if (!mapEquals(previous.clock.toJson(), settings.clock.toJson())) {
@@ -908,18 +925,16 @@ class OverlayServer {
   }
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
-    final sentToTemplate =
-        _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
+    // SDK subscriptions are local to the page. Preserve event delivery,
+    // but use only known renderers to determine the delivery status.
+    _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
     final view = _views.containsValue('featured') ? 'featured' : 'alerts';
     final recipients = _views.entries
         .where((entry) => entry.value == view)
         .map((entry) => entry.key)
         .toSet();
     if (recipients.isEmpty) {
-      return sentToTemplate
-          ? FeaturedMessageDelivery(null, FeaturedMessageStatus.sent,
-              Future.value(FeaturedMessageStatus.sent))
-          : FeaturedMessageDelivery.noReceiver();
+      return FeaturedMessageDelivery.noReceiver();
     }
     final id = '$_lifecycleGeneration-${++_nextDelivery}';
     final pending =
@@ -946,15 +961,10 @@ class OverlayServer {
     }
     return FeaturedMessageDelivery(
       id,
-      sentToTemplate || pending.recipients.isNotEmpty
+      pending.recipients.isNotEmpty
           ? FeaturedMessageStatus.sent
           : FeaturedMessageStatus.noReceiver,
-      sentToTemplate
-          ? pending.completion.future.then((status) =>
-              status == FeaturedMessageStatus.disconnected
-                  ? FeaturedMessageStatus.sent
-                  : status)
-          : pending.completion.future,
+      pending.completion.future,
     );
   }
 
@@ -986,7 +996,7 @@ class OverlayServer {
           if (gallery && item == null) return;
           _views[client] = 'custom';
           if (item != null) {
-            _galleryViews.add(client);
+            _galleryViews[client] = item;
           } else {
             _templates[client] = id;
           }
@@ -1003,11 +1013,7 @@ class OverlayServer {
           if (item == null) {
             unawaited(_sendFields(client, id));
           } else {
-            client.sink.add(jsonEncode({
-              'type': 'fields',
-              'data': item.defaults(_settings.appLanguageCode),
-              'replay': true,
-            }));
+            _sendGalleryFields(client, item);
           }
           return;
         }

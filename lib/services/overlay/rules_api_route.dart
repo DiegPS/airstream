@@ -6,7 +6,7 @@ import 'package:airstream/application/rules/rules_webhook.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'overlay_routes.dart';
 
-/// One limiter per server, shared by every API path and caller.
+/// One execution limiter per server, shared by authenticated commands.
 class RulesApiRoute {
   RulesApiRoute(
       {required this.settings,
@@ -35,11 +35,6 @@ class RulesApiRoute {
     Response status(int code) => Response(code, body: '', headers: headers);
     final s = settings();
     if (!s.rulesWebhookEnabled) return status(404);
-    final now = clock();
-    _requests
-        .removeWhere((t) => now.difference(t) >= const Duration(seconds: 10));
-    if (_requests.length >= 10) return status(429);
-    _requests.add(now);
     final match =
         RegExp(r'^api/rules/([a-z0-9-]{1,40})$').firstMatch(request.url.path);
     if (match == null) return status(404);
@@ -79,6 +74,11 @@ class RulesApiRoute {
             r['trigger']['webhook'] == match[1])
         .firstOrNull;
     if (rule == null) return status(404);
+    final now = clock();
+    _requests
+        .removeWhere((t) => now.difference(t) >= const Duration(seconds: 10));
+    if (_requests.length >= 10) return status(429);
+    _requests.add(now);
     final reason = e!.fireManual(rule['id'] as String);
     return Response(202,
         headers: headers,

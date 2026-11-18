@@ -10,6 +10,9 @@ import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'coordinator_fakes.dart';
+import '../chat_queue_test.dart' show queueMessage;
+// ignore: depend_on_referenced_packages
+import 'package:fake_async/fake_async.dart';
 
 void main() {
   late FakeYouTubeChatClient youtube;
@@ -36,6 +39,55 @@ void main() {
   });
 
   tearDown(() => coordinator.dispose());
+
+  test('channel changes preserve first-message tracking until chat restarts',
+      () async {
+    const settings = SettingsModel(twitchEnabled: true, twitchChannel: 'first');
+    final messages = <ChatMessage>[];
+    final subscription = coordinator.messages.listen(messages.add);
+    addTearDown(subscription.cancel);
+    coordinator.applySettings(settings, connectChats: true);
+    twitch.messageController.add(queueMessage('Viewer', 'first', id: 'viewer'));
+    await settleCoordinatorTasks();
+    coordinator.applySettings(settings.copyWith(twitchChannel: 'second'),
+        connectChats: true);
+    twitch.messageController
+        .add(queueMessage('Viewer', 'second', id: 'viewer'));
+    await settleCoordinatorTasks();
+    coordinator.applySettings(settings, connectChats: false);
+    coordinator.applySettings(settings, connectChats: true);
+    twitch.messageController.add(queueMessage('Viewer', 'third', id: 'viewer'));
+    await settleCoordinatorTasks();
+    expect(messages.map((message) => message.isFirstInSession),
+        [true, false, true]);
+  });
+
+  test('dual YouTube waits and retries each pending broadcast independently',
+      () {
+    fakeAsync((fake) {
+      horizontal.connectError =
+          vertical.connectError = StateError('Live stream was not found');
+      const settings = SettingsModel(
+        youtubeEnabled: true,
+        youtubeDualStreamEnabled: true,
+        youtubeHorizontalUrl: 'https://www.youtube.com/watch?v=abcdefghijk',
+        youtubeVerticalUrl: 'https://www.youtube.com/watch?v=lmnopqrstuv',
+      );
+      coordinator.applySettings(settings, connectChats: true);
+      fake.flushMicrotasks();
+      expect((horizontal.connectCount, vertical.connectCount), (1, 1));
+
+      horizontal.connectError = null;
+      fake.elapse(const Duration(milliseconds: 20));
+      expect((horizontal.connectCount, vertical.connectCount), (2, 2));
+      vertical.connectError = null;
+      fake.elapse(const Duration(milliseconds: 20));
+      expect((horizontal.connectCount, vertical.connectCount), (2, 3));
+      expect(youtube.connectCount, 0);
+      coordinator.applySettings(settings, connectChats: false);
+      fake.flushMicrotasks();
+    });
+  });
 
   test('connects once, reconnects an errored service, and applies changes',
       () async {

@@ -14,6 +14,16 @@ class TemplateField {
   final String key, label, type;
   final Map<String, dynamic> options;
   Object? get defaultValue => sanitize(options['default']);
+
+  Object? resolveEditorValue(Object? value) {
+    final compatible = switch (type) {
+      'number' => value is num && value.isFinite,
+      'boolean' => value is bool,
+      _ => value is String,
+    };
+    return compatible ? sanitize(value) : defaultValue;
+  }
+
   Object? sanitize(Object? value) {
     switch (type) {
       case 'text':
@@ -406,15 +416,26 @@ class TemplateLibrary {
   Future<Map<String, Object?>> resolvedValues(String id) async {
     final info = await get(id);
     if (info == null) return {};
-    Map raw = {};
+    return info.manifest.values(await _readFieldValues(id));
+  }
+
+  Future<Map<String, Object?>> editorValues(TemplateInfo info) async {
+    final raw = await _readFieldValues(info.id);
+    return {
+      for (final field in info.manifest.fields)
+        field.key: field.resolveEditorValue(raw[field.key]),
+    };
+  }
+
+  Future<Map> _readFieldValues(String id) async {
     final file = await safeFile(id, 'values.json');
     if (file != null) {
       try {
         final v = await _json(file, 65536);
-        if (v is Map) raw = v;
+        if (v is Map) return v;
       } catch (_) {/* Use defaults. */}
     }
-    return info.manifest.values(raw);
+    return {};
   }
 
   int _writeSequence = 0;

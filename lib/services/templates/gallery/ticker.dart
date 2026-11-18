@@ -208,8 +208,10 @@ function refresh() {
     items, key: JSON.stringify([items, fields.font, fontRevision]),
     speed: Math.min(200, Math.max(30, fields.speed || 80))
   };
+  const running = Airstream.state.timer?.phase === 'running' && Airstream.timerRemaining() > 0;
+  const removeTimer = timeNodes.length > 0 && !running;
   if (reducedMotion.matches) {
-    if (stage.hidden || items.length < 2) showStill();
+    if (removeTimer || stage.hidden || items.length < 2) showStill();
     if (items.length < 2) {
       clearInterval(fadeTimer);
       fadeTimer = null;
@@ -219,10 +221,9 @@ function refresh() {
         showStill();
       }, 5000);
     }
-  } else if (stage.hidden || !track.classList.contains('rolling')) {
+  } else if (removeTimer || stage.hidden || !track.classList.contains('rolling')) {
     applyLoop();
   }
-  const running = Airstream.state.timer?.phase === 'running' && Airstream.timerRemaining() > 0;
   const showClock = running && (fields.showTimer !== false || timeNodes.length > 0);
   if (showClock && !clock) clock = setInterval(updateClock, 1000);
   if (!showClock && clock) {

@@ -3,6 +3,7 @@ import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_sound_player.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/obs_service.dart';
 // Flutter's existing test dependency supplies deterministic timers.
 // ignore: depend_on_referenced_packages
 import 'package:fake_async/fake_async.dart';
@@ -44,6 +45,7 @@ class RuleOverlay extends OverlayServer {
 
 class _PollOverlay extends RuleOverlay {
   final chat = <String>[];
+  final feed = <ChatMessage>[];
   final support = <ChatMessage>[];
   FeaturedMessageDelivery? featuredDelivery;
 
@@ -65,6 +67,7 @@ class _PollOverlay extends RuleOverlay {
   }) async {
     _messages = messages.listen((message) {
       feedSeen = true;
+      feed.add(message);
       chat.add(message.plainText);
     });
   }
@@ -102,6 +105,7 @@ void main() {
           DateTime Function()? clock,
           RuleSoundPlayer? clockSounds,
           FakeTtsClient? tts,
+          FakeObsClient? obs,
           FakeAlertSound? alertSound}) =>
       AppController(
           clock: clock,
@@ -117,9 +121,108 @@ void main() {
               tts: tts ?? FakeTtsClient(),
               captions: FakeCaptionsClient(),
               alertSound: alertSound),
-          obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
+          obsCoordinator: ObsCoordinator(obs: obs ?? FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test('queue.next stream control uses the initiating viewer roles', () {
+    for (final moderator in [false, true]) {
+      fakeAsync((fake) {
+        final twitch = FakeChannelChatClient();
+        final obs = FakeObsClient()..state = const ObsState(connected: true);
+        final app = makeController(twitch, RuleOverlay(), obs: obs);
+        app.applySettings(
+          SettingsModel(
+            overlayEnabled: false,
+            obsEnabled: true,
+            queueState: const QueueState(status: QueueStatus.open),
+            rules: [
+              {
+                ...RuleSchema.newRule('chat.command', id: 'advance'),
+                'enabled': true,
+                'trigger': {'type': 'chat.command', 'command': '!advance'},
+                'actions': [
+                  {'id': 'pick', 'type': 'queue.next', 'count': 1},
+                ],
+              },
+              {
+                ...RuleSchema.newRule('queue.next', id: 'stream'),
+                'enabled': true,
+                'actions': [
+                  {'id': 'start', 'type': 'obs.stream', 'state': 'start'},
+                ],
+              },
+            ],
+          ),
+          connectChats: false,
+        );
+        twitch.messageController.add(queueMessage('Entrant', '!join',
+            id: 'entrant', moderator: !moderator));
+        twitch.messageController.add(queueMessage('Initiator', '!advance',
+            id: 'initiator', moderator: moderator));
+        fake.elapse(Duration.zero);
+        final run = app.rules.history.first;
+        expect(run.event.type, 'queue.next');
+        expect(run.event.author.name, 'Entrant');
+        expect(run.results.single.reason,
+            moderator ? isNull : 'publicStreamControl');
+        expect(obs.ruleControls, moderator ? ['stream:true'] : isEmpty);
+        unawaited(app.dispose());
+        fake.flushMicrotasks();
+      });
+    }
+  });
+
+  test('Twitch replies keep the author but omit a withheld poll answer',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final server = _PollOverlay();
+    final app = makeController(twitch, server);
+    addTearDown(app.dispose);
+    app.applySettings(const SettingsModel(overlayEnabled: true),
+        connectChats: false);
+    app.startPoll(
+        question: 'Q',
+        mode: PollMode.freeAnswer,
+        command: '!vote',
+        hideResults: true);
+
+    void send(String id, String text, {ChatReplyContext? reply}) {
+      twitch.messageController.add(ChatMessage(
+        platform: Platform.twitch,
+        id: id,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: [MessageItem.text(text)],
+        timestamp: DateTime.utc(2026),
+        reply: reply,
+      ));
+    }
+
+    send('vote', '!vote secret');
+    await settleCoordinatorTasks();
+    app.endPoll();
+    send('reply', 'Ordinary chat',
+        reply: const ChatReplyContext(
+          messageId: 'vote',
+          authorId: 'viewer',
+          authorName: 'Viewer',
+          text: '!vote secret',
+        ));
+    send('public-reply', 'Another message',
+        reply: const ChatReplyContext(
+          messageId: 'reply',
+          authorName: 'Viewer',
+          text: 'Ordinary chat',
+        ));
+    await settleCoordinatorTasks();
+
+    expect(server.chat, ['Ordinary chat', 'Another message']);
+    final preview = server.feed.first.reply!;
+    expect(
+        (preview.messageId, preview.authorId, preview.authorName, preview.text),
+        ('vote', 'viewer', 'Viewer', ''));
+    expect(server.feed.last.reply?.text, 'Ordinary chat');
+  });
 
   test('a reloaded countdown fires clock.ended once then persists the result',
       () {
@@ -649,63 +752,72 @@ void main() {
     });
   });
 
-  test(
-      'restoring a crossed goal rebaselines automation and the next crossing fires',
-      () async {
-    final server = RuleOverlay()..feedSeen = true;
-    final app = makeController(FakeChannelChatClient(), server);
-    addTearDown(app.dispose);
-    SettingsModel withProgress(SettingsModel settings, int current) =>
-        settings.copyWith(
-          goals: {
-            'g': {
-              'title': 'Goal',
-              'type': 'manual',
-              'current': current,
-              'target': 10
-            }
-          },
-        );
-    final initial = withProgress(
-        SettingsModel(overlayEnabled: false, rules: [
-          {
-            ...RuleSchema.newRule('goal.reached', id: 'goal'),
-            'enabled': true,
-            'actions': [
-              {
-                'id': 'out',
-                'type': 'template.trigger',
-                'name': 'goal',
-                'data': 'crossed'
+  for (final plainJson in [false, true]) {
+    test(
+        plainJson
+            ? 'importing a crossed goal rebaselines automation and the next crossing fires'
+            : 'restoring a crossed goal rebaselines automation and the next crossing fires',
+        () async {
+      final server = RuleOverlay()..feedSeen = true;
+      final app = makeController(FakeChannelChatClient(), server);
+      addTearDown(app.dispose);
+      SettingsModel withProgress(SettingsModel settings, int current) =>
+          settings.copyWith(
+            goals: {
+              'g': {
+                'title': 'Goal',
+                'type': 'manual',
+                'current': current,
+                'target': 10
               }
-            ],
-          },
-        ]),
-        5);
-    final notifier = SettingsNotifier(
-      settingsRepository:
-          _RestoreSettingsRepository(SettingsDocumentCodec.encode(initial)),
-      secureStore: _RestoreSecureStore(),
-    );
-    addTearDown(notifier.dispose);
-    await notifier.ready;
-    final unsubscribe = notifier.addListener((settings) => app.applySettings(
-        settings,
-        connectChats: false,
-        restoringBackup: notifier.publishingRestore));
-    addTearDown(unsubscribe);
-    await notifier
-        .restoreBackup((current, commit) => commit(withProgress(current, 10)));
-    await settleCoordinatorTasks();
-    expect(app.rules.history, isEmpty);
-    expect(server.triggers, isEmpty);
+            },
+          );
+      final initial = withProgress(
+          SettingsModel(overlayEnabled: false, rules: [
+            {
+              ...RuleSchema.newRule('goal.reached', id: 'goal'),
+              'enabled': true,
+              'actions': [
+                {
+                  'id': 'out',
+                  'type': 'template.trigger',
+                  'name': 'goal',
+                  'data': 'crossed'
+                }
+              ],
+            },
+          ]),
+          5);
+      final notifier = SettingsNotifier(
+        settingsRepository:
+            _RestoreSettingsRepository(SettingsDocumentCodec.encode(initial)),
+        secureStore: _RestoreSecureStore(),
+      );
+      addTearDown(notifier.dispose);
+      await notifier.ready;
+      final unsubscribe = notifier.addListener((settings) => app.applySettings(
+          settings,
+          connectChats: false,
+          restoringBackup: notifier.publishingRestore));
+      addTearDown(unsubscribe);
+      if (plainJson) {
+        await notifier.importSettings(
+            SettingsDocumentCodec.encode(withProgress(initial, 10)));
+      } else {
+        await notifier.restoreBackup(
+            (current, commit) => commit(withProgress(current, 10)));
+      }
+      await settleCoordinatorTasks();
+      expect(app.rules.history, isEmpty);
+      expect(server.triggers, isEmpty);
 
-    await notifier.update(withProgress(initial, 0));
-    await notifier.update(withProgress(initial, 10));
-    await settleCoordinatorTasks();
-    expect(app.rules.history.single.event.type, 'goal.reached');
-    expect(server.triggers.single['data'], 'crossed');
-  });
+      await notifier.update(withProgress(initial, 0));
+      await notifier.update(withProgress(initial, 10));
+      await settleCoordinatorTasks();
+      expect(app.rules.history.single.event.type, 'goal.reached');
+      expect(server.triggers.single['data'], 'crossed');
+    });
+  }
 
   test('real wiring delivers Bits feed before rule actions and adjusts goal',
       () async {

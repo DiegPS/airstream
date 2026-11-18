@@ -82,10 +82,14 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                       _form.ytHandle,
                       l.youtubeInputHint,
                       focusNode: _form.ytFocus,
-                      onChanged: (_) => _channelEdited(),
+                      onChanged: (_) {
+                        _editedYoutubeTargets.add(_form.ytHandle);
+                        _channelEdited();
+                      },
                       onSubmitted: (_) => _saveTextSettings(),
                       onClear: () {
                         _form.ytHandle.clear();
+                        _editedYoutubeTargets.add(_form.ytHandle);
                         _mutate(() {});
                         _saveTextSettings();
                       },

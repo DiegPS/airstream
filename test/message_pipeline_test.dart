@@ -498,7 +498,8 @@ void main() {
   });
 
   test('marks each viewer first message since the chat started', () async {
-    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 50));
+    final pipeline = MessagePipeline(const SettingsModel(maxMessages: 50))
+      ..startSession();
     final source = StreamController<ChatMessage>();
     pipeline.addSource(source.stream);
     var next = 0;
@@ -532,7 +533,15 @@ void main() {
     pipeline.clear();
     source.add(message('Ana'));
     await Future<void>.delayed(Duration.zero);
-    expect(pipeline.buffer.single.isFirstInSession, isTrue,
+    expect(pipeline.buffer.single.isFirstInSession, isFalse,
+        reason: 'clearing the display keeps the current session');
+
+    pipeline
+      ..endSession()
+      ..startSession();
+    source.add(message('Ana'));
+    await Future<void>.delayed(Duration.zero);
+    expect(pipeline.buffer.last.isFirstInSession, isTrue,
         reason: 'a new chat session starts over');
 
     await source.close();

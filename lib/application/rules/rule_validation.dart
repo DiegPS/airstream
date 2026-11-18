@@ -1,3 +1,4 @@
+import 'rule_events.dart';
 import 'rule_model.dart';
 
 bool _everyone(Map<String, dynamic> rule) {
@@ -20,15 +21,19 @@ bool isPublicChatRule(Map<String, dynamic> rule) {
 bool blocksPublicStreamControl(Map action, Map<String, dynamic> rule) {
   if (action['type'] != 'obs.stream') return false;
   final type = _triggerType(rule);
-  if (!type.startsWith('chat.') &&
-      type != 'queue.joined' &&
-      !type.startsWith('support.')) {
+  if (!isViewerRuleEvent(type)) {
     return false;
   }
   final roles = (rule['conditions'] as Map)['roles'] as List;
   return roles.isEmpty ||
       roles.any((role) => role != 'owner' && role != 'moderator');
 }
+
+bool blocksStreamControl(
+        Map action, Map<String, dynamic> rule, RuleEvent event) =>
+    action['type'] == 'obs.stream' &&
+    (event.origin.isUnprivilegedViewer ||
+        blocksPublicStreamControl(action, rule));
 
 Uri? httpRuleUri(Object? value) {
   if (value is! String) return null;

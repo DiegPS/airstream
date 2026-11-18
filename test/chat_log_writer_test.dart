@@ -54,6 +54,24 @@ void main() {
     ]);
   });
 
+  test('the next message opens the log again after a failed file open',
+      () async {
+    final log = writer();
+    final blocked = await Directory(
+            '${root.path}/Chat/airstream-chat-2026-11-15_21-00-00.txt')
+        .create(recursive: true);
+    await log.startSession(enabled: true);
+    log.write(_message('Ana', 'before recovery'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(log.currentFile, isNull);
+
+    await blocked.delete();
+    log.write(_message('Ana', 'after recovery'));
+    await log.endSession();
+    expect(await log.currentFile!.readAsLines(),
+        ['[21:05:13] [Twitch] Ana: after recovery']);
+  });
+
   test('writes nothing while it is off', () async {
     final log = writer();
     await log.startSession(enabled: false);

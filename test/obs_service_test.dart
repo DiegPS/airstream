@@ -8,6 +8,7 @@ import 'package:airstream/application/obs_coordinator.dart'
 import 'package:airstream/application/rules/rule_actions.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
+import 'package:airstream/application/rules/rule_obs_transitions.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/obs/obs_client.dart';
 import 'package:airstream/settings/settings_model.dart';
@@ -126,6 +127,55 @@ void main() {
     expect(client.statsCalls, greaterThan(1));
     await service.disconnect();
     expect(client.closeCount, 1);
+  });
+
+  test('an in-flight stats poll cannot undo newer stream and recording events',
+      () async {
+    final client = _FakeObsClient()..streaming = false;
+    late void Function(dynamic) deliver;
+    final service = ObsService(
+      connector: (
+          {required url,
+          required password,
+          required onDone,
+          required onEvent}) async {
+        deliver = onEvent;
+        return client;
+      },
+      statsPollInterval: const Duration(hours: 1),
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    final transitionObserver = RuleObsTransitions()
+      ..observe(service.currentState);
+    final transitions = <String>[];
+    final polled = Completer<void>();
+    final subscription = service.stateStream.listen((state) {
+      transitions.addAll(transitionObserver.observe(state).map((e) => e.type));
+      if (state.fps == 42) polled.complete();
+    });
+    addTearDown(subscription.cancel);
+    await Future<void>.delayed(Duration.zero);
+
+    final stats = Completer<ObsStatsSnapshot>();
+    final polling = Completer<void>();
+    client.statsOverride = () {
+      polling.complete();
+      return stats.future;
+    };
+    deliver(const _FakeObsEvent('StreamStateChanged', {'outputActive': false}));
+    await polling.future;
+    deliver(const _FakeObsEvent('StreamStateChanged', {'outputActive': true}));
+    deliver(const _FakeObsEvent('RecordStateChanged', {
+      'outputActive': true,
+      'outputState': 'OBS_WEBSOCKET_OUTPUT_PAUSED',
+    }));
+    stats.complete(const ObsStatsSnapshot(activeFps: 42));
+    await polled.future;
+    expect(service.currentState.outputActive, isTrue);
+    expect(service.currentState.recordingActive, isTrue);
+    expect(service.currentState.recordingPaused, isTrue);
+    expect(transitions, ['obs.streamStarted', 'obs.recordingStarted']);
   });
 
   test('OBS switches to the scene a spoken name refers to', () async {
@@ -585,6 +635,13 @@ class _RecordingSocket implements websocket.ObsWebSocket {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _FakeObsEvent {
+  const _FakeObsEvent(this.eventType, this.eventData);
+
+  final String eventType;
+  final Map<String, Object?> eventData;
+}
+
 class _FakeObsClient implements ObsClient {
   @override
   Future<void> source(String scene, String source, String visibility) async =>
@@ -695,9 +752,12 @@ class _FakeObsClient implements ObsClient {
         outputDuration: 0,
         outputBytes: 0,
       );
+  Future<ObsStatsSnapshot> Function()? statsOverride;
+
   @override
   Future<ObsStatsSnapshot> stats() async {
     statsCalls++;
+    if (statsOverride case final override?) return override();
     return const ObsStatsSnapshot(activeFps: 60);
   }
 

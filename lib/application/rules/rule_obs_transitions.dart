@@ -8,15 +8,28 @@ class RuleObsTransitions {
       : _clock = clock ?? DateTime.now;
   final DateTime Function() _clock;
   ObsState? _previous;
-  final _expected = <({String scene, int depth, DateTime expires})>[];
+  final _expected = <({
+    String type,
+    String scene,
+    int depth,
+    RuleEventOrigin? origin,
+    DateTime expires
+  })>[];
   int _sequence = 0;
-  void expectScene(String scene, int depth) {
+  void Function() expectScene(String scene, int depth) =>
+      expect('obs.sceneChanged', depth, scene: normalizeVoiceText(scene));
+
+  void Function() expect(String type, int depth, {String scene = ''}) {
     _expected.removeWhere((e) => !e.expires.isAfter(_clock()));
-    _expected.add((
+    final event = (
+      type: type,
       scene: scene,
       depth: depth,
+      origin: RuleEventOrigin.current,
       expires: _clock().add(const Duration(seconds: 5))
-    ));
+    );
+    _expected.add(event);
+    return () => _expected.remove(event);
   }
 
   List<RuleEvent> observe(ObsState state) {
@@ -29,11 +42,21 @@ class RuleObsTransitions {
       return [];
     }
     final events = <RuleEvent>[];
-    void add(String type, {int depth = 0}) => events.add(RuleEvent(
+    _expected.removeWhere((e) => !e.expires.isAfter(_clock()));
+    void add(String type, {String scene = ''}) {
+      final expected = _expected
+          .where((e) => e.type == type && e.scene == scene)
+          .firstOrNull;
+      if (expected != null) _expected.remove(expected);
+      events.add(RuleEvent(
         type: type,
         scene: state.currentScene,
         eventId: 'obs:${++_sequence}',
-        chainDepth: depth));
+        chainDepth: expected?.depth ?? 0,
+        origin: expected?.origin,
+      ));
+    }
+
     if (old.outputActive != state.outputActive) {
       add(state.outputActive ? 'obs.streamStarted' : 'obs.streamStopped');
     }
@@ -43,14 +66,7 @@ class RuleObsTransitions {
           : 'obs.recordingStopped');
     }
     if (old.currentScene != state.currentScene) {
-      _expected.removeWhere((e) => !e.expires.isAfter(_clock()));
-      final expected = _expected
-          .where((e) =>
-              normalizeVoiceText(e.scene) ==
-              normalizeVoiceText(state.currentScene))
-          .firstOrNull;
-      if (expected != null) _expected.remove(expected);
-      add('obs.sceneChanged', depth: expected?.depth ?? 0);
+      add('obs.sceneChanged', scene: normalizeVoiceText(state.currentScene));
     }
     return events;
   }

@@ -125,7 +125,7 @@ class RuleActions implements RuleActionTarget {
 
   @override
   Future<RuleActionResult> execute(Map<String, dynamic> a, RuleRun run) async {
-    if (blocksPublicStreamControl(a, run.rule)) {
+    if (blocksStreamControl(a, run.rule, run.event)) {
       return const RuleActionResult('skipped', 'publicStreamControl');
     }
     final skip = skipReason(a, run.event);
@@ -138,7 +138,7 @@ class RuleActions implements RuleActionTarget {
         case 'obs.previousScene':
           await obs.ruleScene(run.previousScene!, chainDepth: depth);
         case 'obs.recording':
-          await obs.ruleRecording(a['state'] == 'start');
+          await obs.ruleRecording(a['state'] == 'start', chainDepth: depth);
         case 'obs.source':
           await obs.ruleSource(a['scene'] as String, a['source'] as String,
               a['visible'] as String);
@@ -150,7 +150,7 @@ class RuleActions implements RuleActionTarget {
           await obs.ruleFilter(a['source'] as String, a['filter'] as String,
               a['state'] as String);
         case 'obs.stream':
-          await obs.ruleStream(a['state'] == 'start');
+          await obs.ruleStream(a['state'] == 'start', chainDepth: depth);
         case 'obs.replay':
           await obs.ruleReplay(a['op'] as String);
         case 'obs.media':

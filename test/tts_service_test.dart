@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:airstream/services/native_audio_playback_service.dart';
 
 import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/services/tts/sherpa_tts_engine.dart';
@@ -54,6 +57,56 @@ void main() {
     }
   });
 
+  for (final stopDuringWrite in [true, false]) {
+    test(
+      stopDuringWrite
+          ? 'disabling TTS during a WAV write prevents native playback'
+          : 'disabling TTS before native start cancels the pending playback',
+      () async {
+        final root =
+            await Directory.systemTemp.createTemp('tts-playback-race-');
+        addTearDown(() => root.delete(recursive: true));
+        final overrides = _WavWriteOverride();
+        final player = _GatedPlayback();
+        final service = TtsService(
+          engine: _ReadySherpaEngine(),
+          modelCache: TtsModelCache(rootDirectory: root),
+          audioPlayback: player,
+          temporaryDirectory: () async => root,
+        );
+        addTearDown(service.dispose);
+        Future<void> disable() => service.updateConfig(
+              enabled: false,
+              modelId: 'supertonic-3-hybrid',
+              voice: 'M1',
+              language: 'es',
+              speed: 1,
+              steps: 8,
+              referenceAudioPath: '',
+              referenceText: '',
+            );
+
+        IOOverrides.runWithIOOverrides(() {
+          service.speak('Hello');
+        }, overrides);
+        final wav = await overrides.opened.future;
+        if (stopDuringWrite) {
+          await disable();
+          player.resume.complete();
+          wav.resume.complete();
+        } else {
+          wav.resume.complete();
+          await player.entered.future;
+          await disable();
+          player.resume.complete();
+        }
+        await wav.deleted.future;
+        expect(player.starts, 0);
+        expect(player.entered.isCompleted, !stopDuringWrite);
+      },
+    );
+  }
+
   test('a dead TTS worker immediately replaces Ready with an error', () async {
     final engine = _ControllableSherpaEngine();
     final service = TtsService(engine: engine);
@@ -90,6 +143,85 @@ void main() {
       if (await root.exists()) await root.delete(recursive: true);
     }
   });
+}
+
+class _ReadySherpaEngine extends SherpaTtsEngine {
+  @override
+  bool get isReady => true;
+
+  @override
+  Future<TtsAudio> synthesize({
+    required String text,
+    required int speakerId,
+    required String language,
+    required double speed,
+    required int steps,
+    String? referenceAudio,
+    String referenceText = '',
+  }) async =>
+      TtsAudio(Float32List.fromList([0, 0.2, 0]), 16000);
+}
+
+class _GatedPlayback extends NativeAudioPlaybackService {
+  final entered = Completer<void>();
+  final resume = Completer<void>();
+  int starts = 0;
+
+  @override
+  Future<void> playFile(
+    File file, {
+    Duration timeout = const Duration(seconds: 20),
+    double? volume,
+    bool Function()? canStart,
+  }) async {
+    entered.complete();
+    await resume.future;
+    if (canStart?.call() != false) starts++;
+  }
+}
+
+final class _WavWriteOverride extends IOOverrides {
+  final opened = Completer<_GatedWav>();
+
+  @override
+  File createFile(String path) {
+    final file = super.createFile(path);
+    if (!path.endsWith('.wav')) return file;
+    final wav = _GatedWav(file);
+    opened.complete(wav);
+    return wav;
+  }
+}
+
+class _GatedWav implements File {
+  _GatedWav(this.file);
+
+  final File file;
+  final resume = Completer<void>();
+  final deleted = Completer<void>();
+
+  @override
+  Future<File> writeAsBytes(
+    List<int> bytes, {
+    FileMode mode = FileMode.write,
+    bool flush = false,
+  }) async {
+    await resume.future;
+    return file.writeAsBytes(bytes, mode: mode, flush: flush);
+  }
+
+  @override
+  Future<bool> exists() => file.exists();
+
+  @override
+  Future<FileSystemEntity> delete({bool recursive = false}) async {
+    final result = await file.delete(recursive: recursive);
+    deleted.complete();
+    return result;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ControllableSherpaEngine extends SherpaTtsEngine {

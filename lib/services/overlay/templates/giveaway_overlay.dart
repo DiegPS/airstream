@@ -90,16 +90,18 @@ ${overlayFontScript(googleFontsAllowed)}
         } else if (envelope.type === 'giveaway') {
           const next = envelope.data || null;
           const shouldAnimate = !envelope.replay && next && next.phase === 'drawn' && next.winner && next.drawId !== lastDrawId;
-          if (next && next.phase === 'drawn') lastDrawId = next.drawId;
-          // Each winner in a batch gets a full reveal on the browser page.
-          if (next?.batchDraw && !envelope.replay) {
-            if (shouldAnimate) { pending.push(next); nextDraw(); }
+          if (next?.phase === 'drawn' && next.winner && !envelope.replay) {
+            if (shouldAnimate) {
+              lastDrawId = next.drawId;
+              pending.push(next);
+              nextDraw();
+            }
             return;
           }
-          // Duplicate packets and language changes must not restart a live draw.
-          if (spinning && next && state && next.drawId === state.drawId && !envelope.replay) { state = next; return; }
-          resetDraws(); state = next;
-          if (shouldAnimate) animate(); else render();
+          resetDraws();
+          state = next;
+          lastDrawId = next?.phase === 'drawn' ? next.drawId : null;
+          render();
         } else if (envelope.type === 'reload') window.location.reload();
       } catch (error) { console.warn('Ignored malformed giveaway message', error); }
     });

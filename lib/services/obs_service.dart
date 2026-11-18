@@ -136,6 +136,7 @@ class ObsService {
   _ObsMetricsSample? _lastMetricsSample;
   DateTime? _lastObservedDropAt;
   bool _statsPollInFlight = false;
+  int _streamEventRevision = 0, _recordEventRevision = 0;
   int _consecutivePollFailures = 0;
   String _connectionPassword = '';
 
@@ -485,8 +486,10 @@ class ObsService {
         _emit(_state.copyWith(currentScene: sceneName));
         break;
       case 'StreamStateChanged':
+        _streamEventRevision++;
         final outputActive = data['outputActive'] == true;
-        final reconnecting = data['outputReconnecting'] == true;
+        final reconnecting = data['outputReconnecting'] == true ||
+            data['outputState'] == 'OBS_WEBSOCKET_OUTPUT_RECONNECTING';
         _emit(
           _state.copyWith(
             outputActive: outputActive,
@@ -500,9 +503,16 @@ class ObsService {
         unawaited(_pollStatsOnce(generation));
         break;
       case 'RecordStateChanged':
+        _recordEventRevision++;
+        final outputState = data['outputState'];
+        final active = data['outputActive'] == true;
         _emit(
           _state.copyWith(
-            recordingActive: data['outputActive'] == true,
+            recordingActive: active,
+            recordingPaused:
+                active && outputState == 'OBS_WEBSOCKET_OUTPUT_PAUSED',
+            recordingDurationMs: active ? null : 0,
+            recordingBytes: active ? null : 0,
           ),
         );
         unawaited(_pollStatsOnce(generation));
@@ -533,6 +543,8 @@ class ObsService {
     if (obs == null) return;
 
     _statsPollInFlight = true;
+    final streamRevision = _streamEventRevision;
+    final recordRevision = _recordEventRevision;
     try {
       final streamStatus = await obs.streamStatus();
       final recordStatus = await obs.recordStatus();
@@ -546,23 +558,27 @@ class ObsService {
       _lastMetricsSample = metrics.sample;
       _consecutivePollFailures = 0;
       final dropTrend = _rememberDropTrend(metrics.recentDroppedFrames > 0);
+      final useStream = streamRevision == _streamEventRevision;
+      final useRecord = recordRevision == _recordEventRevision;
       _emit(
         _state.copyWith(
-          outputActive: streamStatus.outputActive,
-          recordingActive: recordStatus.outputActive,
-          recordingPaused: recordStatus.outputPaused,
-          recordingDurationMs: recordStatus.outputDuration,
-          recordingBytes: recordStatus.outputBytes,
-          reconnecting: streamStatus.outputReconnecting,
+          outputActive: useStream ? streamStatus.outputActive : null,
+          recordingActive: useRecord ? recordStatus.outputActive : null,
+          recordingPaused: useRecord ? recordStatus.outputPaused : null,
+          recordingDurationMs: useRecord ? recordStatus.outputDuration : null,
+          recordingBytes: useRecord ? recordStatus.outputBytes : null,
+          reconnecting: useStream ? streamStatus.outputReconnecting : null,
           bitrateKbps: metrics.bitrateKbps,
           fps: metrics.fps,
           droppedFrames: metrics.droppedFrames,
           dropPercentage: metrics.dropPercentage,
           dropTrend: dropTrend,
-          statusMessage: _streamStatusLabel(
-            outputActive: streamStatus.outputActive,
-            reconnecting: streamStatus.outputReconnecting,
-          ),
+          statusMessage: useStream
+              ? _streamStatusLabel(
+                  outputActive: streamStatus.outputActive,
+                  reconnecting: streamStatus.outputReconnecting,
+                )
+              : null,
         ),
       );
     } catch (error, stack) {
@@ -603,7 +619,7 @@ class ObsService {
           break;
       }
     } finally {
-      _statsPollInFlight = false;
+      if (generation == _generation) _statsPollInFlight = false;
     }
   }
 

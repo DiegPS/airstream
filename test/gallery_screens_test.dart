@@ -125,6 +125,12 @@ void main() {
   test(
       'preloaded Credits starts when session data arrives and clears when it leaves',
       () => runGalleryChecks('preloaded credits'));
+  test('giveaway reveals a single draw after all pending batch winners',
+      () => runGalleryChecks('mixed giveaway draws'));
+  test('ticker removes a stopped timer before the animation loops',
+      () => runGalleryChecks('stopped ticker'));
+  test('credits group supporters by platform and channel identity',
+      () => runGalleryChecks('credits identity'));
 }
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -564,12 +570,67 @@ function checkWordCloudModeration() {
   assert.deepEqual(words(), []);
   assert.equal(view.nodes.stage.hidden, true);
 }
+function checkMixedGiveawayDraws() {
+  const view = page('/giveaway');
+  const draw = (drawId, name, batchDraw) => ({
+    phase: 'drawn', drawId, batchDraw, winner: {name, platform: 'twitch'}
+  });
+  view.send('giveaway', draw(1, 'Ana', true));
+  view.send('giveaway', draw(2, 'Beto', true));
+  view.send('giveaway', draw(3, 'Carla', false));
+  const winner = () => view.nodes.giveaway.children[0].textContent;
+  view.advance(2500);
+  assert.equal(winner(), 'Ana');
+  view.advance(4100);
+  assert.equal(winner(), 'Beto');
+  view.advance(4100);
+  assert.equal(winner(), 'Carla');
+}
+
+function checkStoppedTicker() {
+  for (const reduced of [false, true]) {
+    for (const phase of ['paused', 'idle']) {
+      const view = page('ticker', 'en', {reduced});
+      const track = view.nodes[reduced ? 'ticker-still' : 'ticker-track'];
+      const now = Date.parse('2026-11-17T12:00:00Z');
+      view.send('timer', {phase: 'running', endsAtMs: now + 65000, serverNowMs: now});
+      view.fields({showCustom: false, showLatest: false, showGoals: false});
+      assert.match(track.textContent, /Subathon/);
+      view.fields({messages: 'Keep me', showCustom: true});
+      view.send('timer', {phase, remainingMs: 64000, serverNowMs: now});
+      assert.doesNotMatch(track.textContent, /Subathon/);
+      assert.match(track.textContent, /Keep me/);
+    }
+  }
+}
+
+function checkCreditsIdentity() {
+  const view = page('credits');
+  const supporters = [
+    {id: '1', platform: 'twitch', name: 'Sam', channelId: 'shared'},
+    {id: '2', platform: 'kick', name: 'Sam', channelId: 'shared'},
+    {id: '3', platform: 'twitch', name: 'Renamed Sam', channelId: 'shared'},
+    {id: '4', platform: 'twitch', name: 'Sam', channelId: 'different'},
+    {id: '5', platform: 'youtube', name: 'Sam'},
+    {id: '6', platform: 'youtube', name: 'SAM'},
+  ].map((entry, index) => ({...entry, type: 'gift',
+    at: new Date(Date.UTC(2026, 10, 17, 0, index)).toISOString()}));
+  view.send('session', {startedAt: '2026-11-17', supporters}, true);
+  view.fields({loop: false});
+  const roll = view.nodes['credits-roll'];
+  const entries = roll.children[0].children[1].children;
+  assert.deepEqual(entries.map(node => node.textContent), ['Sam', 'Renamed Sam', 'Sam', 'SAM']);
+}
+
 const regressions = {
   'word cloud': checkWordCloudModeration,
   goals: checkGoalReset,
   snapshots: checkEmptySnapshots,
   'page language': checkPageLanguage,
   'preloaded credits': checkPreloadedCredits,
+  'mixed giveaway draws': checkMixedGiveawayDraws,
+  'stopped ticker': checkStoppedTicker,
+  'credits identity': checkCreditsIdentity,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

@@ -96,8 +96,10 @@ function snapshot() {
     const names = new Map();
     for (const entry of recent) {
       if (entry.type !== type || !entry.name) continue;
-      const key = entry.name.trim().toLowerCase();
-      // Repeated names use their newest appearance and position.
+      const channelId = entry.channelId?.trim();
+      const key = JSON.stringify([entry.platform, channelId ? 'id' : 'name',
+        channelId || entry.name.trim().toLowerCase()]);
+      // Repeated supporters use their newest appearance and position.
       names.delete(key);
       names.set(key, {name: entry.name, platform: entry.platform});
     }

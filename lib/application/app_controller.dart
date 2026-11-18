@@ -136,7 +136,17 @@ class AppController {
       _chat.providerEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
         final hiddenVote = _poll.hasOpenPoll && _poll.handleMessage(m);
-        final message = hiddenVote ? m.copyWith(items: const []) : m;
+        if (hiddenVote && m.platform == Platform.twitch) {
+          if (m.id.isNotEmpty) _withheldTwitchVoteIds.add(m.id);
+          final sourceId = m.sharedSource?.messageId;
+          if (sourceId != null && sourceId.isNotEmpty) {
+            _withheldTwitchVoteIds.add(sourceId);
+          }
+        }
+        final publicMessage = _withoutPrivateReplyText(m);
+        final message = hiddenVote
+            ? publicMessage.copyWith(items: const [])
+            : publicMessage;
         if (hiddenVote) {
           _overlay.broadcastChatSupport(message);
         } else {
@@ -236,6 +246,7 @@ class AppController {
       type: type,
       eventId: 'queue:${++_ruleEventSequence}',
       chainDepth: depth,
+      origin: depth == 0 ? null : RuleEventOrigin.current,
       platform: entry.platform.name,
       author:
           RuleAuthor(name: entry.name, id: entry.identity, roles: entry.roles),
@@ -249,6 +260,8 @@ class AppController {
   int _settingsDepth = 0, _ruleEventSequence = 0;
   Timer? _ruleEndTimer, _clockEndTimer;
   int? _silentSubathonDeadline;
+  RuleEventOrigin? _subathonOrigin;
+  int _subathonDepth = 0;
 
   /// A countdown that ended while the app was closed is marked ended on
   /// launch without running clock.ended rules or the end sound.
@@ -302,7 +315,7 @@ class AppController {
           clock.phase == ClockPhase.running) {
         _clockEndSilently = previous == null &&
             clock.anchorMs <= _clockNow().millisecondsSinceEpoch;
-        _scheduleClockEnd(clock);
+        _scheduleClockEnd(clock, _settingsDepth);
       }
     }
   }
@@ -326,6 +339,7 @@ class AppController {
         type: 'clock.ended',
         eventId: 'clock:${++_ruleEventSequence}',
         chainDepth: depth,
+        origin: RuleEventOrigin.current,
       ));
     }
     if (clock.sound != HighlightSounds.none) {
@@ -340,7 +354,7 @@ class AppController {
     }
   }
 
-  void _scheduleClockEnd(LiveClock clock) {
+  void _scheduleClockEnd(LiveClock clock, int depth) {
     _clockEndTimer = Timer(
         Duration(
             milliseconds: clock.shownAt(_clockNow().millisecondsSinceEpoch)),
@@ -349,9 +363,9 @@ class AppController {
       if (_disposed || current == null) return;
       final next = current.clock.expire(_clockNow().millisecondsSinceEpoch);
       if (identical(next, current.clock)) {
-        _scheduleClockEnd(current.clock);
+        _scheduleClockEnd(current.clock, depth);
       } else if (ruleSettingsWriter != null) {
-        unawaited(_writeClock(current, next, 0).catchError(
+        unawaited(_writeClock(current, next, depth).catchError(
             (Object error, StackTrace stack) => AppLogger.warning(
                 'Timer persistence failed',
                 error: error,
@@ -373,6 +387,23 @@ class AppController {
   }
 
   final _poll = ChatPollController();
+  final _withheldTwitchVoteIds = <String>{};
+
+  ChatMessage _withoutPrivateReplyText(ChatMessage message) {
+    final reply = message.reply;
+    if (message.platform != Platform.twitch ||
+        reply == null ||
+        !_withheldTwitchVoteIds.contains(reply.messageId)) {
+      return message;
+    }
+    return message.copyWith(
+        reply: ChatReplyContext(
+      messageId: reply.messageId,
+      authorId: reply.authorId,
+      authorName: reply.authorName,
+    ));
+  }
+
   late final _giveaway = ChatGiveawayController(onHistoryChanged: (history) {
     final settings = _lastSettings;
     if (settings == null || ruleSettingsWriter == null) return;
@@ -432,7 +463,7 @@ class AppController {
   FeaturedMessageDelivery featureMessageOnStream(ChatMessage message) =>
       _poll.isPrivateVote(message)
           ? FeaturedMessageDelivery.noReceiver()
-          : _overlay.featureMessage(message);
+          : _overlay.featureMessage(_withoutPrivateReplyText(message));
 
   /// Where session chat logs are saved.
   Future<Directory> chatLogDirectory() => ChatLogWriter.defaultDirectory();
@@ -465,6 +496,7 @@ class AppController {
         type: 'giveaway.winner',
         eventId: 'draw:$drawId',
         chainDepth: depth,
+        origin: depth == 0 ? null : RuleEventOrigin.current,
         platform: winner.platform.name,
         author: RuleAuthor(name: winner.name, id: winner.authorId),
       ));
@@ -575,6 +607,12 @@ class AppController {
           ? settings.subathonEndsAtMs
           : null;
     }
+    if (restoringBackup ||
+        previous?.subathonPhase != settings.subathonPhase ||
+        previous?.subathonEndsAtMs != settings.subathonEndsAtMs) {
+      _subathonOrigin = restoringBackup ? null : RuleEventOrigin.current;
+      _subathonDepth = restoringBackup ? 0 : _settingsDepth;
+    }
     _ruleEndTimer?.cancel();
     _ruleEndTimer = null;
     if (rules.active) {
@@ -588,7 +626,8 @@ class AppController {
                 type: 'goal.reached',
                 goalId: e.key,
                 eventId: 'goal:${++_ruleEventSequence}',
-                chainDepth: _settingsDepth));
+                chainDepth: _settingsDepth,
+                origin: RuleEventOrigin.current));
           }
         }
         if (previous.subathonPhase == 'running' &&
@@ -597,7 +636,8 @@ class AppController {
           rules.handle(RuleEvent(
               type: 'subathon.ended',
               eventId: 'timer:${previous.subathonEndsAtMs}',
-              chainDepth: _settingsDepth));
+              chainDepth: _settingsDepth,
+              origin: RuleEventOrigin.current));
         }
       }
       if (settings.subathonPhase == 'running' &&
@@ -613,7 +653,9 @@ class AppController {
           if (rules.active) {
             rules.handle(RuleEvent(
                 type: 'subathon.ended',
-                eventId: 'timer:${settings.subathonEndsAtMs}'));
+                eventId: 'timer:${settings.subathonEndsAtMs}',
+                chainDepth: _subathonDepth,
+                origin: _subathonOrigin));
           }
         });
       }
@@ -625,6 +667,7 @@ class AppController {
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
+        if (!_poll.hasOpenPoll) _withheldTwitchVoteIds.clear();
         _sessionSummary.start();
         _overlay.clearRecentAlerts();
       } else {

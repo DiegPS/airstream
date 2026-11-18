@@ -292,6 +292,26 @@ void main() {
     expect(secure.password, 'later');
   });
 
+  test('an unrelated save retries a password edit after a secure read fails',
+      () async {
+    final secure = _MemorySecureSettingsStore('original')..failReads = true;
+    final repository = _MemorySettingsRepository('{}');
+    final notifier =
+        SettingsNotifier(secureStore: secure, settingsRepository: repository);
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await notifier.update(notifier.state.copyWith(obsPassword: 'replacement'));
+    expect(notifier.state.obsPassword, 'replacement');
+    expect(secure.password, 'original');
+    expect(secure.reads, 2);
+
+    secure.failReads = false;
+    await notifier.update(notifier.state.copyWith(fontSize: 24));
+    expect(secure.reads, 3);
+    expect(secure.password, 'replacement');
+    expect(notifier.state.obsPassword, 'replacement');
+  });
+
   test('failed credential writes keep the edited password and retry on save',
       () async {
     final secure = _MemorySecureSettingsStore('original')..failWrites = true;

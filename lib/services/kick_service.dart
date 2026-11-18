@@ -70,7 +70,24 @@ class KickService {
     _emit(ServiceStatus.idle, null);
     _emit(ServiceStatus.connecting, null);
     try {
-      final client = await _transportFactory().timeout(_connectionTimeout);
+      var expired = false;
+      final client = await _transportFactory().then((client) async {
+        if (expired || generation != _generation) {
+          try {
+            await client.close();
+          } catch (error, stack) {
+            AppLogger.warning('Could not close an abandoned Kick transport',
+                error: error, stackTrace: stack);
+          }
+          return null;
+        }
+        return client;
+      }).timeout(_connectionTimeout, onTimeout: () {
+        expired = true;
+        throw TimeoutException(
+            'Kick transport connection timed out', _connectionTimeout);
+      });
+      if (client == null) return;
       if (generation != _generation) {
         await client.close();
         return;

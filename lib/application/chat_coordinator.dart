@@ -255,7 +255,7 @@ class ChatCoordinator {
   final String? Function(String value) _youtubeVideoIdFromUrl;
   final _listController = StreamController<List<ChatMessage>>.broadcast();
   final Duration _youtubeLiveRetryInterval;
-  Timer? _youtubeLiveRetry;
+  final _youtubeLiveRetries = <String, Timer>{};
   final _statusController =
       StreamController<Map<String, (ServiceStatus, String?)>>.broadcast();
   final _youtubeBadgeController = StreamController<String?>.broadcast();
@@ -465,7 +465,8 @@ class ChatCoordinator {
       ('youtubeVertical', _youtubeVertical, settings.youtubeVerticalUrl),
     ]) {
       if (_isPlatformConfigured(entry.$1) &&
-          _platformStatus[entry.$1]?.$1 == ServiceStatus.error) {
+          (_platformStatus[entry.$1]?.$1 == ServiceStatus.error ||
+              _platformStatus[entry.$1]?.$2 == youtubeWaitingForLiveStatus)) {
         unawaited(_connectYoutubeStream(
           service: entry.$2,
           statusKey: entry.$1,
@@ -533,7 +534,6 @@ class ChatCoordinator {
   }
 
   Future<void> _connectYoutube(SettingsModel settings, int generation) async {
-    _youtubeLiveRetry?.cancel();
     _youtubeBadgeValue = null;
     _emitYoutubeBadgeValue();
     try {
@@ -547,33 +547,17 @@ class ChatCoordinator {
           : settings.youtubeHandle.trim();
       _emitYoutubeBadgeValue();
     } catch (error, stack) {
-      final notLive = isYoutubeNotLiveError(error);
-      if (!notLive) {
-        AppLogger.error(
-          'YouTube connection failed',
-          error: error,
-          stackTrace: stack,
-        );
-      }
-      await _youtube.disconnect();
       if (!_isCurrent('youtube', generation)) return;
       _youtubeBadgeValue = null;
       _emitYoutubeBadgeValue();
-      if (notLive) {
-        // Streamers open Airstream before going live: keep checking.
-        _updateStatus(
-          'youtube',
-          (ServiceStatus.connecting, youtubeWaitingForLiveStatus),
-        );
-        _youtubeLiveRetry = Timer(_youtubeLiveRetryInterval, () {
-          final latest = _lastSettings;
-          if (latest != null && _isCurrent('youtube', generation)) {
-            unawaited(_connectYoutube(latest, generation));
-          }
-        });
-        return;
-      }
-      _updateStatus('youtube', (ServiceStatus.error, error.toString()));
+      await _handleYoutubeFailure(
+        service: _youtube,
+        statusKey: 'youtube',
+        generation: generation,
+        error: error,
+        stack: stack,
+        retry: () => _connectYoutube(_lastSettings!, generation),
+      );
     }
   }
 
@@ -594,15 +578,47 @@ class ChatCoordinator {
     try {
       await service.connect(liveId: videoId);
     } catch (error, stack) {
-      AppLogger.error(
-        '$statusKey connection failed',
+      await _handleYoutubeFailure(
+        service: service,
+        statusKey: statusKey,
+        generation: generation,
         error: error,
-        stackTrace: stack,
+        stack: stack,
+        retry: () => _connectYoutubeStream(
+          service: service,
+          statusKey: statusKey,
+          url: url,
+          generation: generation,
+        ),
       );
-      await service.disconnect();
-      if (_isCurrent(statusKey, generation)) {
-        _updateStatus(statusKey, (ServiceStatus.error, error.toString()));
-      }
+    }
+  }
+
+  Future<void> _handleYoutubeFailure({
+    required YouTubeChatClient service,
+    required String statusKey,
+    required int generation,
+    required Object error,
+    required StackTrace stack,
+    required Future<void> Function() retry,
+  }) async {
+    if (!_isCurrent(statusKey, generation)) return;
+    final notLive = isYoutubeNotLiveError(error);
+    if (!notLive) {
+      AppLogger.error('$statusKey connection failed',
+          error: error, stackTrace: stack);
+    }
+    await service.disconnect();
+    if (!_isCurrent(statusKey, generation)) return;
+    if (notLive) {
+      _updateStatus(
+          statusKey, (ServiceStatus.connecting, youtubeWaitingForLiveStatus));
+      _youtubeLiveRetries[statusKey] = Timer(_youtubeLiveRetryInterval, () {
+        _youtubeLiveRetries.remove(statusKey);
+        if (_isCurrent(statusKey, generation)) unawaited(retry());
+      });
+    } else {
+      _updateStatus(statusKey, (ServiceStatus.error, error.toString()));
     }
   }
 
@@ -627,8 +643,10 @@ class ChatCoordinator {
     }
   }
 
-  int _nextGeneration(String key) =>
-      _attemptGenerations[key] = (_attemptGenerations[key] ?? 0) + 1;
+  int _nextGeneration(String key) {
+    _youtubeLiveRetries.remove(key)?.cancel();
+    return _attemptGenerations[key] = (_attemptGenerations[key] ?? 0) + 1;
+  }
 
   bool _isCurrent(String key, int generation) =>
       !_disposed &&
@@ -728,7 +746,10 @@ class ChatCoordinator {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    _youtubeLiveRetry?.cancel();
+    for (final retry in _youtubeLiveRetries.values) {
+      retry.cancel();
+    }
+    _youtubeLiveRetries.clear();
     await _pipelineSub?.cancel();
     for (final subscription in _statusSubscriptions) {
       await subscription.cancel();

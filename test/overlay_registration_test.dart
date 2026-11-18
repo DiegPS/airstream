@@ -108,10 +108,15 @@ void main() {
     expect(subscribed, isFalse);
   });
 
-  test('a template-only featured delivery counts as sent', () async {
-    final server = OverlayServer();
+  test('unrelated gallery and custom pages do not count as featured receivers',
+      () async {
+    final root = await Directory.systemTemp.createTemp('featured-receivers-');
+    addTearDown(() => root.delete(recursive: true));
+    final server = OverlayServer(templateLibrary: TemplateLibrary(root));
     addTearDown(server.dispose);
     final page = _Socket(server)..register('gallery', template: 'credits');
+    final custom = _Socket(server)..register('custom', template: 'unrelated');
+    await custom.sink.nextFrame('fields');
     final delivery = server.broadcastFeaturedMessage(ChatMessage(
       platform: Platform.twitch,
       id: 'featured',
@@ -122,8 +127,29 @@ void main() {
     final frame =
         page.sink.frames.singleWhere((frame) => frame['type'] == 'featured');
     expect(frame['data'], containsPair('message', 'Featured text'));
-    expect(delivery.status, FeaturedMessageStatus.sent);
-    expect(await delivery.completed, FeaturedMessageStatus.sent);
+    expect(
+        custom.sink.frames.singleWhere((frame) => frame['type'] == 'featured'),
+        frame);
+    expect(delivery.status, FeaturedMessageStatus.noReceiver);
+    expect(await delivery.completed, FeaturedMessageStatus.noReceiver);
+  });
+
+  test(
+      'connected gallery pages receive localized defaults when language changes',
+      () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final ticker = _Socket(server)..register('gallery', template: 'ticker');
+    final credits = _Socket(server)..register('gallery', template: 'credits');
+    expect(ticker.snapshot('fields')['data'], containsPair('language', 'en'));
+    expect(credits.snapshot('fields')['data'], containsPair('language', 'en'));
+    server.setSettings(const SettingsModel(appLanguageCode: 'es'));
+    for (final page in [ticker, credits]) {
+      final fields = page.sink.frames.where((f) => f['type'] == 'fields');
+      expect(fields, hasLength(2));
+      expect(fields.last['data'], containsPair('language', 'es'));
+      expect(fields.last['replay'], isTrue);
+    }
   });
 
   test('a redacted support alert publishes no chat message', () {

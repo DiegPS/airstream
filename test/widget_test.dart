@@ -61,6 +61,49 @@ class _WidgetTestSettings extends SettingsNotifier {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets(
+      'a template field changing from text to number uses its new default',
+      (tester) async {
+    final temp = (await tester.runAsync(
+        () => io.Directory.systemTemp.createTemp('template-field-type-')))!;
+    final library = TemplateLibrary(temp);
+    addTearDown(() async {
+      await library.dispose();
+      await temp.delete(recursive: true);
+    });
+    TemplateInfo info(Map<String, Object> field) => TemplateInfo(
+          'example',
+          TemplateManifest('example', {
+            'fields': [
+              {'key': 'value', ...field}
+            ]
+          }),
+          const [],
+          temp.path,
+        );
+    Future<void> render(TemplateInfo current) =>
+        tester.pumpWidget(ProviderScope(
+          child: MaterialApp(
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home:
+                Scaffold(body: TemplateFields(library: library, info: current)),
+          ),
+        ));
+
+    await render(info({'type': 'text', 'default': 'hello', 'maxLength': 20}));
+    await tester.tap(find.byKey(const Key('template-fields-example')));
+    await tester.pumpAndSettle();
+    final field = find.byKey(const Key('template-field-example-value'));
+    await tester.enterText(field, 'draft');
+    await tester.pump();
+    await render(info({'type': 'number', 'min': 0, 'max': 10, 'default': 7}));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.widget<Slider>(field).value, 7);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Chat fields debounce, validate colors, refresh disk and reset',
       (tester) async {
     final temp = (await tester
@@ -1168,6 +1211,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(settings.state.twitchChannel, 'creator');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('editing Twitch keeps a separately persisted YouTube live ID',
+      (tester) async {
+    final settings = _RecordingSettings(const SettingsModel(
+      overlayEnabled: false,
+      youtubeEnabled: true,
+      youtubeLiveId: 'abcdefghijk',
+    ));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [settingsProvider.overrideWith((ref) => settings)],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    await tester.enterText(
+        find.widgetWithText(TextField, 'channel_name'), 'creator');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(settings.state.twitchChannel, 'creator');
+    expect(settings.state.youtubeHandle, isEmpty);
+    expect(settings.state.youtubeLiveId, 'abcdefghijk');
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -34,17 +34,38 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     unawaited(_load());
   }
 
+  @override
+  void didUpdateWidget(TemplateFields oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldTypes = {
+      for (final field in oldWidget.info.manifest.fields) field.key: field.type
+    };
+    if (identical(oldWidget.info, widget.info)) return;
+    for (final field in widget.info.manifest.fields) {
+      final oldType = oldTypes[field.key];
+      if (oldType == null || oldType == field.type) continue;
+      _values.remove(field.key);
+      _pending.remove(field.key);
+      _invalid.remove(field.key);
+      _controllers[field.key]?.text = '${field.defaultValue ?? ''}';
+    }
+    unawaited(_load());
+  }
+
   Future<void> _load() async {
-    final values = await widget.library.resolvedValues(widget.info.id);
-    if (!mounted) return;
+    final info = widget.info;
+    final values = await widget.library.editorValues(info);
+    if (!mounted || !identical(info, widget.info)) return;
     setState(() {
-      for (final e in values.entries) {
-        if ((_focus[e.key]?.hasFocus ?? false) || _pending.containsKey(e.key)) {
+      for (final entry in values.entries) {
+        final key = entry.key;
+        if ((_focus[key]?.hasFocus ?? false) || _pending.containsKey(key)) {
           continue;
         }
-        _values[e.key] = e.value;
-        _controllers[e.key]?.text = '${e.value ?? ''}';
-        _invalid.remove(e.key);
+        final value = entry.value;
+        _values[key] = value;
+        _controllers[key]?.text = '${value ?? ''}';
+        _invalid.remove(key);
       }
     });
   }
@@ -103,7 +124,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
 
   Widget _field(TemplateField f) {
     final key = Key('template-field-${widget.info.id}-${f.key}');
-    final value = _values[f.key] ?? f.defaultValue;
+    final value = f.resolveEditorValue(_values[f.key]);
     final l = AppLocalizations.of(context)!;
     if (f.type == 'boolean') {
       return SwitchListTile(

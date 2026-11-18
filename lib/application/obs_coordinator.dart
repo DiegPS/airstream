@@ -94,8 +94,13 @@ class ObsCoordinator {
   ObsState get currentState => _obs.currentState;
   final ruleEvents = RuleObsTransitions();
   Future<void> ruleScene(String scene, {int chainDepth = 0}) async {
-    ruleEvents.expectScene(scene, chainDepth);
-    await _obs.switchScene(scene);
+    final cancel = ruleEvents.expectScene(scene, chainDepth);
+    try {
+      await _obs.switchScene(scene);
+    } catch (_) {
+      cancel();
+      rethrow;
+    }
   }
 
   Future<void> ruleSource(String scene, String source, String visibility) =>
@@ -106,9 +111,28 @@ class ObsCoordinator {
       _obs.ruleText(source, text);
   Future<void> ruleFilter(String source, String filter, String state) =>
       _obs.ruleFilter(source, filter, state);
-  Future<void> ruleRecording(bool start) =>
-      start ? _obs.startRecording() : _obs.stopRecording();
-  Future<void> ruleStream(bool start) => _obs.ruleStream(start);
+  Future<void> ruleRecording(bool start, {int chainDepth = 0}) => _changeOutput(
+        start ? 'obs.recordingStarted' : 'obs.recordingStopped',
+        chainDepth,
+        start ? _obs.startRecording : _obs.stopRecording,
+      );
+  Future<void> ruleStream(bool start, {int chainDepth = 0}) => _changeOutput(
+        start ? 'obs.streamStarted' : 'obs.streamStopped',
+        chainDepth,
+        () => _obs.ruleStream(start),
+      );
+
+  Future<void> _changeOutput(
+      String type, int depth, Future<void> Function() change) async {
+    final cancel = ruleEvents.expect(type, depth);
+    try {
+      await change();
+    } catch (_) {
+      cancel();
+      rethrow;
+    }
+  }
+
   Future<void> ruleReplay(String operation) => _obs.ruleReplay(operation);
   Future<void> ruleMedia(String source, String operation) =>
       _obs.ruleMedia(source, operation);

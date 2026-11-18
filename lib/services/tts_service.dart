@@ -80,6 +80,7 @@ class TtsService {
   final TtsModelCache _modelCache;
   final SherpaTtsEngine _engine;
   final NativeAudioPlaybackService _audioPlayback;
+  final Future<Directory> Function() _temporaryDirectory;
   StreamSubscription<Object>? _workerFailureSubscription;
 
   TtsLoadState _loadState = const TtsLoadState();
@@ -103,9 +104,11 @@ class TtsService {
     TtsModelCache? modelCache,
     SherpaTtsEngine? engine,
     NativeAudioPlaybackService? audioPlayback,
+    Future<Directory> Function()? temporaryDirectory,
   })  : _modelCache = modelCache ?? TtsModelCache(),
         _engine = engine ?? SherpaTtsEngine(),
-        _audioPlayback = audioPlayback ?? NativeAudioPlaybackService() {
+        _audioPlayback = audioPlayback ?? NativeAudioPlaybackService(),
+        _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory {
     _workerFailureSubscription = _engine.workerFailures.listen(
       _handleWorkerFailure,
     );
@@ -375,6 +378,10 @@ class TtsService {
     File? output;
     final generation = _generation;
     final skipRevision = _skipRevision;
+    bool canStart() =>
+        !_disposed &&
+        generation == _generation &&
+        skipRevision == _skipRevision;
     try {
       final model = selectedModel;
       final voice = model.voice(_voice);
@@ -398,19 +405,17 @@ class TtsService {
           steps: _steps,
           referenceAudio: customReference,
           referenceText: customReferenceText);
-      if (_disposed ||
-          generation != _generation ||
-          skipRevision != _skipRevision ||
-          audio.samples.isEmpty) {
+      if (!canStart() || audio.samples.isEmpty) {
         return;
       }
-      final temp = await getTemporaryDirectory();
+      final temp = await _temporaryDirectory();
       output = File(p.join(temp.path,
           'airstream_tts_${DateTime.now().microsecondsSinceEpoch}.wav'));
       await output.writeAsBytes(_wavBytes(audio), flush: true);
-      if (skipRevision != _skipRevision) return;
+      if (!canStart()) return;
       final timeout = audio.duration + _playbackPadding;
       await _audioPlayback.playFile(output,
+          canStart: canStart,
           timeout: timeout < const Duration(seconds: 8)
               ? const Duration(seconds: 8)
               : timeout);
