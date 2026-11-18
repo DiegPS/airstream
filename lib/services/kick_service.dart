@@ -505,7 +505,13 @@ class KickService {
     return ChatProviderEvent(
       platform: Platform.kick,
       kind: kind,
-      id: id.isEmpty ? event.eventName : id,
+      // Some Kick events (hosts, notices) carry no id. The event name alone
+      // made every host share one id, so alerts, goals and the session
+      // summary dropped every host after the first as a duplicate.
+      id: id.isNotEmpty
+          ? id
+          : '${event.eventName}:$authorName:${count ?? ''}:'
+              '${timestamp.toUtc().microsecondsSinceEpoch}',
       timestamp: timestamp.toUtc(),
       authorName: authorName,
       authorChannelId: switch (event) {

@@ -263,6 +263,12 @@ class AppController {
   int _settingsDepth = 0, _ruleEventSequence = 0;
   Timer? _ruleEndTimer, _clockEndTimer;
   int? _silentSubathonDeadline;
+
+  /// The subathon deadline a subathon.ended timer was armed for while it was
+  /// still ahead. A deadline that had already passed when automation started
+  /// watching it (rules re-enabled, or the rule created after the end) must
+  /// not fire a late subathon.ended.
+  int? _watchedSubathonDeadline;
   RuleEventOrigin? _subathonOrigin;
   int _subathonDepth = 0;
 
@@ -674,11 +680,15 @@ class AppController {
               origin: RuleEventOrigin.current));
         }
       }
+      final subathonDue = settings.subathonEndsAtMs;
+      final subathonAhead = subathonDue > DateTime.now().millisecondsSinceEpoch;
       if (settings.subathonPhase == 'running' &&
-          settings.subathonEndsAtMs != _silentSubathonDeadline &&
+          subathonDue != _silentSubathonDeadline &&
+          (subathonAhead || _watchedSubathonDeadline == subathonDue) &&
           rules.rules.any((r) =>
               r['enabled'] == true &&
               (r['trigger'] as Map)['type'] == 'subathon.ended')) {
+        if (subathonAhead) _watchedSubathonDeadline = subathonDue;
         _ruleEndTimer = Timer(
             Duration(
                 milliseconds: (settings.subathonEndsAtMs -

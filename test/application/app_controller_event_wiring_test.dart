@@ -1271,6 +1271,38 @@ void main() {
       a.flushMicrotasks();
     });
   });
+  test('re-enabling rules after the subathon deadline does not fire it late',
+      () {
+    fakeAsync((a) {
+      final c = makeController(FakeChannelChatClient(), OverlayServer());
+      final rule = {
+        ...RuleSchema.newRule('subathon.ended', id: 'timer'),
+        'enabled': true
+      };
+      // Automation was off while the subathon ran out; nothing normalized
+      // the phase yet, so it still says running with a past deadline.
+      final ran = SettingsModel(
+          overlayEnabled: false,
+          rulesEnabled: false,
+          rules: [rule],
+          subathonPhase: 'running',
+          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch + 60000);
+      c.applySettings(ran, connectChats: false);
+      a.flushMicrotasks();
+      final expired = ran.copyWith(
+          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch - 60000);
+      c.applySettings(expired, connectChats: false);
+      a.flushMicrotasks();
+      // Turning automation back on (or adding the rule now) must not run a
+      // subathon.ended that finished while nobody was watching.
+      c.applySettings(expired.copyWith(rulesEnabled: true),
+          connectChats: false);
+      a.flushMicrotasks();
+      expect(a.nonPeriodicTimerCount, 0);
+      unawaited(c.dispose());
+      a.flushMicrotasks();
+    });
+  });
   test('starting each chat session clears recent alerts, settings edits do not',
       () async {
     final youtube = FakeYouTubeChatClient();

@@ -614,6 +614,36 @@ void main() {
     expect(messages.single.membershipGiftCount, 2);
   });
 
+  test('Kick gives each id-less host its own provider event id', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <ChatProviderEvent>[];
+    final subscription = service.appEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+    await service.connect('creator');
+
+    for (final (name, viewers) in [('first', 12), ('second', 30)]) {
+      transport.eventController.add(kick.parseKickEvent(
+        r'App\Events\StreamHostedEvent',
+        {
+          'host': {'username': name},
+          'number_viewers': viewers,
+        },
+      ));
+      // Distinct timestamps, as two real hosts never arrive in the same µs.
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+    }
+    await _eventually(() => events.length == 2);
+
+    expect(events.map((event) => event.kind),
+        everyElement(ChatProviderEventKind.host));
+    // Each host keeps its own identity, so alert, goal and summary
+    // de-duplication no longer drop the second host.
+    expect(events.map((event) => event.id).toSet(), hasLength(2));
+    expect(events.map((event) => event.authorName), ['first', 'second']);
+  });
+
   test('Kick applies message, author and room moderation events', () async {
     final transport = _FakeKickTransport();
     final service = KickService(transportFactory: () async => transport);
