@@ -162,6 +162,59 @@ void main() {
     });
   });
 
+  test('a countdown that ended while the app was closed ends silently', () {
+    fakeAsync((fake) {
+      final server = RuleOverlay()..feedSeen = true;
+      DateTime now() => DateTime.utc(2026).add(fake.elapsed);
+      final sounds = _ClockSounds();
+      final app = makeController(FakeChannelChatClient(), server,
+          clock: now, clockSounds: sounds);
+      final rule = {
+        ...RuleSchema.newRule('clock.ended', id: 'finish'),
+        'enabled': true,
+        'actions': [
+          {
+            'id': 'send',
+            'type': 'template.trigger',
+            'name': 'finish',
+            'data': 'done'
+          }
+        ],
+      };
+      final running = (const LiveClock(durationSeconds: 2, sound: 'chime'))
+          .start(now().millisecondsSinceEpoch);
+      final disk = SettingsDocumentCodec.encode(SettingsModel(
+        clock: running,
+        overlayEnabled: false,
+        rulesEnabled: true,
+        rules: [rule],
+      ));
+      // The app was closed for an hour; the countdown ended meanwhile.
+      fake.elapse(const Duration(hours: 1));
+      var restored = SettingsDocumentCodec.decode(disk).settings;
+      app.ruleSettingsWriter = (settings) async {
+        restored = settings;
+        app.applySettings(settings, connectChats: false);
+      };
+      app.applySettings(restored, connectChats: false);
+      fake.elapse(const Duration(seconds: 1));
+      fake.flushMicrotasks();
+      expect(restored.clock.phase, ClockPhase.ended);
+      expect(server.triggers, isEmpty);
+      expect(sounds.played, isEmpty);
+
+      // A new countdown in the same session still announces its end.
+      unawaited(app.operateClock('start'));
+      fake.flushMicrotasks();
+      fake.elapse(const Duration(seconds: 3));
+      fake.flushMicrotasks();
+      expect(server.triggers.single['name'], 'finish');
+      expect(sounds.played, hasLength(1));
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test('rules can operate the clock and draw winners with optional count', () {
     fakeAsync((fake) {
       DateTime now() => DateTime.utc(2026).add(fake.elapsed);

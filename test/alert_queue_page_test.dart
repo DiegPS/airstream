@@ -141,4 +141,13 @@ assert.equal(stage.firstElementChild.id, 'featured');
 socket.deliver({type: 'featuredHide'});
 assert.equal(stage.firstElementChild.id, 'regular');
 status(false, 0, true);
+// Pausing holds alerts but never a message the streamer chose to feature.
+op('pause');
+alert('held');
+alert('picked', 'featured');
+finish();
+assert.equal(stage.firstElementChild.id, 'picked');
+finish();
+assert.equal(stage.firstElementChild, null);
+status(true, 1, false);
 ''';

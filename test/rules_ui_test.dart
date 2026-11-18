@@ -434,8 +434,8 @@ void main() {
 
       await add('obs.stream', ['state'], 0);
       final streamError = find.text(language == 'es'
-          ? 'El chat público no puede iniciar ni detener la emisión'
-          : 'Public chat cannot start or stop the stream');
+          ? 'Los viewers no pueden iniciar ni detener la emisión: elige moderadores o dueño, u otro disparador'
+          : 'Viewers cannot start or stop the stream: choose moderators or the owner, or another trigger');
       expect(streamError.hitTestable(), findsOneWidget);
       final moderators =
           find.widgetWithText(FilterChip, ruleText(l, 'moderator'));

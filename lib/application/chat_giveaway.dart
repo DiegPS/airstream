@@ -172,10 +172,17 @@ class ChatGiveawayController {
       entrantCount: state.entrantCount,
       winners: state.winners,
     );
+    // The same round may come back as a new object after a settings reload,
+    // so it is matched by its start time too (stored in milliseconds).
+    bool sameRound(GiveawayRound item) =>
+        identical(item, _record) ||
+        (item.keyword == round.keyword &&
+            item.startedAt.millisecondsSinceEpoch ==
+                started.millisecondsSinceEpoch);
     _history = List.unmodifiable([
       round,
       ..._history
-          .where((item) => !identical(item, _record))
+          .where((item) => !sameRound(item))
           .take(GiveawayRound.limit - 1),
     ]);
     _record = round;

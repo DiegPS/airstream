@@ -439,7 +439,10 @@ function hideFeatured() {
 }
 
 function showNext() {
-  if (!queueReady || paused || active || queue.length === 0) {
+  // Pausing holds alerts, not a message the streamer just chose to feature
+  // (featured cards always sit at the front of the queue).
+  if (!queueReady || active || queue.length === 0 ||
+      (paused && queue[0].kind !== 'featured')) {
     reportQueue();
     return;
   }

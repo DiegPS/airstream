@@ -2951,7 +2951,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kbody': 'Cuerpo',
         'kstreamAlready': 'La emisión ya está en ese estado',
         'kpublicStreamControl':
-            'El chat público no puede iniciar ni detener la emisión',
+            'Los viewers no pueden iniciar ni detener la emisión: elige moderadores o dueño, u otro disparador',
         'kreplayOff': 'El búfer de repetición está apagado',
         'kreplayAlready': 'El búfer de repetición ya está en ese estado',
         'knotBrowserSource': 'No es una fuente de navegador',

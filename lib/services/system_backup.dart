@@ -82,81 +82,80 @@ class SystemBackup {
 
   Future<void> restore(
           ValidatedSystemBackup backup, SettingsNotifier notifier) =>
-      media.withStableFiles(() =>
-          notifier.restoreBackup((current, commit) async {
-            if (!await backup._staging.exists()) {
-              throw const FormatException('invalid');
-            }
-            final next = _keepLocalHttpUrls(
-                SettingsProfiles.import(backup._settings, current), current);
-            await _safetyBackup(current);
-            final oldIds = await _templateIds(templates.root);
-            final newIds = await _templateIds(
-                Directory(p.join(backup._staging.path, 'templates')));
-            final swaps = <_DirectorySwap>[];
-            var keepRollback = false;
-            bool? resumeWatching;
-            var committed = false;
-            try {
-              final templateSwap = await _DirectorySwap.prepare(
-                  templates.root, backup._staging, 'templates');
-              swaps.add(templateSwap);
-              // Keep the guide and loose files in the template root.
-              if (await templates.root.exists()) {
-                await for (final entry
-                    in templates.root.list(followLinks: false)) {
-                  if (entry is Directory &&
-                      TemplateLibrary.validId(p.basename(entry.path))) {
-                    continue;
+      media.withStableFiles(
+          () => notifier.restoreBackup((current, commit) async {
+                if (!await backup._staging.exists()) {
+                  throw const FormatException('invalid');
+                }
+                final next = SettingsProfiles.import(backup._settings, current);
+                await _safetyBackup(current);
+                final oldIds = await _templateIds(templates.root);
+                final newIds = await _templateIds(
+                    Directory(p.join(backup._staging.path, 'templates')));
+                final swaps = <_DirectorySwap>[];
+                var keepRollback = false;
+                bool? resumeWatching;
+                var committed = false;
+                try {
+                  final templateSwap = await _DirectorySwap.prepare(
+                      templates.root, backup._staging, 'templates');
+                  swaps.add(templateSwap);
+                  // Keep the guide and loose files in the template root.
+                  if (await templates.root.exists()) {
+                    await for (final entry
+                        in templates.root.list(followLinks: false)) {
+                      if (entry is Directory &&
+                          TemplateLibrary.validId(p.basename(entry.path))) {
+                        continue;
+                      }
+                      await _copyTree(entry, templateSwap.candidate);
+                    }
                   }
-                  await _copyTree(entry, templateSwap.candidate);
-                }
-              }
-              swaps.add(await _DirectorySwap.prepare(
-                  media.directory, backup._staging, 'media'));
-              resumeWatching = await templates.pauseForRestore();
-              for (final swap in swaps) {
-                await swap.install();
-              }
-              await commit(next);
-              committed = true;
-              media.clearPendingImports();
-            } catch (_) {
-              Object? rollbackError;
-              for (final swap in swaps.reversed) {
-                try {
-                  await swap.rollback();
-                } catch (error) {
-                  rollbackError ??= error;
-                }
-              }
-              if (rollbackError != null) {
-                keepRollback = true;
-                AppLogger.warning(
-                    'Backup rollback failed; original directories retained',
-                    error: rollbackError);
-                throw const FormatException('rollback');
-              }
-              rethrow;
-            } finally {
-              if (!keepRollback) {
-                for (final swap in swaps) {
-                  await _cleanup(swap.workspace);
-                }
-              }
-              if (resumeWatching != null) {
-                try {
-                  await templates.refreshAfterRestore(
-                    committed ? {...oldIds, ...newIds} : {},
-                    resumeWatching: resumeWatching,
-                  );
+                  swaps.add(await _DirectorySwap.prepare(
+                      media.directory, backup._staging, 'media'));
+                  resumeWatching = await templates.pauseForRestore();
+                  for (final swap in swaps) {
+                    await swap.install();
+                  }
+                  await commit(next);
+                  committed = true;
+                  media.clearPendingImports();
                 } catch (_) {
-                  AppLogger.warning(
-                      'Could not refresh the template library after restore');
+                  Object? rollbackError;
+                  for (final swap in swaps.reversed) {
+                    try {
+                      await swap.rollback();
+                    } catch (error) {
+                      rollbackError ??= error;
+                    }
+                  }
+                  if (rollbackError != null) {
+                    keepRollback = true;
+                    AppLogger.warning(
+                        'Backup rollback failed; original directories retained',
+                        error: rollbackError);
+                    throw const FormatException('rollback');
+                  }
+                  rethrow;
+                } finally {
+                  if (!keepRollback) {
+                    for (final swap in swaps) {
+                      await _cleanup(swap.workspace);
+                    }
+                  }
+                  if (resumeWatching != null) {
+                    try {
+                      await templates.refreshAfterRestore(
+                        committed ? {...oldIds, ...newIds} : {},
+                        resumeWatching: resumeWatching,
+                      );
+                    } catch (_) {
+                      AppLogger.warning(
+                          'Could not refresh the template library after restore');
+                    }
+                  }
                 }
-              }
-            }
-          }));
+              }));
 
   Future<void> _safetyBackup(SettingsModel current) async {
     final safety = Directory(p.join(support.path, 'safety-backups'));
@@ -201,36 +200,6 @@ String _portableSettings(String source) {
         _ => value,
       };
   return jsonEncode(scrub(jsonDecode(source)));
-}
-
-SettingsModel _keepLocalHttpUrls(
-    SettingsModel restored, SettingsModel current) {
-  final urls = <(String, String), Object?>{
-    for (final rule in current.rules)
-      for (final action in rule['actions'] as List? ?? const [])
-        if (action is Map &&
-            action['type'] == 'http.request' &&
-            rule['id'] is String &&
-            action['id'] is String)
-          (rule['id'] as String, action['id'] as String): action['url'],
-  };
-  return restored.copyWith(rules: [
-    for (final rule in restored.rules)
-      {
-        ...rule,
-        'actions': [
-          for (final action in rule['actions'] as List<Map<String, dynamic>>)
-            if (action['type'] == 'http.request')
-              {
-                ...action,
-                'url':
-                    urls[(rule['id'] as String, action['id'] as String)] ?? '',
-              }
-            else
-              action,
-        ],
-      },
-  ]);
 }
 
 final _reserved = RegExp(r'^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(?:\.|$)',

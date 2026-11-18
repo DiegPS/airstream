@@ -245,6 +245,10 @@ class AppController {
   Future<void> _winnerNotifications = Future.value();
   int _settingsDepth = 0, _ruleEventSequence = 0;
   Timer? _ruleEndTimer, _clockEndTimer;
+
+  /// A countdown that ended while the app was closed is marked ended on
+  /// launch without running clock.ended rules or the end sound.
+  bool _clockEndSilently = false;
   final DateTime Function() _clockNow;
   late final RuleSoundPlayer _clockSounds;
 
@@ -292,6 +296,8 @@ class AppController {
       _clockEndTimer = null;
       if (clock.mode == ClockMode.countdown &&
           clock.phase == ClockPhase.running) {
+        _clockEndSilently = previous == null &&
+            clock.anchorMs <= _clockNow().millisecondsSinceEpoch;
         _scheduleClockEnd(clock);
       }
     }
@@ -301,7 +307,11 @@ class AppController {
     final persisted = _writeRuleSettings(settings.copyWith(clock: next), depth);
     if (identical(_lastSettings?.clock, next) &&
         next.phase == ClockPhase.ended) {
-      _clockEnded(next, depth);
+      if (_clockEndSilently) {
+        _clockEndSilently = false;
+      } else {
+        _clockEnded(next, depth);
+      }
     }
     return persisted;
   }

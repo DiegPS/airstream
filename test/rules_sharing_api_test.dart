@@ -158,6 +158,34 @@ void main() {
             .rulesWebhookToken,
         settings.rulesWebhookToken);
   });
+  test('settings export never contains HTTP rule URLs; import keeps local ones',
+      () {
+    const secret = 'https://discord.example/api/webhooks/1/secret-token';
+    Map<String, dynamic> withHttp(String url) => {
+          ...RuleSchema.newRule('obs.streamStarted', id: 'discord'),
+          'actions': [
+            {
+              'id': 'post',
+              'type': 'http.request',
+              'method': 'post',
+              'url': url,
+              'contentType': 'json',
+              'body': '{"content":"live"}'
+            }
+          ],
+        };
+    final local = const SettingsModel()
+        .copyWith(rules: RuleSchema.sanitize([withHttp(secret)]));
+    final file = SettingsProfiles.export(local);
+    expect(file, isNot(contains('secret-token')));
+    expect(file, contains('"type":"http.request"'));
+    // Importing on this computer keeps its own URL for the same action.
+    final again = SettingsProfiles.import(file, local);
+    expect(again.rules.single['actions'].single['url'], secret);
+    // On another computer the action arrives without a URL.
+    final elsewhere = SettingsProfiles.import(file, const SettingsModel());
+    expect(elsewhere.rules.single['actions'].single['url'], '');
+  });
   test('roundtrip definitions are preserved with fresh ids and disabled', () {
     final original = RuleSchema.sanitize([rule('go')]);
     final review =

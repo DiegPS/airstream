@@ -28,6 +28,14 @@ class MediaLibraryCard extends ConsumerStatefulWidget {
 class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
   bool _busy = false;
   String _query = '';
+
+  /// Thumbnail lookups, kept across rebuilds (each search keystroke rebuilds
+  /// the list). Keyed by id and extension, which identify the stored file.
+  final _thumbnails = <String, Future<File?>>{};
+  Future<File?> _thumbnail(
+          MediaLibrary service, MapEntry<String, Map<String, dynamic>> e) =>
+      _thumbnails.putIfAbsent(
+          '${e.key}.${e.value['ext']}', () => service.fileFor(e));
   final _errors = <String>[];
   String _reason(AppLocalizations l, String reason) => switch (reason) {
         'size' => l.mediaRejectSize,
@@ -273,7 +281,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                       height: 40,
                       child: e.value['kind'] == 'image' && service != null
                           ? FutureBuilder<File?>(
-                              future: service.fileFor(e),
+                              future: _thumbnail(service, e),
                               builder: (context, snapshot) =>
                                   snapshot.data == null
                                       ? const Icon(Icons.image_outlined)

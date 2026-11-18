@@ -1,14 +1,27 @@
 import 'rule_model.dart';
 
-bool isPublicChatRule(Map<String, dynamic> rule) {
-  final trigger = rule['trigger'] as Map;
+bool _everyone(Map<String, dynamic> rule) {
   final roles = (rule['conditions'] as Map)['roles'] as List;
-  return trigger['type'].toString().startsWith('chat.') &&
-      (roles.isEmpty || roles.contains('everyone'));
+  return roles.isEmpty || roles.contains('everyone');
 }
 
+String _triggerType(Map<String, dynamic> rule) =>
+    (rule['trigger'] as Map)['type'].toString();
+
+/// Any viewer can fire the rule just by typing in chat: chat triggers, and
+/// joining the viewer queue (its join command is open to everyone).
+bool isPublicChatRule(Map<String, dynamic> rule) {
+  final type = _triggerType(rule);
+  return (type.startsWith('chat.') || type == 'queue.joined') &&
+      _everyone(rule);
+}
+
+/// Starting or stopping the stream never follows a viewer's action: chat,
+/// the queue, or any support (a 1-Bit cheer must not end the broadcast).
 bool blocksPublicStreamControl(Map action, Map<String, dynamic> rule) =>
-    action['type'] == 'obs.stream' && isPublicChatRule(rule);
+    action['type'] == 'obs.stream' &&
+    (isPublicChatRule(rule) ||
+        (_triggerType(rule).startsWith('support.') && _everyone(rule)));
 
 Uri? httpRuleUri(Object? value) {
   if (value is! String) return null;

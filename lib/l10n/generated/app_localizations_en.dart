@@ -2925,7 +2925,8 @@ class AppLocalizationsEn extends AppLocalizations {
         'kjson': 'JSON',
         'kbody': 'Body',
         'kstreamAlready': 'Stream is already in that state',
-        'kpublicStreamControl': 'Public chat cannot start or stop the stream',
+        'kpublicStreamControl':
+            'Viewers cannot start or stop the stream: choose moderators or the owner, or another trigger',
         'kreplayOff': 'The replay buffer is off',
         'kreplayAlready': 'Replay buffer is already in that state',
         'knotBrowserSource': 'Not a browser source',

@@ -32,6 +32,7 @@ Map<String, String> _strings(AppLocalizations l) => {
     };
 
 const _body = """
+<span class="gallery-logo corner-logo" hidden></span>
 <h1 id="title" class="score-title"></h1>
 <div id="scores"></div>
 """;

@@ -149,6 +149,13 @@ void main() {
       ('chat.firstMessage', ['everyone', 'moderator'], true),
       ('chat.message', ['moderator'], false),
       ('manual', <String>[], false),
+      // Any viewer can join the queue or send a 1-Bit cheer.
+      ('queue.joined', <String>[], true),
+      ('queue.joined', ['moderator'], false),
+      ('support.bits', <String>[], true),
+      ('support.superchat', ['everyone'], true),
+      ('support.raid', ['owner'], false),
+      ('poll.ended', <String>[], false),
     ]) {
       final rule = RuleSchema.newRule(trigger, id: 'test')
         ..['actions'] = [

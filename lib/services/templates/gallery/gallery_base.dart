@@ -91,6 +91,7 @@ body { margin: 0; background: transparent; }
 [hidden] { display: none !important; }
 .gallery-logo { flex: 0 0 40px; height: 40px; }
 .gallery-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.corner-logo { position: absolute; top: 16px; left: 16px; width: 56px; height: 56px; z-index: 2; }
 ::selection { color: var(--surface); background: var(--theme-accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -648,8 +649,9 @@ function applyGalleryFields(fields) {
       root.style.setProperty('--font', '"' + font + '"');
     }
   }
-  const url = Airstream.mediaUrl(fields.logo);
-  branding.hidden = !url;
+  // A widget without a logo slot must still render the rest of its fields.
+  const url = branding ? Airstream.mediaUrl(fields.logo) : null;
+  if (branding) branding.hidden = !url;
   if (url) {
     if (!logo) {
       logo = document.createElement('img');

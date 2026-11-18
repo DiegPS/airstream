@@ -21,6 +21,7 @@ Map<String, String> emoteWallFiles() => galleryWidgetFiles(
         })};\n$_script');
 
 const _body = """
+<span class="gallery-logo corner-logo" hidden></span>
 <h1 id="title" class="emote-title"></h1>
 <div id="emotes"></div>
 """;

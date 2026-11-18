@@ -1,4 +1,5 @@
 import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
 
@@ -105,15 +106,64 @@ abstract final class SettingsProfiles {
       apply(current, capture(const SettingsModel()));
 
   /// Settings for portable backups, without credentials or the current queue.
-  static String export(SettingsModel settings) =>
-      SettingsDocumentCodec.encode(settings,
-          includeWebhookSecret: false, includeQueueState: false);
+  /// HTTP rule URLs are private too (a Discord webhook URL is a credential).
+  static String export(SettingsModel settings) => SettingsDocumentCodec.encode(
+      settings.copyWith(rules: [
+        for (final rule in settings.rules)
+          {
+            ...rule,
+            'actions': [
+              for (final action in rule['actions'] as List? ?? const [])
+                if (action is Map<String, dynamic>)
+                  RuleSchema.withoutHttpUrl(action)
+                else
+                  action,
+            ],
+          },
+      ]),
+      includeWebhookSecret: false,
+      includeQueueState: false);
 
-  /// Settings read from a backup, keeping local credentials and API opt-in.
+  /// Settings read from a backup, keeping local credentials, API opt-in and
+  /// the HTTP rule URLs this computer already has.
   static SettingsModel import(String source, SettingsModel current) =>
-      SettingsDocumentCodec.decode(source).settings.copyWith(
-          queueState: current.queueState,
-          obsPassword: current.obsPassword,
-          rulesWebhookToken: current.rulesWebhookToken,
-          rulesWebhookEnabled: current.rulesWebhookEnabled);
+      keepLocalHttpUrls(
+          SettingsDocumentCodec.decode(source).settings.copyWith(
+              queueState: current.queueState,
+              obsPassword: current.obsPassword,
+              rulesWebhookToken: current.rulesWebhookToken,
+              rulesWebhookEnabled: current.rulesWebhookEnabled),
+          current);
+
+  /// Restores each HTTP action's URL from [current] by rule and action id;
+  /// an action this computer does not have keeps an empty URL.
+  static SettingsModel keepLocalHttpUrls(
+      SettingsModel restored, SettingsModel current) {
+    final urls = <(String, String), Object?>{
+      for (final rule in current.rules)
+        for (final action in rule['actions'] as List? ?? const [])
+          if (action is Map &&
+              action['type'] == 'http.request' &&
+              rule['id'] is String &&
+              action['id'] is String)
+            (rule['id'] as String, action['id'] as String): action['url'],
+    };
+    return restored.copyWith(rules: [
+      for (final rule in restored.rules)
+        {
+          ...rule,
+          'actions': [
+            for (final action in rule['actions'] as List? ?? const [])
+              if (action is Map<String, dynamic> &&
+                  action['type'] == 'http.request')
+                {
+                  ...action,
+                  'url': urls[(rule['id'], action['id'])] ?? '',
+                }
+              else
+                action,
+          ],
+        },
+    ]);
+  }
 }

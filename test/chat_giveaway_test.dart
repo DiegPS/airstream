@@ -153,6 +153,25 @@ void main() {
     expect(disk, isNot(contains('authorId')));
   });
 
+  test('a reloaded history still updates the same round, not a copy', () {
+    c.start(keyword: 'enter', membersOnly: false);
+    for (var i = 0; i < 3; i++) {
+      c.handleMessage(message('viewer $i', 'enter'));
+    }
+    c.close();
+    // Settings come back from disk as new objects between the two draws.
+    c.restoreHistory(SettingsModel.fromJson(
+            SettingsModel(giveawayHistory: c.history).toJson())
+        .giveawayHistory);
+    c.draw();
+    c.restoreHistory(SettingsModel.fromJson(
+            SettingsModel(giveawayHistory: c.history).toJson())
+        .giveawayHistory);
+    c.draw();
+    expect(c.history, hasLength(1));
+    expect(c.history.single.winners, hasLength(2));
+  });
+
   test('retains the latest 20 rounds across restart and clears them', () {
     for (var i = 0; i < 25; i++) {
       c.start(keyword: 'round $i', membersOnly: false);

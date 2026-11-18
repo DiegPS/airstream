@@ -152,7 +152,7 @@ String sdkV1() => r"""
     sendQueue();
   },4000);
   let chatIndex=0, alertIndex=0, earlier=null;
-  const emote='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><text y="20">★</text></svg>');
+  const emote='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#FFC83D" stroke="#7A4B00" stroke-width="1" d="M12 1.5l3.1 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.3l-6.4 3.6 1.5-7.1-5.4-4.9 7.2-.8z"/></svg>');
   function chat() {
     const n=chatIndex++, platform=['youtube','twitch','kick'][n%3];
     const color=api.platformColor(platform);

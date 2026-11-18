@@ -79,7 +79,7 @@ function element(tag, className, text) {
 }
 
 function picture(url, className, alt) {
-  if (typeof url !== 'string' || !/^https?:///i.test(url)) return null;
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return null;
   const image = element('img', className);
   image.alt = alt;
   image.src = url;

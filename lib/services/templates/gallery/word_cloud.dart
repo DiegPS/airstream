@@ -19,6 +19,7 @@ Map<String, String> wordCloudFiles() => galleryWidgetFiles(
 
 const _body = """
 <section class="widget-panel cloud">
+  <span class="gallery-logo corner-logo" hidden></span>
   <h1 id="title"></h1>
   <ul id="words"></ul>
 </section>
