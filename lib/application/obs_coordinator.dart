@@ -20,6 +20,8 @@ abstract interface class ObsClient {
   Future<void> switchScene(String sceneName);
   Future<void> ruleSource(String scene, String source, String visibility);
   Future<void> ruleMute(String input, String state);
+  Future<void> ruleText(String source, String text);
+  Future<void> ruleFilter(String source, String filter, String state);
   Future<void> dispose();
 }
 
@@ -54,6 +56,12 @@ class ObsServiceAdapter implements ObsClient {
   Future<void> ruleMute(String input, String state) =>
       service.ruleMute(input, state);
   @override
+  Future<void> ruleText(String source, String text) =>
+      service.ruleText(source, text);
+  @override
+  Future<void> ruleFilter(String source, String filter, String state) =>
+      service.ruleFilter(source, filter, state);
+  @override
   Future<void> dispose() => service.dispose();
 }
 
@@ -77,6 +85,10 @@ class ObsCoordinator {
       _obs.ruleSource(scene, source, visibility);
   Future<void> ruleMute(String input, String state) =>
       _obs.ruleMute(input, state);
+  Future<void> ruleText(String source, String text) =>
+      _obs.ruleText(source, text);
+  Future<void> ruleFilter(String source, String filter, String state) =>
+      _obs.ruleFilter(source, filter, state);
   Future<void> ruleRecording(bool start) =>
       start ? _obs.startRecording() : _obs.stopRecording();
 

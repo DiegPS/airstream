@@ -83,6 +83,7 @@ class RuleEngine {
     'timeout',
     'disposed',
     'notFound',
+    'notTextSource',
     'noAlertsPage',
     'willCheckInObs',
     'notConnected',
@@ -382,7 +383,8 @@ class RuleEngine {
       results.add(skip == null
           ? RuleActionResult(
               'wouldRun',
-              const ['obs.source', 'obs.mute'].contains(a['type'])
+              const ['obs.source', 'obs.mute', 'obs.text', 'obs.filter']
+                      .contains(a['type'])
                   ? 'willCheckInObs'
                   : null)
           : RuleActionResult('skipped', skip));

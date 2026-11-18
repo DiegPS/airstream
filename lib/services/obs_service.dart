@@ -9,6 +9,13 @@ enum ObsDropTrend { normal, steady, rising }
 
 enum ObsPollFailureAction { preserve, unstable, reconnect }
 
+class ObsNotTextSourceException implements Exception {
+  const ObsNotTextSourceException();
+
+  @override
+  String toString() => 'Not a text source';
+}
+
 @immutable
 class ObsState {
   final int connectionGeneration;
@@ -172,6 +179,21 @@ class ObsService {
               scene.isEmpty ? _state.currentScene : scene, source, visibility));
   Future<void> ruleMute(String input, String state) =>
       _runControl('mute input', (obs) => obs.mute(input, state));
+
+  Future<void> ruleText(String source, String text) =>
+      _runControl('set text', (obs) async {
+        final kind = await obs.inputKind(source);
+        if (!kind.startsWith('text_')) throw const ObsNotTextSourceException();
+        await obs.setInputSettings(source, {'text': text}, overlay: true);
+      });
+
+  Future<void> ruleFilter(String source, String filter, String state) =>
+      _runControl('change filter', (obs) async {
+        final enabled = state == 'toggle'
+            ? !await obs.filterEnabled(source, filter)
+            : state == 'enable';
+        await obs.setFilterEnabled(source, filter, enabled);
+      });
 
   Future<void> _runControl(
     String label,

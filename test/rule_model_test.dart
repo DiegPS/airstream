@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:airstream/application/rules/rule_model.dart';
+import 'package:airstream/application/rules/rule_validation.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_profiles.dart';
 
@@ -68,6 +69,73 @@ void main() {
       }
     });
   }
+  test('clamps OBS text and filter fields by Unicode code points', () {
+    final source = 'S' * 100;
+    final filter = 'F' * 100;
+    final text = '\u{1F3AE}' * 500;
+    final raw = {
+      ...RuleSchema.newRule('manual', id: 'test'),
+      'actions': [
+        {
+          'id': 'a',
+          'type': 'obs.text',
+          'source': '${source}X',
+          'text': '${text}X'
+        },
+        {'id': 'b', 'type': 'obs.text', 'source': 'Caption', 'text': ''},
+        {
+          'id': 'c',
+          'type': 'obs.filter',
+          'source': '${source}X',
+          'filter': '${filter}X',
+          'state': 'toggle'
+        },
+      ],
+    };
+    final sanitized = RuleSchema.sanitize([raw]).single;
+    expect(sanitized['invalid'], isFalse);
+    expect(sanitized['actions'], [
+      {'id': 'a', 'type': 'obs.text', 'source': source, 'text': text},
+      {'id': 'b', 'type': 'obs.text', 'source': 'Caption', 'text': ''},
+      {
+        'id': 'c',
+        'type': 'obs.filter',
+        'source': source,
+        'filter': filter,
+        'state': 'toggle'
+      },
+    ]);
+    expect(
+        ruleProblems(raw).keys,
+        unorderedEquals([
+          'action-0-source',
+          'action-0-text',
+          'action-2-source',
+          'action-2-filter'
+        ]));
+    expect(ruleProblems(sanitized), isEmpty);
+  });
+
+  test('saved OBS source and mute actions still round trip unchanged', () {
+    final saved = {
+      ...RuleSchema.newRule('chat.command', id: 'legacy'),
+      'enabled': true,
+      'actions': [
+        {
+          'id': 'a',
+          'type': 'obs.source',
+          'scene': '',
+          'source': 'S' * 150,
+          'visible': 'toggle'
+        },
+        {'id': 'b', 'type': 'obs.mute', 'input': 'M' * 150, 'state': 'unmute'},
+      ],
+    };
+    final settings = SettingsModel(rules: [saved]);
+    expect(
+        SettingsModel.fromJsonString(settings.toJsonString()).rules, [saved]);
+  });
+
   test('clamps limits, retains invalid definitions, caps rules and actions',
       () {
     final r = {

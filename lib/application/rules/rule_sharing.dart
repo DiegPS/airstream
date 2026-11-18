@@ -70,7 +70,7 @@ abstract final class RuleSharing {
       }
       for (final a in r['actions'] as List) {
         if (a['type'].toString().startsWith('obs.')) {
-          for (final k in ['scene', 'source', 'input']) {
+          for (final k in ['scene', 'source', 'input', 'filter']) {
             if (a[k] is String && (a[k] as String).isNotEmpty) {
               ww.add(('obsNames', a[k] as String));
             }

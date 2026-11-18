@@ -1,5 +1,24 @@
 import 'rule_model.dart';
 
+bool isPublicChatRule(Map<String, dynamic> rule) {
+  final trigger = rule['trigger'] as Map;
+  final roles = (rule['conditions'] as Map)['roles'] as List;
+  return trigger['type'].toString().startsWith('chat.') &&
+      (roles.isEmpty || roles.contains('everyone'));
+}
+
+final _chatTextPlaceholder = RegExp(r'\{(?:message|args|arg[1-9])\}');
+
+/// Whether a public chat trigger can put a viewer's message or command text in OBS.
+bool showsPublicChatText(Map<String, dynamic> rule) =>
+    isPublicChatRule(rule) &&
+    (rule['actions'] as List).any((action) {
+      final text = action['text'];
+      return action['type'] == 'obs.text' &&
+          text is String &&
+          _chatTextPlaceholder.hasMatch(text);
+    });
+
 /// Field paths used by the editor, without changing sanitizer semantics.
 Map<String, String> ruleProblems(Map<String, dynamic> rule) {
   final problems = <String, String>{};
@@ -8,6 +27,10 @@ Map<String, String> ruleProblems(Map<String, dynamic> rule) {
       problems[prefix] = 'invalid';
       return;
     }
+    final countCodePoints =
+        map['type'] == 'obs.text' || map['type'] == 'obs.filter';
+    int length(String value) =>
+        countCodePoints ? value.runes.length : value.length;
     for (final entry in schema.entries) {
       final f = entry.value,
           v = map[entry.key] ?? (entry.key == 'webhook' ? '' : null);
@@ -18,8 +41,8 @@ Map<String, String> ruleProblems(Map<String, dynamic> rule) {
               : f.fallback is bool
                   ? v is! bool
                   : v is! String ||
-                      v.trim().length < f.min ||
-                      v.trim().length > f.max ||
+                      length(v.trim()) < f.min ||
+                      length(v.trim()) > f.max ||
                       (v.trim().isNotEmpty &&
                           f.pattern != null &&
                           !RegExp(f.pattern!).hasMatch(v.trim()));

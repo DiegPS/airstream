@@ -49,6 +49,20 @@ abstract final class RuleRecipes {
             ],
             roles: ['moderator'],
             cooldown: 30),
+        _recipe(
+            7,
+            'chat.command',
+            {'command': '!muerte'},
+            [
+              {'type': 'counter', 'name': 'muertes', 'op': 'add', 'value': 1},
+              {
+                'type': 'obs.text',
+                'source': 'Muertes',
+                'text': 'Muertes: {counter.muertes}'
+              },
+            ],
+            roles: ['moderator'],
+            cooldown: 30),
       ];
   static Map<String, dynamic> _recipe(int n, String type,
       Map<String, dynamic> params, List<Map<String, dynamic>> actions,

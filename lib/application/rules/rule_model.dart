@@ -87,6 +87,15 @@ abstract final class RuleSchema {
       'input': RuleField.text(min: 1, fallback: 'Mic'),
       'state': RuleField.choice(['mute', 'unmute', 'toggle'], 'mute')
     },
+    'obs.text': {
+      'source': RuleField.text(min: 1, max: 100, fallback: 'Text'),
+      'text': RuleField.text(max: 500, fallback: '{counter.count}')
+    },
+    'obs.filter': {
+      'source': RuleField.text(min: 1, max: 100, fallback: 'Camera'),
+      'filter': RuleField.text(min: 1, max: 100, fallback: 'Filter'),
+      'state': RuleField.choice(['enable', 'disable', 'toggle'], 'enable')
+    },
     'tts.say': {
       'text': RuleField.text(min: 1, max: 300, fallback: 'Hello {user}')
     },

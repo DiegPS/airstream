@@ -494,6 +494,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                     onChanged: (v) => change(() =>
                                         conditions['onlyWhileStreaming'] = v)),
                                 section('do'),
+                                if (showsPublicChatText(draft))
+                                  Text(ruleText(l, 'publicChatText'),
+                                      style: const TextStyle(
+                                          color: Color(0xFFFFB15C))),
                                 for (var i = 0; i < actions.length; i++)
                                   Container(
                                       key: ValueKey(actions[i]['id']),

@@ -202,7 +202,19 @@ void main() {
           'seconds': 5,
           'mediaId': '0123456789abcdef'
         },
-        {'id': 'c', 'type': 'template.trigger', 'name': 'celebrate', 'data': ''}
+        {
+          'id': 'c',
+          'type': 'template.trigger',
+          'name': 'celebrate',
+          'data': ''
+        },
+        {
+          'id': 'd',
+          'type': 'obs.filter',
+          'source': 'Studio',
+          'filter': 'Blur',
+          'state': 'toggle'
+        },
       ];
     final review = RuleSharing.import(
         RuleSharing.export([original, rule('extra')]),
@@ -214,5 +226,11 @@ void main() {
         review.warnings.values.single.map((w) => w.$1),
         containsAll(
             ['obsNames', 'missingMedia', 'templateName', 'webhookCollision']));
+    expect(review.warnings.values.single.where((w) => w.$1 == 'obsNames'), [
+      ('obsNames', 'Game'),
+      ('obsNames', 'Cam'),
+      ('obsNames', 'Studio'),
+      ('obsNames', 'Blur')
+    ]);
   });
 }

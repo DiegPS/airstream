@@ -9,6 +9,7 @@ import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_recipes.dart';
+import 'package:airstream/application/rules/rule_validation.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'settings_controls.dart';
 import 'ui_card.dart';
@@ -118,6 +119,7 @@ class RulesCard extends ConsumerWidget {
                 onPressed: s.rules.length >= RuleSchema.maxRules
                     ? null
                     : () async {
+                        final recipes = RuleRecipes.all;
                         final recipe = await showDialog<int>(
                             context: context,
                             builder: (c) => AlertDialog(
@@ -129,7 +131,9 @@ class RulesCard extends ConsumerWidget {
                                             child: Column(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                              for (var n = 1; n <= 6; n++)
+                                              for (var n = 1;
+                                                  n <= recipes.length;
+                                                  n++)
                                                 ListTile(
                                                     contentPadding:
                                                         EdgeInsets.zero,
@@ -154,7 +158,7 @@ class RulesCard extends ConsumerWidget {
                                     ]));
                         if (recipe == null) return;
                         final rule = {
-                          ...RuleRecipes.all[recipe - 1],
+                          ...recipes[recipe - 1],
                           'id': freshRuleId(),
                           'name': ruleText(l, 'recipe$recipe')
                         };
@@ -175,7 +179,6 @@ class RulesCard extends ConsumerWidget {
                     chat = (r['trigger'] as Map)['type']
                         .toString()
                         .startsWith('chat.');
-                final roles = (r['conditions'] as Map)['roles'] as List;
                 return Padding(
                     key: Key('rule-$id'),
                     padding: const EdgeInsets.only(top: 12),
@@ -251,11 +254,11 @@ class RulesCard extends ConsumerWidget {
                               maxLines: 1, overflow: TextOverflow.ellipsis),
                           for (final warning in [
                             if (r['invalid'] == true) 'invalid',
-                            if (chat &&
-                                (roles.isEmpty || roles.contains('everyone')) &&
+                            if (isPublicChatRule(r) &&
                                 (r['actions'] as List).any((a) =>
                                     a['type'].toString().startsWith('obs.')))
                               'publicObs',
+                            if (showsPublicChatText(r)) 'publicChatText',
                             if (chat && r['cooldownSeconds'] == 0) 'noCooldown'
                           ])
                             Text(ruleText(l, warning),

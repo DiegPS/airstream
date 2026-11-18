@@ -337,6 +337,18 @@ class FakeObsClient implements ObsClient {
     if (commandError != null) throw commandError!;
   }
 
+  @override
+  Future<void> ruleText(String source, String text) async {
+    ruleControls.add('text:$source:$text');
+    if (commandError != null) throw commandError!;
+  }
+
+  @override
+  Future<void> ruleFilter(String source, String filter, String state) async {
+    ruleControls.add('filter:$source:$filter:$state');
+    if (commandError != null) throw commandError!;
+  }
+
   final statesController = StreamController<ObsState>.broadcast(sync: true);
   ObsState state = const ObsState();
   int connectCount = 0;

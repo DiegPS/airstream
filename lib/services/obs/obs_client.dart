@@ -50,6 +50,11 @@ abstract interface class ObsClient {
   Future<List<String>> sceneNames();
   Future<void> source(String scene, String source, String visibility);
   Future<void> mute(String input, String state);
+  Future<String> inputKind(String input);
+  Future<void> setInputSettings(String input, Map<String, dynamic> settings,
+      {required bool overlay});
+  Future<bool> filterEnabled(String source, String filter);
+  Future<void> setFilterEnabled(String source, String filter, bool enabled);
   Future<void> close();
 }
 
@@ -154,6 +159,26 @@ class ObsWebSocketClient implements ObsClient {
           .setInputMute(inputName: input, inputMuted: state == 'mute');
     }
   }
+
+  @override
+  Future<String> inputKind(String input) async =>
+      (await _socket.inputs.getInputSettings(inputName: input)).inputKind;
+
+  @override
+  Future<void> setInputSettings(String input, Map<String, dynamic> settings,
+          {required bool overlay}) =>
+      _socket.inputs.setInputSettings(
+          inputName: input, inputSettings: settings, overlay: overlay);
+
+  @override
+  Future<bool> filterEnabled(String source, String filter) async =>
+      (await _socket.filters.getSourceFilter(
+          sourceName: source, filterName: filter))['filterEnabled'] as bool;
+
+  @override
+  Future<void> setFilterEnabled(String source, String filter, bool enabled) =>
+      _socket.filters.setSourceFilterEnabled(
+          sourceName: source, filterName: filter, filterEnabled: enabled);
 
   @override
   Future<void> close() => _socket.close();

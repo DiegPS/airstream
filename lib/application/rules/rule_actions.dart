@@ -9,6 +9,8 @@ import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/obs_service.dart'
+    show ObsNotTextSourceException;
 import 'package:airstream/models/chat_message.dart';
 import 'rule_engine.dart';
 import 'rule_events.dart';
@@ -123,6 +125,11 @@ class RuleActions implements RuleActionTarget {
               a['visible'] as String);
         case 'obs.mute':
           await obs.ruleMute(a['input'] as String, a['state'] as String);
+        case 'obs.text':
+          await obs.ruleText(a['source'] as String, a['text'] as String);
+        case 'obs.filter':
+          await obs.ruleFilter(a['source'] as String, a['filter'] as String,
+              a['state'] as String);
         case 'sound.play':
           if (!await sounds.play(a)) {
             return const RuleActionResult('skipped', 'notFound');
@@ -192,6 +199,8 @@ class RuleActions implements RuleActionTarget {
               draw(depth);
           }
       }
+    } on ObsNotTextSourceException {
+      return const RuleActionResult('failed', 'notTextSource');
     } on ObsRequestException catch (e) {
       if (e.code == 600 || e.code == 601) {
         return const RuleActionResult('failed', 'notFound');

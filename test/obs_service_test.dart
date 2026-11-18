@@ -1,8 +1,22 @@
 import 'dart:async';
 
+import 'package:airstream/application/audio_coordinator.dart';
+import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/application/obs_coordinator.dart'
+    show ObsCoordinator, ObsServiceAdapter;
+import 'package:airstream/application/rules/rule_actions.dart';
+import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/obs/obs_client.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:obs_websocket/obs_websocket.dart' show ObsRequestException;
+
+import 'application/coordinator_fakes.dart'
+    show FakeTtsClient, FakeCaptionsClient;
+import 'rule_engine_test.dart' show rule;
 
 void main() {
   test('missing OBS host is exposed as an actionable state error', () async {
@@ -150,6 +164,177 @@ void main() {
     expect(service.currentState.statusMessage, 'Connection failed');
     expect(service.currentState.error, contains('TimeoutException'));
   });
+
+  group('OBS text and filter rules', () {
+    late _FakeObsClient client;
+    late ObsService service;
+    late RuleEngine engine;
+    late SettingsModel settings;
+    const manual = RuleEvent(type: 'manual');
+    const textAction = {
+      'id': 'text',
+      'type': 'obs.text',
+      'source': 'Muertes',
+      'text': '',
+    };
+    Map<String, dynamic> filterAction(String state) => {
+          'id': state,
+          'type': 'obs.filter',
+          'source': 'Main',
+          'filter': 'Blur',
+          'state': state,
+        };
+
+    setUp(() async {
+      client = _FakeObsClient();
+      service = ObsService(
+        connector: (
+                {required url,
+                required password,
+                required onDone,
+                required onEvent}) async =>
+            client,
+      );
+      final obs = ObsCoordinator(obs: ObsServiceAdapter(service));
+      final audio = AudioCoordinator(
+          tts: FakeTtsClient(), captions: FakeCaptionsClient());
+      final giveaway = ChatGiveawayController();
+      final queue = ChatQueueController();
+      settings =
+          const SettingsModel(obsEnabled: true, ruleCounters: {'muertes': 4});
+      final actions = RuleActions(
+        settings: () => settings,
+        writeSettings: (next, _) async => settings = next,
+        obs: obs,
+        audio: audio,
+        giveaway: giveaway,
+        queue: queue,
+        server: () => null,
+        feature: (_) {},
+        draw: (_) {},
+      );
+      engine = RuleEngine(target: actions);
+      addTearDown(() async {
+        await engine.dispose();
+        await actions.sounds.dispose();
+        await obs.dispose();
+        await audio.dispose();
+        await giveaway.dispose();
+        await queue.dispose();
+      });
+      await service.connect(host: 'studio.local:4455', password: '');
+      expect(service.currentState.connected, isTrue);
+    });
+
+    Future<List<(String, String?)>> run(
+        Map<String, dynamic> definition, RuleEvent event) async {
+      engine.updateSettings(enabled: true, rules: [definition]);
+      final finished =
+          engine.historyStream.firstWhere((history) => history.first.completed);
+      expect(engine.handle(event)['r'], isNull);
+      final results = (await finished).first.results;
+      return [for (final result in results) (result.status, result.reason)];
+    }
+
+    test('merges only resolved text using the updated counter, then clears it',
+        () async {
+      final definition = rule(type: 'chat.command', actions: [
+        {
+          'id': 'counter',
+          'type': 'counter',
+          'name': 'muertes',
+          'op': 'add',
+          'value': 1
+        },
+        {...textAction, 'text': 'Muertes: {counter.muertes} ({arg1})'},
+        {...textAction, 'id': 'clear'},
+      ]);
+      const event = RuleEvent(type: 'chat.command', text: '!hello Alex');
+      expect(await run(definition, event),
+          [('done', null), ('done', null), ('done', null)]);
+      expect(settings.ruleCounters, {'muertes': 5});
+      expect(client.commands,
+          ['kind:Muertes', 'set:Muertes', 'kind:Muertes', 'set:Muertes']);
+      expect(
+          client.inputWrites.map((write) => [write.$1, write.$2, write.$3]), [
+        [
+          'Muertes',
+          {'text': 'Muertes: 5 (Alex)'},
+          true
+        ],
+        [
+          'Muertes',
+          {'text': ''},
+          true
+        ],
+      ]);
+    });
+
+    test('rejects non-text input kinds and reports the OBS control error',
+        () async {
+      client.kind = 'browser_source';
+      expect(await run(rule(actions: [textAction]), manual),
+          [('failed', 'notTextSource')]);
+      expect(client.commands, ['kind:Muertes']);
+      expect(client.inputWrites, isEmpty);
+      expect(service.currentState.error, contains('Not a text source'));
+    });
+
+    test('enables and disables directly and reads the state for each toggle',
+        () async {
+      expect(
+          await run(
+              rule(actions: [
+                filterAction('enable'),
+                filterAction('disable'),
+                filterAction('toggle'),
+                {...filterAction('toggle'), 'id': 'toggle_again'},
+              ]),
+              manual),
+          List.filled(4, ('done', null)));
+      expect(client.commands, [
+        'filter:Main:Blur:true',
+        'filter:Main:Blur:false',
+        'read-filter:Main:Blur',
+        'filter:Main:Blur:true',
+        'read-filter:Main:Blur',
+        'filter:Main:Blur:false',
+      ]);
+    });
+
+    for (final (request, code, action) in [
+      ('GetInputSettings', 600, textAction),
+      ('SetInputSettings', 601, textAction),
+      ('SetSourceFilterEnabled', 600, filterAction('enable')),
+      ('GetSourceFilter', 601, filterAction('toggle')),
+    ]) {
+      test('$request reports OBS error $code as notFound', () async {
+        client.requestError =
+            ObsRequestException(requestType: request, code: code);
+        expect(await run(rule(actions: [action]), manual),
+            [('failed', 'notFound')]);
+        expect(service.currentState.error, contains('code $code'));
+        expect(client.inputWrites, isEmpty);
+        expect(
+            client.commands.where((command) => command.startsWith('filter:')),
+            isEmpty);
+      });
+    }
+
+    test('simulates both actions without requests and skips both offline',
+        () async {
+      final definition = rule(actions: [textAction, filterAction('toggle')]);
+      final preview = engine.simulate(definition, manual);
+      expect(preview.matched, isTrue);
+      expect(preview.results.map((r) => (r.status, r.reason)),
+          List.filled(2, ('wouldRun', 'willCheckInObs')));
+      expect(client.commands, isEmpty);
+      await service.disconnect();
+      expect(await run(definition, manual),
+          List.filled(2, ('skipped', 'notConnected')));
+      expect(client.commands, isEmpty);
+    });
+  });
 }
 
 class _FakeObsClient implements ObsClient {
@@ -160,8 +345,47 @@ class _FakeObsClient implements ObsClient {
   Future<void> mute(String input, String state) async =>
       commands.add('mute:$input:$state');
   final commands = <String>[];
+  final inputWrites = <(String, Map<String, dynamic>, bool)>[];
+  String kind = 'text_gdiplus_v3';
+  bool filterIsEnabled = false;
+  ObsRequestException? requestError;
   int statsCalls = 0;
   int closeCount = 0;
+
+  void failRequest(String request) {
+    final error = requestError;
+    if (error != null && error.requestType == request) throw error;
+  }
+
+  @override
+  Future<String> inputKind(String input) async {
+    commands.add('kind:$input');
+    failRequest('GetInputSettings');
+    return kind;
+  }
+
+  @override
+  Future<void> setInputSettings(String input, Map<String, dynamic> settings,
+      {required bool overlay}) async {
+    failRequest('SetInputSettings');
+    commands.add('set:$input');
+    inputWrites.add((input, settings, overlay));
+  }
+
+  @override
+  Future<bool> filterEnabled(String source, String filter) async {
+    commands.add('read-filter:$source:$filter');
+    failRequest('GetSourceFilter');
+    return filterIsEnabled;
+  }
+
+  @override
+  Future<void> setFilterEnabled(
+      String source, String filter, bool enabled) async {
+    failRequest('SetSourceFilterEnabled');
+    commands.add('filter:$source:$filter:$enabled');
+    filterIsEnabled = enabled;
+  }
 
   @override
   Future<void> subscribeOutputsAndScenes() async {}

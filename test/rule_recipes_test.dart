@@ -44,6 +44,61 @@ void main() {
       }
     }
   });
+  test('counter on screen recipe increments muertes for moderators', () {
+    final recipe = RuleRecipes.all.singleWhere((r) => r['id'] == 'recipe_7');
+    expect(recipe['trigger'], {'type': 'chat.command', 'command': '!muerte'});
+    expect(recipe['conditions']['roles'], ['moderator']);
+    expect(recipe['enabled'], isFalse);
+    expect(recipe['actions'], [
+      {
+        'id': 'a_0',
+        'type': 'counter',
+        'name': 'muertes',
+        'op': 'add',
+        'value': 1
+      },
+      {
+        'id': 'a_1',
+        'type': 'obs.text',
+        'source': 'Muertes',
+        'text': 'Muertes: {counter.muertes}'
+      },
+    ]);
+    expect(ruleProblems(recipe), isEmpty);
+  });
+
+  test('public chat text warning tracks viewer text placeholders only', () {
+    bool warns(String trigger, List<String> roles, String text,
+        {String actionType = 'obs.text'}) {
+      final rule = RuleSchema.newRule(trigger, id: 'r');
+      rule['conditions']['roles'] = roles;
+      rule['actions'] = [
+        {'type': actionType, 'source': 'Text', 'text': text}
+      ];
+      return showsPublicChatText(rule);
+    }
+
+    for (final placeholder in [
+      'message',
+      'args',
+      for (var n = 1; n <= 9; n++) 'arg$n'
+    ]) {
+      expect(
+          warns('chat.command', ['everyone'], 'Text: {$placeholder}'), isTrue);
+      expect(warns('chat.command', ['moderator'], '{$placeholder}'), isFalse);
+      expect(
+          warns('support.superchat', ['everyone'], '{$placeholder}'), isFalse);
+    }
+    expect(warns('chat.message', [], '{message}'), isTrue);
+    expect(
+        warns('chat.command', ['everyone'],
+            'Counter {counter.count} {arg10} message'),
+        isFalse);
+    expect(
+        warns('chat.command', ['everyone'], '{message}', actionType: 'tts.say'),
+        isFalse);
+  });
+
   test('field validation catches bounds, commands and repair clears invalid',
       () {
     final r = RuleSchema.newRule('chat.command', id: 'r');

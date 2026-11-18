@@ -312,6 +312,84 @@ void main() {
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);
     });
+
+    testWidgets('OBS fields and live chat warning fit 360 px in $language',
+        (t) async {
+      t.view.physicalSize = const Size(360, 700);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      await mount(t, language: language);
+      await t.tap(find.byKey(const Key('rules-new')));
+      await t.pumpAndSettle();
+      final spanish = language == 'es';
+      final dialog = find.byType(RuleEditorDialog);
+      final addAction = find.byKey(const Key('rule-add-action'));
+      final warning = find.descendant(
+        of: dialog,
+        matching: find.text(spanish
+            ? 'Lo que escriba el chat saldrá en tu directo'
+            : 'Chat text will appear on your stream'),
+      );
+
+      Future<void> add(String label) async {
+        await visible(t, addAction);
+        await t.tap(addAction);
+        await t.pumpAndSettle();
+        final item = find.widgetWithText(PopupMenuItem<String>, label);
+        await visible(t, item);
+        await t.tap(item);
+        await t.pumpAndSettle();
+      }
+
+      final source = spanish ? 'Fuente' : 'Source';
+      void field(int action, String key, String label, String value) {
+        final widget =
+            t.widget<TextField>(find.byKey(Key('rule-action-$action-$key')));
+        expect(widget.decoration?.labelText, label);
+        expect(widget.controller?.text, value);
+      }
+
+      await add(spanish ? 'Cambiar texto' : 'Set text');
+      field(0, 'source', source, 'Text');
+      field(0, 'text', spanish ? 'Texto' : 'Text', '{counter.count}');
+      expect(warning, findsNothing);
+      final textField = find.byKey(const Key('rule-action-0-text'));
+      await visible(t, textField);
+      await t.enterText(textField, 'On stream: {args}');
+      await t.pumpAndSettle();
+      await visible(t, warning);
+      expect(warning.hitTestable(), findsOneWidget);
+
+      await add(
+          spanish ? 'Activar / desactivar filtro' : 'Turn filter on / off');
+      field(1, 'source', source, 'Camera');
+      field(1, 'filter', spanish ? 'Filtro' : 'Filter', 'Filter');
+      final state = find.byKey(const Key('rule-action-1-state'));
+      await visible(t, state);
+      expect(
+          find.descendant(
+              of: state, matching: find.text(spanish ? 'Estado' : 'State')),
+          findsOneWidget);
+      await t.tap(state);
+      await t.pumpAndSettle();
+      for (final label in spanish
+          ? ['Activar', 'Desactivar', 'Alternar']
+          : ['Turn on', 'Turn off', 'Toggle']) {
+        expect(
+            find.widgetWithText(DropdownMenuItem<String>, label), findsWidgets);
+      }
+      await t.tap(find.text(spanish ? 'Desactivar' : 'Turn off').last);
+      await t.pumpAndSettle();
+
+      final moderators = find.widgetWithText(
+          FilterChip, spanish ? 'Moderadores' : 'Moderators');
+      await visible(t, moderators);
+      await t.tap(moderators);
+      await t.pumpAndSettle();
+      expect(warning, findsNothing);
+      expect(t.takeException(), isNull);
+    });
   }
   testWidgets('breaker resumes and history displays every action status',
       (t) async {
