@@ -225,7 +225,8 @@ void main() {
     expect(saved.media, 1);
   });
 
-  test('safety backup restores a removed rule endpoint without credentials',
+  test(
+      'automatic safety copy omits endpoints and restores removed rules with empty URLs',
       () async {
     final exported = p.join(temp.path, 'empty.airstream-backup');
     await backup.export(exported, const SettingsModel());
@@ -238,14 +239,15 @@ void main() {
         Directory(p.join(support.path, 'safety-backups')).listSync().single;
     final zip = ZipDecoder().decodeBytes(await File(safety.path).readAsBytes());
     final document = utf8.decode(zip.findFile('settings.json')!.content);
-    expect(document, contains('private-local-endpoint'));
+    expect(document, isNot(contains('private-local-endpoint')));
     expect(document, isNot(contains('obsPassword')));
     expect(document, isNot(contains('rulesWebhookToken')));
     final saved = await backup.validate(safety.path);
     addTearDown(saved.dispose);
+    expect(saved.rulesMissingHttpUrls(settings.current), hasLength(1));
     await backup.restore(saved, settings);
-    expect((settings.current.rules.single['actions'] as List).single['url'],
-        'https://example.invalid/private-local-endpoint');
+    expect(
+        (settings.current.rules.single['actions'] as List).single['url'], '');
   });
 
   test('settings persistence failure rolls back both library replacements',
@@ -374,6 +376,46 @@ void main() {
       expect(await support.list().toList(), isEmpty);
     });
   }
+
+  test('restore ignores archive URLs and preserves only matching local URLs',
+      () async {
+    final matching = portable.rules.single;
+    final incoming = SettingsModel(rules: [
+      {...matching, 'enabled': true},
+      {
+        ...matching,
+        'id': 'foreign',
+        'name': 'Foreign endpoint',
+        'enabled': true
+      },
+    ]);
+    final archive = Archive()
+      ..addFile(ArchiveFile.string(
+          'manifest.json',
+          jsonEncode({
+            ...validManifest,
+            'counts': {'rules': 2, 'templates': 0, 'media': 0},
+          })))
+      ..addFile(ArchiveFile.string(
+          'settings.json', SettingsDocumentCodec.encode(incoming)));
+    final file = File(p.join(temp.path, 'foreign.airstream-backup'));
+    await file.writeAsBytes(ZipEncoder().encode(archive));
+    final validated = await backup.validate(file.path);
+    addTearDown(validated.dispose);
+    await backup.restore(validated, settings);
+
+    String url(Map rule) => (rule['actions'] as List).first['url'] as String;
+    expect(settings.current.rules.map(url), [
+      'https://example.invalid/private-local-endpoint',
+      '',
+    ]);
+    expect(validated.rulesMissingHttpUrls(local), ['Foreign endpoint']);
+    expect(
+        SettingsProfiles.import(SettingsDocumentCodec.encode(incoming), local)
+            .rules
+            .map(url),
+        settings.current.rules.map(url));
+  });
 
   test('ignores an unknown entry and rejects mismatched local path and CRC',
       () async {

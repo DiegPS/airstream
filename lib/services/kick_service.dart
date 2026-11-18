@@ -41,6 +41,7 @@ class KickService {
   String? _lastRoomStateSignature;
   String? _lastPinnedMessageId;
   int _generation = 0;
+  Future<void> _disconnecting = Future.value();
 
   /// Distinguishes system messages that Kick sends without an ID. A clock is
   /// not enough: two events can share a timestamp.
@@ -63,8 +64,10 @@ class KickService {
   }
 
   Future<void> _connectWithSlug(String slug) async {
-    await disconnect();
     final generation = ++_generation;
+    await _disconnectTransport();
+    if (generation != _generation) return;
+    _emit(ServiceStatus.idle, null);
     _emit(ServiceStatus.connecting, null);
     try {
       final client = await _transportFactory().timeout(_connectionTimeout);
@@ -85,24 +88,8 @@ class KickService {
       }
     } catch (e, stack) {
       if (generation != _generation) return;
-      await _sub?.cancel();
-      _sub = null;
-      await _errorSub?.cancel();
-      _errorSub = null;
-      await _eventSub?.cancel();
-      _eventSub = null;
-      await _metadataSub?.cancel();
-      _metadataSub = null;
-      await _metadataErrorSub?.cancel();
-      _metadataErrorSub = null;
-      await _connectionSub?.cancel();
-      _connectionSub = null;
-      await _profileSub?.cancel();
-      _profileSub = null;
-      await _enrichmentErrorSub?.cancel();
-      _enrichmentErrorSub = null;
-      await _client?.close();
-      _client = null;
+      await _disconnectTransport();
+      if (generation != _generation) return;
       AppLogger.error('Kick connection failed', error: e, stackTrace: stack);
       _emit(ServiceStatus.error, e.toString());
     }
@@ -221,7 +208,19 @@ class KickService {
   }
 
   Future<void> disconnect() async {
-    _generation++;
+    final generation = ++_generation;
+    await _disconnectTransport();
+    if (generation == _generation) _emit(ServiceStatus.idle, null);
+  }
+
+  Future<void> _disconnectTransport() {
+    final cleanup = _disconnecting.then((_) => _closeTransport());
+    _disconnecting =
+        cleanup.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return cleanup;
+  }
+
+  Future<void> _closeTransport() async {
     _seenGiftBatches.clear();
     _lastRoomStateSignature = null;
     _lastPinnedMessageId = null;
@@ -242,9 +241,9 @@ class KickService {
     await _enrichmentErrorSub?.cancel();
     _enrichmentErrorSub = null;
     if (!_metadataController.isClosed) _metadataController.add(null);
-    await _client?.close();
+    final client = _client;
     _client = null;
-    _emit(ServiceStatus.idle, null);
+    await client?.close();
   }
 
   Future<void> dispose() async {

@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:airstream/services/overlay/templates/poll_overlay.dart';
+import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
+import 'package:airstream/services/overlay/templates/captions_overlay.dart';
+import 'package:airstream/services/overlay/templates/chat_overlay.dart';
 import 'package:airstream/services/overlay/templates/clock_overlay.dart';
 import 'package:airstream/services/overlay/templates/giveaway_overlay.dart';
 import 'package:airstream/services/overlay/templates/goals_overlay.dart';
@@ -117,6 +120,11 @@ void main() {
   test(
       'poll pages, giveaway, timer and queue clear on empty reconnect snapshots',
       () => runGalleryChecks('snapshots'));
+  test('built-in browser pages update their language and title from settings',
+      () => runGalleryChecks('page language'));
+  test(
+      'preloaded Credits starts when session data arrives and clears when it leaves',
+      () => runGalleryChecks('preloaded credits'));
 }
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -153,6 +161,9 @@ Future<void> runGalleryChecks(String scenario) async {
         'const sdk = ${jsonEncode(sdkV1())};\n'
         'const screens = ${jsonEncode(screens)};\n'
         'const widgets = ${jsonEncode(widgets)};\n'
+        'const alertsPage = ${jsonEncode(alertsOverlayHtml())};\n'
+        'const captionsPage = ${jsonEncode(captionsOverlayHtml())};\n'
+        'const chatPage = ${jsonEncode(chatOverlayHtml())};\n'
         'const pollPage = ${jsonEncode(pollOverlayHtml())};\n'
         'const clockPage = ${jsonEncode(clockOverlayHtml())};\n'
         'const goalsPage = ${jsonEncode(goalsOverlayHtml())};\n'
@@ -237,7 +248,9 @@ class Element extends EventTarget {
 }
 
 function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
-  const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage, '/goals': goalsPage, '/timer': timerPage}[id];
+  const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage,
+    '/goals': goalsPage, '/timer': timerPage, '/chat': chatPage,
+    '/alerts': alertsPage, '/captions': captionsPage}[id];
   const item = (screens[id] || widgets[id]);
   const files = html
     ? {'index.html': html, 'script.js': html.split('<script>')[1].split('</script>')[0]}
@@ -293,17 +306,19 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
   };
   context.window = Object.assign(win, {innerWidth: 960, innerHeight: 640, matchMedia: () => motion,
     setInterval: context.setInterval, clearInterval: context.clearInterval,
-    setTimeout: context.setTimeout, clearTimeout: context.clearTimeout});
+    setTimeout: context.setTimeout, clearTimeout: context.clearTimeout,
+    requestAnimationFrame: fn => context.setTimeout(fn, 0),
+    cancelAnimationFrame: context.clearTimeout});
   vm.createContext(context);
   if (!html) {
     vm.runInContext(sdk, context);
     context.Airstream = win.Airstream;
   }
   vm.runInContext(files['script.js'], context);
-  if (html) socket.open();
+  if (html) (socket.open || socket.onopen)();
 
   function send(type, data, replay = false) {
-    socket.message({data: JSON.stringify({type, data, replay})});
+    (socket.message || socket.onmessage)({data: JSON.stringify({type, data, replay})});
     assert.deepEqual(errors, []);
   }
   function advance(ms) {
@@ -324,6 +339,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
   return {nodes, win, errors, advance, send, sent, logo,
     reconnect: () => { socket.close(); advance(3000); socket.open(); },
     root: context.document.documentElement,
+    title: () => context.document.title,
     fields: values => send('fields', {...item.fields, language: lang, ...values})};
 }
 
@@ -470,8 +486,60 @@ function checkEmptySnapshots() {
   queue.send('queue', state, true);
   assert.equal(queue.nodes.waiting.children.length, 1);
   queue.reconnect();
-  queue.send('queue', {...state, entries: []}, true);
+  queue.send('queue', null, true);
   assert.equal(queue.nodes.waiting.children.length, 0);
+  assert.equal(queue.nodes.queue.hidden, true);
+  assert.equal(queue.win.Airstream.state.queue, null);
+  queue.send('queue', {...state, entries: []}, true);
+  assert.equal(queue.nodes.queue.hidden, false);
+
+  const scoreboard = page('scoreboard');
+  scoreboard.fields({counters: 'home'});
+  scoreboard.send('counters', {home: 7}, true);
+  assert.match(scoreboard.nodes.scores.textContent, /7/);
+  scoreboard.reconnect();
+  scoreboard.send('counters', null, true);
+  assert.equal(scoreboard.win.Airstream.state.counters, null);
+  assert.doesNotMatch(scoreboard.nodes.scores.textContent, /7/);
+}
+
+function checkPageLanguage() {
+  for (const [id, spanish, english] of [
+    ['/poll', 'Encuesta de Airstream', 'Airstream Poll'],
+    ['/clock', 'Temporizador', 'Timer'],
+    ['/timer', 'Temporizador de Airstream', 'Airstream Timer'],
+    ['/chat', 'Chat de Airstream', 'Airstream Overlay'],
+    ['/alerts', 'Alertas de Airstream', 'Airstream Alerts'],
+    ['/captions', 'Subtítulos de Airstream', 'Airstream Captions'],
+  ]) {
+    const view = page(id);
+    view.send('settings', {appLanguageCode: 'es'});
+    assert.equal(view.root.lang, 'es', id);
+    assert.equal(view.title(), spanish, id);
+    view.send('settings', {appLanguageCode: 'en'});
+    assert.equal(view.root.lang, 'en', id);
+    assert.equal(view.title(), english, id);
+  }
+}
+
+function checkPreloadedCredits() {
+  const credits = page('credits');
+  credits.fields({loop: false});
+  credits.send('session', null, true);
+  const roll = credits.nodes['credits-roll'];
+  assert.equal(roll.hidden, true);
+  credits.send('session', {startedAt: '2026-11-18', supporters: []});
+  assert.equal(roll.hidden, true);
+  credits.send('session', {startedAt: '2026-11-18', supporters: [
+    {id: '1', name: 'Ana', type: 'bits', platform: 'twitch'},
+  ]});
+  assert.equal(roll.hidden, false);
+  assert.match(roll.textContent, /Ana/);
+  credits.reconnect();
+  credits.send('session', null, true);
+  assert.equal(credits.win.Airstream.state.session, null);
+  assert.equal(roll.hidden, true);
+  assert.equal(credits.nodes['credits-page'].textContent, 'Thanks for watching');
 }
 function checkWordCloudModeration() {
   const view = page('word-cloud');
@@ -500,6 +568,8 @@ const regressions = {
   'word cloud': checkWordCloudModeration,
   goals: checkGoalReset,
   snapshots: checkEmptySnapshots,
+  'page language': checkPageLanguage,
+  'preloaded credits': checkPreloadedCredits,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();
@@ -955,7 +1025,7 @@ async function main() {
   empty.fields({finalText: literal});
   assert.equal(empty.nodes['credits-page'].textContent, 'Thanks for watching' + literal);
   empty.send('session', payload);
-  assert.equal(empty.nodes['credits-roll'].hidden, true);
+  assert.equal(empty.nodes['credits-roll'].hidden, false);
   empty.win.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail: {active: true}}));
   assert.equal(empty.nodes['credits-roll'].hidden, false);
   const reduced = page('credits', 'es', {reduced: true});

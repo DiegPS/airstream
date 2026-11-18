@@ -1,4 +1,5 @@
 import 'overlay_font.dart';
+import 'overlay_page_locale.dart';
 
 String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
     '''<!DOCTYPE html>
@@ -113,6 +114,7 @@ String alertsOverlayHtml({bool googleFontsAllowed = false}) =>
 <div id="root"></div>
 <script>
 ${overlayFontScript(googleFontsAllowed)}
+${overlayPageLocaleScript((l) => l.obsPageAlertsTitle)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   alertFontSize: 28,
@@ -351,7 +353,7 @@ let shuttingDown = false;
 function applySettings(next) {
   applyOverlayFont(next);
   settings = { ...settings, ...next };
-  document.documentElement.lang = settings.appLanguageCode || 'en';
+  localizePage(settings.appLanguageCode || 'en');
   stage.style.fontSize = String(settings.alertFontSize || DEFAULT_SETTINGS.alertFontSize) + 'px';
   stage.style.alignItems = ({ top: 'flex-start', bottom: 'flex-end' })[settings.alertPosition] || 'center';
 }

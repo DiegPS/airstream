@@ -1,4 +1,5 @@
 import 'overlay_font.dart';
+import 'overlay_page_locale.dart';
 
 String captionsOverlayHtml({bool googleFontsAllowed = false}) =>
     '''<!DOCTYPE html>
@@ -30,6 +31,7 @@ String captionsOverlayHtml({bool googleFontsAllowed = false}) =>
 <div id="caption" role="status" aria-live="polite"></div>
 <script>
 ${overlayFontScript(googleFontsAllowed)}
+${overlayPageLocaleScript((l) => l.obsPageCaptionsTitle)}
 (() => {
   const caption = document.getElementById('caption');
   let retry;
@@ -44,7 +46,12 @@ ${overlayFontScript(googleFontsAllowed)}
       try {
         const envelope = JSON.parse(event.data);
         if (envelope.type === 'reload') return location.reload();
-        if (envelope.type === 'settings' && envelope.data) return applyOverlayFont(envelope.data);
+        if (envelope.type === 'settings' && envelope.data) {
+          applyOverlayFont(envelope.data);
+          const language = envelope.data.appLanguageCode || 'en';
+          localizePage(language);
+          return;
+        }
         if (envelope.type !== 'caption') return;
         caption.textContent = envelope.data.text || '';
         caption.classList.toggle('visible', Boolean(caption.textContent));

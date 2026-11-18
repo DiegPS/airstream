@@ -294,20 +294,56 @@ void main() {
     expect(target.calls, isEmpty);
     expect(engine.history, isEmpty);
   });
-  test('first message resets with each session', () {
+  test('viewer stream control skips member, VIP and mixed roles at runtime',
+      () {
+    for (final (roles, blocked) in [
+      (['member'], true),
+      (['vip'], true),
+      (['member', 'moderator'], true),
+      (['moderator'], false),
+      (['owner'], false),
+    ]) {
+      fakeAsync((a) {
+        final definition = rule(type: 'chat.firstMessage', actions: [
+          {'id': 'stream', 'type': 'obs.stream', 'state': 'start'},
+        ]);
+        definition['conditions']['roles'] = roles;
+        setup(a, (engine, target) {
+          engine.handle(RuleEvent(
+              type: 'chat.firstMessage',
+              author: RuleAuthor(name: 'Alex', roles: roles)));
+          a.elapse(Duration.zero);
+          final result = engine.history.single.results.single;
+          expect(result.reason, blocked ? 'publicStreamControl' : isNull);
+          expect(target.calls, blocked ? isEmpty : ['obs.stream']);
+        }, rules: [definition]);
+      });
+    }
+  });
+
+  test(
+      'first-message rules honor the pipeline flag and exclude membership notices',
+      () {
     final adapter = RuleEventAdapter();
-    ChatMessage m(String id) => ChatMessage(
-        platform: Platform.twitch,
-        id: id,
-        author: const ChatAuthor(name: 'Alex', channelId: 'u'),
-        items: const [MessageItem.text('hello')],
-        timestamp: DateTime.utc(2026));
-    expect(adapter.message(m('1')).map((e) => e.type),
-        contains('chat.firstMessage'));
-    expect(adapter.message(m('2')).map((e) => e.type),
-        isNot(contains('chat.firstMessage')));
-    adapter.startSession();
-    expect(adapter.message(m('3')).map((e) => e.type),
-        contains('chat.firstMessage'));
+    ChatMessage m(String id, {bool first = false, bool membership = false}) =>
+        ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: const ChatAuthor(name: 'Alex', channelId: 'u'),
+          items: const [MessageItem.text('hello')],
+          timestamp: DateTime.utc(2026),
+          isFirstInSession: first,
+          isMembershipEvent: membership,
+          membershipEventKind:
+              membership ? MembershipEventKind.subscription : null,
+        );
+    Iterable<String> types(ChatMessage message) =>
+        adapter.message(message).map((event) => event.type);
+    expect(
+        types(m('notice', first: true, membership: true)),
+        allOf(contains('support.membership'),
+            isNot(contains('chat.firstMessage'))));
+    expect(types(m('seen')), isNot(contains('chat.firstMessage')));
+    expect(types(m('chat', first: true)), contains('chat.firstMessage'));
   });
 }

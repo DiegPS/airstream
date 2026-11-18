@@ -34,6 +34,10 @@ class ValidatedSystemBackup {
   final DateTime createdAt;
   final int rules, templates, media;
 
+  List<String> rulesMissingHttpUrls(SettingsModel current) =>
+      SettingsProfiles.rulesMissingHttpUrls(SettingsProfiles.keepLocalHttpUrls(
+          SettingsDocumentCodec.decode(_settings).settings, current));
+
   Future<void> dispose() => _cleanup(_staging);
 }
 
@@ -59,16 +63,14 @@ class SystemBackup {
       media.withStableFiles(() => export(destination, read()));
 
   Future<void> export(String destination, SettingsModel settings) =>
-      _writeBackup(destination, SettingsProfiles.export(settings),
-          stripHttpUrls: true);
+      _writeBackup(destination, SettingsProfiles.export(settings));
 
-  Future<void> _writeBackup(String destination, String settings,
-      {required bool stripHttpUrls}) {
+  Future<void> _writeBackup(String destination, String settings) {
     final templatePath = templates.rootPath;
     final mediaPath = media.directory.path;
     final limits = this.limits;
     final version = appVersion;
-    final document = _scrubSettings(settings, stripHttpUrls: stripHttpUrls);
+    final document = _scrubSettings(settings);
     return Isolate.run(() => _export(
         destination, document, templatePath, mediaPath, limits, version));
   }
@@ -183,9 +185,7 @@ class SystemBackup {
     final stamp = (now > last ? now : last + 1).toString().padLeft(20, '0');
     await _writeBackup(
       p.join(safety.path, 'safety-$stamp$_extension'),
-      SettingsDocumentCodec.encode(current,
-          includeWebhookSecret: false, includeQueueState: false),
-      stripHttpUrls: false,
+      SettingsProfiles.export(current),
     );
     for (final old in previous.skip(2)) {
       await old.delete();
@@ -194,15 +194,14 @@ class SystemBackup {
 }
 
 /// Removes credentials, including copies in saved profiles.
-String _scrubSettings(String source, {required bool stripHttpUrls}) {
+String _scrubSettings(String source) {
   Object? scrub(Object? value, {bool profileNames = false}) => switch (value) {
         Map() => {
             for (final entry in value.entries)
               if (profileNames ||
                   (entry.key != 'obsPassword' &&
                       entry.key != 'rulesWebhookToken'))
-                entry.key: stripHttpUrls &&
-                        !profileNames &&
+                entry.key: !profileNames &&
                         entry.key == 'url' &&
                         value['type'] == 'http.request'
                     ? ''
@@ -375,8 +374,7 @@ Future<ValidatedSystemBackup> _validate(
     final createdAt = timestamp is String ? DateTime.tryParse(timestamp) : null;
     final counts = manifest['counts'];
     final source = _scrubSettings(
-        File(p.join(staging.path, _settingsName)).readAsStringSync(),
-        stripHttpUrls: false);
+        File(p.join(staging.path, _settingsName)).readAsStringSync());
     final decoded = SettingsDocumentCodec.decode(source);
     if (decoded.requiresRewrite ||
         createdAt == null ||

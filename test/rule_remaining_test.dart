@@ -2,6 +2,7 @@ import 'package:airstream/services/overlay_server.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 // ignore: depend_on_referenced_packages
 import 'package:fake_async/fake_async.dart';
 import 'package:obs_websocket/obs_websocket.dart';
@@ -95,7 +96,7 @@ void main() {
       audio: audio,
       giveaway: giveaway,
       server: () => null,
-      feature: (_) {},
+      feature: (_) => FeaturedMessageDelivery.noReceiver(),
       draw: (count, depth) {},
     );
     final engine = RuleEngine(target: actions);
@@ -341,7 +342,7 @@ void main() {
         audio: audio,
         giveaway: giveaway,
         server: () => alertTarget,
-        feature: (_) {},
+        feature: (_) => FeaturedMessageDelivery.noReceiver(),
         draw: (count, depth) {});
     final engine = RuleEngine(target: actions);
     final definition = rule(actions: [

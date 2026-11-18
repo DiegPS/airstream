@@ -77,6 +77,11 @@ const page = byId('credits-page');
 let pass;
 let pageTimer;
 let settingsKey;
+let sessionKey;
+
+function currentSessionKey() {
+  return session ? session.startedAt || true : null;
+}
 
 function snapshot() {
   const groups = [];
@@ -155,6 +160,7 @@ function presentPass() {
   roll.hidden = true;
   page.hidden = true;
   if (!pass.groups.length) {
+    roll.replaceChildren();
     finishPass(6000);
     return;
   }
@@ -187,8 +193,9 @@ function presentPass() {
   roll.classList.add('rolling');
 }
 
-function startPass() {
-  pass = snapshot();
+function startPass(next = snapshot()) {
+  sessionKey = currentSessionKey();
+  pass = next;
   presentPass();
 }
 roll.addEventListener('animationend', event => {
@@ -208,6 +215,13 @@ configureScreen(() => {
   if (key !== settingsKey) {
     settingsKey = key;
     startPass();
+  }
+}, () => {
+  if (sessionKey !== currentSessionKey()) {
+    startPass();
+  } else if (session && !pass.groups.length) {
+    const next = snapshot();
+    if (next.groups.length) startPass(next);
   }
 });
 ''';

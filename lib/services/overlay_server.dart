@@ -77,7 +77,7 @@ class OverlayServer {
   final _galleryViews = <WebSocketChannel>{};
   final _sessionClients = <WebSocketChannel, String?>{};
   Timer? _sessionTimer;
-  String? _sessionJson;
+  String _sessionJson = 'null';
   bool _sessionDirty = true;
 
   /// Reads the current session only when a template is registered.
@@ -98,8 +98,8 @@ class OverlayServer {
   }
 
   void sessionChanged() {
-    if (_sessionClients.isEmpty) return;
     _sessionDirty = true;
+    if (_sessionClients.isEmpty) return;
     _sessionTimer ??= Timer(const Duration(seconds: 1), () {
       _sessionTimer = null;
       for (final client in _sessionClients.keys.toList()) {
@@ -111,11 +111,11 @@ class OverlayServer {
   void _sendSession(WebSocketChannel client, {required bool replay}) {
     if (_sessionDirty) {
       final data = sessionState?.call();
-      _sessionJson = data == null ? null : jsonEncode(data);
+      _sessionJson = jsonEncode(data);
       _sessionDirty = false;
     }
     final json = _sessionJson;
-    if (json == null || (!replay && _sessionClients[client] == json)) return;
+    if (!replay && _sessionClients[client] == json) return;
     try {
       client.sink.add('{"type":"session","replay":$replay,"data":$json}');
       _sessionClients[client] = json;
@@ -155,7 +155,7 @@ class OverlayServer {
     _counterClients.clear();
     _sessionTimer?.cancel();
     _sessionTimer = null;
-    _sessionJson = null;
+    _sessionJson = 'null';
     _sessionDirty = true;
   }
 
@@ -463,16 +463,47 @@ class OverlayServer {
 
   String get overlayUrl => 'http://localhost:$_port';
 
+  Future<void>? _lifecycle;
+  int _startGeneration = 0;
+
+  // Invalidate startup immediately even when cleanup has to wait its turn.
+  void cancelPendingStart() => _startGeneration++;
+
+  Future<void> _enqueueLifecycle(Future<void> Function() operation) {
+    final queued = _lifecycle;
+    final result = queued == null
+        ? operation()
+        : queued.then((_) => operation(),
+            onError: (Object _, StackTrace __) => operation());
+    void release() {
+      if (identical(_lifecycle, result)) _lifecycle = null;
+    }
+
+    _lifecycle = result;
+    unawaited(result.then<void>((_) => release(),
+        onError: (Object _, StackTrace __) => release()));
+    // A failed request must not keep the next lifecycle operation from running.
+    return result;
+  }
+
   Future<void> start({
     required Stream<ChatMessage> messages,
     required SettingsModel settings,
     int port = 8080,
-  }) async {
+  }) {
     if (!isValidPort(port)) {
-      throw RangeError.range(port, 0, 65535, 'port');
+      return Future.error(RangeError.range(port, 0, 65535, 'port'));
     }
-    await stop();
-    final lifecycleGeneration = ++_lifecycleGeneration;
+    final generation = ++_startGeneration;
+    return _enqueueLifecycle(
+        () => _start(messages, settings, port, generation));
+  }
+
+  Future<void> _start(Stream<ChatMessage> messages, SettingsModel settings,
+      int port, int generation) async {
+    if (generation != _startGeneration) return;
+    await _stop();
+    if (generation != _startGeneration) return;
     _settings = settings;
     _updateGoals(settings);
     _updateTimer(settings);
@@ -489,6 +520,7 @@ class OverlayServer {
       AppLogger.warning('Templates folder unavailable',
           error: error, stackTrace: stack);
     }
+    if (generation != _startGeneration) return;
     final wsHandler = webSocketHandler((ws, _) => attachClient(ws));
 
     final handler = buildOverlayRoutes(wsHandler,
@@ -507,11 +539,11 @@ class OverlayServer {
 
     final server =
         await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _port);
-    _port = server.port;
-    if (lifecycleGeneration != _lifecycleGeneration) {
+    if (generation != _startGeneration) {
       await server.close(force: true);
       return;
     }
+    _port = server.port;
     _server = server;
     _msgSub = messages.listen(
       _broadcastMessage,
@@ -802,7 +834,12 @@ class OverlayServer {
         'count': event.count,
       };
 
-  Future<void> stop() async {
+  Future<void> stop() {
+    cancelPendingStart();
+    return _enqueueLifecycle(_stop);
+  }
+
+  Future<void> _stop() async {
     await _templateSub?.cancel();
     _templateSub = null;
     // The Templates tab shares this watcher while the HTTP server is stopped.
@@ -867,17 +904,23 @@ class OverlayServer {
         'data': OverlayPayloadEncoder.message(msg, _settings),
       });
     }
-    _broadcastAlert(msg);
+    broadcastChatSupport(msg);
   }
 
   FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage msg) {
-    _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
+    final sentToTemplate =
+        _sendCustom({'type': 'featured', 'data': _alertData(msg, 'featured')});
     final view = _views.containsValue('featured') ? 'featured' : 'alerts';
     final recipients = _views.entries
         .where((entry) => entry.value == view)
         .map((entry) => entry.key)
         .toSet();
-    if (recipients.isEmpty) return FeaturedMessageDelivery.noReceiver();
+    if (recipients.isEmpty) {
+      return sentToTemplate
+          ? FeaturedMessageDelivery(null, FeaturedMessageStatus.sent,
+              Future.value(FeaturedMessageStatus.sent))
+          : FeaturedMessageDelivery.noReceiver();
+    }
     final id = '$_lifecycleGeneration-${++_nextDelivery}';
     final pending =
         _PendingFeaturedMessage(Set<WebSocketChannel>.from(recipients));
@@ -903,10 +946,15 @@ class OverlayServer {
     }
     return FeaturedMessageDelivery(
       id,
-      pending.recipients.isEmpty
-          ? FeaturedMessageStatus.noReceiver
-          : FeaturedMessageStatus.sent,
-      pending.completion.future,
+      sentToTemplate || pending.recipients.isNotEmpty
+          ? FeaturedMessageStatus.sent
+          : FeaturedMessageStatus.noReceiver,
+      sentToTemplate
+          ? pending.completion.future.then((status) =>
+              status == FeaturedMessageStatus.disconnected
+                  ? FeaturedMessageStatus.sent
+                  : status)
+          : pending.completion.future,
     );
   }
 
@@ -1043,7 +1091,8 @@ class OverlayServer {
     }
   }
 
-  void _broadcastAlert(ChatMessage msg) {
+  /// Sends a support alert without publishing the message on the chat feed.
+  void broadcastChatSupport(ChatMessage msg) {
     final kind = messageAlertKind(msg);
     if (kind == null ||
         !_settings.alertPlatforms.contains(msg.platform.name) ||

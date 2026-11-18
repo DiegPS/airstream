@@ -29,6 +29,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
     final ttsSpeaking = ref.watch(ttsBusyProvider).valueOrNull ?? false;
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 380;
+    final actionGap = compact ? 4.0 : 6.0;
 
     return Material(
       color: Colors.transparent,
@@ -107,7 +108,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                             : null,
                       ),
                       if (sessionPhase == ChatSessionPhase.failed) ...[
-                        const SizedBox(width: 6),
+                        SizedBox(width: actionGap),
                         _TopBarIconButton(
                           tooltip: l.stop,
                           icon: Icons.stop_circle_outlined,
@@ -118,7 +119,7 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                         ),
                       ],
                       if (ttsSpeaking) ...[
-                        const SizedBox(width: 6),
+                        SizedBox(width: actionGap),
                         _TopBarIconButton(
                           key: const Key('silence-tts-button'),
                           tooltip: l.silenceTts,
@@ -129,12 +130,9 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                           ),
                         ),
                       ],
-                      // A very narrow window has no room for it.
-                      if (width >= 460) ...[
-                        const SizedBox(width: 6),
-                        const _ChatFilterButton(),
-                      ],
-                      const SizedBox(width: 6),
+                      SizedBox(width: actionGap),
+                      const _ChatFilterButton(),
+                      SizedBox(width: actionGap),
                       _TopBarIconButton(
                         tooltip: sidebarVisible
                             ? l.hideSidebarTooltip
@@ -145,8 +143,8 @@ class _DesktopTopBar extends ConsumerWidget implements PreferredSizeWidget {
                         active: sidebarVisible,
                         onTap: onToggleSidebar,
                       ),
-                      const SizedBox(width: 6),
-                      const WindowControlBar(),
+                      SizedBox(width: actionGap),
+                      WindowControlBar(compact: width < 460),
                       SizedBox(width: compact ? 4 : 8),
                     ],
                   ),

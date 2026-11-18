@@ -12,6 +12,7 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/obs/obs_client.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:obs_websocket/obs_websocket.dart' as websocket
     show
         ObsRequestException,
@@ -271,7 +272,7 @@ void main() {
         giveaway: giveaway,
         queue: queue,
         server: () => null,
-        feature: (_) {},
+        feature: (_) => FeaturedMessageDelivery.noReceiver(),
         draw: (count, depth) {},
       );
       engine = RuleEngine(target: actions);

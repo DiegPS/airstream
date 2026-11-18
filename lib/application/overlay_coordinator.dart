@@ -34,6 +34,7 @@ abstract interface class OverlayClient {
   void broadcastPoll(Map<String, Object?>? poll);
   void broadcastGoals(List<Map<String, Object?>> goals, {bool replay = false});
   void broadcastGiveaway(Map<String, Object?>? giveaway);
+  void broadcastChatSupport(ChatMessage message);
   void broadcastCaption(String text);
   void broadcastModeration(ChatModerationEvent event);
   void broadcastProviderEvent(ChatProviderEvent event);
@@ -98,6 +99,9 @@ class OverlayServerAdapter implements OverlayClient {
   void broadcastGiveaway(Map<String, Object?>? giveaway) =>
       server.broadcastGiveaway(giveaway);
   @override
+  void broadcastChatSupport(ChatMessage message) =>
+      server.broadcastChatSupport(message);
+  @override
   void broadcastCaption(String text) => server.broadcastCaption(text);
   @override
   void broadcastModeration(ChatModerationEvent event) =>
@@ -122,6 +126,8 @@ class OverlayCoordinator {
   OverlayServerState _state = const OverlayServerState();
   int _generation = 0;
   bool _disposed = false;
+  Future<void> _lifecycle = Future.value();
+  SettingsModel? _latestSettings;
 
   Stream<AlertQueueStatus> get alertQueueStatusStream =>
       _overlay.alertQueueStatusStream;
@@ -161,6 +167,12 @@ class OverlayCoordinator {
       _state.phase == OverlayServerPhase.ready
           ? _overlay.broadcastFeaturedMessage(message)
           : FeaturedMessageDelivery.noReceiver();
+  void broadcastChatSupport(ChatMessage message) {
+    if (_state.phase == OverlayServerPhase.ready) {
+      _overlay.broadcastChatSupport(message);
+    }
+  }
+
   void broadcastCaption(String text) => _overlay.broadcastCaption(text);
   void broadcastModeration(ChatModerationEvent event) =>
       _overlay.broadcastModeration(event);
@@ -173,35 +185,36 @@ class OverlayCoordinator {
     required Stream<ChatMessage> messages,
   }) {
     if (_disposed) return;
+    _latestSettings = settings;
     final changed = previous == null ||
         previous.overlayPort != settings.overlayPort ||
         previous.overlayEnabled != settings.overlayEnabled;
     if (changed) {
+      templateServer?.cancelPendingStart();
+      final generation = ++_generation;
       if (settings.overlayEnabled) {
-        unawaited(_start(settings, messages));
+        _emit(OverlayServerState(
+          phase: OverlayServerPhase.starting,
+          port: settings.overlayPort,
+        ));
+        _lifecycle = _lifecycle.then((_) => _start(messages, generation));
       } else {
-        ++_generation;
-        unawaited(_stopSafely());
+        _lifecycle = _lifecycle.then((_) => _stopSafely());
         _emit(const OverlayServerState());
       }
     }
     if (settings.overlayEnabled) _overlay.setSettings(settings);
   }
 
-  Future<void> _start(
-    SettingsModel settings,
-    Stream<ChatMessage> messages,
-  ) async {
-    final generation = ++_generation;
-    _emit(
-      OverlayServerState(
-        phase: OverlayServerPhase.starting,
-        port: settings.overlayPort,
-      ),
-    );
+  Future<void> _start(Stream<ChatMessage> messages, int generation) async {
+    if (generation != _generation || _disposed) return;
+    final settings = _latestSettings!;
     try {
       await _startOnFreePort(settings, messages, generation);
       if (generation != _generation || _disposed) return;
+      if (!identical(settings, _latestSettings)) {
+        _overlay.setSettings(_latestSettings!);
+      }
       final port = _overlay.port;
       _emit(
         OverlayServerState(
@@ -274,6 +287,8 @@ class OverlayCoordinator {
     if (_disposed) return;
     _disposed = true;
     ++_generation;
+    templateServer?.cancelPendingStart();
+    await _lifecycle;
     await _overlay.dispose();
     await _stateController.close();
   }

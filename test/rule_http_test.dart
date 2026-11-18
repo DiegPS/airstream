@@ -13,6 +13,7 @@ import 'package:airstream/settings/settings_model.dart';
 // ignore: depend_on_referenced_packages
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -58,7 +59,7 @@ void main() {
       giveaway: giveaway,
       queue: queue,
       server: () => null,
-      feature: (_) {},
+      feature: (_) => FeaturedMessageDelivery.noReceiver(),
       draw: (count, depth) {},
       httpClient: client,
     );

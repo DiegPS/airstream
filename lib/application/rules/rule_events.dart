@@ -83,11 +83,11 @@ int? parseRuleBits(String amount) {
   return digits == null ? null : int.tryParse(digits) ?? 0;
 }
 
-/// Session-local first-author tracking; event dedupe belongs to the engine.
+/// Adapts pipeline messages and provider events to rule triggers.
 class RuleEventAdapter {
-  final _authors = <String>{};
-  void startSession() => _authors.clear();
-  Iterable<RuleEvent> message(ChatMessage m, {bool? firstInSession}) sync* {
+  int _privateSupportSequence = 0;
+
+  Iterable<RuleEvent> message(ChatMessage m, {bool supportOnly = false}) sync* {
     final roles = [
       if (m.isOwner) 'owner',
       if (m.isModerator || m.isOwner) 'moderator',
@@ -97,10 +97,13 @@ class RuleEventAdapter {
     final a =
         RuleAuthor(name: m.author.name, id: m.author.channelId, roles: roles);
     final money = parseRuleAmount(m.superChat?.amount ?? '');
+    final eventId = supportOnly && m.dedupeIdKey.isEmpty
+        ? 'private-support:${++_privateSupportSequence}'
+        : 'message:${m.dedupeKey}';
     RuleEvent event(String type, {int count = 0}) => RuleEvent(
         type: type,
         platform: m.platform.name,
-        eventId: 'message:${m.dedupeKey}',
+        eventId: eventId,
         author: a,
         text: m.plainText,
         amount: money.amount,
@@ -109,14 +112,15 @@ class RuleEventAdapter {
         count: count,
         months: m.membershipMonths ?? 0,
         message: m);
-    yield event('chat.message');
-    if (RegExp(r'^![A-Za-z0-9_]{1,30}(?:\s|$)').hasMatch(m.plainText.trim())) {
-      yield event('chat.command');
-    }
-    if (_authors.add(
-            '${m.platform.name}:${a.id.isEmpty ? a.name.toLowerCase() : a.id}') &&
-        (firstInSession ?? true)) {
-      yield event('chat.firstMessage');
+    if (!supportOnly) {
+      yield event('chat.message');
+      if (RegExp(r'^![A-Za-z0-9_]{1,30}(?:\s|$)')
+          .hasMatch(m.plainText.trim())) {
+        yield event('chat.command');
+      }
+      if (!m.isMembershipEvent && m.isFirstInSession) {
+        yield event('chat.firstMessage');
+      }
     }
     if (m.superChat != null) {
       final bits = parseRuleBits(m.superChat!.amount);

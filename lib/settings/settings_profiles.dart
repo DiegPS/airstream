@@ -165,8 +165,15 @@ abstract final class SettingsProfiles {
               rulesWebhookEnabled: current.rulesWebhookEnabled),
           current);
 
+  static List<String> rulesMissingHttpUrls(SettingsModel settings) => [
+        for (final rule in settings.rules)
+          if ((rule['actions'] as List).any((action) =>
+              action['type'] == 'http.request' && action['url'] == ''))
+            rule['name'] as String,
+      ];
+
   /// Restores each HTTP action's URL from [current] by rule and action id;
-  /// an action this computer does not have keeps the URL from the backup.
+  /// an action this computer does not have starts with an empty URL.
   static SettingsModel keepLocalHttpUrls(
       SettingsModel restored, SettingsModel current) {
     final urls = <(String, String), Object?>{
@@ -188,7 +195,7 @@ abstract final class SettingsProfiles {
                   action['type'] == 'http.request')
                 {
                   ...action,
-                  'url': urls[(rule['id'], action['id'])] ?? action['url'],
+                  'url': urls[(rule['id'], action['id'])] ?? '',
                 }
               else
                 action,

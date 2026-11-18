@@ -1,10 +1,12 @@
 import 'overlay_font.dart';
+import 'overlay_page_locale.dart';
 
 String timerOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Airstream Timer</title><style>
 *{box-sizing:border-box}html,body{margin:0;background:transparent;overflow:hidden;font-family:var(--overlay-font-family,system-ui,sans-serif);color:white}body{padding:24px}#timer{display:inline-block;position:relative;padding:20px 28px;background:rgba(20,20,20,.9);border-radius:14px}#timer[hidden]{display:none}#remaining{font-size:72px;font-weight:750;font-variant-numeric:tabular-nums}#status{font-size:20px;text-align:center}#badge{position:absolute;right:16px;top:0;color:#53fc18;font-size:28px;font-weight:bold;opacity:0}#badge.added{animation:float 1.5s ease-out}@keyframes float{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-24px)}}@media(prefers-reduced-motion:reduce){#badge.added{animation:none;opacity:1}}
 </style></head><body><section id="timer" hidden><div id="remaining">0:00</div><div id="status"></div><div id="badge"></div></section><script>
 ${overlayFontScript(googleFontsAllowed)}
+${overlayPageLocaleScript((l) => l.obsPageTimerTitle)}
 (() => {
   const root=document.getElementById('timer'), digits=document.getElementById('remaining'), status=document.getElementById('status'), badge=document.getElementById('badge');
   const STRINGS={en:{paused:'Paused',ended:"Time's up!"},es:{paused:'En pausa',ended:'¡Se acabó el tiempo!'}};
@@ -22,7 +24,7 @@ ${overlayFontScript(googleFontsAllowed)}
     ws.addEventListener('message',event=>{if(ws!==socket)return;try{const e=JSON.parse(event.data);
       if(e.type==='timer'&&e.data){state=e.data;offset=state.serverNowMs-Date.now();clearBadge();render();
         if(!e.replay&&state.addedMs>0){badge.textContent='+'+format(state.addedMs);void badge.offsetWidth;badge.className='added';badgeTimeout=window.setTimeout(clearBadge,1500);}
-      }else if(e.type==='settings'&&e.data){applyOverlayFont(e.data);language=e.data.appLanguageCode||'en';document.documentElement.lang=language;render();}
+      }else if(e.type==='settings'&&e.data){applyOverlayFont(e.data);language=e.data.appLanguageCode||'en';localizePage(language);render();}
       else if(e.type==='reload')window.location.reload();
     }catch(error){console.warn('Ignored malformed timer message',error);}});
     ws.addEventListener('close',()=>{if(ws!==socket)return;clearBadge();if(!closing)retry=window.setTimeout(connect,3000);});

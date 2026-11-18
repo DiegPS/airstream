@@ -266,8 +266,7 @@ void main() {
     );
   });
 
-  test(
-      'an unread OBS credential survives unrelated and explicit settings edits',
+  test('OBS password reads retry on each explicit edit until storage recovers',
       () async {
     final secure = _MemorySecureSettingsStore('original')..failReads = true;
     final notifier = SettingsNotifier(
@@ -280,6 +279,37 @@ void main() {
     expect(secure.password, 'original');
     await notifier.update(notifier.state.copyWith(obsPassword: 'replacement'));
     expect(secure.password, 'original');
+    await notifier.update(notifier.state.copyWith(obsPassword: 'second'));
+    expect(secure.reads, 3);
+    expect(secure.password, 'original');
+
+    secure.failReads = false;
+    await notifier.update(notifier.state.copyWith(obsPassword: 'final'));
+    expect(secure.reads, 4);
+    expect(secure.password, 'final');
+    await notifier.update(notifier.state.copyWith(obsPassword: 'later'));
+    expect(secure.reads, 4);
+    expect(secure.password, 'later');
+  });
+
+  test('failed credential writes keep the edited password and retry on save',
+      () async {
+    final secure = _MemorySecureSettingsStore('original')..failWrites = true;
+    final notifier = SettingsNotifier(
+      secureStore: secure,
+      settingsRepository: _MemorySettingsRepository('{}'),
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await expectLater(
+      notifier.update(notifier.state.copyWith(obsPassword: 'new')),
+      throwsStateError,
+    );
+    expect(notifier.state.obsPassword, 'new');
+    expect(secure.password, 'original');
+    secure.failWrites = false;
+    await notifier.update(notifier.state.copyWith(fontSize: 22));
+    expect(secure.password, 'new');
   });
 
   test('first-run settings only look up an OBS credential on a password edit',
@@ -356,9 +386,9 @@ void main() {
         'obsPassword': 'recoverable-secret',
       }),
     });
-    final notifier = SettingsNotifier(
-      secureStore: _MemorySecureSettingsStore()..failWrites = true,
-    );
+    final secure = _MemorySecureSettingsStore()..failWrites = true;
+    final notifier = SettingsNotifier(secureStore: secure);
+    addTearDown(notifier.dispose);
 
     await notifier.ready;
 
@@ -368,6 +398,31 @@ void main() {
       prefs.getString('AIRSTREAM_SETTINGS'),
       contains('recoverable-secret'),
     );
+    await expectLater(
+      notifier.update(notifier.state.copyWith(fontSize: 22)),
+      throwsStateError,
+    );
+    expect(
+        prefs.getString('AIRSTREAM_SETTINGS'), contains('recoverable-secret'));
+    secure.failWrites = false;
+    await notifier.update(notifier.state.copyWith(fontSize: 23));
+    expect(secure.password, 'recoverable-secret');
+    expect(prefs.getString('AIRSTREAM_SETTINGS'),
+        isNot(contains('recoverable-secret')));
+    expect(prefs.getString('AIRSTREAM_SETTINGS_BACKUP'), isNull);
+  });
+
+  test('an unrelated save preserves a legacy credential after a read failure',
+      () async {
+    final repository = _MemorySettingsRepository('{"obsPassword":"legacy"}');
+    final secure = _MemorySecureSettingsStore()..failReads = true;
+    final notifier =
+        SettingsNotifier(settingsRepository: repository, secureStore: secure);
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    await notifier.update(notifier.state.copyWith(fontSize: 22));
+    expect(await repository.read(), contains('legacy'));
+    expect(secure.reads, 1);
   });
 
   test('a failed startup rewrite still allows later settings to persist',

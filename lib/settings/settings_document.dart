@@ -18,13 +18,19 @@ class DecodedSettingsDocument {
 
 abstract final class SettingsDocumentCodec {
   static String encode(SettingsModel settings,
-          {bool includeWebhookSecret = true, bool includeQueueState = true}) =>
+          {bool includeWebhookSecret = true,
+          bool includeQueueState = true,
+          String? unmigratedObsPassword}) =>
       jsonEncode({
         'schemaVersion': currentSettingsSchemaVersion,
-        'settings': settings.toJson()
-          ..removeWhere((key, _) =>
-              (!includeWebhookSecret && key == 'rulesWebhookToken') ||
-              (!includeQueueState && key == 'queueState')),
+        'settings': {
+          ...settings.toJson()
+            ..removeWhere((key, _) =>
+                (!includeWebhookSecret && key == 'rulesWebhookToken') ||
+                (!includeQueueState && key == 'queueState')),
+          if (unmigratedObsPassword != null)
+            'obsPassword': unmigratedObsPassword,
+        },
       });
 
   static DecodedSettingsDocument decode(String source) {

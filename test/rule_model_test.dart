@@ -143,11 +143,19 @@ void main() {
     }
   });
 
-  test('stream control is an editor error only for public chat rules', () {
+  test(
+      'viewer stream control requires only owner or moderator roles in the editor',
+      () {
     for (final (trigger, roles, blocked) in [
       ('chat.command', <String>[], true),
       ('chat.firstMessage', ['everyone', 'moderator'], true),
+      ('chat.message', ['member'], true),
+      ('chat.message', ['vip'], true),
+      ('chat.message', ['member', 'moderator'], true),
       ('chat.message', ['moderator'], false),
+      ('chat.message', ['owner'], false),
+      ('queue.joined', ['vip'], true),
+      ('support.bits', ['member', 'moderator'], true),
       ('manual', <String>[], false),
       // Any viewer can join the queue or send a 1-Bit cheer.
       ('queue.joined', <String>[], true),

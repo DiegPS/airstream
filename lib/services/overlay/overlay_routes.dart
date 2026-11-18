@@ -308,22 +308,23 @@ Future<Response> serveTemplate(
     // The page itself (and its redirect) revalidates the template; the many
     // asset requests that follow reuse that manifest and are still checked
     // one by one through safeFile below.
-    final page =
-        segments.length == 2 || (segments.length == 3 && segments.last.isEmpty);
+    final redirect = segments.length == 2 ||
+        (segments.length == 3 && segments.last == 'index.html');
+    final index = segments.length == 3 && segments.last.isEmpty;
+    final page = redirect || index;
     final info = page ? await service.get(id) : null;
     if (page && (info == null || !info.usable)) return missing();
     final manifest = info?.manifest ?? await service.manifestFor(id);
     if (manifest == null) return missing();
     headers['content-security-policy'] =
         templateCsp(request.requestedUri.port, network: manifest.network);
-    if (segments.length == 2) {
+    if (redirect) {
       return Response(302, headers: {
         ...headers,
         'location':
             '/custom/$id/${request.url.hasQuery ? '?${request.url.query}' : ''}'
       });
     }
-    final index = segments.length == 3 && segments.last.isEmpty;
     final files = index ? ['index.html'] : segments.skip(2).toList();
     if (files.isEmpty ||
         files.length > 6 ||

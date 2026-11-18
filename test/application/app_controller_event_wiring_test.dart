@@ -44,6 +44,16 @@ class RuleOverlay extends OverlayServer {
 
 class _PollOverlay extends RuleOverlay {
   final chat = <String>[];
+  final support = <ChatMessage>[];
+  FeaturedMessageDelivery? featuredDelivery;
+
+  @override
+  void broadcastChatSupport(ChatMessage message) => support.add(message);
+
+  @override
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) =>
+      featuredDelivery ?? super.broadcastFeaturedMessage(message);
+
   final polls = <Map<String, Object?>?>[];
   StreamSubscription<ChatMessage>? _messages;
 
@@ -362,6 +372,127 @@ void main() {
     app.applySettings(settings, connectChats: true);
     expect(app.sessionChat, isEmpty);
     expect(app.sessionSummary.participants, isEmpty);
+  });
+
+  test('hidden paid votes count and run support rules with redacted text',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final youtube = FakeYouTubeChatClient();
+    final chat = ChatCoordinator(
+      youtube: youtube,
+      youtubeHorizontal: FakeYouTubeChatClient(),
+      youtubeVertical: FakeYouTubeChatClient(),
+      kick: FakeChannelChatClient(),
+      twitch: twitch,
+    );
+    final server = _PollOverlay()..feedSeen = true;
+    final tts = FakeTtsClient();
+    final app = makeController(twitch, server, chat: chat, tts: tts);
+    addTearDown(app.dispose);
+    app.applySettings(
+        SettingsModel(
+          overlayEnabled: true,
+          twitchChannel: 'channel',
+          ttsEnabled: true,
+          rules: [
+            for (final type in [
+              'support.bits',
+              'support.superchat',
+              'chat.command'
+            ])
+              {
+                ...RuleSchema.newRule(type, id: type.replaceAll('.', '_')),
+                'enabled': true,
+                if (type == 'chat.command')
+                  'trigger': {'type': type, 'command': '!1'},
+                'actions': [
+                  {
+                    'id': 'out',
+                    'type': 'template.trigger',
+                    'name': 'vote',
+                    'data': '{amount}|{message}'
+                  },
+                ],
+              },
+          ],
+        ),
+        connectChats: true);
+    await settleCoordinatorTasks();
+    app.startPoll(question: 'Q', options: ['One', 'Two'], hideResults: true);
+    final supportRuns = app.rules.historyStream
+        .firstWhere((runs) => runs.where((run) => run.completed).length == 2);
+    for (final (source, platform, amount) in [
+      (twitch.messageController, Platform.twitch, '500 Bits'),
+      (youtube.messageController, Platform.youtube, r'$5.00'),
+    ]) {
+      source.add(ChatMessage(
+        id: platform.name,
+        platform: platform,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('!1')],
+        timestamp: DateTime.now(),
+        superChat: SuperChat(amount: amount, color: '#ffffff'),
+      ));
+    }
+    await supportRuns.timeout(const Duration(seconds: 2));
+    expect((await app.pollStream.first)!.total, 2);
+    expect(server.chat, isEmpty);
+    expect(tts.spoken, isEmpty);
+    expect(server.support.map((message) => message.plainText), ['', '']);
+    expect(server.support.map((message) => message.superChat!.amount),
+        ['500 Bits', r'$5.00']);
+    expect(server.triggers.map((event) => event['data']),
+        ['500 Bits|', r'$5.00|']);
+    expect(app.sessionSummary.supporters.map((support) => support.type),
+        containsAll(['bits', 'superchat']));
+  });
+
+  test('featured rules record the delivery outcome in history', () async {
+    final twitch = FakeChannelChatClient();
+    final server = _PollOverlay();
+    final app = makeController(twitch, server);
+    addTearDown(app.dispose);
+    app.applySettings(
+        SettingsModel(overlayEnabled: true, rules: [
+          {
+            ...RuleSchema.newRule('chat.message', id: 'feature'),
+            'cooldownSeconds': 0,
+            'trigger': {
+              'type': 'chat.message',
+              'text': 'highlight',
+              'match': 'contains'
+            },
+            'enabled': true,
+            'actions': [
+              {'id': 'out', 'type': 'featured'}
+            ],
+          },
+        ]),
+        connectChats: false);
+    await settleCoordinatorTasks();
+    for (final (outcome, status, reason) in [
+      (FeaturedMessageStatus.noReceiver, 'skipped', 'noReceiver'),
+      (FeaturedMessageStatus.disconnected, 'failed', 'noReceiver'),
+      (FeaturedMessageStatus.sent, 'done', null),
+      (FeaturedMessageStatus.rendered, 'done', null),
+    ]) {
+      server.featuredDelivery = outcome == FeaturedMessageStatus.noReceiver
+          ? FeaturedMessageDelivery.noReceiver()
+          : FeaturedMessageDelivery(
+              'id', FeaturedMessageStatus.sent, Future.value(outcome));
+      final completed = app.rules.historyStream.firstWhere((runs) =>
+          runs.first.completed && runs.first.event.message?.id == outcome.name);
+      twitch.messageController.add(ChatMessage(
+        platform: Platform.twitch,
+        id: outcome.name,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('highlight')],
+        timestamp: DateTime.now(),
+      ));
+      final runs = await completed.timeout(const Duration(seconds: 2));
+      final result = runs.first.results.single;
+      expect((result.status, result.reason), (status, reason));
+    }
   });
 
   test('hidden submissions skip audio, overlay and chat rules until poll.ended',

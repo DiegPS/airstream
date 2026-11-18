@@ -16,12 +16,19 @@ bool isPublicChatRule(Map<String, dynamic> rule) {
       _everyone(rule);
 }
 
-/// Starting or stopping the stream never follows a viewer's action: chat,
-/// the queue, or any support (a 1-Bit cheer must not end the broadcast).
-bool blocksPublicStreamControl(Map action, Map<String, dynamic> rule) =>
-    action['type'] == 'obs.stream' &&
-    (isPublicChatRule(rule) ||
-        (_triggerType(rule).startsWith('support.') && _everyone(rule)));
+/// Viewer-originated stream control requires an owner or moderator filter.
+bool blocksPublicStreamControl(Map action, Map<String, dynamic> rule) {
+  if (action['type'] != 'obs.stream') return false;
+  final type = _triggerType(rule);
+  if (!type.startsWith('chat.') &&
+      type != 'queue.joined' &&
+      !type.startsWith('support.')) {
+    return false;
+  }
+  final roles = (rule['conditions'] as Map)['roles'] as List;
+  return roles.isEmpty ||
+      roles.any((role) => role != 'owner' && role != 'moderator');
+}
 
 Uri? httpRuleUri(Object? value) {
   if (value is! String) return null;

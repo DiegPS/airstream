@@ -271,12 +271,15 @@ class ChatMessage {
   String get dedupeKey =>
       dedupeIdKey.isNotEmpty ? dedupeIdKey : dedupeContentKey;
 
-  ChatMessage copyWith({ChatAuthor? author, bool? isFirstInSession}) =>
+  ChatMessage copyWith(
+          {ChatAuthor? author,
+          List<MessageItem>? items,
+          bool? isFirstInSession}) =>
       ChatMessage(
         platform: platform,
         id: id,
         author: author ?? this.author,
-        items: items,
+        items: items ?? this.items,
         superChat: superChat,
         isMembership: isMembership,
         isMembershipEvent: isMembershipEvent,

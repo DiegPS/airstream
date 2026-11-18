@@ -9,6 +9,21 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get obsPageChatTitle => 'Airstream Overlay';
+
+  @override
+  String get obsPageAlertsTitle => 'Airstream Alerts';
+
+  @override
+  String get obsPageCaptionsTitle => 'Airstream Captions';
+
+  @override
+  String get obsPageTimerTitle => 'Airstream Timer';
+
+  @override
+  String get obsPagePollTitle => 'Airstream Poll';
+
+  @override
   String get textAndNames => 'Text and names';
 
   @override
@@ -2926,7 +2941,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kbody': 'Body',
         'kstreamAlready': 'Stream is already in that state',
         'kpublicStreamControl':
-            'Viewers cannot start or stop the stream: choose moderators or the owner, or another trigger',
+            'To start or stop the stream, allow only moderators or the owner, or choose another trigger',
         'kreplayOff': 'The replay buffer is off',
         'kreplayAlready': 'Replay buffer is already in that state',
         'knotBrowserSource': 'Not a browser source',

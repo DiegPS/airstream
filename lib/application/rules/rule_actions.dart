@@ -12,6 +12,7 @@ import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/obs_service.dart'
     show ObsNotBrowserSourceException, ObsNotTextSourceException;
 import 'package:airstream/models/chat_message.dart';
@@ -46,7 +47,7 @@ class RuleActions implements RuleActionTarget {
   final ChatGiveawayController giveaway;
   final ChatQueueController queue;
   final OverlayServer? Function() server;
-  final void Function(ChatMessage) feature;
+  final FeaturedMessageDelivery Function(ChatMessage) feature;
   final void Function(int, int) draw;
   final Future<void> Function(String op, int seconds, int depth)? clock;
   @override
@@ -176,7 +177,21 @@ class RuleActions implements RuleActionTarget {
         case 'tts.say':
           audio.ruleSpeak(a['text'] as String);
         case 'featured':
-          feature(run.event.message!);
+          final delivery = feature(run.event.message!);
+          if (delivery.status == FeaturedMessageStatus.noReceiver) {
+            return const RuleActionResult('skipped', 'noReceiver');
+          }
+          return switch (await delivery.completed) {
+            FeaturedMessageStatus.noReceiver =>
+              const RuleActionResult('skipped', 'noReceiver'),
+            FeaturedMessageStatus.disconnected =>
+              const RuleActionResult('failed', 'noReceiver'),
+            FeaturedMessageStatus.removed =>
+              const RuleActionResult('cancelled'),
+            FeaturedMessageStatus.sent ||
+            FeaturedMessageStatus.rendered =>
+              RuleActionResult.done,
+          };
         case 'template.trigger':
           if (!server()!.broadcastRuleTrigger(
               name: a['name'] as String,

@@ -222,6 +222,7 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
     Future<void> Function() restore,
   ) {
     var applying = false;
+    final missingUrls = backup.rulesMissingHttpUrls(ref.read(settingsProvider));
     final created = backup.createdAt.toLocal();
     final dates = MaterialLocalizations.of(context);
     final date = dates.formatMediumDate(created);
@@ -243,6 +244,9 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                     backup.media, '$date $time')),
                 const SizedBox(height: 12),
                 Text(l.backupRestoreReview),
+                if (missingUrls.isNotEmpty)
+                  Text(
+                      '${l.ruleLabel('kresetHttpUrl')} ${missingUrls.join(', ')}'),
                 if (applying) const LinearProgressIndicator(),
               ],
             ),

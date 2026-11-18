@@ -9,7 +9,9 @@ import 'package:airstream/window/window_state.dart';
 
 /// Compact desktop controls styled like a native title bar cluster.
 class WindowControlBar extends ConsumerWidget {
-  const WindowControlBar({super.key});
+  const WindowControlBar({super.key, this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,17 +34,20 @@ class WindowControlBar extends ConsumerWidget {
         ? l.antiCaptureActiveTooltip
         : l.antiCaptureInactiveTooltip;
 
+    final buttonWidth = compact ? 24.0 : 28.0;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _WindowToggleButton(
           tooltip: alwaysOnTopTooltip,
+          width: buttonWidth,
           icon: Icons.push_pin_outlined,
           active: state.alwaysOnTop,
           onTap: notifier.toggleAlwaysOnTop,
         ),
         _WindowToggleButton(
           tooltip: clickThroughTooltip,
+          width: buttonWidth,
           icon: state.clickThrough
               ? Icons.ads_click_outlined
               : Icons.mouse_outlined,
@@ -52,6 +57,7 @@ class WindowControlBar extends ConsumerWidget {
         ),
         _WindowToggleButton(
           tooltip: antiCaptureTooltip,
+          width: buttonWidth,
           icon: state.excludeFromCapture ? Icons.shield : Icons.shield_outlined,
           active: state.excludeFromCapture,
           activeColor: const Color(0xFFBB86FC),
@@ -65,7 +71,7 @@ class WindowControlBar extends ConsumerWidget {
             color: const Color(0xFF333333),
           ),
           const SizedBox(width: 4),
-          const _WindowManagerButtons(),
+          _WindowManagerButtons(width: compact ? 24 : 32),
         ],
       ],
     );
@@ -73,7 +79,9 @@ class WindowControlBar extends ConsumerWidget {
 }
 
 class _WindowManagerButtons extends StatefulWidget {
-  const _WindowManagerButtons();
+  const _WindowManagerButtons({required this.width});
+
+  final double width;
 
   @override
   State<_WindowManagerButtons> createState() => _WindowManagerButtonsState();
@@ -141,11 +149,13 @@ class _WindowManagerButtonsState extends State<_WindowManagerButtons>
       children: [
         _WindowCommandButton(
           tooltip: minimizeLabel,
+          width: widget.width,
           icon: Icons.remove,
           onTap: _minimize,
         ),
         _WindowCommandButton(
           tooltip: _isMaximized ? restoreLabel : maximizeLabel,
+          width: widget.width,
           icon: _isMaximized
               ? Icons.filter_none_rounded
               : Icons.crop_square_rounded,
@@ -153,6 +163,7 @@ class _WindowManagerButtonsState extends State<_WindowManagerButtons>
         ),
         _WindowCommandButton(
           tooltip: closeLabel,
+          width: widget.width,
           icon: Icons.close,
           onTap: _close,
           hoverColor: const Color(0xFFC42B1C),
@@ -167,6 +178,7 @@ class _WindowToggleButton extends StatelessWidget {
   const _WindowToggleButton({
     required this.tooltip,
     required this.icon,
+    required this.width,
     required this.active,
     required this.onTap,
     this.activeColor = const Color(0xFF5B9CFF),
@@ -175,6 +187,7 @@ class _WindowToggleButton extends StatelessWidget {
   final String tooltip;
   final IconData icon;
   final bool active;
+  final double width;
   final Color activeColor;
   final VoidCallback? onTap;
 
@@ -193,7 +206,7 @@ class _WindowToggleButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           onTap: onTap,
           child: SizedBox(
-            width: 28,
+            width: width,
             height: 28,
             child: Icon(icon, color: foregroundColor, size: 15),
           ),
@@ -207,6 +220,7 @@ class _WindowCommandButton extends StatefulWidget {
   const _WindowCommandButton({
     required this.tooltip,
     required this.icon,
+    required this.width,
     required this.onTap,
     this.hoverColor = const Color(0xFF2A2A2A),
     this.hoverForeground = Colors.white,
@@ -214,6 +228,7 @@ class _WindowCommandButton extends StatefulWidget {
 
   final String tooltip;
   final IconData icon;
+  final double width;
   final Future<void> Function() onTap;
   final Color hoverColor;
   final Color hoverForeground;
@@ -237,7 +252,7 @@ class _WindowCommandButtonState extends State<_WindowCommandButton> {
           child: InkWell(
             onTap: widget.onTap,
             child: SizedBox(
-              width: 32,
+              width: widget.width,
               height: 28,
               child: Icon(
                 widget.icon,

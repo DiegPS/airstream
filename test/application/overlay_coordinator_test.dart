@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -46,6 +48,27 @@ void main() {
     await settleCoordinatorTasks();
     expect(overlay.startCount, 2);
     expect(coordinator.url, 'http://localhost:9090');
+  });
+
+  test('turning off during a slow stop cancels a queued start', () async {
+    const off = SettingsModel(overlayEnabled: false);
+    final on = off.copyWith(overlayEnabled: true);
+    overlay.stopGate = Completer<void>();
+    try {
+      coordinator.applySettings(off, previous: null, messages: messages);
+      await settleCoordinatorTasks();
+      expect(overlay.stopCount, 1);
+      coordinator.applySettings(on, previous: off, messages: messages);
+      await settleCoordinatorTasks();
+      expect(overlay.startCount, 0);
+      coordinator.applySettings(off, previous: on, messages: messages);
+    } finally {
+      overlay.stopGate!.complete();
+    }
+    await settleCoordinatorTasks();
+    expect(overlay.startCount, 0);
+    expect(overlay.stopCount, 2);
+    expect(coordinator.url, isNull);
   });
 
   test('publishes startup errors and never exposes a false URL', () async {

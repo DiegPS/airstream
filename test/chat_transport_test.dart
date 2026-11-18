@@ -473,6 +473,26 @@ void main() {
     expect(statuses.last.$1, ServiceStatus.connecting);
   });
 
+  test('Kick Stop cancels a channel change waiting for the old transport',
+      () async {
+    final old = _FakeKickTransport();
+    final replacement = _FakeKickTransport();
+    var connections = 0;
+    final service = KickService(
+        transportFactory: () async => connections++ == 0 ? old : replacement);
+    addTearDown(service.dispose);
+    await service.connect('first');
+    old.closeGate = Completer<void>();
+    final switching = service.connect('second');
+    await _eventually(() => old.closeCount == 1);
+    final stopping = service.disconnect();
+    old.closeGate!.complete();
+    await Future.wait([switching, stopping]);
+    expect(old.closeCount, 1);
+    expect(connections, 1);
+    expect(replacement.joined, isEmpty);
+  });
+
   test('Kick reports a transport timeout and leaves no active client',
       () async {
     final pending = Completer<KickChatTransport>();
@@ -950,6 +970,7 @@ class _FakeKickTransport implements KickChatTransport, KickMetadataTransport {
   final metadataErrorController = StreamController<Exception>.broadcast();
   final joined = <String>[];
   int closeCount = 0;
+  Completer<void>? closeGate;
   @override
   Stream<kick.ChatMessage> get messages => messageController.stream;
   @override
@@ -963,7 +984,10 @@ class _FakeKickTransport implements KickChatTransport, KickMetadataTransport {
   @override
   Future<void> joinBySlug(String slug) async => joined.add(slug);
   @override
-  Future<void> close() async => closeCount++;
+  Future<void> close() async {
+    closeCount++;
+    await closeGate?.future;
+  }
 }
 
 /// A Kick transport that also reports its connection state, like the real one.

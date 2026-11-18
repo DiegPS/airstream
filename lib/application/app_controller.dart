@@ -135,15 +135,18 @@ class AppController {
       ),
       _chat.providerEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
-        if (_poll.hasOpenPoll && _poll.handleMessage(m)) return;
-        _audio.handleChatMessage(m);
-        _overlayFeed.add(m);
-        queue.handleMessage(m);
+        final hiddenVote = _poll.hasOpenPoll && _poll.handleMessage(m);
+        final message = hiddenVote ? m.copyWith(items: const []) : m;
+        if (hiddenVote) {
+          _overlay.broadcastChatSupport(message);
+        } else {
+          _audio.handleChatMessage(message);
+          _overlayFeed.add(message);
+          queue.handleMessage(message);
+        }
         if (rules.active) {
-          for (final e in _ruleAdapter.message(m,
-              firstInSession: m.isOwner || m.isMembershipEvent
-                  ? null
-                  : m.isFirstInSession)) {
+          for (final e
+              in _ruleAdapter.message(message, supportOnly: hiddenVote)) {
             rules.handle(e);
           }
         }
@@ -622,7 +625,6 @@ class AppController {
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
-        _ruleAdapter.startSession();
         _sessionSummary.start();
         _overlay.clearRecentAlerts();
       } else {

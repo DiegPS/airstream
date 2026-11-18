@@ -262,6 +262,9 @@ class FakeOverlayClient implements OverlayClient {
   int stopCount = 0;
   int settingsCount = 0;
   int captionCount = 0;
+  final supportAlerts = <ChatMessage>[];
+  @override
+  void broadcastChatSupport(ChatMessage message) => supportAlerts.add(message);
   int moderationCount = 0;
   int providerEventCount = 0;
   bool disposed = false;
@@ -331,7 +334,12 @@ class FakeOverlayClient implements OverlayClient {
   @override
   void broadcastProviderEvent(ChatProviderEvent event) => providerEventCount++;
   @override
-  Future<void> stop() async => stopCount++;
+  Future<void> stop() async {
+    stopCount++;
+    await stopGate?.future;
+  }
+
+  Completer<void>? stopGate;
   @override
   Future<void> dispose() async {
     disposed = true;

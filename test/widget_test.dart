@@ -1464,6 +1464,43 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  for (final language in ['en', 'es']) {
+    testWidgets('platform and role filters are usable at 360 px in $language',
+        (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 640);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings(language)),
+          chatProvider.overrideWith((ref) => Stream.value([])),
+        ],
+        child: const AirstreamApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('chat-filter-button')));
+      await tester.pumpAndSettle();
+      final platform = find.byKey(const Key('chat-filter-twitch')).first;
+      final role = find.byKey(const Key('chat-filter-moderators')).first;
+      expect(platform, findsOneWidget);
+      expect(role, findsOneWidget);
+      await tester.tap(platform);
+      await tester.pumpAndSettle();
+      await tester.tap(role);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      final container =
+          ProviderScope.containerOf(tester.element(find.byType(AirstreamApp)));
+      final filter = container.read(chatViewFilterProvider);
+      expect(filter.hiddenPlatforms, {Platform.twitch});
+      expect(filter.role.name, 'moderators');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('the chat filter hides platforms until the user shows all',
       (WidgetTester tester) async {
     await tester.pumpWidget(

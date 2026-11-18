@@ -183,7 +183,14 @@ function updateRows(list, rows, entries, numbered, animate, currentIds) {
 }
 
 function render(animate) {
-  if (!fields || !queue) return;
+  if (!fields) return;
+  if (!queue) {
+    panel.hidden = true;
+    updateRows(waiting, waitingRows, [], true, false, new Set());
+    updateRows(playing, playingRows, [], false, false, new Set());
+    known.clear();
+    return;
+  }
   const text = copy[language];
   const limit = Math.round(Math.min(30, Math.max(5, fields.count || 10)));
   const shown = queue.entries.slice(0, limit);

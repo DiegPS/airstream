@@ -9,6 +9,21 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get obsPageChatTitle => 'Chat de Airstream';
+
+  @override
+  String get obsPageAlertsTitle => 'Alertas de Airstream';
+
+  @override
+  String get obsPageCaptionsTitle => 'Subtítulos de Airstream';
+
+  @override
+  String get obsPageTimerTitle => 'Temporizador de Airstream';
+
+  @override
+  String get obsPagePollTitle => 'Encuesta de Airstream';
+
+  @override
   String get textAndNames => 'Texto y nombres';
 
   @override
@@ -2951,7 +2966,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kbody': 'Cuerpo',
         'kstreamAlready': 'La emisión ya está en ese estado',
         'kpublicStreamControl':
-            'Los viewers no pueden iniciar ni detener la emisión: elige moderadores o dueño, u otro disparador',
+            'Para iniciar o detener la emisión, permite solo a moderadores o al dueño, o elige otro disparador',
         'kreplayOff': 'El búfer de repetición está apagado',
         'kreplayAlready': 'El búfer de repetición ya está en ese estado',
         'knotBrowserSource': 'No es una fuente de navegador',

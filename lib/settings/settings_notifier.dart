@@ -59,6 +59,8 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
   // secure storage was read successfully and had no saved password.
   String? _persistedObsPassword;
   bool _readObsPasswordOnEdit = false;
+  String? _unmigratedObsPassword;
+  String? _obsPasswordToRetry;
 
   bool _publishingRestore = false;
   bool get publishingRestore => _publishingRestore;
@@ -116,20 +118,23 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     final decoded = document.settings;
     final loaded = _localizeBuiltInDefaults(decoded);
     state = loaded;
+    if (document.containsLegacyPassword && loaded.obsPassword.isNotEmpty) {
+      _unmigratedObsPassword = loaded.obsPassword;
+    }
     try {
       var password = await _secureStore.readObsPassword();
       _persistedObsPassword = password ?? '';
       if (password == null && loaded.obsPassword.isNotEmpty) {
-        await _secureStore.writeObsPassword(loaded.obsPassword);
+        await _writeObsPassword(loaded.obsPassword);
         password = loaded.obsPassword;
-        _persistedObsPassword = password;
       }
+      _unmigratedObsPassword = null;
       if (!mounted) return;
       state = loaded.copyWith(obsPassword: password ?? '');
     } catch (error, stack) {
       // A future launch can retry a failed read or legacy migration, and an
       // explicit password edit in this session reads the store again first.
-      _readObsPasswordOnEdit = true;
+      _readObsPasswordOnEdit = _persistedObsPassword == null;
       AppLogger.warning(
         'Could not load or migrate secure settings',
         error: error,
@@ -248,7 +253,7 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
       await _updateQueue;
       await restore(state, (next) async {
         // The backup leaves secure storage and the local webhook opt-in alone.
-        await _settingsRepository.write(SettingsDocumentCodec.encode(next));
+        await _writeSettings(next);
         if (mounted) {
           _publishingRestore = true;
           try {
@@ -275,25 +280,37 @@ class SettingsNotifier extends StateNotifier<SettingsModel> {
     if (obsPassword != null && _readObsPasswordOnEdit) {
       try {
         _persistedObsPassword = await _secureStore.readObsPassword() ?? '';
+        _readObsPasswordOnEdit = false;
       } catch (error, stack) {
         AppLogger.warning('Could not read the existing OBS credential',
             error: error, stackTrace: stack);
-      } finally {
-        _readObsPasswordOnEdit = false;
       }
     }
-    if (obsPassword != null &&
-        _persistedObsPassword != null &&
-        obsPassword != _persistedObsPassword) {
-      if (obsPassword.isEmpty) {
-        await _secureStore.deleteObsPassword();
-      } else {
-        await _secureStore.writeObsPassword(obsPassword);
+    final password = obsPassword ?? _obsPasswordToRetry;
+    if (password != null && _persistedObsPassword != null) {
+      if (password != _persistedObsPassword) {
+        await _writeObsPassword(password);
       }
-      _persistedObsPassword = obsPassword;
+      _obsPasswordToRetry = null;
+      _unmigratedObsPassword = null;
     }
-    await _settingsRepository.write(SettingsDocumentCodec.encode(settings));
+    await _writeSettings(settings);
   }
+
+  Future<void> _writeObsPassword(String password) async {
+    _obsPasswordToRetry = password;
+    if (password.isEmpty) {
+      await _secureStore.deleteObsPassword();
+    } else {
+      await _secureStore.writeObsPassword(password);
+    }
+    _persistedObsPassword = password;
+    _obsPasswordToRetry = null;
+  }
+
+  Future<void> _writeSettings(SettingsModel settings) =>
+      _settingsRepository.write(SettingsDocumentCodec.encode(settings,
+          unmigratedObsPassword: _unmigratedObsPassword));
 
   /// Applies the fields that differ between [base] and [edited] to [target].
   static SettingsModel _rebase(

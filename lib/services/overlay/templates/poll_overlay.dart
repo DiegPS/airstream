@@ -1,6 +1,7 @@
 import 'poll_results.dart';
 
 import 'overlay_font.dart';
+import 'overlay_page_locale.dart';
 
 String pollOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <html lang="en">
@@ -46,6 +47,7 @@ $pollResultsCss
 <div id="poll" role="status" aria-live="polite"></div>
 <script>
 ${overlayFontScript(googleFontsAllowed)}
+${overlayPageLocaleScript((l) => l.obsPagePollTitle)}
 (() => {
   // 208 seconds reads better as 3:28.
   const clock = (s) => s < 60 ? s + ' s' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -118,6 +120,7 @@ ${overlayFontScript(googleFontsAllowed)}
         if (envelope.type === 'settings' && envelope.data) {
           applyOverlayFont(envelope.data);
           language = envelope.data.appLanguageCode || 'en';
+          localizePage(language);
           render();
         } else if (envelope.type === 'poll') {
           poll = envelope.data || null;

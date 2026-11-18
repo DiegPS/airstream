@@ -1,4 +1,5 @@
 import 'overlay_font.dart';
+import 'overlay_page_locale.dart';
 
 String chatOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <html lang="en">
@@ -229,6 +230,7 @@ String chatOverlayHtml({bool googleFontsAllowed = false}) => '''<!DOCTYPE html>
 <div id="root"></div>
 <script>
 ${overlayFontScript(googleFontsAllowed)}
+${overlayPageLocaleScript((l) => l.obsPageChatTitle)}
 const DEFAULT_SETTINGS = {
   appLanguageCode: 'en',
   chromaMode: false,
@@ -705,7 +707,7 @@ function pruneMessages() {
 }
 
 function applyShellSettings() {
-  document.documentElement.lang = settings.appLanguageCode || 'en';
+  localizePage(settings.appLanguageCode || 'en');
   shell.className = 'overlay-shell' + (settings.hideScrollbar ? ' hide-scrollbar' : '');
   shell.style.backgroundColor = settings.chromaMode
     ? settings.chromaColor
