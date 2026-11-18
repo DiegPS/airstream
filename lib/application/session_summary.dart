@@ -135,8 +135,13 @@ class SessionSummaryCollector {
   ChatFilter? _publicFilter;
   final _seenEvents = <String>{};
 
+  /// Bumps whenever the block list changes, so pages can tell a name
+  /// removed by blocking from one that just dropped out of a ranking.
+  int _filterRevision = 0;
+
   void applyBlockFilter(ChatFilter filter) {
     _publicFilter = filter;
+    _filterRevision++;
     _templateSupports = null;
   }
 
@@ -270,6 +275,8 @@ class SessionSummaryCollector {
       'startedAt': startedAt.toUtc().toIso8601String(),
       'endedAt': _endedAt?.toUtc().toIso8601String(),
       'live': live,
+      // Additive SDK v1 field: changes only when the block list changes.
+      'filterRevision': _filterRevision,
       'messages':
           _messages.values.fold<int>(0, (total, count) => total + count),
       'chatters': _chatters.length,

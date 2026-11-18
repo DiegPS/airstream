@@ -78,6 +78,8 @@ let pass;
 let pageTimer;
 let settingsKey;
 let sessionKey;
+// Block-list revision the current pass was built with (see filterRevision).
+let filterRevision;
 
 function currentSessionKey() {
   return session ? session.startedAt || true : null;
@@ -221,6 +223,7 @@ function presentPass() {
 
 function startPass(next = snapshot()) {
   sessionKey = currentSessionKey();
+  filterRevision = session?.filterRevision;
   pass = next;
   presentPass();
 }
@@ -247,8 +250,14 @@ configureScreen(() => {
     startPass();
   } else if (session) {
     const next = snapshot();
-    if ((!pass.groups.length && next.groups.length) || lostEntries(next)) {
+    // Only a block-list change restarts a running roll for a missing name;
+    // a viewer simply dropping out of a top list must not restart it.
+    const blockChanged = session.filterRevision !== filterRevision;
+    if ((!pass.groups.length && next.groups.length) ||
+        (blockChanged && lostEntries(next))) {
       startPass(next);
+    } else if (blockChanged) {
+      filterRevision = session.filterRevision;
     }
   }
 });

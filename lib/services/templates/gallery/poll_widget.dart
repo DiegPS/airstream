@@ -101,4 +101,10 @@ Airstream.on('poll', value => {
   poll = value;
   drawPoll();
 });
+// Like the built-in /poll: the server going away clears the card (and its
+// ticker); the next snapshot draws it again on reconnect.
+Airstream.on('disconnected', () => {
+  poll = null;
+  drawPoll();
+});
 ''';

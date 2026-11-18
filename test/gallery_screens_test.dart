@@ -149,6 +149,8 @@ void main() {
         '$overlay clears and stops ticking on disconnect, then renders a snapshot',
         () => runGalleryChecks('$overlay disconnect'));
   }
+  test('the gallery Poll widget clears on disconnect',
+      () => runGalleryChecks('gallery poll disconnect'));
 }
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -744,7 +746,8 @@ function checkCreditsModeration() {
     assert.equal(rows().length, 2);
     view.send('session', {...state, messages: 20});
     assert.equal(display.children[0], firstSection);
-    view.send('session', {...state, supporters: [allowed]});
+    // Blocking bumps filterRevision; only then does a running roll drop a name.
+    view.send('session', {...state, supporters: [allowed], filterRevision: 1});
     assert.equal(rows().length, 1);
     assert.equal(rows()[0].textContent, 'Sam');
   }
@@ -758,8 +761,24 @@ function checkCreditsModeration() {
   const roll = view.nodes['credits-roll'];
   view.send('session', state);
   assert.match(roll.textContent, /Sam100/);
-  view.send('session', {...state, top: {bits: [{...ranked, value: 50, sessionIndex: 2}]}});
+  const next = {...state, top: {bits: [{...ranked, value: 50, sessionIndex: 2}]}};
+  // Ordinary ranking churn does not restart a running roll...
+  view.send('session', next);
+  assert.match(roll.textContent, /Sam100/);
+  // ...a block-list change does.
+  view.send('session', {...next, filterRevision: 1});
   assert.match(roll.textContent, /Sam50/);
+}
+
+function checkGalleryPollDisconnect() {
+  // The installed Poll widget clears like the built-in /poll page.
+  const view = page('poll');
+  view.send('poll', {question: 'Old poll', mode: 'numbered', options: [{label: 'A', votes: 1}],
+    total: 1, closed: false, endsAt: Date.now() + 60000}, true);
+  assert.equal(view.nodes.stage.hidden, false);
+  view.close();
+  assert.equal(view.nodes.stage.hidden, true);
+  assert.equal(view.tickers(), 0);
 }
 
 function checkPollAndTimerDisconnect(type) {
@@ -827,6 +846,7 @@ const regressions = {
   'credits moderation': checkCreditsModeration,
   'poll disconnect': () => checkPollAndTimerDisconnect('poll'),
   'timer disconnect': () => checkPollAndTimerDisconnect('timer'),
+  'gallery poll disconnect': checkGalleryPollDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();
