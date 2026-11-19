@@ -151,6 +151,12 @@ void main() {
   }
   test('the gallery Poll widget clears on disconnect',
       () => runGalleryChecks('gallery poll disconnect'));
+  test('Starting Soon and Be Right Back clear chat rows on disconnect',
+      () => runGalleryChecks('screen chat disconnect'));
+  test('the moving Ticker drops a newly blocked supporter at once',
+      () => runGalleryChecks('ticker blocked supporter'));
+  test('/clock hides a stale count on disconnect until a fresh snapshot',
+      () => runGalleryChecks('clock disconnect'));
 }
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -781,6 +787,64 @@ function checkGalleryPollDisconnect() {
   assert.equal(view.tickers(), 0);
 }
 
+function checkTickerBlockedSupporter() {
+  const view = page('ticker');
+  const track = view.nodes['ticker-track'];
+  const blocked = {id: '1', type: 'superchat', platform: 'youtube', name: 'Blocked',
+    amount: '$5', at: '2026-11-18T10:00:00Z'};
+  const state = {startedAt: '2026-11-18', latest: {superchat: blocked}};
+  view.send('session', state, true);
+  view.fields({messages: 'Keep me', showGoals: false, showTimer: false});
+  assert.match(track.textContent, /Blocked/);
+  // Ordinary updates wait for the loop boundary...
+  view.send('session', {...state, latest: {superchat: {...blocked, id: '2', name: 'Next'}}});
+  assert.match(track.textContent, /Blocked/);
+  // ...but a block-list change rebuilds the moving track at once.
+  view.send('session', {...state, latest: {}, filterRevision: 1});
+  assert.doesNotMatch(track.textContent, /Blocked/);
+  assert.match(track.textContent, /Keep me/);
+}
+
+function checkClockDisconnect() {
+  const view = page('/clock');
+  const now = Date.now();
+  view.send('clock', {mode: 'stopwatch', phase: 'running', anchorMs: now, valueMs: 0,
+    durationSeconds: 0, serverNowMs: now, style: 'big', label: 'Run'});
+  view.advance(5000);
+  assert.equal(view.nodes.clock.hidden, false);
+  assert.equal(view.nodes.value.textContent, '0:05');
+  // Losing the server hides the stale count until a fresh snapshot arrives.
+  view.close();
+  assert.equal(view.nodes.clock.hidden, true);
+  view.advance(2000);
+  assert.equal(view.nodes.clock.hidden, true);
+  view.advance(1000);
+  view.open();
+  view.send('clock', {mode: 'stopwatch', phase: 'idle', anchorMs: 0, valueMs: 0,
+    durationSeconds: 0, serverNowMs: Date.now(), style: 'big', label: 'Run'}, true);
+  assert.equal(view.nodes.clock.hidden, false);
+  assert.equal(view.nodes.value.textContent, '0:00');
+}
+
+function checkScreenChatDisconnect() {
+  // Starting Soon and Be Right Back drop chat from before a server restart.
+  for (const id of ['starting-soon', 'be-right-back']) {
+    const view = page(id);
+    const chat = view.nodes['chat-messages'];
+    view.send('message', {id: '1', platform: 'twitch', author: 'Old viewer',
+      text: 'old', authorChannelId: '1', items: [{kind: 'text', text: 'old'}]});
+    assert.equal(chat.children.length, 1);
+    view.close();
+    assert.equal(chat.children.length, 0);
+    view.advance(3000);
+    view.open();
+    view.send('message', {id: '1', platform: 'twitch', author: 'New viewer',
+      text: 'new', authorChannelId: '1', items: [{kind: 'text', text: 'new'}]});
+    assert.equal(chat.children.length, 1);
+    assert.match(chat.textContent, /New viewer/);
+  }
+}
+
 function checkPollAndTimerDisconnect(type) {
   const view = page('/' + type);
   const card = view.nodes[type];
@@ -847,6 +911,9 @@ const regressions = {
   'poll disconnect': () => checkPollAndTimerDisconnect('poll'),
   'timer disconnect': () => checkPollAndTimerDisconnect('timer'),
   'gallery poll disconnect': checkGalleryPollDisconnect,
+  'screen chat disconnect': checkScreenChatDisconnect,
+  'ticker blocked supporter': checkTickerBlockedSupporter,
+  'clock disconnect': checkClockDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

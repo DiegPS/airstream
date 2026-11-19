@@ -112,6 +112,12 @@ class ChatGiveaway {
   final bool batchDraw;
   int get entrantCount => entrants.length;
   GiveawayEntrant? get winner => winners.lastOrNull;
+  Iterable<GiveawayEntrant> get eligibleEntrants {
+    if (winners.isEmpty) return entrants;
+    final drawn = winners.map((winner) => winner.identity).toSet();
+    return entrants.where((entrant) => !drawn.contains(entrant.identity));
+  }
+
   ChatGiveaway _copy(
           {GiveawayPhase? phase,
           Iterable<GiveawayEntrant>? entrants,
@@ -300,9 +306,7 @@ class ChatGiveawayController {
     _removeBlockedEntrants();
     final state = current;
     if (state == null) return const [];
-    final won = state.winners.map((e) => e.identity).toSet();
-    final eligible =
-        state.entrants.where((e) => !won.contains(e.identity)).toList();
+    final eligible = state.eligibleEntrants.toList();
     final total = min(count.clamp(1, 10), eligible.length);
     final draws = <(GiveawayEntrant, int)>[];
     for (var i = 0; i < total; i++) {

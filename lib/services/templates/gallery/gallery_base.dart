@@ -542,6 +542,10 @@ if (chat) {
       }
     }
   });
+  // A restarted server sends no old chat, so rows from before it are stale.
+  Airstream.on('disconnected', () => {
+    for (const row of chatRows.splice(0)) row.node.remove();
+  });
 }
 
 function setupCountdown(targetTime, completeText) {

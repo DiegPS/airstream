@@ -1540,6 +1540,89 @@ void main() {
     expect(c.rules.history.map((r) => r.event.chainDepth), [2, 1, 0]);
     expect(c.rules.history.every((r) => r.completed), true);
   });
+  test('natural subathon expiry persists ended and fires its rule once',
+      () async {
+    final server = RuleOverlay()..feedSeen = true;
+    final app = makeController(FakeChannelChatClient(), server);
+    addTearDown(app.dispose);
+    final repository = _RestoreSettingsRepository(SettingsDocumentCodec.encode(
+        const SettingsModel(overlayEnabled: false)));
+    final notifier = SettingsNotifier(
+      secureStore: _RestoreSecureStore(),
+      settingsRepository: repository,
+    );
+    addTearDown(notifier.dispose);
+    await notifier.ready;
+    app.subathonExpiryWriter = notifier.updateLatest;
+    final remove = notifier.addListener(
+        (settings) => app.applySettings(settings, connectChats: false));
+    addTearDown(remove);
+
+    await notifier.update(notifier.state.copyWith(
+      rulesEnabled: true,
+      rules: [
+        {
+          ...RuleSchema.newRule('subathon.ended', id: 'finish'),
+          'enabled': true,
+          'actions': [
+            {'id': 'send', 'type': 'template.trigger', 'name': 'finish'},
+          ],
+        }
+      ],
+      subathonPhase: 'running',
+      subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch + 150,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await settleCoordinatorTasks();
+    expect(server.triggers, hasLength(1));
+
+    for (var i = 0; i < 2001; i++) {
+      app.rules.handle(RuleEvent(type: 'chat.message', eventId: 'chat:$i'));
+    }
+    await notifier.update(notifier.state.copyWith(saveChatLog: true));
+    await settleCoordinatorTasks();
+    await settleCoordinatorTasks();
+
+    expect(
+      (notifier.state.subathonPhase, server.triggers.length),
+      ('ended', 1),
+    );
+    final saved = SettingsDocumentCodec.decode(repository.source).settings;
+    expect(saved.subathonPhase, 'ended');
+    expect(saved.subathonEndsAtMs, 0);
+  });
+
+  test('adding time by rule skips a subathon whose deadline already passed',
+      () async {
+    final app = makeController(FakeChannelChatClient(), RuleOverlay());
+    addTearDown(app.dispose);
+    var writes = 0;
+    app.ruleSettingsWriter = (_) async => writes++;
+    app.applySettings(
+      SettingsModel(
+        overlayEnabled: false,
+        rulesEnabled: true,
+        rules: [
+          {
+            ...RuleSchema.newRule('manual', id: 'add'),
+            'enabled': true,
+            'actions': [
+              {'id': 'time', 'type': 'subathon.adjust', 'seconds': 60},
+            ],
+          }
+        ],
+        subathonPhase: 'running',
+        subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch - 60000,
+      ),
+      connectChats: false,
+    );
+    expect(app.rules.runNow('add', const RuleEvent(type: 'manual')), isNull);
+    await settleCoordinatorTasks();
+    final result = app.rules.history.single.results.single;
+    expect((result.status, result.reason, writes),
+        ('skipped', 'timerNotRunning', 0));
+  });
+
   test('startup subathon normalization does not run ended rules', () async {
     final server = RuleOverlay()..feedSeen = true;
     final app = makeController(FakeChannelChatClient(), server);
@@ -1589,16 +1672,20 @@ void main() {
     expect(app.rules.history, hasLength(1));
   });
 
-  test('subathon ended owns exactly one timer only with an enabled rule', () {
+  test('a live subathon owns exactly one expiry timer even without automation',
+      () {
     fakeAsync((a) {
-      final c = makeController(FakeChannelChatClient(), OverlayServer());
+      DateTime now() => DateTime.utc(2026).add(a.elapsed);
+      final c =
+          makeController(FakeChannelChatClient(), OverlayServer(), clock: now);
+      c.subathonExpiryWriter = (_) async {};
       final base = SettingsModel(
           overlayEnabled: false,
           subathonPhase: 'running',
-          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch + 60000);
+          subathonEndsAtMs: now().millisecondsSinceEpoch + 60000);
       c.applySettings(base, connectChats: false);
       a.flushMicrotasks();
-      expect(a.nonPeriodicTimerCount, 0);
+      expect(a.nonPeriodicTimerCount, 1);
       final rule = {
         ...RuleSchema.newRule('subathon.ended', id: 'timer'),
         'enabled': true
@@ -1615,41 +1702,99 @@ void main() {
           ]),
           connectChats: false);
       a.flushMicrotasks();
-      expect(a.nonPeriodicTimerCount, 0);
+      expect(a.nonPeriodicTimerCount, 1);
       unawaited(c.dispose());
       a.flushMicrotasks();
+      expect(a.nonPeriodicTimerCount, 0);
     });
   });
-  test('re-enabling rules after the subathon deadline does not fire it late',
+  test('expiry with automation off persists ended and stays silent on enable',
       () {
-    fakeAsync((a) {
-      final c = makeController(FakeChannelChatClient(), OverlayServer());
+    fakeAsync((fake) {
+      DateTime now() => DateTime.utc(2026).add(fake.elapsed);
+      final c =
+          makeController(FakeChannelChatClient(), OverlayServer(), clock: now);
       final rule = {
         ...RuleSchema.newRule('subathon.ended', id: 'timer'),
         'enabled': true
       };
-      // Automation was off while the subathon ran out; nothing normalized
-      // the phase yet, so it still says running with a past deadline.
-      final ran = SettingsModel(
+      var settings = SettingsModel(
           overlayEnabled: false,
           rulesEnabled: false,
           rules: [rule],
           subathonPhase: 'running',
-          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch + 60000);
-      c.applySettings(ran, connectChats: false);
-      a.flushMicrotasks();
-      final expired = ran.copyWith(
-          subathonEndsAtMs: DateTime.now().millisecondsSinceEpoch - 60000);
-      c.applySettings(expired, connectChats: false);
-      a.flushMicrotasks();
-      // Turning automation back on (or adding the rule now) must not run a
-      // subathon.ended that finished while nobody was watching.
-      c.applySettings(expired.copyWith(rulesEnabled: true),
+          subathonEndsAtMs: now().millisecondsSinceEpoch + 60000);
+      c.subathonExpiryWriter = (change) async {
+        settings = change(settings);
+        c.applySettings(settings, connectChats: false);
+      };
+      c.applySettings(settings, connectChats: false);
+      fake.elapse(const Duration(minutes: 1));
+      expect(settings.subathonPhase, 'ended');
+      c.applySettings(settings.copyWith(rulesEnabled: true),
           connectChats: false);
-      a.flushMicrotasks();
-      expect(a.nonPeriodicTimerCount, 0);
+      fake.elapse(Duration.zero);
+      expect(c.rules.history, isEmpty);
+      expect(fake.nonPeriodicTimerCount, 0);
       unawaited(c.dispose());
-      a.flushMicrotasks();
+      fake.flushMicrotasks();
+    });
+  });
+
+  test('subathon deadline that passed during restore stays silent', () {
+    fakeAsync((fake) {
+      DateTime now() => DateTime.utc(2026).add(fake.elapsed);
+      final server = RuleOverlay()..feedSeen = true;
+      final app = makeController(FakeChannelChatClient(), server, clock: now);
+      final deadline = now().millisecondsSinceEpoch + 2000;
+      final running = SettingsModel(
+        overlayEnabled: false,
+        subathonPhase: 'running',
+        subathonEndsAtMs: deadline,
+        rules: [
+          {
+            ...RuleSchema.newRule('subathon.ended', id: 'finish'),
+            'enabled': true,
+            'actions': [
+              {'id': 'send', 'type': 'template.trigger', 'name': 'finish'},
+            ],
+          }
+        ],
+      );
+      final repository =
+          _RestoreSettingsRepository(SettingsDocumentCodec.encode(running));
+      final notifier = SettingsNotifier(
+        secureStore: _RestoreSecureStore(),
+        settingsRepository: repository,
+      );
+      fake.flushMicrotasks();
+      app.subathonExpiryWriter = notifier.updateLatest;
+      final remove = notifier.addListener((settings) => app.applySettings(
+          settings,
+          connectChats: false,
+          restoringBackup: notifier.publishingRestore));
+
+      unawaited(notifier.restoreBackup((current, commit) async {
+        fake.elapse(const Duration(seconds: 2));
+        await commit(current.copyWith(saveChatLog: true));
+      }));
+      fake.flushMicrotasks();
+      fake.elapse(Duration.zero);
+      expect(notifier.state.saveChatLog, isTrue);
+      expect(notifier.state.subathonEndsAtMs, deadline);
+      expect(repository.source, SettingsDocumentCodec.encode(notifier.state));
+      expect(app.rules.history, isEmpty);
+
+      unawaited(notifier.updateLatest((settings) =>
+          SubathonTimer.normalize(settings, now().millisecondsSinceEpoch)));
+      fake.elapse(Duration.zero);
+      expect(notifier.state.subathonPhase, 'ended');
+      expect(app.rules.history, isEmpty);
+      expect(server.triggers, isEmpty);
+      remove();
+      notifier.dispose();
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
     });
   });
 

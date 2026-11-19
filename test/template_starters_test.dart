@@ -67,6 +67,15 @@ void main() {
     final result = await Process.run('node', [script.path]);
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
   });
+  test('the Alerts starter stops each sound and labels hosts and gifts',
+      () async {
+    final files = templateStarterFiles(TemplateStarter.alerts, 'Example');
+    final script = File(p.join(temp.path, 'alerts-sound-check.js'));
+    await script.writeAsString(
+        'const starter = ${jsonEncode(files['script.js'])};\n$_alertSoundChecks');
+    final result = await Process.run('node', [script.path]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
   test('guarded editor writes atomically and only to small approved files',
       () async {
     final id = await library.createTemplate(
@@ -161,6 +170,79 @@ for (const criteria of [{scope: 'platform'},
   assert.deepEqual(rows, [horizontal]);
   send('delete', {platform, scope: 'platform'});
   assert.deepEqual(rows, []);
+}
+''';
+
+const _alertSoundChecks = r'''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const handlers = new Map();
+const timers = new Map();
+const audios = [];
+let nextTimer = 0;
+function element() {
+  return {
+    children: [], classList: {add() {}}, style: {setProperty() {}},
+    appendChild(child) { child.parent = this; this.children.push(child); },
+    remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); },
+  };
+}
+class Audio {
+  constructor(src) { this.src = src; this.paused = true; audios.push(this); }
+  play() { this.paused = false; return Promise.resolve(); }
+  pause() { this.paused = true; }
+  removeAttribute(name) { if (name === 'src') this.src = ''; }
+  load() {}
+}
+const content = element();
+const title = () => content.children[0]?.children[0].textContent;
+vm.runInNewContext(starter, {
+  document: {querySelector: () => content, createElement: element}, Audio,
+  Airstream: {on: (name, callback) => handlers.set(name, callback),
+    mediaUrl: id => '/media/' + id},
+  setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; },
+  clearTimeout(id) { timers.delete(id); },
+});
+const send = (name, data) => handlers.get(name)?.(data);
+const fire = () => {
+  const [id, fn] = timers.entries().next().value;
+  timers.delete(id);
+  fn();
+};
+const finishCard = () => { fire(); fire(); };
+
+// A long clip stops when its card leaves, before the next alert's sound.
+send('fields', {sound: 'clip', displaySeconds: 1});
+send('alert', {id: '1', kind: 'bits', alertType: 'bits', platform: 'twitch', author: 'A'});
+send('alert', {id: '2', kind: 'bits', alertType: 'bits', platform: 'twitch', author: 'B'});
+assert.equal(audios.length, 1);
+assert.equal(audios[0].paused, false);
+finishCard();
+assert.equal(audios.length, 2);
+assert.equal(audios[0].paused, true);
+assert.equal(audios[0].src, '');
+assert.equal(audios[1].paused, false);
+finishCard();
+assert.equal(audios[1].paused, true);
+
+const labels = {
+  en: ['Host', 'Gifted memberships', 'Gifted subscriptions', 'Raid'],
+  es: ['Host', 'Membresías regaladas', 'Suscripciones regaladas', 'Incursión'],
+};
+for (const language of ['en', 'es']) {
+  send('settings', {appLanguageCode: language});
+  const shown = [];
+  for (const event of [
+    {kind: 'host', alertType: 'raid', platform: 'kick'},
+    {kind: 'membership', alertType: 'gift', platform: 'youtube', giftCount: 5},
+    {kind: 'membership', alertType: 'gift', platform: 'twitch', giftCount: 5},
+    {kind: 'raid', alertType: 'raid', platform: 'twitch'},
+  ]) {
+    send('alert', {id: language + event.platform + event.kind, author: 'X', ...event});
+    shown.push(title());
+    finishCard();
+  }
+  assert.deepEqual(shown, labels[language]);
 }
 ''';
 

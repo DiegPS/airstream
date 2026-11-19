@@ -97,6 +97,8 @@ let clock;
 let fadeTimer;
 let fadeIndex = 0;
 let stillKey;
+// Block-list revision on screen: a block change cannot wait for the loop end.
+let shownRevision;
 
 function collectItems() {
   const copy = text[language];
@@ -212,8 +214,11 @@ function refresh() {
   };
   const running = Airstream.state.timer?.phase === 'running' && Airstream.timerRemaining() > 0;
   const removeTimer = timeNodes.length > 0 && !running;
+  const revision = Airstream.state.session?.filterRevision;
+  const blockChanged = revision !== shownRevision;
+  shownRevision = revision;
   if (reducedMotion.matches) {
-    if (removeTimer || stage.hidden || items.length < 2) showStill();
+    if (removeTimer || blockChanged || stage.hidden || items.length < 2) showStill();
     if (items.length < 2) {
       clearInterval(fadeTimer);
       fadeTimer = null;
@@ -223,7 +228,8 @@ function refresh() {
         showStill();
       }, 5000);
     }
-  } else if (removeTimer || stage.hidden || !track.classList.contains('rolling')) {
+  } else if (removeTimer || blockChanged || stage.hidden ||
+      !track.classList.contains('rolling')) {
     applyLoop();
   }
   const showClock = running && (fields.showTimer !== false || timeNodes.length > 0);

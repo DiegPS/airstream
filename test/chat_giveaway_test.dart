@@ -3,6 +3,7 @@ import 'package:airstream/settings/settings_document.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ChatMessage message(String name, String text,
@@ -116,6 +117,21 @@ void main() {
     c.handleMessage(message('Ana', 'go'));
     c.draw();
     expect(c.current!.drawId, greaterThan(lastId));
+  });
+
+  test('draw still finds the remaining entrant after the winner is blocked',
+      () {
+    c.start(keyword: 'go', membersOnly: false);
+    c.handleMessage(message('Ana', 'go'));
+    c.handleMessage(message('Beto', 'go'));
+
+    final first = c.draw()!;
+    c.applyFilter(ChatFilter(SettingsModel(blockedUsers: [first.authorId])));
+    final remaining = c.current!.entrants.single;
+    expect(c.current!.winners, [first]);
+    expect(c.draw(), same(remaining));
+    expect(c.current!.winners, [first, remaining]);
+    expect(c.draw(), isNull);
   });
 
   test('a batch publishes each distinct winner and persists one round',

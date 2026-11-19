@@ -170,9 +170,16 @@ let queue = [];
 Airstream.on('settings', settings => { language = settings.appLanguageCode === 'es' ? 'es' : 'en'; });
 Airstream.on('fields', values => { fields = {...fields,...values}; content.style.fontSize = fields.fontSize + 'px'; content.style.setProperty('--accent',fields.accentColor); });
 const titles = {
-  en:{superchat:'Super Chat',membership:'New member',bits:'Bits',subscription:'New subscriber',gift:'Gifted subscriptions',raid:'Raid',kicks:'Kicks',featured:'Featured message'},
-  es:{superchat:'Super Chat',membership:'Nuevo miembro',bits:'Bits',subscription:'Nueva suscripción',gift:'Suscripciones regaladas',raid:'Incursión',kicks:'Kicks',featured:'Mensaje destacado'}
+  en:{superchat:'Super Chat',membership:'New member',bits:'Bits',subscription:'New subscriber',gift:'Gifted subscriptions',membershipGift:'Gifted memberships',raid:'Raid',host:'Host',kicks:'Kicks',featured:'Featured message'},
+  es:{superchat:'Super Chat',membership:'Nuevo miembro',bits:'Bits',subscription:'Nueva suscripción',gift:'Suscripciones regaladas',membershipGift:'Membresías regaladas',raid:'Incursión',host:'Host',kicks:'Kicks',featured:'Mensaje destacado'}
 };
+// Kick hosts share the raid type and YouTube gifts memberships, not subs.
+function titleKey(event) {
+  const type = event.alertType || event.kind;
+  if (type === 'raid' && event.platform === 'kick') return 'host';
+  if (type === 'gift' && event.platform === 'youtube') return 'membershipGift';
+  return type;
+}
 function addLine(card, value) {
   if (value == null) return null;
   const line = document.createElement('div');
@@ -183,6 +190,12 @@ function addLine(card, value) {
 
 function finish() {
   clearTimeout(active.timer);
+  // The next alert's sound must not play on top of this one.
+  if (active.audio) {
+    active.audio.pause();
+    active.audio.removeAttribute('src');
+    active.audio.load();
+  }
   active.card.remove();
   active = null;
   next();
@@ -194,7 +207,7 @@ function next() {
   const {event} = active;
   const card = active.card = document.createElement('article');
   card.classList.add('card','enter');
-  addLine(card, titles[language][event.alertType || event.kind] || (language === 'es' ? 'Alerta' : 'Alert'));
+  addLine(card, titles[language][titleKey(event)] || (language === 'es' ? 'Alerta' : 'Alert'));
   active.authorLine = addLine(card, event.author);
   addLine(card, event.amount || event.count || event.giftCount);
   active.messageLine = addLine(card, event.message);
@@ -224,7 +237,6 @@ function redact(item, hideAuthor = false) {
 function removeFeatures(matches) {
   queue = queue.filter(({event}) => event.kind !== 'featured' || !matches(event));
   if (active?.event.kind === 'featured' && matches(active.event)) {
-    active.audio?.pause();
     finish();
   }
 }

@@ -102,7 +102,13 @@ $overlayFontScript
         console.warn('Ignored malformed clock message', error);
       }
     });
-    ws.addEventListener('close', () => { if (!closing && ws === socket) retry = setTimeout(connect, 3000); });
+    ws.addEventListener('close', () => {
+      if (closing || ws !== socket) return;
+      // A lost server may have reset the clock: show nothing until a fresh snapshot.
+      state = null;
+      root.hidden = true;
+      retry = setTimeout(connect, 3000);
+    });
     ws.addEventListener('error', () => ws.close());
   }
   const refresh = setInterval(render, 200);

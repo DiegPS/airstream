@@ -12,6 +12,7 @@ import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/application/session_summary.dart';
 import 'package:airstream/application/chat_poll.dart';
 import 'package:airstream/application/live_clock.dart';
+import 'package:airstream/application/subathon_timer.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/application/rules/rule_sound_player.dart';
@@ -107,6 +108,7 @@ class AppController {
             server: () => templateServer,
             feature: featureMessageOnStream,
             draw: (count, depth) => drawGiveaways(count, depth: depth),
+            now: _clockNow,
             clock: (op, seconds, depth) =>
                 operateClock(op, seconds: seconds, depth: depth)));
     templateServer?.queueState = queue.overlayState;
@@ -236,6 +238,8 @@ class AppController {
   Future<void> Function(SettingsModel)? ruleSettingsWriter;
   Future<void> Function(SettingsModel Function(SettingsModel))?
       clockExpiryWriter;
+  Future<void> Function(SettingsModel Function(SettingsModel))?
+      subathonExpiryWriter;
   Future<void> Function(QueueState)? queueSettingsWriter;
   Future<void>? _queueWrite;
   bool _publishingQueueSettings = false;
@@ -287,16 +291,11 @@ class AppController {
 
   Future<void> _winnerNotifications = Future.value();
   int _settingsDepth = 0, _ruleEventSequence = 0;
-  Timer? _ruleEndTimer, _clockEndTimer;
-  int? _silentSubathonDeadline;
+  Timer? _subathonEndTimer, _clockEndTimer;
 
-  /// The subathon deadline a subathon.ended timer was armed for while it was
-  /// still ahead. A deadline that had already passed when automation started
-  /// watching it (rules re-enabled, or the rule created after the end) must
-  /// not fire a late subathon.ended.
+  /// The live deadline an enabled subathon.ended rule was listening for.
   int? _watchedSubathonDeadline;
-  RuleEventOrigin? _subathonOrigin;
-  int _subathonDepth = 0;
+  (int, RuleEventOrigin?)? _pendingSubathonEnd;
 
   /// A countdown that ended while the app was closed is marked ended on
   /// launch without running clock.ended rules or the end sound.
@@ -317,6 +316,82 @@ class AppController {
       _settingsDepth = previousDepth;
     }
     await pending;
+  }
+
+  void _trackSubathon(SettingsModel? previous, SettingsModel settings) {
+    final phase = settings.subathonPhase;
+    final deadline = settings.subathonEndsAtMs;
+    final changed = previous?.subathonPhase != phase ||
+        previous?.subathonEndsAtMs != deadline;
+    final pendingEnd = _pendingSubathonEnd;
+    final watched = _watchedSubathonDeadline;
+    if (changed) {
+      _subathonEndTimer?.cancel();
+      _subathonEndTimer = null;
+      _pendingSubathonEnd = null;
+      _watchedSubathonDeadline = null;
+    }
+
+    final listening = rules.active &&
+        rules.rules.any((rule) =>
+            rule['enabled'] == true &&
+            (rule['trigger'] as Map)['type'] == 'subathon.ended');
+    if (!listening) _watchedSubathonDeadline = null;
+    if (phase == 'running') {
+      // Past deadlines loaded at startup or restored from a backup are
+      // baseline settings. Never arm a watch once the deadline has passed.
+      if (deadline > _clockNow().millisecondsSinceEpoch) {
+        if (listening) _watchedSubathonDeadline = deadline;
+        if (changed && subathonExpiryWriter != null) {
+          _scheduleSubathonEnd(deadline, previous == null ? 0 : _settingsDepth,
+              previous == null ? null : RuleEventOrigin.current);
+        }
+      }
+    } else if (phase == 'ended' &&
+        previous != null &&
+        listening &&
+        (previous.subathonPhase == 'paused' ||
+            (previous.subathonPhase == 'running' &&
+                previous.subathonEndsAtMs == watched))) {
+      final (depth, origin) =
+          pendingEnd ?? (_settingsDepth, RuleEventOrigin.current);
+      rules.handle(RuleEvent(
+          type: 'subathon.ended',
+          eventId: 'subathon:${++_ruleEventSequence}',
+          chainDepth: depth,
+          origin: origin));
+    }
+  }
+
+  void _scheduleSubathonEnd(int deadline, int depth, RuleEventOrigin? origin) {
+    final remaining = deadline - _clockNow().millisecondsSinceEpoch;
+    late final Timer timer;
+    timer =
+        Timer(Duration(milliseconds: remaining.clamp(0, 8640000000000000)), () {
+      if (deadline > _clockNow().millisecondsSinceEpoch) {
+        _scheduleSubathonEnd(deadline, depth, origin);
+        return;
+      }
+      final writeLatest = subathonExpiryWriter;
+      if (writeLatest == null) return;
+      unawaited(writeLatest((settings) {
+        // A restore can defer this write and replace the running timer,
+        // even when the restored settings contain the same deadline.
+        if (_disposed ||
+            !identical(_subathonEndTimer, timer) ||
+            settings.subathonEndsAtMs != deadline) {
+          return settings;
+        }
+        final next = SubathonTimer.normalize(
+            settings, _clockNow().millisecondsSinceEpoch);
+        if (!identical(next, settings)) _pendingSubathonEnd = (depth, origin);
+        return next;
+      }).catchError((Object error, StackTrace stack) {
+        AppLogger.warning('Subathon persistence failed',
+            error: error, stackTrace: stack);
+      }));
+    });
+    _subathonEndTimer = timer;
   }
 
   Future<void> operateClock(String op, {int seconds = 0, int depth = 0}) async {
@@ -691,97 +766,22 @@ class AppController {
     if (!rules.active || restoringBackup) _ruleGiftGroups.clear();
     templateServer?.rulesEngine = rules;
     _trackClock(restoringBackup ? null : previous?.clock, settings.clock);
-    if (restoringBackup || previous == null) {
-      // Deadlines that elapsed before startup or restore are part of the baseline.
-      _silentSubathonDeadline = settings.subathonPhase == 'running' &&
-              settings.subathonEndsAtMs <= DateTime.now().millisecondsSinceEpoch
-          ? settings.subathonEndsAtMs
-          : null;
-    }
-    if (restoringBackup ||
-        previous?.subathonPhase != settings.subathonPhase ||
-        previous?.subathonEndsAtMs != settings.subathonEndsAtMs) {
-      _subathonOrigin = restoringBackup ? null : RuleEventOrigin.current;
-      _subathonDepth = restoringBackup ? 0 : _settingsDepth;
-    }
-    _ruleEndTimer?.cancel();
-    _ruleEndTimer = null;
-    // A watch only counts while an enabled subathon.ended rule is listening:
-    // turning automation off forgets it, so turning it back on after the
-    // deadline cannot rearm or replay that end.
-    if (!rules.active ||
-        !rules.rules.any((r) =>
-            r['enabled'] == true &&
-            (r['trigger'] as Map)['type'] == 'subathon.ended')) {
-      _watchedSubathonDeadline = null;
-    }
-    if (rules.active) {
-      if (previous != null && !restoringBackup) {
-        for (final e in settings.goals.entries) {
-          final old = previous.goals[e.key];
-          if (old != null &&
-              (old['current'] as int) < (old['target'] as int) &&
-              (e.value['current'] as int) >= (e.value['target'] as int)) {
-            rules.handle(RuleEvent(
-                type: 'goal.reached',
-                goalId: e.key,
-                eventId: 'goal:${++_ruleEventSequence}',
-                chainDepth: _settingsDepth,
-                origin: RuleEventOrigin.current));
-          }
-        }
-        // Both end paths (the timer and a settings edit that normalizes the
-        // phase) fire only for a deadline automation was watching ahead of
-        // time; one that ran out with automation off stays silent.
-        if (previous.subathonPhase == 'running' &&
-            previous.subathonEndsAtMs != _silentSubathonDeadline &&
-            previous.subathonEndsAtMs == _watchedSubathonDeadline &&
-            settings.subathonPhase == 'ended') {
+    if (rules.active && previous != null && !restoringBackup) {
+      for (final e in settings.goals.entries) {
+        final old = previous.goals[e.key];
+        if (old != null &&
+            (old['current'] as int) < (old['target'] as int) &&
+            (e.value['current'] as int) >= (e.value['target'] as int)) {
           rules.handle(RuleEvent(
-              type: 'subathon.ended',
-              eventId: 'timer:${previous.subathonEndsAtMs}',
-              chainDepth: _settingsDepth,
-              origin: RuleEventOrigin.current));
-        }
-        // A paused subathon only ends when the streamer takes its last
-        // seconds off: that explicit end runs the rule once, here.
-        if (previous.subathonPhase == 'paused' &&
-            settings.subathonPhase == 'ended') {
-          rules.handle(RuleEvent(
-              type: 'subathon.ended',
-              eventId: 'paused-end:${++_ruleEventSequence}',
+              type: 'goal.reached',
+              goalId: e.key,
+              eventId: 'goal:${++_ruleEventSequence}',
               chainDepth: _settingsDepth,
               origin: RuleEventOrigin.current));
         }
       }
-      final subathonDue = settings.subathonEndsAtMs;
-      final subathonAhead = subathonDue > DateTime.now().millisecondsSinceEpoch;
-      if (settings.subathonPhase == 'running' &&
-          subathonDue != _silentSubathonDeadline &&
-          (subathonAhead || _watchedSubathonDeadline == subathonDue) &&
-          rules.rules.any((r) =>
-              r['enabled'] == true &&
-              (r['trigger'] as Map)['type'] == 'subathon.ended')) {
-        if (subathonAhead) _watchedSubathonDeadline = subathonDue;
-        _ruleEndTimer = Timer(
-            Duration(
-                milliseconds: (settings.subathonEndsAtMs -
-                        DateTime.now().millisecondsSinceEpoch)
-                    .clamp(0, 8640000000000000)), () {
-          if (rules.active) {
-            rules.handle(RuleEvent(
-                type: 'subathon.ended',
-                eventId: 'timer:${settings.subathonEndsAtMs}',
-                chainDepth: _subathonDepth,
-                origin: _subathonOrigin));
-          }
-        });
-      }
     }
-    if (settings.subathonPhase != 'running' ||
-        settings.subathonEndsAtMs != _silentSubathonDeadline) {
-      _silentSubathonDeadline = null;
-    }
+    _trackSubathon(restoringBackup ? null : previous, settings);
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
@@ -840,7 +840,7 @@ class AppController {
     _disposed = true;
     _ruleGiftGroups.clear();
     _sessionGiftGroups.clear();
-    _ruleEndTimer?.cancel();
+    _subathonEndTimer?.cancel();
     _clockEndTimer?.cancel();
     final queueDisposed = queue.dispose();
     await _winnerNotifications;

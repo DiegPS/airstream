@@ -201,6 +201,7 @@ final _appControllerInstanceProvider = Provider<AppController>((ref) {
       (settings) => ref.read(settingsProvider.notifier).update(settings);
   final notifier = ref.read(settingsProvider.notifier);
   c.clockExpiryWriter = notifier.updateLatest;
+  c.subathonExpiryWriter = notifier.updateLatest;
   c.queueSettingsWriter = notifier.saveQueueState;
   ref.onDispose(() => unawaited(c.dispose()));
   return c;

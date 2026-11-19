@@ -216,7 +216,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                           : winner == null
                               ? l.giveawayDraw
                               : l.giveawayRedraw,
-                      state.entrantCount > state.winners.length
+                      state.eligibleEntrants.isNotEmpty
                           ? () {
                               if (_drawCount == 1) {
                                 controller.drawGiveaway();

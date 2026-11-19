@@ -34,12 +34,15 @@ class RuleActions implements RuleActionTarget {
       required this.feature,
       required this.draw,
       this.clock,
+      DateTime Function()? now,
       RuleSoundPlayer? sounds,
       http.Client? httpClient})
       : sounds = sounds ?? RuleSoundPlayer(settings: settings),
+        _now = now ?? DateTime.now,
         _httpClient = httpClient;
   final RuleSoundPlayer sounds;
   final http.Client? _httpClient;
+  final DateTime Function() _now;
   final SettingsModel Function() settings;
   final Future<void> Function(SettingsModel, int) writeSettings;
   final ObsCoordinator obs;
@@ -57,8 +60,12 @@ class RuleActions implements RuleActionTarget {
   @override
   Map<String, int> get counters => settings().ruleCounters;
   @override
-  String? skipReason(Map<String, dynamic> a, RuleEvent e) {
-    final s = settings(), type = a['type'];
+  String? skipReason(Map<String, dynamic> a, RuleEvent e) =>
+      _skipReason(a, e, settings(), _now().millisecondsSinceEpoch);
+
+  String? _skipReason(
+      Map<String, dynamic> a, RuleEvent e, SettingsModel s, int now) {
+    final type = a['type'];
     if (type == 'alert.show' && (server()?.viewCounts['alerts'] ?? 0) == 0) {
       return 'noAlertsPage';
     }
@@ -82,7 +89,8 @@ class RuleActions implements RuleActionTarget {
       return 'goalNotFound';
     }
     if (type == 'subathon.adjust' &&
-        !['running', 'paused'].contains(s.subathonPhase)) {
+        s.subathonPhase != 'paused' &&
+        SubathonTimer.remaining(s, now) == 0) {
       return 'timerNotRunning';
     }
     if (type == 'template.trigger' && server() == null) return 'noReceiver';
@@ -98,10 +106,7 @@ class RuleActions implements RuleActionTarget {
       if (a['op'] == 'close' && g?.phase != GiveawayPhase.open) {
         return 'notOpen';
       }
-      if (a['op'] == 'draw' &&
-          (g == null ||
-              !g.entrants.any(
-                  (e) => !g.winners.any((w) => w.identity == e.identity)))) {
+      if (a['op'] == 'draw' && (g == null || g.eligibleEntrants.isEmpty)) {
         return 'noEntrants';
       }
     }
@@ -128,9 +133,10 @@ class RuleActions implements RuleActionTarget {
     if (blocksStreamControl(a, run.rule, run.event)) {
       return const RuleActionResult('skipped', 'publicStreamControl');
     }
-    final skip = skipReason(a, run.event);
+    final s = settings(), now = _now().millisecondsSinceEpoch;
+    final skip = _skipReason(a, run.event, s, now);
     if (skip != null) return RuleActionResult('skipped', skip);
-    final s = settings(), depth = run.event.chainDepth + 1;
+    final depth = run.event.chainDepth + 1;
     try {
       switch (a['type']) {
         case 'obs.scene':
@@ -213,9 +219,7 @@ class RuleActions implements RuleActionTarget {
               depth);
         case 'subathon.adjust':
           await writeSettings(
-              SubathonTimer.addSeconds(s, DateTime.now().millisecondsSinceEpoch,
-                  a['seconds'] as int),
-              depth);
+              SubathonTimer.addSeconds(s, now, a['seconds'] as int), depth);
         case 'clock':
           final operate = clock;
           if (operate == null) throw StateError('Clock unavailable');
