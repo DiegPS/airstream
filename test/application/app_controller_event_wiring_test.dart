@@ -14,6 +14,7 @@ import 'package:airstream/application/app_controller.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/application/chat_poll.dart';
+import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/live_clock.dart';
 import 'package:airstream/application/saved_poll.dart';
 import 'package:airstream/settings/settings_document.dart';
@@ -140,6 +141,113 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: obs ?? FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  test('moderation republishes open votes in every mode and preserves results',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      app.applySettings(const SettingsModel(overlayEnabled: false),
+          connectChats: true);
+      fake.flushMicrotasks();
+
+      for (final (mode, first, replacement) in [
+        (PollMode.numbered, '!1', '!2'),
+        (PollMode.word, 'Apple', 'Pear'),
+        (PollMode.yesNo, 'yes', 'no'),
+        (PollMode.rating, '1', '2'),
+        (PollMode.freeAnswer, '!vote Apple', '!vote Pear'),
+      ]) {
+        app.startPoll(
+            question: 'Pick',
+            options: ['Apple', 'Pear'],
+            mode: mode,
+            command: '!vote');
+        void send(String text, String id) {
+          twitch.messageController.add(ChatMessage(
+              platform: Platform.twitch,
+              id: '${mode.name}-$id',
+              author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+              items: [MessageItem.text(text)],
+              timestamp: DateTime.utc(2026)));
+          fake.elapse(const Duration(milliseconds: 250));
+        }
+
+        void delete(String id, [Platform platform = Platform.twitch]) {
+          twitch.moderationController.add(ChatModerationEvent.message(
+              platform: platform, messageId: '${mode.name}-$id'));
+          fake.flushMicrotasks();
+        }
+
+        const ban = ChatModerationEvent.author(
+            platform: Platform.twitch, authorChannelId: 'ana');
+
+        send(first, 'first');
+        send(replacement, 'replacement');
+        delete('first');
+        delete('replacement', Platform.kick);
+        expect(server.polls.last?['total'], 1);
+        delete('replacement');
+        expect(server.polls.last?['total'], 0);
+        if (mode == PollMode.freeAnswer) {
+          expect(server.polls.last?['answers'], isEmpty);
+        }
+        send(first, 'another');
+        twitch.moderationController.add(ban);
+        fake.flushMicrotasks();
+        expect(server.polls.last?['total'], 0);
+        send(first, 'last');
+        app.endPoll();
+        fake.flushMicrotasks();
+        final result = server.polls.last;
+        expect(result?['total'], 1);
+        delete('last');
+        twitch.moderationController.add(ban);
+        fake.flushMicrotasks();
+        expect(server.polls.last, same(result));
+      }
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
+  test('blocking a drawn winner republishes the public giveaway only', () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      const settings = SettingsModel(overlayEnabled: false);
+      app.applySettings(settings, connectChats: true);
+      app.startGiveaway(keyword: 'go', membersOnly: false);
+      fake.flushMicrotasks();
+      twitch.messageController.add(queueMessage('Ana', 'go', id: 'ana'));
+      fake.elapse(const Duration(milliseconds: 250));
+      expect(app.drawGiveaway()?.name, 'Ana');
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['winner'],
+          {'name': 'Ana', 'platform': 'twitch'});
+      final drawId = server.giveaways.last?['drawId'];
+
+      app.applySettings(settings.copyWith(blockedUsers: ['ana']),
+          connectChats: false);
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['winner'], isNull);
+      expect(server.giveaways.last?['drawId'], drawId);
+      ChatGiveaway? privateState;
+      app.giveawayStream.first.then((state) => privateState = state);
+      fake.flushMicrotasks();
+      expect(privateState?.winner?.name, 'Ana');
+
+      app.applySettings(settings, connectChats: false);
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['winner'],
+          {'name': 'Ana', 'platform': 'twitch'});
+      expect(server.giveaways.last?['drawId'], drawId);
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
 
   test(
       'blocking giveaway entrants republishes the count and excludes them from draws',

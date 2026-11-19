@@ -31,6 +31,8 @@ void main() {
       () => runPage(_queueChecks));
   test('clearing waiting alerts leaves active sound until expiry, skip or hide',
       () => runPage(_harness + _audioChecks));
+  test('only alerts that reach a paint frame are acknowledged',
+      () => runPage(_harness + _renderedChecks));
   test('alerts advance independently while a featured card is pinned',
       () => runPage(_harness + _featuredChecks));
   test('moderation redacts active and paused paid alerts without retiming',
@@ -410,14 +412,15 @@ function setup(inObs) {
   vm.runInContext(page, context);
   return {window, sockets, reconnect: () => vm.runInContext('connect()', context)};
 }
+const capabilities = view === 'alerts' ? {alertDisplayAck: true} : {};
 const browser = setup(false);
 browser.sockets[0].open();
-assert.deepEqual(browser.sockets[0].frames, [{type:'register', view, active:true, inObs:false}]);
+assert.deepEqual(browser.sockets[0].frames, [{type:'register', view, active:true, inObs:false, ...capabilities}]);
 
 const obs = setup(true);
 const first = obs.sockets[0];
 first.open();
-assert.deepEqual(first.frames, [{type:'register', view, active:false, inObs:true}]);
+assert.deepEqual(first.frames, [{type:'register', view, active:false, inObs:true, ...capabilities}]);
 obs.window.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail:{active:true}}));
 assert.deepEqual(first.frames.at(-1), {type:'sourceActivity', active:true});
 obs.window.obsstudio.onActiveChange(false);
@@ -429,12 +432,12 @@ obs.window.obsstudio.onActiveChange(true);
 assert.equal(first.frames.length, 3);
 obs.reconnect();
 obs.sockets[1].open();
-assert.deepEqual(obs.sockets[1].frames, [{type:'register', view, active:true, inObs:true}]);
+assert.deepEqual(obs.sockets[1].frames, [{type:'register', view, active:true, inObs:true, ...capabilities}]);
 ''';
 
 const _queueChecks = _harness +
     r'''
-assert.deepEqual(frames[0], {type: 'register', view: 'alerts', active: true, inObs: false});
+assert.deepEqual(frames[0], {type: 'register', view: 'alerts', active: true, inObs: false, alertDisplayAck: true});
 alert('before-sync');
 assert.equal(stage.firstElementChild, null);
 op('pause');
@@ -522,6 +525,40 @@ window.dispatchEvent(new Event('beforeunload'));
 for (const key of ['stopped', 'released', 'reloaded']) {
   assert.equal(sounds[3][key], true);
 }
+''';
+
+const _renderedChecks = r'''
+const automatic = id => socket.deliver({type: 'alert', alertDeliveryId: id,
+  data: {id: String(id), kind: 'bits'}});
+const rendered = () => frames.filter(frame => frame.type === 'alertRendered')
+  .map(frame => frame.deliveryId);
+const discarded = () => frames.filter(frame => frame.type === 'alertDiscarded')
+  .map(frame => frame.deliveryId);
+const paint = () => paints.splice(0).forEach(frame => frame());
+op('pause');
+automatic(1);
+op('clear');
+op('resume');
+paint();
+paint();
+assert.deepEqual(rendered(), []);
+
+automatic(2);
+op('skip');
+automatic(3);
+paint();
+assert.deepEqual(rendered(), []);
+paint();
+assert.deepEqual(rendered(), [3]);
+assert.deepEqual(discarded(), [1, 2]);
+finish();
+alert('test-or-replay');
+paint();
+paint();
+assert.deepEqual(rendered(), [3]);
+op('pause');
+for (let id = 4; id <= 24; id++) automatic(id);
+assert.deepEqual(discarded(), [1, 2, 4]);
 ''';
 
 const _featuredChecks = r'''

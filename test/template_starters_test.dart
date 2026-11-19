@@ -171,6 +171,14 @@ for (const criteria of [{scope: 'platform'},
   send('delete', {platform, scope: 'platform'});
   assert.deepEqual(rows, []);
 }
+// Rows from before a server restart are stale and leave on disconnect.
+send('chat', {platform: 'twitch', id: 'old', authorChannelId: 'old'});
+send('chat', {platform: 'kick', id: 'old', authorChannelId: 'old'});
+assert.equal(rows.length, 2);
+send('disconnected');
+assert.deepEqual(rows, []);
+send('chat', {platform: 'twitch', id: 'new', authorChannelId: 'new'});
+assert.equal(rows.length, 1);
 ''';
 
 const _alertSoundChecks = r'''
@@ -244,6 +252,21 @@ for (const language of ['en', 'es']) {
   }
   assert.deepEqual(shown, labels[language]);
 }
+
+// Losing the server stops the card on screen and drops queued alerts.
+send('alert', {id: 'd1', kind: 'bits', alertType: 'bits', platform: 'twitch', author: 'A'});
+send('alert', {id: 'd2', kind: 'bits', alertType: 'bits', platform: 'twitch', author: 'B'});
+const playing = audios.at(-1);
+assert.equal(playing.paused, false);
+const count = audios.length;
+send('disconnected');
+assert.equal(content.children.length, 0);
+assert.equal(playing.paused, true);
+assert.equal(audios.length, count);
+assert.equal(timers.size, 0);
+send('alert', {id: 'd3', kind: 'bits', alertType: 'bits', platform: 'twitch', author: 'C'});
+assert.equal(title(), 'Bits');
+assert.equal(audios.length, count + 1);
 ''';
 
 const _alertChecks = r'''

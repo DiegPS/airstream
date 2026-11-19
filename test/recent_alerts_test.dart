@@ -48,6 +48,20 @@ void main() {
     await connection.start();
   });
 
+  test('a paused alert cleared before display stays out of Recent Alerts',
+      () async {
+    connection.server.controlAlertQueue(AlertQueueOperation.pause);
+    final queued = connection.nextAlert(acknowledge: false);
+    await connection.send(message(Platform.twitch,
+        id: 'paused',
+        payment: const SuperChat(amount: '100 Bits', color: '#9146FF')));
+    await queued;
+    expect(connection.server.recentAlertsSnapshot, isEmpty);
+    connection.server.controlAlertQueue(AlertQueueOperation.clear);
+    connection.server.controlAlertQueue(AlertQueueOperation.resume);
+    expect(connection.server.replayRecentAlert('paused'), isFalse);
+  });
+
   test('records exact automatic payloads newest first, including flushed gifts',
       () async {
     for (final msg in [
@@ -83,7 +97,8 @@ void main() {
         authorName: 'Ana',
         count: 42,
       ));
-      expect(connection.server.recentAlertsSnapshot.first, await next);
+      final payload = await next;
+      expect(connection.server.recentAlertsSnapshot.first, payload);
     }
     expect(connection.server.recentAlertsSnapshot,
         connection.alerts.reversed.toList());
@@ -255,7 +270,11 @@ class _Connection {
     expect((await first.future)['type'], 'settings');
     final registered =
         envelopes.stream.firstWhere((e) => e['type'] == 'registered');
-    socket!.sink.add(jsonEncode({'type': 'register', 'view': 'alerts'}));
+    socket!.sink.add(jsonEncode({
+      'type': 'register',
+      'view': 'alerts',
+      'alertDisplayAck': true,
+    }));
     await registered;
   }
 
@@ -276,12 +295,17 @@ class _Connection {
     await delivered.timeout(const Duration(seconds: 2));
   }
 
-  Future<Map<String, dynamic>> nextAlert(
-      [Duration timeout = const Duration(seconds: 2)]) async {
+  Future<Map<String, dynamic>> nextAlert({bool acknowledge = true}) async {
     final event = await envelopes.stream
         .where((e) => e['type'] == 'alert')
-        .timeout(timeout)
+        .timeout(const Duration(seconds: 2))
         .first;
+    final id = event['alertDeliveryId'];
+    if (acknowledge && id != null) {
+      final recorded = server.recentAlerts.skip(1).first;
+      socket!.sink.add(jsonEncode({'type': 'alertRendered', 'deliveryId': id}));
+      await recorded.timeout(const Duration(seconds: 2));
+    }
     return event['data'] as Map<String, dynamic>;
   }
 

@@ -384,6 +384,9 @@ class OverlayServer {
   }
 
   final _recentAlerts = <Map<String, Object?>>[];
+  final _alertAcknowledgers = <WebSocketChannel>{};
+  final _pendingAlerts = <int, _PendingAlert>{};
+  int _nextAlertDelivery = 0;
   final _recentAlertsController =
       StreamController<List<Map<String, Object?>>>.broadcast(sync: true);
 
@@ -438,10 +441,26 @@ class OverlayServer {
   void _sendAutomaticAlert(Map<String, Object?> data) {
     if (!_settings.alertPlatforms.contains(data['platform'])) return;
     data = _withAlertOption(_redactBlockedAlert(data));
-    final sent = _broadcastEnvelope({'type': 'alert', 'data': data},
-        requireDeliveryTo: 'alerts');
-    if (!sent) return;
-    _recentAlerts.insert(0, Map.unmodifiable(data));
+    final deliveryId =
+        _alertAcknowledgers.isEmpty ? null : ++_nextAlertDelivery;
+    if (deliveryId != null) {
+      _pendingAlerts[deliveryId] =
+          _PendingAlert(data, {..._alertAcknowledgers});
+    }
+    _broadcastEnvelope({
+      'type': 'alert',
+      'data': data,
+      if (deliveryId != null) 'alertDeliveryId': deliveryId,
+    });
+  }
+
+  void _completeAlertDelivery(WebSocketChannel client, Object? id,
+      {required bool rendered}) {
+    final delivery = _pendingAlerts[id];
+    if (delivery == null || !delivery.recipients.remove(client)) return;
+    if (rendered || delivery.recipients.isEmpty) _pendingAlerts.remove(id);
+    if (!rendered) return;
+    _recentAlerts.insert(0, Map.unmodifiable(delivery.data));
     if (_recentAlerts.length > 30) _recentAlerts.removeLast();
     _recentAlertsController.add(recentAlertsSnapshot);
   }
@@ -762,7 +781,7 @@ class OverlayServer {
     _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
     _recentChatMessages.updateAll((_, message) => event.redactReply(message));
     _removePendingFeatured(event.appliesTo);
-    _updateRecentAlerts((alert) {
+    _updateStoredAlerts((alert) {
       if (alert['message'] == '' ||
           !event.matchesTarget(
             targetPlatform: Platform.values.asNameMap()[alert['platform']],
@@ -782,8 +801,11 @@ class OverlayServer {
     });
   }
 
-  void _updateRecentAlerts(
+  void _updateStoredAlerts(
       Map<String, Object?> Function(Map<String, Object?>) update) {
+    for (final delivery in _pendingAlerts.values) {
+      delivery.data = update(delivery.data);
+    }
     var changed = false;
     for (var i = 0; i < _recentAlerts.length; i++) {
       final alert = _recentAlerts[i];
@@ -818,7 +840,7 @@ class OverlayServer {
 
   void _removeBlockedRecords() {
     _removePendingFeatured(_chatFilter.blocksMessage);
-    _updateRecentAlerts(_redactBlockedAlert);
+    _updateStoredAlerts(_redactBlockedAlert);
     final chat = _recentChatMessages.entries
         .where((entry) => _chatFilter.blocksMessage(entry.value))
         .toList();
@@ -1016,6 +1038,8 @@ class OverlayServer {
     _inactiveSources.clear();
     _obsSources.clear();
     _alertQueues.clear();
+    _alertAcknowledgers.clear();
+    _pendingAlerts.clear();
     _emitAlertQueue();
     for (final pending in _featured.values) {
       pending.finish(FeaturedMessageStatus.disconnected);
@@ -1223,6 +1247,9 @@ class OverlayServer {
             _sendSnapshot(client, view);
           }
           if (view == 'alerts') {
+            if (envelope['alertDisplayAck'] == true) {
+              _alertAcknowledgers.add(client);
+            }
             client.sink.add(jsonEncode(_alertControl(_alertsPaused
                 ? AlertQueueOperation.pause
                 : AlertQueueOperation.resume)));
@@ -1278,6 +1305,10 @@ class OverlayServer {
             _emitAlertQueue();
           }
         }
+      } else if (envelope['type'] == 'alertRendered' ||
+          envelope['type'] == 'alertDiscarded') {
+        _completeAlertDelivery(client, envelope['deliveryId'],
+            rendered: envelope['type'] == 'alertRendered');
       } else if (envelope['type'] == 'featuredRendered') {
         final id = envelope['deliveryId'];
         final pending = _featured[id];
@@ -1389,8 +1420,7 @@ class OverlayServer {
         if (replay) 'replay': true,
       };
 
-  bool _broadcastEnvelope(Map<String, dynamic> envelope,
-      {String? view, String? requireDeliveryTo}) {
+  bool _broadcastEnvelope(Map<String, dynamic> envelope, {String? view}) {
     if (_clients.isEmpty) return false;
     var sent = false;
     final json = jsonEncode(envelope);
@@ -1399,9 +1429,7 @@ class OverlayServer {
       if (view != null && clientView != view) continue;
       try {
         client.sink.add(json);
-        if (requireDeliveryTo == null || clientView == requireDeliveryTo) {
-          sent = true;
-        }
+        sent = true;
       } catch (_) {
         // A failed send means the browser disconnected before its close event.
         _removeClient(client);
@@ -1425,6 +1453,12 @@ class OverlayServer {
   void _removeClient(WebSocketChannel client) {
     _inactiveSources.remove(client);
     _obsSources.remove(client);
+    if (_alertAcknowledgers.remove(client)) {
+      _pendingAlerts.removeWhere((_, delivery) {
+        delivery.recipients.remove(client);
+        return delivery.recipients.isEmpty;
+      });
+    }
     if (_views.remove(client) == 'alerts') {
       _alertQueues.remove(client);
       _emitAlertQueue();
@@ -1445,6 +1479,13 @@ class OverlayServer {
     }
     if (_clients.remove(client)) _emitClientCount();
   }
+}
+
+class _PendingAlert {
+  _PendingAlert(this.data, this.recipients);
+
+  Map<String, Object?> data;
+  final Set<WebSocketChannel> recipients;
 }
 
 class _PendingFeaturedMessage {

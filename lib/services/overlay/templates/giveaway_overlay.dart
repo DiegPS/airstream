@@ -88,13 +88,26 @@ $overlayFontScript
           language = envelope.data.appLanguageCode || 'en'; render();
         } else if (envelope.type === 'giveaway') {
           const next = envelope.data || null;
-          const shouldAnimate = !envelope.replay && next && next.phase === 'drawn' && next.winner && next.drawId !== lastDrawId;
-          if (next?.phase === 'drawn' && next.winner && !envelope.replay) {
-            if (shouldAnimate) {
-              lastDrawId = next.drawId;
-              pending.push(next);
-              nextDraw();
+          if (next?.phase === 'drawn' && !envelope.replay) {
+            const hidden = new Set(next.hiddenDrawIds);
+            if (!next.winner) hidden.add(next.drawId);
+            for (let i = pending.length - 1; i >= 0; i--) {
+              if (hidden.has(pending[i].drawId)) pending.splice(i, 1);
             }
+            if (state?.winner && hidden.has(state.drawId)) {
+              cancelSpin();
+              window.clearTimeout(advance); advance = 0;
+              state = null;
+            }
+            if (next.winner && next.drawId !== lastDrawId) {
+              pending.push(next);
+            }
+            lastDrawId = next.drawId;
+            if (!state?.winner && !pending.length) {
+              state = next;
+              render();
+            }
+            nextDraw();
             return;
           }
           resetDraws();

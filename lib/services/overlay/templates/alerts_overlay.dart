@@ -462,13 +462,16 @@ function enqueueAlert(alert) {
     queue.unshift(alert);
     if (queue.length > MAX_PENDING_ALERTS) {
       const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
-      if (oldest !== -1) queue.splice(oldest, 1);
+      if (oldest !== -1) completeAlertDelivery(queue.splice(oldest, 1)[0], 'alertDiscarded');
     }
   } else {
     if (queue.length >= MAX_PENDING_ALERTS) {
       const oldest = queue.findIndex((pending) => pending.kind !== 'featured');
-      if (oldest === -1) return;
-      queue.splice(oldest, 1);
+      if (oldest === -1) {
+        completeAlertDelivery(alert, 'alertDiscarded');
+        return;
+      }
+      completeAlertDelivery(queue.splice(oldest, 1)[0], 'alertDiscarded');
     }
     queue.push(alert);
   }
@@ -511,6 +514,7 @@ function finishAlert() {
   window.clearTimeout(hideTimer);
   hideTimer = 0;
   stopActiveSound();
+  completeAlertDelivery(active, 'alertDiscarded');
   active = null;
   applyAlertStyle();
   clearMedia();
@@ -526,6 +530,7 @@ function controlQueue(op) {
     finishAlert();
     return;
   } else if (op === 'clear') {
+    queue.forEach(alert => completeAlertDelivery(alert, 'alertDiscarded'));
     queue = [];
     preloadNextImage();
   }
@@ -624,20 +629,38 @@ function scheduleFeaturedHide() {
     Math.max(0, featuredDuration() * 1000 - (Date.now() - featuredShownAt)));
 }
 
-function acknowledgeFeatured(displayed, target, getDisplayed) {
-  if (!displayed.deliveryId) return;
+function afterPaint(displayed, target, getDisplayed, acknowledge) {
   const connection = displayed.deliverySocket;
   // Confirm only after the card has reached a browser paint frame.
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (getDisplayed() === displayed && !acknowledgedFeatured.has(displayed) &&
+    if (getDisplayed() === displayed &&
         connection === socket && connection.readyState === WebSocket.OPEN &&
         target.firstElementChild?.isConnected) {
+      acknowledge();
+    }
+  }));
+}
+
+function acknowledgeFeatured(displayed, target, getDisplayed) {
+  if (!displayed.deliveryId) return;
+  afterPaint(displayed, target, getDisplayed, () => {
+    if (!acknowledgedFeatured.has(displayed)) {
+      const connection = displayed.deliverySocket;
       connection.send(JSON.stringify({
         type: 'featuredRendered', deliveryId: displayed.deliveryId,
       }));
       acknowledgedFeatured.add(displayed);
     }
-  }));
+  });
+}
+
+function completeAlertDelivery(alert, type) {
+  if (!alert?.alertDeliveryId) return;
+  const connection = alert.deliverySocket;
+  if (connection === socket && connection.readyState === WebSocket.OPEN) {
+    connection.send(JSON.stringify({type, deliveryId: alert.alertDeliveryId}));
+    delete alert.alertDeliveryId;
+  }
 }
 
 function showNext() {
@@ -676,6 +699,11 @@ function showNext() {
     featuredShownAt = Date.now();
     scheduleFeaturedHide();
   } else {
+    const displayed = active;
+    if (displayed.alertDeliveryId) {
+      afterPaint(displayed, stage, () => active,
+        () => completeAlertDelivery(displayed, 'alertRendered'));
+    }
     const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
     const duration = active.kind !== 'custom' && queue.length >= 5
       ? Math.max(2, seconds / 2) : seconds;
@@ -690,7 +718,7 @@ function connect() {
   queueReady = false;
   lastQueueStatus = '';
   connection.addEventListener('open', () => {
-    registerSource(connection, 'alerts');
+    registerSource(connection, 'alerts', {alertDisplayAck: true});
   });
   connection.addEventListener('message', (event) => {
     try {
@@ -703,6 +731,7 @@ function connect() {
       else if (envelope.type === 'featuredHide') hideFeatured();
       else if (envelope.type === 'alert' && envelope.data) {
         envelope.data.deliverySocket = connection;
+        envelope.data.alertDeliveryId = envelope.alertDeliveryId;
         // A message the streamer chose goes before waiting alerts.
         enqueueAlert(envelope.data);
         showNext();

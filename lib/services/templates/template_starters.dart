@@ -158,6 +158,10 @@ Airstream.on('delete', event => {
     }
   }
 });
+// A restarted server sends no old chat, so rows from before it are stale.
+Airstream.on('disconnected', () => {
+  for (const item of messages.splice(0)) item.node.remove();
+});
 setInterval(prune,1000);
 ''';
 
@@ -259,6 +263,12 @@ Airstream.on('filters', filters => {
     if (hideAuthor || blocksText(item.event)) redact(item, hideAuthor);
   }
   removeFeatures(event => blocksAuthor(event) || blocksText(event));
+});
+
+// Without the server nothing new should play: drop the queue and the card.
+Airstream.on('disconnected', () => {
+  queue = [];
+  if (active) finish();
 });
 
 // Test and replay events are intentionally shown like live alerts.

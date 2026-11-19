@@ -22,11 +22,12 @@ function setObsSourceActive(active) {
   reportSourceActivity();
 }
 
-function registerSource(connection, view) {
+function registerSource(connection, view, capabilities = {}) {
   registeredSourceSocket = connection;
   lastReportedSourceActivity = sourceIsActive();
   connection.send(JSON.stringify({
     type: 'register', view, active: lastReportedSourceActivity, inObs: Boolean(obsStudio),
+    ...capabilities,
   }));
 }
 

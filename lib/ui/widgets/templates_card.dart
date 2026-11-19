@@ -656,6 +656,99 @@ class _TemplateEditorState extends State<_TemplateEditor> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final compact = MediaQuery.sizeOf(context).height < 360;
+    ButtonStyle editorButtonStyle(ButtonStyle style) => compact
+        ? style.copyWith(
+            minimumSize: const WidgetStatePropertyAll(Size(0, 36)),
+            padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 8)),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          )
+        : style;
+    final close = OutlinedButton(
+      style: editorButtonStyle(secondarySettingsStyle()),
+      onPressed: _saving ? null : _close,
+      child: Text(l.templatesClose),
+    );
+    final save = ElevatedButton(
+      style: editorButtonStyle(primarySettingsStyle()),
+      key: const Key('template-editor-save'),
+      onPressed: _loading || _saving ? null : _save,
+      child: Text(l.templatesSave),
+    );
+    final editor = Padding(
+      padding: compact ? const EdgeInsets.all(8) : const EdgeInsets.all(20),
+      child: Column(children: [
+        Row(children: [
+          Expanded(
+            child: Text(
+              '${l.templatesEdit}: ${widget.info.manifest.name}',
+              maxLines: compact ? 1 : null,
+              overflow: compact ? TextOverflow.ellipsis : null,
+            ),
+          ),
+          OutlinedButton(
+            style: editorButtonStyle(secondarySettingsStyle()),
+            onPressed: () async {
+              try {
+                await _explore('${widget.url}?demo=1');
+              } catch (_) {
+                if (mounted) setState(() => _notice = l.templatesFailed);
+              }
+            },
+            child: Text(l.templatesPreview),
+          ),
+        ]),
+        TabBar(tabs: [
+          for (final label in ['HTML', 'CSS', 'JS'])
+            Tab(text: label, height: compact ? 36 : null),
+        ]),
+        if (_loading || _saving)
+          const LinearProgressIndicator(
+              color: Color(0xFF53FC18), backgroundColor: Color(0xFF262626)),
+        Expanded(
+          child: TabBarView(children: [
+            for (var i = 0; i < 3; i++)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: compact ? 4 : 12),
+                child: _blocked[i]
+                    ? Center(
+                        child: Text(_oversized[i]
+                            ? l.templatesLarge
+                            : l.templatesFailed))
+                    : TextField(
+                        key: Key('template-editor-${_keys[i]}'),
+                        controller: _controllers[i],
+                        enabled: !_loading && !_saving,
+                        expands: true,
+                        minLines: null,
+                        maxLines: null,
+                        textAlignVertical: TextAlignVertical.top,
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            color: Colors.white,
+                            fontSize: 13),
+                        decoration: settingsInput(),
+                        onChanged: (_) => setState(() {}),
+                      ),
+              ),
+          ]),
+        ),
+        if (_notice != null) Text(_notice!),
+        if (compact)
+          Row(children: [
+            Expanded(child: close),
+            const SizedBox(width: 8),
+            Expanded(child: save),
+          ])
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [close, const SizedBox(height: 8), save],
+          ),
+      ]),
+    );
+    const dialogKey = Key('template-editor');
     return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
@@ -668,88 +761,12 @@ class _TemplateEditorState extends State<_TemplateEditor> {
             },
             child: DefaultTabController(
                 length: 3,
-                child: Dialog(
-                    key: const Key('template-editor'),
-                    child: SizedBox(
-                        width: 960,
-                        height: 720,
-                        child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(children: [
-                              Row(children: [
-                                Expanded(
-                                    child: Text(
-                                        '${l.templatesEdit}: ${widget.info.manifest.name}')),
-                                OutlinedButton(
-                                    style: secondarySettingsStyle(),
-                                    onPressed: () async {
-                                      try {
-                                        await _explore('${widget.url}?demo=1');
-                                      } catch (_) {
-                                        if (mounted) {
-                                          setState(() =>
-                                              _notice = l.templatesFailed);
-                                        }
-                                      }
-                                    },
-                                    child: Text(l.templatesPreview))
-                              ]),
-                              const TabBar(tabs: [
-                                Tab(text: 'HTML'),
-                                Tab(text: 'CSS'),
-                                Tab(text: 'JS')
-                              ]),
-                              if (_loading || _saving)
-                                const LinearProgressIndicator(
-                                    color: Color(0xFF53FC18),
-                                    backgroundColor: Color(0xFF262626)),
-                              Expanded(
-                                  child: TabBarView(children: [
-                                for (var i = 0; i < 3; i++)
-                                  Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      child: _blocked[i]
-                                          ? Center(
-                                              child: Text(_oversized[i]
-                                                  ? l.templatesLarge
-                                                  : l.templatesFailed))
-                                          : TextField(
-                                              key: Key(
-                                                  'template-editor-${_keys[i]}'),
-                                              controller: _controllers[i],
-                                              enabled: !_loading && !_saving,
-                                              expands: true,
-                                              minLines: null,
-                                              maxLines: null,
-                                              textAlignVertical:
-                                                  TextAlignVertical.top,
-                                              style: const TextStyle(
-                                                  fontFamily: 'monospace',
-                                                  color: Colors.white,
-                                                  fontSize: 13),
-                                              decoration: settingsInput(),
-                                              onChanged: (_) =>
-                                                  setState(() {})))
-                              ])),
-                              if (_notice != null) Text(_notice!),
-                              Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    OutlinedButton(
-                                        style: secondarySettingsStyle(),
-                                        onPressed: _saving ? null : _close,
-                                        child: Text(l.templatesClose)),
-                                    const SizedBox(height: 8),
-                                    ElevatedButton(
-                                        style: primarySettingsStyle(),
-                                        key: const Key('template-editor-save'),
-                                        onPressed:
-                                            _loading || _saving ? null : _save,
-                                        child: Text(l.templatesSave))
-                                  ]),
-                            ])))))));
+                child: compact
+                    ? Dialog.fullscreen(key: dialogKey, child: editor)
+                    : Dialog(
+                        key: dialogKey,
+                        child: SizedBox(width: 960, height: 720, child: editor),
+                      ))));
   }
 }
 

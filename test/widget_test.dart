@@ -2786,7 +2786,7 @@ void main() {
       expect(find.byKey(Key('template-$installed')), findsOneWidget);
       await tester.runAsync(() async {
         final info = (await library.get(installed))!;
-        expect(info.manifest.gallery, (id: id, version: 3));
+        expect(info.manifest.gallery, (id: id, version: 4));
         expect((await library.resolvedValues(installed))['language'], language);
         expect(await library.list(), hasLength(spanish ? 2 : 1));
         if (spanish) {
@@ -2797,6 +2797,76 @@ void main() {
               originalHtml);
         }
       });
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final language in ['en', 'es']) {
+    testWidgets('Template editor fits and saves at 360 × 240 ($language)',
+        (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 240);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final temp = (await tester.runAsync(
+          () => io.Directory.systemTemp.createTemp('compact-editor-')))!;
+      final library = TemplateLibrary(temp);
+      addTearDown(() async {
+        await tester.runAsync(() async {
+          await library.dispose();
+          await temp.delete(recursive: true);
+        });
+      });
+      await tester.runAsync(() async {
+        final folder = await io.Directory('${temp.path}/example').create();
+        await io.File('${folder.path}/template.json').writeAsString(
+            '{"name":"Example template with a moderately long title"}');
+        await io.File('${folder.path}/index.html').writeAsString('<p>Hi</p>');
+      });
+      final locale = Locale(language);
+      final l = lookupAppLocalizations(locale);
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => _WidgetTestSettings(language)),
+          overlayUrlProvider.overrideWithValue('http://localhost:18080'),
+          templateLibraryProvider.overrideWith((ref) async => library),
+          templateCountsProvider.overrideWith((ref) => Stream.value({})),
+          templateErrorsProvider.overrideWith((ref) => Stream.value({})),
+        ],
+        child: MaterialApp(
+          locale: locale,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(
+              body: SingleChildScrollView(child: TemplatesCard())),
+        ),
+      ));
+      await _flushTemplateIO(tester);
+      final menu = find.byKey(const Key('template-menu-example'));
+      await tester.ensureVisible(menu);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l.templatesEdit));
+      await _flushTemplateIO(tester);
+
+      final field = find.byKey(const Key('template-editor-html'));
+      final save = find.byKey(const Key('template-editor-save'));
+      final close = find.widgetWithText(OutlinedButton, l.templatesClose);
+      expect(tester.getSize(field).height, greaterThanOrEqualTo(96));
+      expect(save.hitTestable(), findsOneWidget);
+      expect(close.hitTestable(), findsOneWidget);
+      expect(tester.getCenter(save).dy, tester.getCenter(close).dy);
+      await tester.enterText(field, '<p>Edited</p>');
+      await tester.tap(save);
+      await _flushTemplateIO(tester);
+      expect(
+          await tester.runAsync(
+              () => library.readTemplateFile('example', 'index.html')),
+          '<p>Edited</p>');
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(field, findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

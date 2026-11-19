@@ -136,7 +136,7 @@ class AppController {
           (state) => templateServer?.broadcastQueue(queue.overlayState(state))),
       _chat.messages.listen(_giveaway.handleMessage),
       _giveaway.states.listen(
-          (state) => _overlay.broadcastGiveaway(state?.toOverlayJson())),
+          (state) => _overlay.broadcastGiveaway(_giveaway.overlayState(state))),
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
       ),
@@ -190,6 +190,7 @@ class AppController {
         }
       }),
       _chat.moderationEvents.listen(_audio.handleModeration),
+      _chat.moderationEvents.listen(_poll.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
       _chat.providerEvents.listen(_overlay.broadcastProviderEvent),
       _audio.finalizedCaptions.listen(_overlay.broadcastCaption),

@@ -2884,6 +2884,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'knoMessage': 'No chat message available',
         'kgoalNotFound': 'Goal not found',
         'ktimerNotRunning': 'Subathon is not running',
+        'kclockUnchanged': 'The timer is already in that state',
         'knoReceiver': 'No template receiver connected',
         'kinvalidKeyword': 'Invalid keyword',
         'kalreadyOpen': 'Giveaway is already open',

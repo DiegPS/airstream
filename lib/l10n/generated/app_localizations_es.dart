@@ -2907,6 +2907,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'knoMessage': 'No hay mensaje de chat',
         'kgoalNotFound': 'Meta no encontrada',
         'ktimerNotRunning': 'El subatón no está activo',
+        'kclockUnchanged': 'El temporizador ya está en ese estado',
         'knoReceiver': 'Sin receptor de plantillas conectado',
         'kinvalidKeyword': 'Palabra clave inválida',
         'kalreadyOpen': 'El sorteo ya está abierto',

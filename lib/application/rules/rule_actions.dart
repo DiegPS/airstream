@@ -93,6 +93,14 @@ class RuleActions implements RuleActionTarget {
         SubathonTimer.remaining(s, now) == 0) {
       return 'timerNotRunning';
     }
+    if (type == 'clock') {
+      // An operation the timer cannot take (adding time while idle or ended,
+      // starting it while running) must not be reported as done.
+      final current = s.clock.expire(now);
+      final next = current.perform(a['op'] as String? ?? 'start', now,
+          seconds: a['seconds'] as int? ?? 0);
+      if (identical(next, current)) return 'clockUnchanged';
+    }
     if (type == 'template.trigger' && server() == null) return 'noReceiver';
     if (type == 'giveaway') {
       if (a['op'] == 'start' &&

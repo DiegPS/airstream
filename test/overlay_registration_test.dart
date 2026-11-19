@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/services/overlay/overlay_routes.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -33,8 +35,10 @@ void main() {
     final alerts = _Socket(server)..register('alerts');
     const horizontal = YoutubeStreamOrientation.horizontal;
     server.broadcastChatSupport(paid('delete-me', horizontal));
+    alerts.acknowledgeAlert(alerts.sink.frames.last['alertDeliveryId']);
     server.broadcastChatSupport(
         paid('keep-me', YoutubeStreamOrientation.vertical));
+    alerts.acknowledgeAlert(alerts.sink.frames.last['alertDeliveryId']);
     final change = server.recentAlerts.skip(1).first;
     server.broadcastModeration(const ChatModerationEvent.author(
       platform: Platform.youtube,
@@ -57,6 +61,7 @@ void main() {
     final alerts = _Socket(server)..register('alerts');
     const horizontal = YoutubeStreamOrientation.horizontal;
     server.broadcastChatSupport(paid('words', horizontal));
+    alerts.acknowledgeAlert(alerts.sink.frames.last['alertDeliveryId']);
     server.broadcastProviderEvent(ChatProviderEvent(
       platform: Platform.kick,
       kind: ChatProviderEventKind.support,
@@ -67,6 +72,7 @@ void main() {
       count: 100,
       timestamp: DateTime.utc(2026),
     ));
+    alerts.acknowledgeAlert(alerts.sink.frames.last['alertDeliveryId']);
     final updated = server.recentAlerts.skip(1).first;
     server.setSettings(const SettingsModel(
       blockedWords: ['paid, message'],
@@ -85,6 +91,61 @@ void main() {
       expect(server.replayRecentAlert(alert['id'] as String), isTrue);
       expect(alerts.sink.frames.last['data'], alert);
     }
+  });
+
+  test(
+      'automatic alert history accepts one render from a recipient and redacts waiting cards',
+      () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final chat = _Socket(server)..register('chat');
+    final first = _Socket(server)..register('alerts');
+    final second = _Socket(server)..register('alerts');
+    const horizontal = YoutubeStreamOrientation.horizontal;
+    server.broadcastChatSupport(paid('waiting', horizontal));
+    final id = first.sink.frames.last['alertDeliveryId'];
+    expect(id, isA<int>());
+    chat.acknowledgeAlert(id);
+    first.acknowledgeAlert(id, rendered: false);
+    first.acknowledgeAlert(id);
+    expect(server.recentAlertsSnapshot, isEmpty);
+
+    server.broadcastModeration(const ChatModerationEvent.message(
+      platform: Platform.youtube,
+      youtubeStreamOrientation: horizontal,
+      messageId: 'waiting',
+    ));
+    second.acknowledgeAlert(id);
+    second.acknowledgeAlert(id);
+    expect(server.recentAlertsSnapshot.single['message'], '');
+    expect(server.recentAlertsSnapshot.single['id'], 'waiting');
+  });
+
+  test('giveaway registration replays a snapshot without its blocked winner',
+      () {
+    final controller = ChatGiveawayController();
+    final server = OverlayServer();
+    addTearDown(controller.dispose);
+    addTearDown(server.dispose);
+    controller.start(keyword: 'go', membersOnly: false);
+    controller.handleMessage(ChatMessage(
+      platform: Platform.kick,
+      id: 'entry',
+      author: const ChatAuthor(name: 'Viewer', channelId: 'viewer-id'),
+      items: const [MessageItem.text('go')],
+      timestamp: DateTime.utc(2026),
+    ));
+    expect(controller.draw()?.name, 'Viewer');
+    server.broadcastGiveaway(controller.overlayState(controller.current));
+    final first = _Socket(server)..register('giveaway');
+    expect(first.snapshot('giveaway')['data']['winner']['name'], 'Viewer');
+
+    controller.applyFilter(
+        ChatFilter(const SettingsModel(blockedUsers: ['viewer-id'])));
+    server.broadcastGiveaway(controller.overlayState(controller.current));
+    final reconnect = _Socket(server)..register('giveaway');
+    expect(reconnect.snapshot('giveaway')['data']['winner'], isNull);
+    expect(controller.history.single.winners.single.name, 'Viewer');
   });
 
   test('installed and gallery templates receive live and replayed filters',
@@ -246,9 +307,11 @@ void main() {
 
     final alerts = _Socket(server)..register('alerts');
     sendRaid('second');
-    final delivered = alerts.sink.frames
-        .singleWhere((frame) => frame['type'] == 'alert')['data'];
-    expect(server.recentAlertsSnapshot, [delivered]);
+    final delivered =
+        alerts.sink.frames.singleWhere((frame) => frame['type'] == 'alert');
+    expect(server.recentAlertsSnapshot, isEmpty);
+    alerts.acknowledgeAlert(delivered['alertDeliveryId']);
+    expect(server.recentAlertsSnapshot, [delivered['data']]);
   });
 
   test(
@@ -437,6 +500,8 @@ void main() {
         timestamp: DateTime.utc(2026),
         authorName: 'Viewer',
         count: 42));
+    initialAlerts
+        .acknowledgeAlert(initialAlerts.sink.frames.last['alertDeliveryId']);
     final recent = server.recentAlertsSnapshot.single;
     await initialAlerts.disconnect();
     chat.sink.frames.clear();
@@ -503,6 +568,12 @@ class _Socket implements WebSocketChannel {
   void acknowledgeFeatured(String? id) =>
       _incoming.add(jsonEncode({'type': 'featuredRendered', 'deliveryId': id}));
 
+  void acknowledgeAlert(Object? id, {bool rendered = true}) =>
+      _incoming.add(jsonEncode({
+        'type': rendered ? 'alertRendered' : 'alertDiscarded',
+        'deliveryId': id,
+      }));
+
   void register(String view, {String? template, bool? active, bool? inObs}) {
     _incoming.add(jsonEncode({
       'type': 'register',
@@ -510,6 +581,7 @@ class _Socket implements WebSocketChannel {
       if (active != null) 'active': active,
       if (inObs != null) 'inObs': inObs,
       if (template != null) 'template': template,
+      if (view == 'alerts') 'alertDisplayAck': true,
     }));
     expect(sink.frames.singleWhere((frame) => frame['type'] == 'registered'),
         {'type': 'registered', 'view': view});

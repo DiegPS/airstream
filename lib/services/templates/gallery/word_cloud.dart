@@ -123,6 +123,11 @@ Airstream.on('filters', ({words, users}) => {
   }
   render();
 });
+// A restarted server sends no old chat, so these words are stale.
+Airstream.on('disconnected', () => {
+  recent.length = 0;
+  render();
+});
 configureWidget(() => {
   widgetTitle(copy[language].title);
   clearInterval(refresh);

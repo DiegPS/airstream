@@ -132,16 +132,29 @@ class ChatGiveaway {
           winners: winners ?? this.winners,
           drawId: drawId ?? this.drawId,
           batchDraw: batchDraw ?? this.batchDraw);
-  Map<String, Object?> toOverlayJson() => {
-        'keyword': keyword,
-        'phase': phase.name,
-        'entrantCount': entrantCount,
-        'winner': winner == null
-            ? null
-            : {'name': winner!.name, 'platform': winner!.platform.name},
-        'drawId': drawId,
-        if (batchDraw) 'batchDraw': true,
-      };
+  Map<String, Object?> toOverlayJson({ChatFilter? filter}) {
+    // Draw IDs are consecutive within a round, in the same order as winners.
+    final hiddenDrawIds = [
+      for (final (index, entrant) in winners.indexed)
+        if (filter?.blocksUser(entrant.name, entrant.authorId) == true)
+          drawId - winners.length + index + 1,
+    ];
+    final visibleWinner = hiddenDrawIds.lastOrNull == drawId ? null : winner;
+    return {
+      'keyword': keyword,
+      'phase': phase.name,
+      'entrantCount': entrantCount,
+      'winner': visibleWinner == null
+          ? null
+          : {
+              'name': visibleWinner.name,
+              'platform': visibleWinner.platform.name
+            },
+      'drawId': drawId,
+      if (batchDraw) 'batchDraw': true,
+      if (hiddenDrawIds.isNotEmpty) 'hiddenDrawIds': hiddenDrawIds,
+    };
+  }
 }
 
 class ChatGiveawayController {
@@ -227,6 +240,9 @@ class ChatGiveawayController {
     yield* _states.stream;
   }
 
+  Map<String, Object?>? overlayState(ChatGiveaway? state) =>
+      state?.toOverlayJson(filter: _filter);
+
   void start({required String keyword, required bool membersOnly}) {
     if (normalizeVoiceText(keyword).isEmpty) {
       throw ArgumentError('A giveaway needs a keyword.');
@@ -271,22 +287,27 @@ class ChatGiveawayController {
   }
 
   void applyFilter(ChatFilter filter) {
+    final previous = _filter;
     _filter = filter;
-    _removeBlockedEntrants();
+    final visibilityChanged = _current?.winners.any((winner) =>
+            (previous?.blocksUser(winner.name, winner.authorId) ?? false) !=
+            filter.blocksUser(winner.name, winner.authorId)) ??
+        false;
+    if (_removeBlockedEntrants() || visibilityChanged) _publishNow();
   }
 
-  void _removeBlockedEntrants() {
+  bool _removeBlockedEntrants() {
     final filter = _filter;
-    if (filter == null) return;
+    if (filter == null) return false;
     final previousCount = _entrants.length;
     _entrants.removeWhere((entrant) {
       if (!filter.blocksUser(entrant.name, entrant.authorId)) return false;
       _identities.remove(entrant.identity);
       return true;
     });
-    if (_entrants.length == previousCount) return;
+    if (_entrants.length == previousCount) return false;
     _dirty = true;
-    _publishNow();
+    return true;
   }
 
   void close() => _close(publish: true);
@@ -303,7 +324,7 @@ class ChatGiveawayController {
 
   List<GiveawayEntrant> drawMany(int count,
       {void Function(GiveawayEntrant, int)? onDraw}) {
-    _removeBlockedEntrants();
+    if (_removeBlockedEntrants()) _publishNow();
     final state = current;
     if (state == null) return const [];
     final eligible = state.eligibleEntrants.toList();

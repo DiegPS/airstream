@@ -82,7 +82,8 @@ void main() {
     // Longer than the receive timeout: this event must bypass grouping.
     await connection.server.stop();
     await connection.reconnect(const Duration(seconds: 1));
-    final alert = connection.nextAlert(const Duration(milliseconds: 300));
+    final alert =
+        connection.nextAlert(timeout: const Duration(milliseconds: 300));
     await connection.send(
         message(Platform.kick, membership: MembershipEventKind.gift, gifts: 5));
     expect(
@@ -100,7 +101,7 @@ void main() {
     await connection
         .send(message(Platform.twitch, membership: MembershipEventKind.gift));
     await expectLater(
-      connection.nextAlert(const Duration(milliseconds: 30)),
+      connection.nextAlert(timeout: const Duration(milliseconds: 30)),
       throwsA(isA<TimeoutException>()),
     );
     final alerts = connection.envelopes.stream
@@ -127,7 +128,8 @@ void main() {
             a['kind'] == 'membership' &&
             a['message'] == ''),
         isTrue);
-    await expectLater(connection.nextAlert(const Duration(milliseconds: 130)),
+    await expectLater(
+        connection.nextAlert(timeout: const Duration(milliseconds: 130)),
         throwsA(isA<TimeoutException>()));
     expect(connection.alerts, hasLength(2));
   });
@@ -161,7 +163,8 @@ void main() {
   test('ordinary Twitch and Kick chat never produces alerts', () async {
     await connection.send(message(Platform.twitch));
     await connection.send(message(Platform.kick));
-    await expectLater(connection.nextAlert(const Duration(milliseconds: 130)),
+    await expectLater(
+        connection.nextAlert(timeout: const Duration(milliseconds: 130)),
         throwsA(isA<TimeoutException>()));
     expect(connection.alerts, isEmpty);
   });
@@ -368,12 +371,8 @@ void main() {
 
   test('platform filtering blocks automatic history and delivery only',
       () async {
-    final registered = connection.envelopes.stream
-        .firstWhere((e) => e['type'] == 'registered');
-    connection.socket!.sink
-        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
-    await registered;
-    final automatic = connection.nextAlert();
+    await connection.registerAcknowledgingAlerts();
+    final automatic = connection.nextAlert(acknowledge: true);
     await connection.send(message(Platform.youtube,
         payment: const SuperChat(amount: r'$5', color: '#FFD600')));
     final recent = await automatic;
@@ -409,11 +408,7 @@ void main() {
   test(
       'server resolves currency units, counts and grouped gifts into alert data',
       () async {
-    final registered = connection.envelopes.stream
-        .firstWhere((e) => e['type'] == 'registered');
-    connection.socket!.sink
-        .add(jsonEncode({'type': 'register', 'view': 'alerts'}));
-    await registered;
+    await connection.registerAcknowledgingAlerts();
     connection.server.setSettings(const SettingsModel(alertTypeOptions: {
       'superchat': {
         'sound': 'coin',
@@ -453,7 +448,7 @@ void main() {
       await connection.send(msg);
       expect((await next)['option'], option);
     }
-    final nextGift = connection.nextAlert();
+    final nextGift = connection.nextAlert(acknowledge: true);
     await connection.send(message(Platform.twitch,
         id: 'gift1', membership: MembershipEventKind.gift));
     await connection.send(message(Platform.twitch,
@@ -493,7 +488,8 @@ void main() {
     }
     // Re-enable before the grouping window: an incorrectly created timer would fire.
     connection.server.setSettings(const SettingsModel());
-    await expectLater(connection.nextAlert(const Duration(milliseconds: 150)),
+    await expectLater(
+        connection.nextAlert(timeout: const Duration(milliseconds: 150)),
         throwsA(isA<TimeoutException>()));
     await connection.server.dispose();
     connection.disposed = true;
@@ -764,12 +760,32 @@ class _Connection {
     await delivered.timeout(const Duration(seconds: 2));
   }
 
-  Future<Map<String, dynamic>> nextAlert(
-      [Duration timeout = const Duration(seconds: 2)]) async {
+  Future<void> registerAcknowledgingAlerts() async {
+    final registered =
+        envelopes.stream.firstWhere((e) => e['type'] == 'registered');
+    socket!.sink.add(jsonEncode({
+      'type': 'register',
+      'view': 'alerts',
+      'alertDisplayAck': true,
+    }));
+    await registered;
+  }
+
+  Future<Map<String, dynamic>> nextAlert({
+    Duration timeout = const Duration(seconds: 2),
+    bool acknowledge = false,
+  }) async {
     final event = await envelopes.stream
         .where((e) => e['type'] == 'alert')
         .timeout(timeout)
         .first;
+    if (acknowledge) {
+      final id = event['alertDeliveryId'];
+      expect(id, isA<int>());
+      final recorded = server.recentAlerts.skip(1).first;
+      socket!.sink.add(jsonEncode({'type': 'alertRendered', 'deliveryId': id}));
+      await recorded.timeout(timeout);
+    }
     return event['data'] as Map<String, dynamic>;
   }
 

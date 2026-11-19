@@ -13,6 +13,13 @@ enum PollInputError { invalid, ambiguousOptions, optionTooLong, invalidCommand }
 
 typedef PollAnswer = ({String text, int votes});
 typedef _FreeVote = ({String normalized, String original});
+typedef _VoteSource = ({
+  Platform platform,
+  YoutubeStreamOrientation? orientation,
+  String id,
+  String authorId,
+  String name,
+});
 
 /// A poll viewers can answer from any connected chat.
 class ChatPoll {
@@ -223,6 +230,7 @@ class ChatPollController {
   ChatPoll? _openPoll;
   Map<String, int> _wordOptions = const {};
   final _privateVoteIds = <String>{};
+  final _voteSources = <String, _VoteSource>{};
   Timer? _endTimer;
   Timer? _publishTimer;
   bool _disposed = false;
@@ -257,6 +265,7 @@ class ChatPollController {
         validateSetup(question, options, mode, command);
     _wordOptions = keys;
     _privateVoteIds.clear();
+    _voteSources.clear();
     _endTimer?.cancel();
     _poll = _openPoll = ChatPoll(
       question: question.trim(),
@@ -327,6 +336,7 @@ class ChatPollController {
     _endTimer?.cancel();
     _openPoll = null;
     _privateVoteIds.clear();
+    _voteSources.clear();
     final closed = _poll = poll._copyWith(closed: true);
     _publishNow();
     if (!_disposed) _ended.add(closed);
@@ -336,6 +346,7 @@ class ChatPollController {
     _endTimer?.cancel();
     _poll = _openPoll = null;
     _privateVoteIds.clear();
+    _voteSources.clear();
     _publishNow();
   }
 
@@ -391,8 +402,45 @@ class ChatPollController {
       _poll = _openPoll = poll._copyWith(
           freeVotes: Map.unmodifiable({...poll.freeVotes, voter: answer}));
     }
+    _voteSources[voter] = (
+      platform: message.platform,
+      orientation: message.youtubeStreamOrientation,
+      id: message.id,
+      authorId: message.author.channelId,
+      name: message.author.name,
+    );
     _schedulePublish();
     return private;
+  }
+
+  void handleModeration(ChatModerationEvent event) {
+    final poll = _openPoll;
+    if (poll == null) return;
+    final endsAt = poll.endsAt;
+    if (endsAt != null && !_clock().isBefore(endsAt)) {
+      end();
+      return;
+    }
+    final previousCount = _voteSources.length;
+    _voteSources.removeWhere((_, source) => event.matchesTarget(
+          targetPlatform: source.platform,
+          orientation: source.orientation,
+          id: source.id,
+          authorId: source.authorId,
+          name: source.name,
+        ));
+    if (_voteSources.length == previousCount) return;
+    _poll = _openPoll = poll._copyWith(
+      votes: Map.unmodifiable({
+        for (final entry in poll.votes.entries)
+          if (_voteSources.containsKey(entry.key)) entry.key: entry.value,
+      }),
+      freeVotes: Map.unmodifiable({
+        for (final entry in poll.freeVotes.entries)
+          if (_voteSources.containsKey(entry.key)) entry.key: entry.value,
+      }),
+    );
+    _publishNow();
   }
 
   /// The option index in a classic vote, which allows trailing chat text.

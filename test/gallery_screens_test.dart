@@ -12,6 +12,7 @@ import 'package:airstream/services/overlay/templates/timer_overlay.dart';
 import 'package:airstream/services/overlay/templates/sdk_v1.dart';
 import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/services/templates/template_library.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -62,7 +63,7 @@ void main() {
         expect(manifest.name, names[item.id]![i]);
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
-        expect(manifest.gallery, (id: item.id, version: recent ? 3 : 1));
+        expect(manifest.gallery, (id: item.id, version: recent ? 4 : 2));
         expect((item.width, item.height), widgetSize ?? (1920, 1080));
         expect((manifest.width, manifest.height), (item.width, item.height));
         final fields = (raw['fields'] as List).cast<Map>();
@@ -111,6 +112,21 @@ void main() {
     expect(TemplateManifest('custom', {'height': 10}).height, 32);
   });
 
+  test('every gallery file change comes with a new gallery version', () {
+    // Installed copies only offer "add again" when the version goes up, so a
+    // changed script with the same version never reaches existing users.
+    final fingerprints = {
+      for (final item in galleryCatalog.values)
+        item.id: '${item.version}:${sha256.convert(utf8.encode(jsonEncode(
+              item
+                  .files()
+                  .map((k, v) => MapEntry(k, v.replaceAll('\r\n', '\n'))),
+            ))).toString().substring(0, 16)}',
+    };
+    expect(fingerprints, _galleryFingerprints,
+        reason: 'A gallery item changed: bump its version in '
+            'gallery_catalog.dart, then update _galleryFingerprints.');
+  });
   test('both poll pages highlight every tied choice and free answer',
       () => runGalleryChecks('poll ties'));
   test('gallery screens and widgets work with SDK v1 in Node',
@@ -157,7 +173,26 @@ void main() {
       () => runGalleryChecks('ticker blocked supporter'));
   test('/clock hides a stale count on disconnect until a fresh snapshot',
       () => runGalleryChecks('clock disconnect'));
+  test('the Word Cloud forgets old chat when the server disconnects',
+      () => runGalleryChecks('word cloud disconnect'));
 }
+
+/// Version and file digest of each gallery item (see the version test).
+const _galleryFingerprints = {
+  'recent-support': '4:870260740ca11769',
+  'starting-soon': '2:1a18019a085588f0',
+  'be-right-back': '2:9a5526ff07390a34',
+  'stream-ending': '2:43363bffa52e8568',
+  'credits': '2:b249e47805576f1c',
+  'ticker': '2:73b528118ca1b536',
+  'latest-support': '2:00102337d9bd89b9',
+  'top-supporters': '2:f0b9e0e86070caa8',
+  'queue-list': '2:c173858f38c33d81',
+  'poll': '2:3b13786635027803',
+  'scoreboard': '2:774e4183f60aca19',
+  'word-cloud': '2:be2e12ffcdecce94',
+  'emote-wall': '2:0ac5c7bc833b7c45',
+};
 
 Future<void> runGalleryChecks(String scenario) async {
   final temp = await Directory.systemTemp.createTemp('gallery-screens-');
@@ -633,6 +668,22 @@ function checkWordCloudFilters() {
   view.send('filters', {words: [], users: []});
   assert.deepEqual(words(), ['orchid']);
 }
+function checkWordCloudDisconnect() {
+  const view = page('word-cloud');
+  view.fields({refresh: 1});
+  view.send('message', {platform: 'twitch', author: 'Viewer', text: 'orchid'});
+  view.advance(1000);
+  const words = () => view.nodes.words.children.map(word => word.textContent);
+  assert.deepEqual(words(), ['orchid']);
+  view.close();
+  assert.deepEqual(words(), []);
+  assert.equal(view.nodes.stage.hidden, true);
+  view.advance(3000);
+  view.open();
+  view.send('message', {platform: 'twitch', author: 'Viewer', text: 'maple'});
+  view.advance(1000);
+  assert.deepEqual(words(), ['maple']);
+}
 function checkWordCloudModeration() {
   const view = page('word-cloud');
   view.fields({refresh: 1});
@@ -914,6 +965,7 @@ const regressions = {
   'screen chat disconnect': checkScreenChatDisconnect,
   'ticker blocked supporter': checkTickerBlockedSupporter,
   'clock disconnect': checkClockDisconnect,
+  'word cloud disconnect': checkWordCloudDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();
