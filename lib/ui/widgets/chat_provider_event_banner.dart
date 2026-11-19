@@ -59,9 +59,9 @@ class _TransientChatProviderEventBannerState
         _advance();
       }
     }
-    if (_eventKey(widget.event) != _eventKey(oldWidget.event)) {
-      _enqueue(widget.event);
-    }
+    // Kick sends poll updates (new counts, deletion) under the same id, so a
+    // new event object counts even when its key did not change.
+    if (!identical(widget.event, oldWidget.event)) _enqueue(widget.event);
   }
 
   void _enqueue(ChatProviderEvent? event) {
@@ -70,6 +70,29 @@ class _TransientChatProviderEventBannerState
         _filter.blocksProviderEvent(event)) {
       return;
     }
+    final key = _eventKey(event);
+    final deleted = event.data['deleted'] == true;
+    if (_visibleEvent != null && _eventKey(_visibleEvent) == key) {
+      if (deleted) {
+        _hideTimer?.cancel();
+        _advance();
+      } else {
+        // Fresh data in place, keeping the time it has left on screen.
+        _visibleEvent = event;
+      }
+      return;
+    }
+    final waiting = _pending.indexWhere((e) => _eventKey(e) == key);
+    if (waiting != -1) {
+      if (deleted) {
+        _pending.removeAt(waiting);
+      } else {
+        _pending[waiting] = event;
+      }
+      return;
+    }
+    // A deletion of something not on screen has nothing to show.
+    if (deleted) return;
     if (_visibleEvent == null) {
       _display(event);
       return;

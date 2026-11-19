@@ -68,13 +68,31 @@ void main() {
       expect(find.text(l.queuePlaying), findsOneWidget);
       expect(find.byKey(Key('queue-done-${first.id}')), findsOneWidget);
 
+      // Ten players playing: Next waits until someone is marked Done.
+      queue.next(9);
+      await t.pumpAndSettle(const Duration(milliseconds: 250));
+      ElevatedButton next() =>
+          t.widget<ElevatedButton>(find.byKey(const Key('queue-next')));
+      expect(next().onPressed, isNull);
+      expect(find.text(l.queuePlayingFull), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await click(find.byKey(Key('queue-done-${first.id}')));
+      expect(next().onPressed, isNotNull);
+      expect(find.text(l.queuePlayingFull), findsNothing);
+      for (final player in [...queue.current.playing]) {
+        queue.done(player.id);
+      }
+      await t.pumpAndSettle(const Duration(milliseconds: 250));
+      queue.next(1);
+      await t.pumpAndSettle(const Duration(milliseconds: 250));
+
       await click(find.text(l.queueSettings));
       expect(find.text(l.queueCommand), findsOneWidget);
       expect(t.takeException(), isNull);
 
       await click(find.byKey(const Key('queue-clear')));
       expect(find.text(l.queueClearConfirm), findsOneWidget);
-      expect(queue.current.entries, hasLength(49));
+      expect(queue.current.entries, hasLength(39));
       await click(find.text(l.cancel));
       expect(queue.current.playing, hasLength(1));
       await click(find.byKey(const Key('queue-clear')));

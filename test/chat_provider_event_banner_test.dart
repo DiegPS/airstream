@@ -193,6 +193,53 @@ void main() {
     expect(find.byType(ChatProviderEventBanner), findsNothing);
   });
 
+  testWidgets('Kick poll updates replace and deletions remove the same poll',
+      (tester) async {
+    ChatProviderEvent poll(String id, int votes, {bool deleted = false}) =>
+        ChatProviderEvent(
+          platform: Platform.kick,
+          kind: ChatProviderEventKind.poll,
+          id: id,
+          timestamp: DateTime.utc(2026),
+          data: deleted
+              ? const {'deleted': true}
+              : {
+                  'options': [
+                    {'label': 'Yes', 'votes': votes},
+                  ],
+                },
+        );
+    Future<void> show(ChatProviderEvent e) =>
+        tester.pumpWidget(_app(TransientChatProviderEventBanner(
+          event: e,
+          visibleDuration: const Duration(seconds: 2),
+        )));
+
+    await show(poll('poll-1', 1));
+    expect(find.textContaining('Yes (1)'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await show(poll('poll-1', 5));
+    await tester.pump();
+    expect(find.textContaining('Yes (5)'), findsOneWidget);
+    expect(find.textContaining('Yes (1)'), findsNothing);
+    // The update keeps the card's remaining time instead of restarting it.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+
+    // A queued poll takes its newest counts, and a deletion removes it.
+    await show(poll('poll-2', 1));
+    await show(poll('poll-3', 2));
+    await show(poll('poll-3', 9));
+    await show(poll('poll-2', 0, deleted: true));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Yes (9)'), findsOneWidget);
+    await show(poll('poll-3', 0, deleted: true));
+    await tester.pumpAndSettle();
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+    await tester.pump(const Duration(seconds: 3));
+  });
+
   testWidgets('block changes remove visible and queued provider events',
       (tester) async {
     ChatProviderEvent event(String author, String text) => ChatProviderEvent(

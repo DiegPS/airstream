@@ -75,8 +75,11 @@ class LiveClock {
             current.phase != ClockPhase.paused)) {
       return current;
     }
-    final value = (shownAt(now) + seconds.clamp(-maxSeconds, maxSeconds) * 1000)
+    final shown = shownAt(now);
+    final value = (shown + seconds.clamp(-maxSeconds, maxSeconds) * 1000)
         .clamp(0, maxSeconds * 1000);
+    // Adding 0 s, or more time to a timer at its cap, changes nothing.
+    if (value == shown) return current;
     if (value == 0) return _state(ClockPhase.ended);
     return phase == ClockPhase.running
         ? _state(phase, anchor: now + value)

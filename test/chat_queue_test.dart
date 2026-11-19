@@ -152,7 +152,8 @@ void main() {
     expect(waiting().first, 'Viewer 3');
   });
 
-  test('FIFO and seeded random take distinct players and cap playing at ten',
+  test(
+      'FIFO and seeded random take distinct players into at most ten free slots',
       () {
     open();
     for (var i = 0; i < 15; i++) {
@@ -162,15 +163,20 @@ void main() {
         queue.next(8).map((e) => e.name), [for (var i = 0; i < 8; i++) '$i']);
     final pool = [for (var i = 8; i < 15; i++) '$i'];
     final expectedRandom = Random(23);
+    // Only two slots are free: nobody still playing is dropped.
     final expected = List.generate(
-        4, (_) => pool.removeAt(expectedRandom.nextInt(pool.length)));
+        2, (_) => pool.removeAt(expectedRandom.nextInt(pool.length)));
     final drawn = queue.next(4, random: true);
     expect(drawn.map((e) => e.name), expected);
     expect(queue.current.playing.map((e) => e.name),
-        ['2', '3', '4', '5', '6', '7', ...expected]);
+        [for (var i = 0; i < 8; i++) '$i', ...expected]);
+    expect(waiting(), pool);
+    expect(queue.playingFull, isTrue);
+    expect(queue.next(1), isEmpty);
     expect(waiting(), pool);
     queue.done(drawn.first.id);
     expect(queue.current.playing, hasLength(9));
+    expect(queue.playingFull, isFalse);
     queue.remove(queue.current.entries.first.id);
     expect(waiting(), pool.skip(1));
     queue.clear();

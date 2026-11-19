@@ -2902,6 +2902,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kqueueAlreadyPaused': 'The queue is already paused',
         'kqueueAlreadyClosed': 'The queue is already closed',
         'kqueueEmpty': 'Nobody is waiting in the queue',
+        'kqueuePlayingFull': 'Ten players are already playing',
         'kcounterLimit': 'Counter limit reached',
         'krecipe1': 'Welcome a raid',
         'krecipeDesc1': 'Show Raid for 15 seconds, then return.',
@@ -3298,6 +3299,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queueDone => 'Done';
+
+  @override
+  String get queuePlayingFull =>
+      'Ten players are playing. Mark one as Done to call more.';
 
   @override
   String get galleryQueueDescription =>

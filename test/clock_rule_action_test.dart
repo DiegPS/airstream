@@ -25,7 +25,8 @@ AppController _controller() => AppController(
       obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
     );
 
-Future<(String, String?, int)> _run(LiveClock clock, String op) async {
+Future<(String, String?, int)> _run(LiveClock clock, String op,
+    {int seconds = 60}) async {
   final app = _controller();
   addTearDown(app.dispose);
   var writes = 0;
@@ -43,7 +44,7 @@ Future<(String, String?, int)> _run(LiveClock clock, String op) async {
           ...RuleSchema.newRule('manual', id: 'clock'),
           'enabled': true,
           'actions': [
-            {'id': 'a', 'type': 'clock', 'op': op, 'seconds': 60},
+            {'id': 'a', 'type': 'clock', 'op': op, 'seconds': seconds},
           ],
         }
       ],
@@ -71,6 +72,15 @@ void main() {
     expect(await _run(idle, 'pause'), ('skipped', 'clockUnchanged', 0));
     expect(await _run(idle, 'reset'), ('skipped', 'clockUnchanged', 0));
     expect(await _run(const LiveClock(mode: ClockMode.clock), 'start'),
+        ('skipped', 'clockUnchanged', 0));
+    // Adding 0 seconds, or time to a paused timer already at its cap.
+    expect(await _run(running, 'add', seconds: 0),
+        ('skipped', 'clockUnchanged', 0));
+    expect(
+        await _run(
+            const LiveClock(
+                phase: ClockPhase.paused, valueMs: LiveClock.maxSeconds * 1000),
+            'add'),
         ('skipped', 'clockUnchanged', 0));
   });
 

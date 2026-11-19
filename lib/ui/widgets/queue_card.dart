@@ -56,6 +56,8 @@ class QueueCard extends ConsumerWidget {
         final hint = state.status == QueueStatus.open
             ? l.queueJoinHint(command)
             : l.queueJoinWhenOpen(command);
+        final playingFull =
+            state.playing.length >= ChatQueueController.maxPlaying;
         return UiCard(
           key: const Key('queue-card'),
           title: l.queueTitle,
@@ -115,6 +117,12 @@ class QueueCard extends ConsumerWidget {
                 actionId: 'remove',
               ),
             const SizedBox(height: 8),
+            if (playingFull && state.entries.isNotEmpty) ...[
+              Text(l.queuePlayingFull,
+                  key: const Key('queue-playing-full'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+            ],
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -122,7 +130,7 @@ class QueueCard extends ConsumerWidget {
                   child: ElevatedButton(
                     key: const Key('queue-next'),
                     style: primarySettingsStyle(),
-                    onPressed: state.entries.isEmpty
+                    onPressed: state.entries.isEmpty || playingFull
                         ? null
                         : () => queue.next(options.nextCount),
                     child: Text(l.queueNext),
@@ -149,7 +157,7 @@ class QueueCard extends ConsumerWidget {
                 button(
                     'random',
                     l.queueRandom,
-                    state.entries.isEmpty
+                    state.entries.isEmpty || playingFull
                         ? null
                         : () => queue.next(options.nextCount, random: true)),
                 button(

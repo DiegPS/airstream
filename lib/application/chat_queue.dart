@@ -308,6 +308,10 @@ class ChatQueueController {
   QueueStatus get status => _status;
   bool get hasEntries => _entries.isNotEmpty;
 
+  /// At most this many players are shown as playing at once.
+  static const maxPlaying = 10;
+  bool get playingFull => _playing.length >= maxPlaying;
+
   QueueState get current => QueueState(
         status: _status,
         entries: List.unmodifiable(_entries),
@@ -483,14 +487,16 @@ class ChatQueueController {
   }
 
   List<QueueEntry> next(int count, {bool random = false, int depth = 0}) {
-    if (_entries.isEmpty) return const [];
+    // Players still marked as playing keep their slot until marked Done:
+    // dropping them silently would lose them (they count as played).
+    final free = maxPlaying - _playing.length;
+    if (_entries.isEmpty || free <= 0) return const [];
     final picked = List<QueueEntry>.generate(
-      min(count.clamp(1, 10), _entries.length),
+      min(min(count.clamp(1, maxPlaying), _entries.length), free),
       (_) => _entries.removeAt(random ? _random.nextInt(_entries.length) : 0),
     );
     _played.addAll(picked.map((entry) => entry.identity));
     _playing.addAll(picked);
-    if (_playing.length > 10) _playing.removeRange(0, _playing.length - 10);
     _changed();
     final result = List<QueueEntry>.unmodifiable(picked);
     onNext?.call(result, depth);

@@ -125,6 +125,7 @@ class RuleActions implements RuleActionTarget {
       'queue.close' when queue.status == QueueStatus.closed =>
         'queueAlreadyClosed',
       'queue.next' when !queue.hasEntries => 'queueEmpty',
+      'queue.next' when queue.playingFull => 'queuePlayingFull',
       _ => null,
     };
     if (queueReason != null) return queueReason;

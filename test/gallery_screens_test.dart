@@ -175,6 +175,8 @@ void main() {
       () => runGalleryChecks('clock disconnect'));
   test('the Word Cloud forgets old chat when the server disconnects',
       () => runGalleryChecks('word cloud disconnect'));
+  test('/chat labels YouTube membership gifts apart from subscription gifts',
+      () => runGalleryChecks('chat gift labels'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
@@ -651,6 +653,21 @@ function checkChatParentModeration() {
   assert.match(body(), /Vertical quote/);
   for (const i of [1, 2, 3]) assert.match(body(), new RegExp('Reply ' + i));
 }
+function checkChatGiftLabels() {
+  const labels = {
+    en: {youtube: 'Gifted membership', twitch: 'Gift subscription', kick: 'Gift subscription'},
+    es: {youtube: 'Membresía regalada', twitch: 'Suscripción regalada', kick: 'Suscripción regalada'},
+  };
+  for (const [language, expected] of Object.entries(labels)) {
+    for (const [platform, label] of Object.entries(expected)) {
+      const view = page('/chat');
+      view.send('settings', {appLanguageCode: language});
+      view.send('message', {sequence: 1, id: 'gift', platform, author: 'Ana',
+        isMembershipEvent: true, membershipEventKind: 'gift', items: []});
+      assert.match(view.nodes.root.textContent, new RegExp(label), language + ' ' + platform);
+    }
+  }
+}
 function checkWordCloudFilters() {
   const view = page('word-cloud');
   view.fields({refresh: 1});
@@ -966,6 +983,7 @@ const regressions = {
   'ticker blocked supporter': checkTickerBlockedSupporter,
   'clock disconnect': checkClockDisconnect,
   'word cloud disconnect': checkWordCloudDisconnect,
+  'chat gift labels': checkChatGiftLabels,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

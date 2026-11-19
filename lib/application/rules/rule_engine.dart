@@ -110,6 +110,7 @@ class RuleEngine {
     'queueAlreadyPaused',
     'queueAlreadyClosed',
     'queueEmpty',
+    'queuePlayingFull',
     'counterLimit'
   ];
   static bool triggerAdapterActive(String type) =>

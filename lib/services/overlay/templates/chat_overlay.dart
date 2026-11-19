@@ -330,6 +330,7 @@ const UI_STRINGS = {
     newSubscriber: 'New subscriber!',
     resubscribed: (months) => 'Resubscribed for ' + months + ' months',
     giftSubscription: 'Gift subscription',
+    giftMembership: 'Gifted membership',
     subscriptionUpdate: 'Subscription update',
     membershipUpdate: 'Membership update',
     sharedChat: 'SHARED',
@@ -356,6 +357,7 @@ const UI_STRINGS = {
     newSubscriber: '¡Nuevo suscriptor!',
     resubscribed: (months) => 'Se resuscribió por ' + months + ' meses',
     giftSubscription: 'Suscripción regalada',
+    giftMembership: 'Membresía regalada',
     subscriptionUpdate: 'Actualización de suscripción',
     membershipUpdate: 'Actualización de membresía',
     sharedChat: 'COMPARTIDO',
@@ -413,7 +415,10 @@ function addBadge(row, className, label) {
 function membershipEventLabel(message, strings, isTwitch, isKick) {
   if (message.membershipEventKind === 'subscription') return strings.newSubscriber;
   if (message.membershipEventKind === 'resubscription') return strings.resubscribed(message.membershipMonths || 0);
-  if (message.membershipEventKind === 'gift') return strings.giftSubscription;
+  if (message.membershipEventKind === 'gift') {
+    // YouTube gifts memberships; Twitch and Kick gift subscriptions.
+    return isTwitch || isKick ? strings.giftSubscription : strings.giftMembership;
+  }
   return isTwitch ? strings.newSubscriber : isKick ? strings.subscriptionUpdate : strings.membershipUpdate;
 }
 
