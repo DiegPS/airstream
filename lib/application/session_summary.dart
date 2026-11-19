@@ -9,6 +9,8 @@ import 'rules/rule_events.dart';
 /// How a viewer supported the stream.
 enum SupportKind { superChat, membership, gift, raid, support }
 
+typedef _SupportIdentity = (Platform, {String accountId, String fallbackName});
+
 class SessionSupporter {
   const SessionSupporter({
     required this.platform,
@@ -128,8 +130,11 @@ class SessionSummaryCollector {
   final _messages = <Platform, int>{};
   final _chatters = <String,
       ({Platform platform, String name, String channelId, int count})>{};
-  final _supporters =
-      <({SessionSupporter supporter, String identity, bool inSummary})>[];
+  final _supporters = <({
+    SessionSupporter supporter,
+    _SupportIdentity identity,
+    bool inSummary
+  })>[];
   int _nextSupporter = 0;
   Map<String, Object?>? _templateSupports;
   ChatFilter? _publicFilter;
@@ -217,7 +222,8 @@ class SessionSummaryCollector {
         months: message.membershipMonths,
         count: type == 'gift' ? (gifts ?? 1) : (bits ?? gifts),
       ),
-      identity: key,
+      identity: _supportIdentity(
+          message.platform, message.author.accountId, message.author.name),
       inSummary: countsAsChat || message.isMembershipEvent,
     ));
     if (type != null) _templateSupports = null;
@@ -249,7 +255,8 @@ class SessionSummaryCollector {
         value: event.count,
         count: event.count,
       ),
-      identity: _identity(event.platform, event.authorName),
+      identity: _supportIdentity(
+          event.platform, event.authorAccountId, event.authorName),
       inSummary: legacy != null,
     ));
     if (kind != null) _templateSupports = null;
@@ -261,6 +268,16 @@ class SessionSummaryCollector {
 
   static String _identity(Platform platform, String author) =>
       '${platform.name}:${author.trim().toLowerCase()}';
+
+  static _SupportIdentity _supportIdentity(
+      Platform platform, String accountId, String name) {
+    final id = accountId.trim();
+    return (
+      platform,
+      accountId: id,
+      fallbackName: id.isEmpty ? name.trim().toLowerCase() : '',
+    );
+  }
 
   /// Builds the template projection on demand, independent of the dialog.
   Map<String, Object?>? templateState({required bool live}) {
@@ -308,12 +325,12 @@ class SessionSummaryCollector {
     final latest = <String, SessionSupporter?>{
       for (final type in alertTypeIds) type: null,
     };
-    final rankings = <String, Map<String, _SupportTotal>>{
+    final rankings = <String, Map<_SupportIdentity, _SupportTotal>>{
       'gift': {},
       'bits': {},
       'kicks': {},
     };
-    final currencies = <String, Map<String, _SupportTotal>>{};
+    final currencies = <String, Map<_SupportIdentity, _SupportTotal>>{};
     final superchatCounts = <String, int>{};
     final publicSupports = <SessionSupporter>[];
 
@@ -362,7 +379,8 @@ class SessionSummaryCollector {
     };
   }
 
-  static List<Map<String, Object?>> _rank(Map<String, _SupportTotal> totals) {
+  static List<Map<String, Object?>> _rank(
+      Map<_SupportIdentity, _SupportTotal> totals) {
     final ranked = totals.values.toList()
       ..sort((a, b) {
         final value = b.value.compareTo(a.value);
@@ -402,7 +420,7 @@ class SessionSummaryCollector {
       final nameKey = _identity(support.platform, support.name);
       final key = support.channelId.isNotEmpty
           ? _identity(support.platform, support.channelId)
-          : keysByName[nameKey] ?? entry.identity;
+          : keysByName[nameKey] ?? nameKey;
       final participant = participants.putIfAbsent(
           key,
           () => _ParticipantTotal(

@@ -138,6 +138,7 @@ class TwitchService {
         author: ChatAuthor(
           name: message.author.name,
           channelId: message.author.id ?? message.author.login,
+          accountId: message.author.id ?? '',
           color: message.author.color,
           badges: message.author.badges
               .map(
@@ -291,6 +292,7 @@ class TwitchService {
         authorName: notice.senderName ?? notice.message.author.name,
         authorChannelId:
             notice.message.author.id ?? notice.message.author.login,
+        authorAccountId: notice.message.author.id ?? '',
         text: notice.systemMessage ?? notice.message.plainText,
         viewerText: notice.message.plainText,
         count: notice.viewerCount ?? notice.milestoneValue,

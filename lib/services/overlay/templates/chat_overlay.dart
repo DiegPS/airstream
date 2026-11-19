@@ -786,6 +786,8 @@ function addProviderEvent(event) {
     record.event.platform === event.platform && record.event.kind === event.kind &&
     record.event.id === event.id);
   if (existing >= 0) removeRecord(records.splice(existing, 1)[0]);
+  // A deletion (a Kick poll removed) only takes the old card away.
+  if (event.data && event.data.deleted === true) return;
   const record = {
     event: event,
     receivedAt: Date.now(),

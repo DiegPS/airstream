@@ -101,6 +101,7 @@ class RuleEngine {
     'goalNotFound',
     'timerNotRunning',
     'clockUnchanged',
+    'subathonUnchanged',
     'noReceiver',
     'invalidKeyword',
     'alreadyOpen',

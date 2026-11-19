@@ -36,6 +36,7 @@ import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/speech/speech_model_catalog.dart';
+import 'package:airstream/services/templates/template_archive.dart';
 import 'package:airstream/services/tts/tts_model_catalog.dart';
 import 'package:airstream/services/tts_service.dart'
     show TtsLoadPhase, TtsLoadState;

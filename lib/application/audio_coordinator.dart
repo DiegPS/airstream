@@ -11,7 +11,7 @@ import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/chat_reading_options.dart';
 import 'package:airstream/pipeline/chat_filter.dart';
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
@@ -509,6 +509,13 @@ class AudioCoordinator {
     if (scaled > 3000) return 3000;
     return scaled;
   }
+
+  /// A chat session starts (also after every chat ended on its own), so
+  /// backlog from the new connections is not read aloud.
+  void startSession() => _resetTtsSession();
+
+  @visibleForTesting
+  DateTime? get ttsSessionStartedAt => _ttsSessionStartedAt;
 
   void _resetTtsSession() {
     _ttsCooldown.clear();

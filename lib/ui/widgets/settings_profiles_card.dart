@@ -351,13 +351,39 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
             await notifier.ready;
             if (!mounted) return;
             final path = location.path;
-            await service.exportCurrent(
+            final omittedAudio = await service.exportCurrent(
               path.toLowerCase().endsWith('.airstream-backup')
                   ? path
                   : '$path.airstream-backup',
               () => ref.read(settingsProvider),
             );
-            if (context.mounted) notify(l.backupExportDone);
+            if (!context.mounted) return;
+            if (omittedAudio.isEmpty) {
+              notify(l.backupExportDone);
+            } else {
+              await showDialog<void>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  scrollable: true,
+                  title: Text(l.backupExportDone),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.backupExportOmittedAudio),
+                      const SizedBox(height: 12),
+                      for (final path in omittedAudio) Text(path),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(l.close),
+                    ),
+                  ],
+                ),
+              );
+            }
           } catch (error, stack) {
             AppLogger.warning('Full backup export failed', stackTrace: stack);
             if (context.mounted) {

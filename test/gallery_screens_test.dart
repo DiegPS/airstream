@@ -64,6 +64,7 @@ void main() {
         expect(manifest.sdk, 1);
         final version = switch (item.id) {
           'recent-support' => 5,
+          'ticker' => 4,
           'poll' || 'scoreboard' || 'word-cloud' || 'emote-wall' => 2,
           _ => 3,
         };
@@ -183,6 +184,12 @@ void main() {
       () => runGalleryChecks('word cloud disconnect'));
   test('/chat labels YouTube membership gifts apart from subscription gifts',
       () => runGalleryChecks('chat gift labels'));
+  test('the moving Ticker drops last session supporters on a new session',
+      () => runGalleryChecks('ticker new session'));
+  test('/chat removes a deleted Kick poll instead of adding a blank card',
+      () => runGalleryChecks('chat deleted poll'));
+  test('/giveaway hides the winner when the server disconnects',
+      () => runGalleryChecks('giveaway disconnect'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
@@ -192,7 +199,7 @@ const _galleryFingerprints = {
   'be-right-back': '3:f99c1a341897c89c',
   'stream-ending': '3:a0ed7f1f43e19b22',
   'credits': '3:9842ea867358a4ef',
-  'ticker': '3:75505f949ec5a758',
+  'ticker': '4:93d445bf82fb29a8',
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '3:124ae83fa1eceaab',
   'queue-list': '3:95c8911b8bbe729b',
@@ -955,6 +962,40 @@ function checkTickerBlockedSupporter() {
   assert.match(track.textContent, /Keep me/);
 }
 
+function checkTickerNewSession() {
+  const view = page('ticker');
+  const track = view.nodes['ticker-track'];
+  const old = {id: '1', type: 'superchat', platform: 'youtube', name: 'Old fan',
+    amount: '$5', at: '2026-11-18T10:00:00Z'};
+  view.send('session', {startedAt: '2026-11-18T09:00:00Z', latest: {superchat: old}}, true);
+  view.fields({messages: 'Keep me', showGoals: false, showTimer: false});
+  assert.match(track.textContent, /Old fan/);
+  // Stop and Start: the fresh session replaces the moving track at once.
+  view.send('session', {startedAt: '2026-11-19T09:00:00Z', latest: {}});
+  assert.doesNotMatch(track.textContent, /Old fan/);
+  assert.match(track.textContent, /Keep me/);
+}
+
+function checkChatDeletedPoll() {
+  const view = page('/chat');
+  const poll = (data) => view.send('providerEvent', {platform: 'kick', kind: 'poll',
+    id: 'poll-1', title: 'Poll', text: 'Best map?', data});
+  poll({});
+  assert.match(view.nodes.root.textContent, /Best map/);
+  poll({deleted: true});
+  assert.doesNotMatch(view.nodes.root.textContent, /Best map/);
+}
+
+function checkGiveawayDisconnect() {
+  const view = page('/giveaway');
+  view.send('giveaway', {phase: 'drawn', drawId: 1, winner: {name: 'Ana', platform: 'twitch'}}, true);
+  assert.equal(view.nodes.giveaway.hidden, false);
+  assert.match(view.nodes.giveaway.textContent, /Ana/);
+  view.close();
+  assert.equal(view.nodes.giveaway.hidden, true);
+  assert.doesNotMatch(view.nodes.giveaway.textContent, /Ana/);
+}
+
 function checkClockDisconnect() {
   const view = page('/clock');
   const now = Date.now();
@@ -1067,6 +1108,9 @@ const regressions = {
   'clock disconnect': checkClockDisconnect,
   'word cloud disconnect': checkWordCloudDisconnect,
   'chat gift labels': checkChatGiftLabels,
+  'ticker new session': checkTickerNewSession,
+  'chat deleted poll': checkChatDeletedPoll,
+  'giveaway disconnect': checkGiveawayDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

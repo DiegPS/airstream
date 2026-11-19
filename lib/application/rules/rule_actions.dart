@@ -93,6 +93,12 @@ class RuleActions implements RuleActionTarget {
         SubathonTimer.remaining(s, now) == 0) {
       return 'timerNotRunning';
     }
+    // Adding time at the cap, or 0 seconds, leaves the subathon as it was.
+    if (type == 'subathon.adjust' &&
+        identical(SubathonTimer.addSeconds(s, now, a['seconds'] as int? ?? 0),
+            SubathonTimer.normalize(s, now))) {
+      return 'subathonUnchanged';
+    }
     if (type == 'clock') {
       // An operation the timer cannot take (adding time while idle or ended,
       // starting it while running) must not be reported as done.

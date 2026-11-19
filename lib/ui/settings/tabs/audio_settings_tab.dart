@@ -302,6 +302,25 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                                 ],
                               );
                               if (selected == null || !context.mounted) return;
+                              final limit = const TemplateArchiveLimits().file;
+                              String? error;
+                              try {
+                                if (await selected.length() > limit) {
+                                  error = l.voiceReferenceTooLarge(
+                                      limit ~/ (1024 * 1024));
+                                }
+                              } on io.FileSystemException {
+                                error = l.voiceReferenceUnreadable;
+                              }
+                              if (!context.mounted) return;
+                              if (error != null) {
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                                return;
+                              }
                               // The picker can stay open while goals, timers
                               // or counters change: apply only the path to the
                               // latest settings, not the snapshot from before.

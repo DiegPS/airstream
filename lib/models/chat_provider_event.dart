@@ -30,12 +30,13 @@ class ChatProviderEvent {
     required this.timestamp,
     this.authorName = '',
     this.authorChannelId = '',
+    String? authorAccountId,
     this.text = '',
     this.viewerName,
     this.viewerText,
     this.count,
     this.data = const {},
-  });
+  }) : authorAccountId = authorAccountId ?? authorChannelId;
 
   final Platform platform;
   final ChatProviderEventKind kind;
@@ -43,6 +44,9 @@ class ChatProviderEvent {
   final DateTime timestamp;
   final String authorName;
   final String authorChannelId;
+
+  /// The provider's account ID. May be empty when [authorChannelId] is a handle.
+  final String authorAccountId;
   final String text;
 
   /// Moderation inputs when they differ from the displayed author or text.

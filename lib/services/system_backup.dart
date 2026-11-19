@@ -71,14 +71,15 @@ class SystemBackup {
   final TemplateArchiveLimits limits;
   final String appVersion;
 
-  Future<void> exportCurrent(
+  Future<List<String>> exportCurrent(
           String destination, SettingsModel Function() read) =>
       media.withStableFiles(() => export(destination, read()));
 
-  Future<void> export(String destination, SettingsModel settings) =>
+  /// Returns the paths of oversized external audio files omitted from the ZIP.
+  Future<List<String>> export(String destination, SettingsModel settings) =>
       _writeBackup(destination, SettingsProfiles.export(settings));
 
-  Future<void> _writeBackup(String destination, String settings) {
+  Future<List<String>> _writeBackup(String destination, String settings) {
     final templatePath = templates.rootPath;
     final mediaPath = media.directory.path;
     final limits = this.limits;
@@ -217,10 +218,16 @@ class SystemBackup {
         ? 0
         : int.parse(p.basename(previous.first.path).substring(7, 27));
     final stamp = (now > last ? now : last + 1).toString().padLeft(20, '0');
-    await _writeBackup(
+    final omittedAudio = await _writeBackup(
       p.join(safety.path, 'safety-$stamp$_extension'),
       SettingsProfiles.export(current),
     );
+    if (omittedAudio.isNotEmpty) {
+      AppLogger.warning(
+        'Safety backup omitted oversized external audio: '
+        '${omittedAudio.map(p.basename).join(', ')}',
+      );
+    }
     for (final old in previous.skip(2)) {
       await old.delete();
     }
@@ -557,8 +564,13 @@ Future<ValidatedSystemBackup> _validate(
   }
 }
 
-Future<void> _export(String destination, String settings, String templatePath,
-    String mediaPath, TemplateArchiveLimits limits, String appVersion) async {
+Future<List<String>> _export(
+    String destination,
+    String settings,
+    String templatePath,
+    String mediaPath,
+    TemplateArchiveLimits limits,
+    String appVersion) async {
   final model = SettingsDocumentCodec.decode(settings).settings;
   final templateRoot = Directory(templatePath);
   final mediaRoot = Directory(mediaPath);
@@ -579,6 +591,7 @@ Future<void> _export(String destination, String settings, String templatePath,
     final stream = OutputFileStream(output.path);
     final encoder = ZipFileEncoder()
       ..createWithStream(stream, level: ZipFileEncoder.store);
+    final omittedAudio = <String>[];
     try {
       final budget = _Budget(limits);
       final paths = _ArchivePaths();
@@ -642,7 +655,8 @@ Future<void> _export(String destination, String settings, String templatePath,
           continue;
         }
         if (await file.length() > limits.file) {
-          throw const FormatException('size');
+          omittedAudio.add(file.path);
+          continue;
         }
         if (!await _validAudio(file, entry.value, limits)) continue;
         if (!await _inside(file.parent, file)) {
@@ -680,6 +694,7 @@ Future<void> _export(String destination, String settings, String templatePath,
     }
     if (await output.length() > limits.zip) throw const FormatException('size');
     await output.rename(target.path);
+    return List.unmodifiable(omittedAudio);
   } finally {
     await _cleanup(workspace);
   }

@@ -329,6 +329,7 @@ class KickService {
             ? null
             : msg.sender.profilePictureUrl,
         channelId: msg.sender.slug,
+        accountId: _accountId(msg.sender),
         color: msg.sender.identity.color.isNotEmpty
             ? msg.sender.identity.color
             : null,
@@ -365,7 +366,11 @@ class KickService {
         // each event gets its own ID: the same viewer can subscribe again.
         id: 'subscription:${event.username}:${event.months}:'
             '${++_localEventSequence}',
-        author: ChatAuthor(name: event.username, channelId: event.username),
+        author: ChatAuthor(
+          name: event.username,
+          channelId: event.username,
+          accountId: '',
+        ),
         items: event.customMessage.trim().isEmpty
             ? const []
             : [MessageItem.text(event.customMessage)],
@@ -395,6 +400,7 @@ class KickService {
         author: ChatAuthor(
           name: event.gifterUsername,
           channelId: event.gifterUsername,
+          accountId: '',
         ),
         items: const [],
         isMembership: true,
@@ -406,6 +412,9 @@ class KickService {
     }
     return null;
   }
+
+  String _accountId(kick.Sender sender) =>
+      sender.id > 0 ? sender.id.toString() : '';
 
   ChatModerationEvent? _convertModeration(kick.KickEvent event) {
     if (event is kick.KickMessageDeletedEvent && event.messageId.isNotEmpty) {
@@ -527,6 +536,11 @@ class KickService {
         kick.KickKicksGiftedEvent(:final sender) => sender.slug,
         kick.KickStreamHostedEvent(:final host) => host.slug,
         _ => '',
+      },
+      authorAccountId: switch (event) {
+        kick.KickKicksGiftedEvent(:final sender) => _accountId(sender),
+        kick.KickStreamHostedEvent(:final host) => _accountId(host),
+        _ => null,
       },
       viewerName: switch (event) {
         kick.KickPinnedMessageCreatedEvent(:final message) =>

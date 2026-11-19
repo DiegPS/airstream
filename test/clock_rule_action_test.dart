@@ -26,7 +26,12 @@ AppController _controller() => AppController(
     );
 
 Future<(String, String?, int)> _run(LiveClock clock, String op,
-    {int seconds = 60}) async {
+        {int seconds = 60}) =>
+    _runAction(SettingsModel(clock: clock),
+        {'id': 'a', 'type': 'clock', 'op': op, 'seconds': seconds});
+
+Future<(String, String?, int)> _runAction(
+    SettingsModel base, Map<String, Object?> action) async {
   final app = _controller();
   addTearDown(app.dispose);
   var writes = 0;
@@ -35,17 +40,14 @@ Future<(String, String?, int)> _run(LiveClock clock, String op,
     app.applySettings(settings, connectChats: false);
   };
   app.applySettings(
-    SettingsModel(
+    base.copyWith(
       overlayEnabled: false,
       rulesEnabled: true,
-      clock: clock,
       rules: [
         {
           ...RuleSchema.newRule('manual', id: 'clock'),
           'enabled': true,
-          'actions': [
-            {'id': 'a', 'type': 'clock', 'op': op, 'seconds': seconds},
-          ],
+          'actions': [action],
         }
       ],
     ),
@@ -82,6 +84,22 @@ void main() {
                 phase: ClockPhase.paused, valueMs: LiveClock.maxSeconds * 1000),
             'add'),
         ('skipped', 'clockUnchanged', 0));
+  });
+
+  test('a subathon rule the cap or 0 s leaves unchanged is skipped', () async {
+    const atCap = SettingsModel(
+        subathonPhase: 'paused',
+        subathonRemainingMs: 60 * 60000,
+        subathonMaxRemainingMinutes: 60);
+    Map<String, Object?> add(int seconds) =>
+        {'id': 'a', 'type': 'subathon.adjust', 'seconds': seconds};
+    expect(
+        await _runAction(atCap, add(60)), ('skipped', 'subathonUnchanged', 0));
+    expect(
+        await _runAction(
+            atCap.copyWith(subathonMaxRemainingMinutes: 0), add(0)),
+        ('skipped', 'subathonUnchanged', 0));
+    expect(await _runAction(atCap, add(-60)), ('done', null, 1));
   });
 
   test('a clock rule that changes the timer still runs', () async {

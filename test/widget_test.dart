@@ -16,6 +16,7 @@ import 'package:airstream/ui/widgets/template_fields.dart';
 import 'package:airstream/ui/widgets/templates_card.dart';
 import 'dart:io' as io;
 import 'package:airstream/services/templates/template_library.dart';
+import 'package:airstream/services/templates/template_archive.dart';
 import 'package:airstream/application/chat_coordinator.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/ui/widgets/diagnostics_card.dart';
@@ -998,6 +999,63 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'tab ${tab.$1}');
     }
 
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the voice picker rejects WAVs above the backup file limit',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final temp = io.Directory.systemTemp.createTempSync('voice-picker-');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final wav = io.File('${temp.path}/reference.wav');
+    final limit = const TemplateArchiveLimits().file;
+    wav.openSync(mode: io.FileMode.write)
+      ..truncateSync(limit + 1)
+      ..closeSync();
+    const selector = MethodChannel('plugins.flutter.io/file_selector');
+    const window = MethodChannel('window_manager');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(selector, (_) async => [wav.path]);
+    messenger.setMockMethodCallHandler(window, (_) async => false);
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(selector, null);
+      messenger.setMockMethodCallHandler(window, null);
+    });
+
+    final settings = _RecordingSettings(const SettingsModel(
+      ttsEnabled: true,
+      ttsModelId: 'pocket-tts-int8',
+      ttsReferenceAudioPath: 'previous.wav',
+    ));
+    final app = AppController();
+    addTearDown(() => unawaited(app.dispose()));
+    final container = ProviderContainer(overrides: [
+      settingsProvider.overrideWith((_) => settings),
+      appControllerProvider.overrideWithValue(app),
+    ]);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const AirstreamApp(),
+    ));
+    await tester.tap(find.byTooltip('TTS & Voice'));
+    await tester.pumpAndSettle();
+    final choose = find.text('Choose WAV');
+    await tester.ensureVisible(choose);
+    await tester.tap(choose);
+    await _flushTemplateIO(tester);
+    expect(
+        container.read(settingsProvider).ttsReferenceAudioPath, 'previous.wav');
+    expect(find.textContaining('50 MiB'), findsOneWidget);
+
+    wav.openSync(mode: io.FileMode.append)
+      ..truncateSync(limit)
+      ..closeSync();
+    await tester.tap(choose);
+    await _flushTemplateIO(tester);
+    expect(container.read(settingsProvider).ttsReferenceAudioPath, wav.path);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

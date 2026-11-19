@@ -117,7 +117,7 @@ $overlayFontScript
         } else if (envelope.type === 'reload') window.location.reload();
       } catch (error) { console.warn('Ignored malformed giveaway message', error); }
     });
-    ws.addEventListener('close', () => { if (ws !== socket) return; resetDraws(); render(); if (!closing) retry = window.setTimeout(connect, 3000); });
+    ws.addEventListener('close', () => { if (ws !== socket) return; resetDraws(); state = null; lastDrawId = null; render(); if (!closing) retry = window.setTimeout(connect, 3000); });
     ws.addEventListener('error', () => ws.close());
   }
   connect();

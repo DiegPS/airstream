@@ -11,6 +11,7 @@ var _next = 0;
 ChatMessage _chat(
   String author, {
   Platform platform = Platform.twitch,
+  String? channelId,
   bool owner = false,
   SuperChat? superChat,
   bool membership = false,
@@ -22,7 +23,8 @@ ChatMessage _chat(
     ChatMessage(
       platform: platform,
       id: 'm${_next++}',
-      author: ChatAuthor(name: author, channelId: author.toLowerCase()),
+      author: ChatAuthor(
+          name: author, channelId: channelId ?? author.toLowerCase()),
       items: const [MessageItem.text('hola')],
       isOwner: owner,
       superChat: superChat,
@@ -235,6 +237,64 @@ void main() {
     expect(collector.templateState(live: false)!['supporters'], isEmpty);
   });
 
+  test('counts a Twitch raid and cheer from the same account once', () {
+    final collector = SessionSummaryCollector()..start();
+    collector
+      ..handleProviderEvent(_provider(
+          Platform.twitch, ChatProviderEventKind.raid, 'Raider', 40,
+          channelId: '123'))
+      ..handleMessage(_chat('New display name',
+          channelId: '123',
+          superChat: const SuperChat(amount: '100 Bits', color: '')));
+
+    final state = collector.templateState(live: false)!;
+    expect(state['supporterCount'], 1);
+    expect(
+        (state['supporters'] as List).map((s) => s['type']), ['bits', 'raid']);
+  });
+
+  test(
+      'uses Kick account IDs across hosts and kicks and normalizes fallback names',
+      () {
+    final collector = SessionSummaryCollector()..start();
+    collector
+      ..handleProviderEvent(_provider(
+          Platform.kick, ChatProviderEventKind.host, 'Former name', 40,
+          channelId: '123'))
+      ..handleProviderEvent(_provider(
+          Platform.kick, ChatProviderEventKind.support, 'New name', 10,
+          channelId: '123'))
+      ..handleMessage(_chat(' VIEWER ',
+          platform: Platform.kick,
+          channelId: '',
+          membership: true,
+          kind: MembershipEventKind.subscription))
+      ..handleProviderEvent(
+          _provider(Platform.kick, ChatProviderEventKind.support, 'Viewer', 20))
+      ..handleProviderEvent(_provider(
+          Platform.twitch, ChatProviderEventKind.raid, 'New name', 40,
+          channelId: '123'));
+
+    expect(collector.templateState(live: true)!['supporterCount'], 3);
+  });
+
+  test('distinguishes case-sensitive YouTube IDs and name-only supporters', () {
+    final collector = SessionSummaryCollector()..start();
+    for (final (name, id) in [
+      ('Viewer', 'UCtestA'),
+      ('Viewer', 'UCtesta'),
+      ('UCtestA', '')
+    ]) {
+      collector.handleMessage(_chat(name,
+          platform: Platform.youtube,
+          channelId: id,
+          membership: true,
+          kind: MembershipEventKind.subscription));
+    }
+
+    expect(collector.templateState(live: true)!['supporterCount'], 3);
+  });
+
   test('ranks all support separately and breaks ties by earliest timestamp',
       () {
     final collector = SessionSummaryCollector()..start();
@@ -369,11 +429,12 @@ void main() {
 
 ChatProviderEvent _provider(
         Platform platform, ChatProviderEventKind kind, String name, int count,
-        {DateTime? at}) =>
+        {DateTime? at, String channelId = ''}) =>
     ChatProviderEvent(
         platform: platform,
         kind: kind,
         id: 'e${_next++}',
         timestamp: at ?? DateTime.utc(2026, 11, 15),
         authorName: name,
+        authorChannelId: channelId,
         count: count);

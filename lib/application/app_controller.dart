@@ -779,6 +779,7 @@ class AppController {
   void _startChatSession(SettingsModel settings) {
     _chatEnded = false;
     if (!_poll.hasOpenPoll) _withheldVoteIds.clear();
+    _audio.startSession();
     _sessionSummary.start();
     _overlay.resetAlertDeliveries();
     _overlay.clearRecentAlerts();

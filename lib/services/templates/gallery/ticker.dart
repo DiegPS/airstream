@@ -99,7 +99,7 @@ let fadeTimer;
 let fadeIndex = 0;
 let stillKey;
 // Block-list revision on screen: a block change cannot wait for the loop end.
-let shownRevision;
+let shownRevision, shownStart;
 
 function collectItems() {
   const copy = text[language];
@@ -220,8 +220,11 @@ function refresh() {
   const running = timerRunning();
   const removeTimer = timeNodes.length > 0 && !running;
   const revision = session?.filterRevision;
-  const blockChanged = revision !== shownRevision;
+  // A new session or a block-list change must not wait for the loop to end.
+  const blockChanged = revision !== shownRevision ||
+    session?.startedAt !== shownStart;
   shownRevision = revision;
+  shownStart = session?.startedAt;
   if (reducedMotion.matches) {
     if (removeTimer || blockChanged || stage.hidden || items.length < 2) showStill();
     if (items.length < 2) {

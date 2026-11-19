@@ -409,24 +409,71 @@ void main() {
         localSound.path);
   });
 
-  test('external audio obeys the archive file limit and rejects forged paths',
+  Future<File> writeOversizedReference() async {
+    final file = await File(p.join(temp.path, 'oversized-voice.wav'))
+        .writeAsBytes(AlertSounds.wav('chime'));
+    final handle = await file.open(mode: FileMode.append);
+    try {
+      await handle.truncate(const TemplateArchiveLimits().file + 1);
+    } finally {
+      await handle.close();
+    }
+    return file;
+  }
+
+  test('exports without oversized external audio and preserves its path',
       () async {
+    final voice = await writeOversizedReference();
+    final source = SettingsProfiles.save(
+        SettingsModel(ttsReferenceAudioPath: voice.path), 'Voice profile');
+    final path = p.join(temp.path, 'oversize.airstream-backup');
+    expect(await backup.exportCurrent(path, () => source), [voice.path]);
+
+    final archive = ZipDecoder().decodeBytes(await File(path).readAsBytes());
+    expect(archive.files.map((file) => file.name),
+        unorderedEquals(['manifest.json', 'settings.json']));
+    final document = utf8.decode(archive.findFile('settings.json')!.content);
+    final exported = SettingsDocumentCodec.decode(document).settings;
+    expect(exported.ttsReferenceAudioPath, voice.path);
+    expect(exported.profiles['Voice profile']!['ttsReferenceAudioPath'],
+        voice.path);
+    final validated = await backup.validate(path);
+    addTearDown(validated.dispose);
+    expect(validated.missingExternalAudio, [voice.path]);
+  });
+
+  test('restores when an inactive profile has an oversized voice reference',
+      () async {
+    final incoming = p.join(temp.path, 'incoming.airstream-backup');
+    await backup.export(incoming, portable);
+    final validated = await backup.validate(incoming);
+    addTearDown(validated.dispose);
+    final voice = await writeOversizedReference();
+    await settings.update(SettingsProfiles.save(
+      local.copyWith(ttsReferenceAudioPath: voice.path),
+      'Inactive voice profile',
+    ).copyWith(ttsReferenceAudioPath: ''));
+
+    await backup.restore(validated, settings);
+
+    expect(settings.current.fontSize, portable.fontSize);
+    final safety =
+        Directory(p.join(support.path, 'safety-backups')).listSync().single;
+    final saved = await backup.validate(safety.path);
+    addTearDown(saved.dispose);
+    expect(saved.missingExternalAudio, [voice.path]);
+    await backup.restore(saved, settings);
+    expect(settings.current.ttsReferenceAudioPath, isEmpty);
+    expect(
+        settings.current
+            .profiles['Inactive voice profile']!['ttsReferenceAudioPath'],
+        voice.path);
+  });
+
+  test('rejects forged external audio paths', () async {
     final voice = await File(p.join(temp.path, 'reference.wav'))
         .writeAsBytes(AlertSounds.wav('chime'));
     final source = SettingsModel(ttsReferenceAudioPath: voice.path);
-    final constrained = SystemBackup(
-      support: support,
-      templates: templates,
-      media: media,
-      limits: const TemplateArchiveLimits(file: 128),
-    );
-    await expectLater(
-      constrained.export(
-          p.join(temp.path, 'oversize.airstream-backup'), source),
-      throwsA(
-          isA<FormatException>().having((e) => e.message, 'message', 'size')),
-    );
-
     final forged = {
       ...validManifest,
       'externalAudio': {voice.path: '../reference.wav'},

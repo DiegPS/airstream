@@ -175,6 +175,9 @@ class ChatAuthor {
   final String name;
   final String? avatarUrl;
   final String channelId;
+
+  /// The provider's account ID. May be empty when [channelId] holds a handle.
+  final String accountId;
   final String? color; // hex #RRGGBB, used by Twitch/Kick
   final AuthorBadge? badge;
   final List<AuthorBadge> badges;
@@ -183,10 +186,11 @@ class ChatAuthor {
     required this.name,
     this.avatarUrl,
     required this.channelId,
+    String? accountId,
     this.color,
     this.badge,
     this.badges = const [],
-  });
+  }) : accountId = accountId ?? channelId;
 
   List<AuthorBadge> get allBadges => [
         if (badge != null) badge!,
@@ -197,6 +201,7 @@ class ChatAuthor {
         name: name,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         channelId: channelId,
+        accountId: accountId,
         color: color,
         badge: badge,
         badges: badges,

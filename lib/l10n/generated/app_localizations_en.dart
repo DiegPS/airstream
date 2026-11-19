@@ -707,6 +707,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseWav => 'Choose WAV';
 
   @override
+  String voiceReferenceTooLarge(int limitMiB) {
+    return 'Choose a reference WAV no larger than $limitMiB MiB.';
+  }
+
+  @override
+  String get voiceReferenceUnreadable =>
+      'Could not read the reference WAV. Choose another file.';
+
+  @override
   String get useBundledSample => 'Use bundled sample';
 
   @override
@@ -2885,6 +2894,7 @@ class AppLocalizationsEn extends AppLocalizations {
         'kgoalNotFound': 'Goal not found',
         'ktimerNotRunning': 'Subathon is not running',
         'kclockUnchanged': 'The timer is already in that state',
+        'ksubathonUnchanged': 'That time does not change the subathon',
         'knoReceiver': 'No template receiver connected',
         'kinvalidKeyword': 'Invalid keyword',
         'kalreadyOpen': 'Giveaway is already open',
@@ -3677,6 +3687,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupExportDone => 'Full backup exported.';
+
+  @override
+  String get backupExportOmittedAudio =>
+      'These audio files exceeded the per-file size limit and were left out of the backup.';
 
   @override
   String get backupRestoreDone => 'Full backup restored.';

@@ -1131,6 +1131,41 @@ void main() {
         unorderedEquals([endsWith('Ana: first'), endsWith('Ana: second')]));
   });
 
+  test('Start after every chat ended restarts the voice reader session',
+      () async {
+    final youtube = FakeYouTubeChatClient();
+    final audio =
+        AudioCoordinator(tts: FakeTtsClient(), captions: FakeCaptionsClient());
+    final app = AppController(
+      audioCoordinator: audio,
+      chatCoordinator: ChatCoordinator(
+        youtube: youtube,
+        youtubeHorizontal: FakeYouTubeChatClient(),
+        youtubeVertical: FakeYouTubeChatClient(),
+        twitch: FakeChannelChatClient(),
+        kick: FakeChannelChatClient(),
+      ),
+      overlayCoordinator: OverlayCoordinator(overlay: FakeOverlayClient()),
+      obsCoordinator: ObsCoordinator(obs: FakeObsClient()),
+    );
+    addTearDown(app.dispose);
+    const settings = SettingsModel(
+        overlayEnabled: false, youtubeHandle: '@creator', ttsEnabled: true);
+    app.applySettings(settings, connectChats: true);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    await settleCoordinatorTasks();
+    final first = audio.ttsSessionStartedAt;
+    expect(first, isNotNull);
+
+    youtube.statusController.add((ServiceStatus.ended, null));
+    await settleCoordinatorTasks();
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    app.retryChatConnections();
+    // The old start time would let the new connection's history be read
+    // aloud once the backlog window of the first session has passed.
+    expect(audio.ttsSessionStartedAt!.isAfter(first!), isTrue);
+  });
+
   test('hidden paid votes count and run support rules with redacted text',
       () async {
     final twitch = FakeChannelChatClient();
