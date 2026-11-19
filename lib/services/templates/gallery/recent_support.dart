@@ -187,4 +187,8 @@ Airstream.on('session', (next, meta) => {
   session = next;
   render(!meta.replay);
 });
+Airstream.on('disconnected', () => {
+  session = null;
+  render(false);
+});
 ''';

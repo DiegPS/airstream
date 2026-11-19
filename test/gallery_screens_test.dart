@@ -48,7 +48,6 @@ void main() {
     expect(galleryCatalog.values.map((i) => i.id), orderedEquals(names.keys));
     for (final (i, language) in ['en', 'es'].indexed) {
       for (final item in galleryCatalog.values) {
-        final recent = item.id == 'recent-support';
         final widgetSize = widgets[item.id];
         expect(item.kind,
             widgetSize == null ? GalleryKind.screen : GalleryKind.widget);
@@ -63,7 +62,12 @@ void main() {
         expect(manifest.name, names[item.id]![i]);
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
-        expect(manifest.gallery, (id: item.id, version: recent ? 4 : 2));
+        final version = switch (item.id) {
+          'recent-support' => 5,
+          'poll' || 'scoreboard' || 'word-cloud' || 'emote-wall' => 2,
+          _ => 3,
+        };
+        expect(manifest.gallery, (id: item.id, version: version));
         expect((item.width, item.height), widgetSize ?? (1920, 1080));
         expect((manifest.width, manifest.height), (item.width, item.height));
         final fields = (raw['fields'] as List).cast<Map>();
@@ -169,6 +173,8 @@ void main() {
       () => runGalleryChecks('gallery poll disconnect'));
   test('Starting Soon and Be Right Back clear chat rows on disconnect',
       () => runGalleryChecks('screen chat disconnect'));
+  test('session gallery pages clear live data until fresh reconnect snapshots',
+      () => runGalleryChecks('gallery live data disconnect'));
   test('the moving Ticker drops a newly blocked supporter at once',
       () => runGalleryChecks('ticker blocked supporter'));
   test('/clock hides a stale count on disconnect until a fresh snapshot',
@@ -181,15 +187,15 @@ void main() {
 
 /// Version and file digest of each gallery item (see the version test).
 const _galleryFingerprints = {
-  'recent-support': '4:870260740ca11769',
-  'starting-soon': '2:1a18019a085588f0',
-  'be-right-back': '2:9a5526ff07390a34',
-  'stream-ending': '2:43363bffa52e8568',
-  'credits': '2:b249e47805576f1c',
-  'ticker': '2:73b528118ca1b536',
-  'latest-support': '2:00102337d9bd89b9',
-  'top-supporters': '2:f0b9e0e86070caa8',
-  'queue-list': '2:c173858f38c33d81',
+  'recent-support': '5:2601b810dc4598a7',
+  'starting-soon': '3:5e035f87f77a2cc5',
+  'be-right-back': '3:f99c1a341897c89c',
+  'stream-ending': '3:a0ed7f1f43e19b22',
+  'credits': '3:9842ea867358a4ef',
+  'ticker': '3:75505f949ec5a758',
+  'latest-support': '3:23bb43270c94fae1',
+  'top-supporters': '3:124ae83fa1eceaab',
+  'queue-list': '3:95c8911b8bbe729b',
   'poll': '2:3b13786635027803',
   'scoreboard': '2:774e4183f60aca19',
   'word-cloud': '2:be2e12ffcdecce94',
@@ -211,6 +217,7 @@ Future<void> runGalleryChecks(String scenario) async {
     };
     final widgets = {
       for (final id in [
+        'recent-support',
         'ticker',
         'latest-support',
         'top-supporters',
@@ -333,6 +340,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
   nodes.messages?.append(new Element('p'), new Element('p'));
   if (id === 'ticker') nodes.stage.clientWidth = 1920;
   const logo = new Element('span');
+  const supportPanel = new Element('main');
   let now = new Date('2026-11-17T12:00:00Z').getTime(), nextTimer = 0;
   const timers = new Map();
   const errors = [];
@@ -349,7 +357,9 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     document: {
       documentElement: new Element('html'), head: new Element('head'),
       getElementById: key => nodes[key] || null,
-      querySelector: selector => selector === '.gallery-logo' ? logo : null,
+      querySelector: selector => selector === '.gallery-logo' ? logo :
+        selector === '.support' ? supportPanel :
+        selector.startsWith('#') ? nodes[selector.slice(1)] || null : null,
       createElement: tag => new Element(tag),
       createElementNS: (_, tag) => new Element(tag),
       createDocumentFragment: () => new Element('fragment'),
@@ -855,6 +865,78 @@ function checkGalleryPollDisconnect() {
   assert.equal(view.tickers(), 0);
 }
 
+function checkGalleryLiveDataDisconnect() {
+  const queue = page('queue-list');
+  const queueState = {status: 'open', max: 10, command: '!old', playing: [],
+    entries: [{id: '1', name: 'Old player', platform: 'twitch'}]};
+  queue.fields({});
+  queue.send('queue', queueState, true);
+  assert.match(queue.nodes.join.textContent, /!old/);
+  queue.close();
+  assert.equal(queue.nodes.queue.hidden, true);
+  assert.equal(queue.nodes.waiting.children.length, 0);
+  queue.advance(3000);
+  queue.open();
+  queue.fields({});
+  assert.equal(queue.nodes.queue.hidden, true);
+  queue.send('queue', {...queueState, entries: [], command: '!new'}, true);
+  assert.equal(queue.nodes.queue.hidden, false);
+  assert.match(queue.nodes.join.textContent, /!new/);
+
+  const supporter = {id: '1', name: 'Old viewer', platform: 'twitch', type: 'gift',
+    at: '2026-11-17T11:00:00Z'};
+  const session = {startedAt: '2026-11-17T10:00:00Z', messages: 1337,
+    supporters: [supporter], latest: {gift: supporter},
+    top: {gift: [{...supporter, value: 3}]}};
+  for (const reduced of [false, true]) {
+    const ticker = page('ticker', 'en', {reduced});
+    const track = ticker.nodes[reduced ? 'ticker-still' : 'ticker-track'];
+    const now = Date.parse('2026-11-17T12:00:00Z');
+    const timer = {phase: 'running', endsAtMs: now + 61000, serverNowMs: now};
+    ticker.fields({showCustom: false});
+    ticker.send('timer', timer, true);
+    assert.match(track.textContent, /Subathon/);
+    assert.equal(ticker.tickers(), 1);
+    ticker.close();
+    assert.equal(ticker.tickers(), 0);
+    assert.equal(ticker.nodes.stage.hidden, true);
+    ticker.advance(3000);
+    ticker.open();
+    ticker.fields({showCustom: false});
+    ticker.send('session', session, true);
+    assert.match(track.textContent, /Old viewer/);
+    assert.doesNotMatch(track.textContent, /Subathon/);
+    ticker.send('timer', timer, true);
+    assert.ok(ticker.tickers() > 0);
+    ticker.close();
+    assert.equal(track.textContent, '');
+    assert.equal(ticker.tickers(), 0);
+  }
+
+  for (const [id, node, pattern, fields] of [
+    ['be-right-back', 'latest-entries', /Old viewer/, {}],
+    ['stream-ending', 'stats', /1,337/, {showMessages: true}],
+    ['credits', 'credits-roll', /Old viewer/, {}],
+    ['latest-support', 'support-a', /Old viewer/, {}],
+    ['recent-support', 'entries', /Old viewer/, {}],
+    ['top-supporters', 'ranks', /Old viewer/, {type: 'gift'}],
+  ]) {
+    const view = page(id);
+    view.fields(fields);
+    view.send('session', session, true);
+    assert.match(view.nodes[node].textContent, pattern, id);
+    view.close();
+    assert.doesNotMatch(view.nodes[node].textContent, pattern, id);
+    view.advance(3000);
+    view.open();
+    view.fields(fields);
+    assert.doesNotMatch(view.nodes[node].textContent, pattern, id);
+    assert.match(view.win.Airstream.state.session.supporters[0].name, /Old viewer/);
+    view.send('session', session, true);
+    assert.match(view.nodes[node].textContent, pattern, id);
+  }
+}
+
 function checkTickerBlockedSupporter() {
   const view = page('ticker');
   const track = view.nodes['ticker-track'];
@@ -979,6 +1061,7 @@ const regressions = {
   'poll disconnect': () => checkPollAndTimerDisconnect('poll'),
   'timer disconnect': () => checkPollAndTimerDisconnect('timer'),
   'gallery poll disconnect': checkGalleryPollDisconnect,
+  'gallery live data disconnect': checkGalleryLiveDataDisconnect,
   'screen chat disconnect': checkScreenChatDisconnect,
   'ticker blocked supporter': checkTickerBlockedSupporter,
   'clock disconnect': checkClockDisconnect,

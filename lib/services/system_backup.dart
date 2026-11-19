@@ -18,6 +18,8 @@ const _extension = '.airstream-backup';
 const _format = 'airstream-backup';
 const _settingsName = 'settings.json';
 const _manifestName = 'manifest.json';
+const _audioArea = 'external-audio';
+final _audioName = RegExp(r'^external-audio/[1-9][0-9]*\.(wav|mp3|ogg)$');
 const _templateLimit = 100 * 1024 * 1024;
 const _limits = TemplateArchiveLimits(
   zip: 660 * 1024 * 1024,
@@ -26,14 +28,24 @@ const _limits = TemplateArchiveLimits(
 );
 
 class ValidatedSystemBackup {
-  ValidatedSystemBackup._(this._staging, this._settings, this.createdAt,
-      this.rules, this.templates, this.media, this.networkTemplateNames);
+  ValidatedSystemBackup._(
+      this._staging,
+      this._settings,
+      this.createdAt,
+      this.rules,
+      this.templates,
+      this.media,
+      this.networkTemplateNames,
+      this._externalAudio,
+      this.missingExternalAudio);
 
   final Directory _staging;
   final String _settings;
   final DateTime createdAt;
   final int rules, templates, media;
   final List<String> networkTemplateNames;
+  final Map<String, String> _externalAudio;
+  final List<String> missingExternalAudio;
 
   List<String> rulesMissingHttpUrls(SettingsModel current) =>
       SettingsProfiles.rulesMissingHttpUrls(SettingsProfiles.keepLocalHttpUrls(
@@ -90,82 +102,103 @@ class SystemBackup {
 
   Future<void> restore(
           ValidatedSystemBackup backup, SettingsNotifier notifier) =>
-      media.withStableFiles(
-          () => notifier.restoreBackup((current, commit) async {
-                if (!await backup._staging.exists()) {
-                  throw const FormatException('invalid');
+      media.withStableFiles(() =>
+          notifier.restoreBackup((current, commit) async {
+            if (!await backup._staging.exists()) {
+              throw const FormatException('invalid');
+            }
+            await _safetyBackup(current);
+            final oldIds = await _templateIds(templates.root);
+            final newIds = await _templateIds(
+                Directory(p.join(backup._staging.path, 'templates')));
+            final swaps = <_DirectorySwap>[];
+            var keepRollback = false;
+            bool? resumeWatching;
+            var committed = false;
+            Directory? restoredAudio;
+            try {
+              final document =
+                  jsonDecode(backup._settings) as Map<String, dynamic>;
+              if (backup._externalAudio.isNotEmpty) {
+                restoredAudio = await support.createTemp('restored-audio-');
+                final paths = <String, String>{};
+                for (final entry in backup._externalAudio.entries) {
+                  final path =
+                      p.join(restoredAudio.path, p.posix.basename(entry.value));
+                  await File(_nativePath(backup._staging, entry.value))
+                      .copy(path);
+                  paths[entry.key] = path;
                 }
-                final next = SettingsProfiles.applyImportedSettings(
-                    SettingsDocumentCodec.decode(backup._settings).settings,
-                    current);
-                await _safetyBackup(current);
-                final oldIds = await _templateIds(templates.root);
-                final newIds = await _templateIds(
-                    Directory(p.join(backup._staging.path, 'templates')));
-                final swaps = <_DirectorySwap>[];
-                var keepRollback = false;
-                bool? resumeWatching;
-                var committed = false;
+                for (final reference in _audioReferences(document)) {
+                  final path = paths[reference.path];
+                  if (path != null) reference.fields[reference.key] = path;
+                }
+              }
+              final next = SettingsProfiles.applyImportedSettings(
+                  SettingsDocumentCodec.decode(jsonEncode(document)).settings,
+                  current);
+              final templateSwap = await _DirectorySwap.prepare(
+                  templates.root, backup._staging, 'templates');
+              swaps.add(templateSwap);
+              // Keep the guide and loose files in the template root.
+              if (await templates.root.exists()) {
+                await for (final entry
+                    in templates.root.list(followLinks: false)) {
+                  if (entry is Directory &&
+                      TemplateLibrary.validId(p.basename(entry.path))) {
+                    continue;
+                  }
+                  await _copyTree(entry, templateSwap.candidate);
+                }
+              }
+              swaps.add(await _DirectorySwap.prepare(
+                  media.directory, backup._staging, 'media'));
+              resumeWatching = await templates.pauseForRestore();
+              for (final swap in swaps) {
+                await swap.install();
+              }
+              await commit(next);
+              committed = true;
+              media.clearPendingImports();
+            } catch (_) {
+              Object? rollbackError;
+              for (final swap in swaps.reversed) {
                 try {
-                  final templateSwap = await _DirectorySwap.prepare(
-                      templates.root, backup._staging, 'templates');
-                  swaps.add(templateSwap);
-                  // Keep the guide and loose files in the template root.
-                  if (await templates.root.exists()) {
-                    await for (final entry
-                        in templates.root.list(followLinks: false)) {
-                      if (entry is Directory &&
-                          TemplateLibrary.validId(p.basename(entry.path))) {
-                        continue;
-                      }
-                      await _copyTree(entry, templateSwap.candidate);
-                    }
-                  }
-                  swaps.add(await _DirectorySwap.prepare(
-                      media.directory, backup._staging, 'media'));
-                  resumeWatching = await templates.pauseForRestore();
-                  for (final swap in swaps) {
-                    await swap.install();
-                  }
-                  await commit(next);
-                  committed = true;
-                  media.clearPendingImports();
-                } catch (_) {
-                  Object? rollbackError;
-                  for (final swap in swaps.reversed) {
-                    try {
-                      await swap.rollback();
-                    } catch (error) {
-                      rollbackError ??= error;
-                    }
-                  }
-                  if (rollbackError != null) {
-                    keepRollback = true;
-                    AppLogger.warning(
-                        'Backup rollback failed; original directories retained',
-                        error: rollbackError);
-                    throw const FormatException('rollback');
-                  }
-                  rethrow;
-                } finally {
-                  if (!keepRollback) {
-                    for (final swap in swaps) {
-                      await _cleanup(swap.workspace);
-                    }
-                  }
-                  if (resumeWatching != null) {
-                    try {
-                      await templates.refreshAfterRestore(
-                        committed ? {...oldIds, ...newIds} : {},
-                        resumeWatching: resumeWatching,
-                      );
-                    } catch (_) {
-                      AppLogger.warning(
-                          'Could not refresh the template library after restore');
-                    }
-                  }
+                  await swap.rollback();
+                } catch (error) {
+                  rollbackError ??= error;
                 }
-              }));
+              }
+              if (rollbackError != null) {
+                keepRollback = true;
+                AppLogger.warning(
+                    'Backup rollback failed; original directories retained',
+                    error: rollbackError);
+                throw const FormatException('rollback');
+              }
+              rethrow;
+            } finally {
+              if (!committed && restoredAudio != null) {
+                await _cleanup(restoredAudio);
+              }
+              if (!keepRollback) {
+                for (final swap in swaps) {
+                  await _cleanup(swap.workspace);
+                }
+              }
+              if (resumeWatching != null) {
+                try {
+                  await templates.refreshAfterRestore(
+                    committed ? {...oldIds, ...newIds} : {},
+                    resumeWatching: resumeWatching,
+                  );
+                } catch (_) {
+                  AppLogger.warning(
+                      'Could not refresh the template library after restore');
+                }
+              }
+            }
+          }));
 
   Future<void> _safetyBackup(SettingsModel current) async {
     final safety = Directory(p.join(support.path, 'safety-backups'));
@@ -193,6 +226,56 @@ class SystemBackup {
     }
   }
 }
+
+typedef _AudioReference = ({
+  Map<String, dynamic> fields,
+  String key,
+  String path,
+});
+
+Iterable<_AudioReference> _audioReferences(
+    Map<String, dynamic> document) sync* {
+  final settings = document['settings'] as Map<String, dynamic>;
+  final profiles = settings['profiles'];
+  for (final fields in [
+    settings,
+    if (profiles is Map) ...profiles.values.whereType<Map<String, dynamic>>(),
+  ]) {
+    const voiceKey = 'ttsReferenceAudioPath';
+    if (fields[voiceKey] case final String voice when voice.trim().isNotEmpty) {
+      yield (fields: fields, key: voiceKey, path: voice.trim());
+    }
+    final options = fields['alertTypeOptions'];
+    if (options is! Map) continue;
+    for (final option in options.values.whereType<Map<String, dynamic>>()) {
+      final tiers = option['tiers'];
+      for (final sound in [
+        option,
+        if (tiers is List) ...tiers.whereType<Map<String, dynamic>>(),
+      ]) {
+        if (sound['sound'] != 'custom') continue;
+        if (sound['soundPath'] case final String path when path.isNotEmpty) {
+          yield (fields: sound, key: 'soundPath', path: path);
+        }
+      }
+    }
+  }
+}
+
+// The bool records whether a reference is used by an alert, whose playback
+// route has a smaller size limit than voice cloning.
+Map<String, bool> _referencedAudio(Map<String, dynamic> document) {
+  final references = <String, bool>{};
+  for (final reference in _audioReferences(document)) {
+    references[reference.path] =
+        reference.key == 'soundPath' || references[reference.path] == true;
+  }
+  return references;
+}
+
+Future<bool> _validAudio(File file, bool alert, TemplateArchiveLimits limits) =>
+    MediaLibrary.inspect(file, maxBytes: alert ? null : limits.file)
+        .then((kind) => kind == 'audio');
 
 /// Removes credentials, including copies in saved profiles.
 String _scrubSettings(String source) {
@@ -326,6 +409,7 @@ Future<ValidatedSystemBackup> _validate(
       } else if (directory ||
           !(name == _manifestName ||
               name == _settingsName ||
+              _audioName.hasMatch(name) ||
               (parts.length == 2 &&
                   parts.first == 'media' &&
                   RegExp(r'^[0-9a-f]{16}\.[a-z0-9]+$').hasMatch(parts.last)))) {
@@ -403,6 +487,46 @@ Future<ValidatedSystemBackup> _validate(
         throw const FormatException('media');
       }
     }
+    final referencedAudio =
+        _referencedAudio(jsonDecode(source) as Map<String, dynamic>);
+    final rawAudio = manifest['externalAudio'];
+    if (manifest.containsKey('externalAudio') && rawAudio is! Map) {
+      throw const FormatException('invalid');
+    }
+    final externalAudio = <String, String>{};
+    final usedAudio = <String>{};
+    if (rawAudio is Map) {
+      for (final entry in rawAudio.entries) {
+        final path = entry.key;
+        final name = entry.value;
+        final isAlert = referencedAudio[path];
+        if (path is! String ||
+            isAlert == null ||
+            name is! String ||
+            !_audioName.hasMatch(name) ||
+            p.posix.extension(name) != p.extension(path).toLowerCase() ||
+            !stored.contains(name) ||
+            !usedAudio.add(name) ||
+            !await _validAudio(
+                File(_nativePath(staging, name)), isAlert, limits)) {
+          throw const FormatException('media');
+        }
+        externalAudio[path] = name;
+      }
+    }
+    final missingExternalAudio = <String>[];
+    for (final entry in referencedAudio.entries) {
+      final path = entry.key;
+      if (externalAudio.containsKey(path)) continue;
+      // Imported paths may name a network share. Review only checks native
+      // local files, without following a link at the configured path.
+      if (!p.isAbsolute(path) ||
+          path.startsWith(r'\\') ||
+          path.startsWith('//') ||
+          !await _validAudio(File(path), entry.value, limits)) {
+        missingExternalAudio.add(path);
+      }
+    }
     final library =
         TemplateLibrary(Directory(p.join(staging.path, 'templates')));
     final networkTemplateNames = <String>[];
@@ -423,7 +547,9 @@ Future<ValidatedSystemBackup> _validate(
         decoded.settings.rules.length,
         ids.length,
         entries.length,
-        List.unmodifiable(networkTemplateNames));
+        List.unmodifiable(networkTemplateNames),
+        Map.unmodifiable(externalAudio),
+        List.unmodifiable(missingExternalAudio));
   } on ArchiveException {
     throw const FormatException('invalid');
   } finally {
@@ -504,6 +630,27 @@ Future<void> _export(String destination, String settings, String templatePath,
         backedUpMedia[entry.key] = entry.value;
       }
 
+      final document = jsonDecode(settings) as Map<String, dynamic>;
+      final externalAudio = <String, String>{};
+      for (final entry in _referencedAudio(document).entries) {
+        final file = File(entry.key);
+        final ext = p.extension(file.path).toLowerCase();
+        final name = '$_audioArea/${externalAudio.length + 1}$ext';
+        if (!_audioName.hasMatch(name) ||
+            await FileSystemEntity.type(file.path, followLinks: false) !=
+                FileSystemEntityType.file) {
+          continue;
+        }
+        if (await file.length() > limits.file) {
+          throw const FormatException('size');
+        }
+        if (!await _validAudio(file, entry.value, limits)) continue;
+        if (!await _inside(file.parent, file)) {
+          throw const FormatException('path');
+        }
+        await addFile(name, file);
+        externalAudio[file.path] = name;
+      }
       add(ArchiveFile.string(
           _manifestName,
           jsonEncode({
@@ -511,13 +658,13 @@ Future<void> _export(String destination, String settings, String templatePath,
             'version': 1,
             if (appVersion.isNotEmpty) 'appVersion': appVersion,
             'createdAt': DateTime.now().toUtc().toIso8601String(),
+            if (externalAudio.isNotEmpty) 'externalAudio': externalAudio,
             'counts': {
               'rules': model.rules.length,
               'templates': ids.length,
               'media': backedUpMedia.length,
             },
           })));
-      final document = jsonDecode(settings) as Map<String, dynamic>;
       (document['settings'] as Map)['mediaLibrary'] = backedUpMedia;
       add(ArchiveFile.string(_settingsName, jsonEncode(document)));
       for (final id in ids) {

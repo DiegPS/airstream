@@ -18,6 +18,7 @@ abstract interface class OverlayClient {
   List<Map<String, Object?>> get recentAlertsSnapshot;
   bool replayRecentAlert(String id);
   void clearRecentAlerts();
+  void resetAlertDeliveries();
   int get port;
   String get overlayUrl;
   Stream<int> get clientCountStream;
@@ -65,6 +66,8 @@ class OverlayServerAdapter implements OverlayClient {
   bool replayRecentAlert(String id) => server.replayRecentAlert(id);
   @override
   void clearRecentAlerts() => server.clearRecentAlerts();
+  @override
+  void resetAlertDeliveries() => server.resetAlertDeliveries();
   @override
   int get port => server.port;
   @override
@@ -151,6 +154,7 @@ class OverlayCoordinator {
       _overlay.recentAlertsSnapshot;
   bool replayRecentAlert(String id) => _overlay.replayRecentAlert(id);
   void clearRecentAlerts() => _overlay.clearRecentAlerts();
+  void resetAlertDeliveries() => _overlay.resetAlertDeliveries();
 
   bool reload() => _overlay.reloadClients();
   bool testAlert(String kind) => _overlay.broadcastTestAlert(kind);

@@ -32,7 +32,7 @@ class MediaLibrary {
   }
 
   /// Checks a standalone file without consulting the current library quota.
-  static Future<String> inspect(File file) async {
+  static Future<String> inspect(File file, {int? maxBytes}) async {
     final path = file.path;
     final ext = p.extension(path).toLowerCase().replaceFirst('.', '');
     final kind = MediaLibraryEntries.types[ext]?.$1;
@@ -43,7 +43,7 @@ class MediaLibrary {
         return 'type';
       }
       final size = await file.length();
-      if (size > MediaLibraryEntries.limit(kind)) return 'size';
+      if (size > (maxBytes ?? MediaLibraryEntries.limit(kind))) return 'size';
       final handle = await file.open();
       late List<int> b;
       try {

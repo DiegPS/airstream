@@ -24,6 +24,7 @@ class ChatLogWriter {
   final Future<Directory> Function() _directory;
   final DateTime Function() _clock;
   Future<_LogFile>? _opening;
+  Future<void> _closing = Future.value();
   File? _file;
   File? _sessionFile;
   bool _enabled = false;
@@ -37,9 +38,10 @@ class ChatLogWriter {
   File? get currentFile => _file;
 
   /// Starts a new file at the next message while [enabled].
-  Future<void> startSession({required bool enabled}) async {
-    await endSession();
+  Future<void> startSession({required bool enabled}) {
+    final closing = endSession();
     _enabled = enabled;
+    return closing;
   }
 
   /// Turning logging on mid-session starts a file; off closes it.
@@ -96,9 +98,20 @@ class ChatLogWriter {
     await directory.create(recursive: true);
     final now = _clock();
     String two(int value) => value.toString().padLeft(2, '0');
-    final name = 'airstream-chat-${now.year}-${two(now.month)}-${two(now.day)}'
-        '_${two(now.hour)}-${two(now.minute)}-${two(now.second)}.txt';
-    return File(p.join(directory.path, name));
+    final stem = 'airstream-chat-${now.year}-${two(now.month)}-${two(now.day)}'
+        '_${two(now.hour)}-${two(now.minute)}-${two(now.second)}';
+    for (var number = 1;; number++) {
+      final name = number == 1 ? '$stem.txt' : '$stem-$number.txt';
+      final file = File(p.join(directory.path, name));
+      try {
+        return await file.create(exclusive: true);
+      } on FileSystemException {
+        if (await FileSystemEntity.type(file.path, followLinks: false) !=
+            FileSystemEntityType.file) {
+          rethrow;
+        }
+      }
+    }
   }
 
   Future<_LogFile> _openFile(File? existing, void Function() invalidate) async {
@@ -121,11 +134,17 @@ class ChatLogWriter {
     return (file: file, sink: sink, failed: failed, close: close);
   }
 
-  Future<void> _close() async {
+  Future<void> _close() {
     final opening = _opening;
     _opening = null;
     _sessionFile = null;
-    if (opening == null) return;
+    if (opening != null) {
+      _closing = Future.wait([_closing, _closeFile(opening)]);
+    }
+    return _closing;
+  }
+
+  Future<void> _closeFile(Future<_LogFile> opening) async {
     final _LogFile opened;
     try {
       opened = await opening;

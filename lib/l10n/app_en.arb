@@ -1430,6 +1430,7 @@
   "backupRestoreEverything": "Restore everything",
   "backupFileType": "Airstream backup",
   "backupRestoreReview": "This replaces your settings, templates and media library. Airstream saves a copy of your current data first.",
+  "backupMissingExternalAudio": "These voice reference or alert sound files are missing. Choose replacements after restoring.",
   "backupRestoreContents": "Settings\nRules: {rules}\nTemplates: {templates}\nMedia files: {media}\nCreated: {created}",
   "backupRestoreConfirm": "Restore",
   "backupExportDone": "Full backup exported.",

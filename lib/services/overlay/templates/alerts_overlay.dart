@@ -702,7 +702,7 @@ function showNext() {
     const displayed = active;
     if (displayed.alertDeliveryId) {
       afterPaint(displayed, stage, () => active,
-        () => completeAlertDelivery(displayed, 'alertRendered'));
+        () => completeAlertDelivery(displayed, sourceIsActive() ? 'alertRendered' : 'alertDiscarded'));
     }
     const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
     const duration = active.kind !== 'custom' && queue.length >= 5

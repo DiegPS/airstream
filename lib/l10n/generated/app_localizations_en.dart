@@ -3663,6 +3663,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This replaces your settings, templates and media library. Airstream saves a copy of your current data first.';
 
   @override
+  String get backupMissingExternalAudio =>
+      'These voice reference or alert sound files are missing. Choose replacements after restoring.';
+
+  @override
   String backupRestoreContents(
       int rules, int templates, int media, String created) {
     return 'Settings\nRules: $rules\nTemplates: $templates\nMedia files: $media\nCreated: $created';

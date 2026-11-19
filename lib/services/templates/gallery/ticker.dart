@@ -88,6 +88,7 @@ const track = byId('ticker-track');
 const still = byId('ticker-still');
 const galleryDemo = Airstream.demo && location.pathname.startsWith('/gallery/');
 let configured = false;
+let session, goals, timer;
 let requested;
 let applied;
 let periodWidth = 0;
@@ -109,7 +110,7 @@ function collectItems() {
   }
   if (fields.showLatest !== false) {
     for (const type of supportTypes) {
-      const support = Airstream.state.session?.latest?.[type];
+      const support = session?.latest?.[type];
       if (!support) continue;
       const detail = type === 'superchat' ? support.amount : supportDescriptions[language][type](support);
       // Kick hosts share the raid slot but are labelled as hosts.
@@ -119,12 +120,12 @@ function collectItems() {
     }
   }
   if (fields.showGoals !== false) {
-    for (const goal of Airstream.state.goals || []) {
+    for (const goal of goals || []) {
       const title = (galleryDemo && copy.goals[goal.type]) || goal.title;
       items.push({label: title + ' ' + number(goal.current) + '/' + number(goal.target)});
     }
   }
-  if (fields.showTimer !== false && Airstream.state.timer?.phase === 'running' && Airstream.timerRemaining() > 0) {
+  if (fields.showTimer !== false && timerRunning()) {
     items.push({label: copy.timer + ' · ', timer: true});
   }
   if (items.length === 0 && fields.showEmpty === true) items.push({label: copy.title});
@@ -205,6 +206,10 @@ function updateClock() {
   if (remaining <= 0) refresh();
 }
 
+function timerRunning() {
+  return timer?.phase === 'running' && Airstream.timerRemaining() > 0;
+}
+
 function refresh() {
   if (!configured) return;
   const items = collectItems();
@@ -212,9 +217,9 @@ function refresh() {
     items, key: JSON.stringify([items, fields.font, fontRevision]),
     speed: Math.min(200, Math.max(30, fields.speed || 80))
   };
-  const running = Airstream.state.timer?.phase === 'running' && Airstream.timerRemaining() > 0;
+  const running = timerRunning();
   const removeTimer = timeNodes.length > 0 && !running;
-  const revision = Airstream.state.session?.filterRevision;
+  const revision = session?.filterRevision;
   const blockChanged = revision !== shownRevision;
   shownRevision = revision;
   if (reducedMotion.matches) {
@@ -264,12 +269,24 @@ document.fonts?.addEventListener('loadingdone', () => {
   refresh();
 });
 reducedMotion.addEventListener('change', resetMotion);
-Airstream.on('session', refresh);
-Airstream.on('goals', (_, meta) => meta.replay && configured ? resetMotion() : refresh());
-Airstream.on('timer', (_, meta) => {
+Airstream.on('session', next => {
+  session = next;
+  refresh();
+});
+Airstream.on('goals', (next, meta) => {
+  goals = next;
   if (meta.replay && configured) resetMotion();
   else refresh();
-  if (timeNodes.length && Airstream.state.timer?.phase === 'running') updateClock();
+});
+Airstream.on('timer', (next, meta) => {
+  timer = next;
+  if (meta.replay && configured) resetMotion();
+  else refresh();
+  if (timeNodes.length && timer?.phase === 'running') updateClock();
+});
+Airstream.on('disconnected', () => {
+  session = goals = timer = null;
+  resetMotion();
 });
 configureWidget(() => {
   widgetTitle(text[language].title);

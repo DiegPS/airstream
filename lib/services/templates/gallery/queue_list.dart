@@ -227,4 +227,8 @@ Airstream.on('queue', (state, meta) => {
   queue = state;
   render(!meta.replay);
 });
+Airstream.on('disconnected', () => {
+  queue = null;
+  render(false);
+});
 ''';

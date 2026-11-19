@@ -1187,6 +1187,7 @@
   "backupRestoreEverything": "Restaurar todo",
   "backupFileType": "Copia de Airstream",
   "backupRestoreReview": "Se reemplazarán tus ajustes, plantillas y biblioteca de medios. Airstream guardará antes una copia de tus datos actuales.",
+  "backupMissingExternalAudio": "Faltan estos archivos de referencia de voz o de sonido de alertas. Elige otros después de restaurar.",
   "backupRestoreContents": "Ajustes\nReglas: {rules}\nPlantillas: {templates}\nArchivos multimedia: {media}\nFecha de creación: {created}",
   "backupRestoreConfirm": "Restaurar",
   "backupExportDone": "Se exportó la copia completa.",

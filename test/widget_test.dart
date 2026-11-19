@@ -77,7 +77,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
-      'full restore names Internet-enabled templates before installation',
+      'full restore names Internet-enabled templates and missing audio before installation',
       (tester) async {
     final temp = (await tester.runAsync(
         () => io.Directory.systemTemp.createTemp('backup-review-widget-')))!;
@@ -86,6 +86,7 @@ void main() {
     final installed = TemplateLibrary(io.Directory('${temp.path}/installed'));
     final media = MediaLibrary(io.Directory('${temp.path}/media'), () => {});
     final path = '${temp.path}/restore.airstream-backup';
+    final missingVoice = '${temp.path}/missing-reference.wav';
     await tester.runAsync(() async {
       for (final (id, name, network) in [
         ('online', 'Online Clock', true),
@@ -102,7 +103,7 @@ void main() {
               templates: incoming,
               media: media,
               appVersion: 'test')
-          .export(path, const SettingsModel());
+          .export(path, SettingsModel(ttsReferenceAudioPath: missingVoice));
     });
     const selector = MethodChannel('plugins.flutter.io/file_selector');
     final messenger = tester.binding.defaultBinaryMessenger;
@@ -147,6 +148,9 @@ void main() {
     expect(find.text('Online Clock (Internet access)'), findsOneWidget);
     expect(find.textContaining('Offline Clock'), findsNothing);
     expect(find.textContaining('code that runs in OBS'), findsOneWidget);
+    expect(find.textContaining('voice reference or alert sound files'),
+        findsOneWidget);
+    expect(find.text(missingVoice), findsOneWidget);
     expect(await tester.runAsync(installed.exists), isFalse);
     await tester.tap(find.text('Cancel'));
     await _flushTemplateIO(tester);
@@ -2786,7 +2790,7 @@ void main() {
       expect(find.byKey(Key('template-$installed')), findsOneWidget);
       await tester.runAsync(() async {
         final info = (await library.get(installed))!;
-        expect(info.manifest.gallery, (id: id, version: 4));
+        expect(info.manifest.gallery, (id: id, version: 5));
         expect((await library.resolvedValues(installed))['language'], language);
         expect(await library.list(), hasLength(spanish ? 2 : 1));
         if (spanish) {

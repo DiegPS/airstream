@@ -5985,6 +5985,12 @@ abstract class AppLocalizations {
   /// **'This replaces your settings, templates and media library. Airstream saves a copy of your current data first.'**
   String get backupRestoreReview;
 
+  /// No description provided for @backupMissingExternalAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'These voice reference or alert sound files are missing. Choose replacements after restoring.'**
+  String get backupMissingExternalAudio;
+
   /// No description provided for @backupRestoreContents.
   ///
   /// In en, this message translates to:

@@ -81,6 +81,7 @@ function show(support, motion) {
   empty.hidden = !!support;
   if (!support) {
     entrance?.cancel();
+    for (const layer of layers) layer.replaceChildren();
     displayedKey = undefined;
     return;
   }
@@ -138,6 +139,10 @@ Airstream.on('session', (next, meta) => {
   const animate = !meta.replay && latest && !session?.supporters?.some(s => s.id === latest.id);
   session = next;
   render(animate);
+});
+Airstream.on('disconnected', () => {
+  session = null;
+  render();
 });
 configureWidget(() => {
   configured = true;

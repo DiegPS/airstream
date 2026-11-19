@@ -27,6 +27,7 @@ import 'package:airstream/application/overlay_coordinator.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
+import 'package:airstream/models/chat_session_state.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:airstream/pipeline/message_pipeline.dart';
@@ -62,7 +63,9 @@ class AppController {
     ObsCoordinator? obsCoordinator,
     DateTime Function()? clock,
     RuleSoundPlayer? clockSounds,
-  }) : _clockNow = clock ?? DateTime.now {
+    ChatLogWriter? chatLog,
+  })  : _clockNow = clock ?? DateTime.now,
+        _chatLog = chatLog ?? ChatLogWriter() {
     _clockSounds = clockSounds ??
         RuleSoundPlayer(settings: () => _lastSettings ?? const SettingsModel());
     _chat = chatCoordinator ??
@@ -122,7 +125,9 @@ class AppController {
       _chat.messages.listen(_chatLog.write),
       _chat.messages.listen((message) {
         if (TwitchGiftGroups.includes(message)) {
-          if (_chatRunning) _sessionGiftGroups.add(message, _recordSessionGift);
+          if (_chatRunning && !_chatEnded) {
+            _sessionGiftGroups.add(message, _recordSessionGift);
+          }
         } else {
           _recordSessionMessage(message);
         }
@@ -212,6 +217,7 @@ class AppController {
         final connected =
             states.values.any((s) => s.$1 == ServiceStatus.connected);
         rules.updateEnvironment(chatConnected: connected);
+        _syncChatSession();
         if (_chatConnected != connected) {
           _chatConnected = connected;
           if (_chatRunning) templateServer?.sessionChanged();
@@ -564,9 +570,10 @@ class AppController {
             error: error,
             stackTrace: stack)));
   });
-  final _sessionSummary = SessionSummaryCollector();
-  final _chatLog = ChatLogWriter();
+  late final _sessionSummary = SessionSummaryCollector(clock: _clockNow);
+  final ChatLogWriter _chatLog;
   bool _chatRunning = false;
+  bool _chatEnded = false;
   bool _chatConnected = false;
 
   /// Chat for the overlay: live messages plus any preview samples.
@@ -733,8 +740,61 @@ class AppController {
     _overlayPreview = const [];
   }
 
-  void retryChatConnections() => _chat.retryConnections();
+  void retryChatConnections() {
+    if (!_restartEndedChat()) _chat.retryConnections();
+  }
+
   void retryChatPlatform(String platform) => _chat.retryPlatform(platform);
+
+  bool _restartEndedChat() {
+    final settings = _lastSettings;
+    if (settings == null ||
+        !_chatRunning ||
+        _chat.sessionPhase != ChatSessionPhase.ended) {
+      return false;
+    }
+    _syncChatSession();
+    _chat.applySettings(settings, connectChats: false);
+    _startChatSession(settings);
+    _chat.applySettings(settings, connectChats: true);
+    return true;
+  }
+
+  void _syncChatSession() {
+    final settings = _lastSettings;
+    if (settings == null || !_chatRunning) return;
+    final phase = _chat.sessionPhase;
+    if (phase == ChatSessionPhase.ended && !_chatEnded) {
+      _chatEnded = true;
+      _chat.endSession();
+      _finishChatSession();
+    } else if (_chatEnded &&
+        phase != ChatSessionPhase.ended &&
+        phase != ChatSessionPhase.idle) {
+      _chat.startSession();
+      _startChatSession(settings);
+    }
+  }
+
+  void _startChatSession(SettingsModel settings) {
+    _chatEnded = false;
+    if (!_poll.hasOpenPoll) _withheldVoteIds.clear();
+    _sessionSummary.start();
+    _overlay.resetAlertDeliveries();
+    _overlay.clearRecentAlerts();
+    templateServer?.sessionChanged();
+    unawaited(_chatLog.startSession(enabled: settings.saveChatLog));
+  }
+
+  void _finishChatSession() {
+    _sessionGiftGroups.flush(_recordSessionGift);
+    _sessionSummary.stop();
+    _ruleGiftGroups.clear();
+    _chatConnected = false;
+    _overlay.resetAlertDeliveries();
+    templateServer?.sessionChanged();
+    unawaited(_chatLog.endSession());
+  }
 
   void applySettings(SettingsModel settings,
       {required bool connectChats, bool restoringBackup = false}) {
@@ -787,23 +847,18 @@ class AppController {
     if (connectChats != _chatRunning) {
       _chatRunning = connectChats;
       if (connectChats) {
-        if (!_poll.hasOpenPoll) _withheldVoteIds.clear();
-        _sessionSummary.start();
-        _overlay.clearRecentAlerts();
+        _startChatSession(settings);
       } else {
-        _sessionGiftGroups.flush(_recordSessionGift);
-        _sessionSummary.stop();
-        _ruleGiftGroups.clear();
-        _chatConnected = false;
+        _chatEnded = false;
+        _finishChatSession();
       }
-      templateServer?.sessionChanged();
-      unawaited(connectChats
-          ? _chatLog.startSession(enabled: settings.saveChatLog)
-          : _chatLog.endSession());
-    } else if (connectChats && previous?.saveChatLog != settings.saveChatLog) {
+    } else if (connectChats &&
+        !_chatEnded &&
+        previous?.saveChatLog != settings.saveChatLog) {
       unawaited(_chatLog.setEnabled(settings.saveChatLog));
     }
     _chat.applySettings(settings, connectChats: connectChats);
+    _syncChatSession();
     _audio.applySettings(settings, connectChats: connectChats);
     _overlay.broadcastGoals(Goals.payload(settings.goals),
         replay: restoringBackup);

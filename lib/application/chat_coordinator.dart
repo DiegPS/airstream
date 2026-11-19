@@ -308,6 +308,20 @@ class ChatCoordinator {
   List<ChatMessage> get sessionMessages => _pipeline.sessionMessages;
   bool get sessionMessagesTruncated => _pipeline.sessionMessagesTruncated;
 
+  ChatSessionPhase get sessionPhase => resolveChatSessionPhase(
+        requested: _lastConnectChats == true,
+        settings: _lastSettings ?? const SettingsModel(),
+        statuses: _platformStatus,
+        youtubeVideoIdFromUrl: _youtubeVideoIdFromUrl,
+      );
+
+  void startSession() {
+    _pipeline.startSession();
+    _clearMessages();
+  }
+
+  void endSession() => _pipeline.endSession();
+
   Stream<List<ChatMessage>> get messageListStream async* {
     yield List<ChatMessage>.from(_pipeline.buffer);
     yield* _listController.stream;

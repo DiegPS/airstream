@@ -408,6 +408,12 @@ class OverlayServer {
     _recentAlertsController.add(recentAlertsSnapshot);
   }
 
+  void resetAlertDeliveries() {
+    _pendingAlerts.clear();
+    _giftGroups.clear();
+    controlAlertQueue(AlertQueueOperation.clear);
+  }
+
   bool replayRecentAlert(String id) {
     for (final alert in _recentAlerts) {
       if (alert['id'] == id) {
@@ -458,8 +464,12 @@ class OverlayServer {
       {required bool rendered}) {
     final delivery = _pendingAlerts[id];
     if (delivery == null || !delivery.recipients.remove(client)) return;
-    if (rendered || delivery.recipients.isEmpty) _pendingAlerts.remove(id);
-    if (!rendered) return;
+    final qualifies = rendered &&
+        (_obsSources.any((source) => _views[source] == 'alerts')
+            ? _obsSources.contains(client) && !_inactiveSources.contains(client)
+            : true);
+    if (qualifies || delivery.recipients.isEmpty) _pendingAlerts.remove(id);
+    if (!qualifies) return;
     _recentAlerts.insert(0, Map.unmodifiable(delivery.data));
     if (_recentAlerts.length > 30) _recentAlerts.removeLast();
     _recentAlertsController.add(recentAlertsSnapshot);

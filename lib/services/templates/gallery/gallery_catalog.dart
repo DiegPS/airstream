@@ -67,7 +67,7 @@ class GalleryItem {
 final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   'recent-support': GalleryItem(
     id: 'recent-support',
-    version: 4,
+    version: 5,
     kind: GalleryKind.widget,
     width: 480,
     height: 640,
@@ -78,7 +78,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'starting-soon': GalleryItem(
     id: 'starting-soon',
-    version: 2,
+    version: 3,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStartingSoon,
     description: (l) => l.galleryStartingSoonDescription,
@@ -87,7 +87,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'be-right-back': GalleryItem(
     id: 'be-right-back',
-    version: 2,
+    version: 3,
     kind: GalleryKind.screen,
     name: (l) => l.galleryBeRightBack,
     description: (l) => l.galleryBeRightBackDescription,
@@ -96,7 +96,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'stream-ending': GalleryItem(
     id: 'stream-ending',
-    version: 2,
+    version: 3,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStreamEnding,
     description: (l) => l.galleryStreamEndingDescription,
@@ -105,7 +105,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'credits': GalleryItem(
     id: 'credits',
-    version: 2,
+    version: 3,
     kind: GalleryKind.screen,
     name: (l) => l.galleryCredits,
     description: (l) => l.galleryCreditsDescription,
@@ -114,7 +114,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'ticker': GalleryItem(
     id: 'ticker',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: tickerWidth,
     height: tickerHeight,
@@ -125,7 +125,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'latest-support': GalleryItem(
     id: 'latest-support',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: latestSupportWidth,
     height: latestSupportHeight,
@@ -136,7 +136,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'top-supporters': GalleryItem(
     id: 'top-supporters',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: topSupportersWidth,
     height: topSupportersHeight,
@@ -147,7 +147,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'queue-list': GalleryItem(
     id: 'queue-list',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: 480,
     height: 720,

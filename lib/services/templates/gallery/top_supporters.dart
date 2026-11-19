@@ -165,9 +165,9 @@ const schedule = widgetRotation(() => {
   show(groups[(index + 1) % groups.length], false);
 });
 
+let session;
 function render(animate = false) {
   if (!configured) return;
-  const session = Airstream.state.session;
   groups = rankedSupport(session, fields.currency);
   if (session?.topChatters?.length) groups.push({type: 'chatters', entries: session.topChatters});
   const type = fields.type || 'auto';
@@ -176,7 +176,14 @@ function render(animate = false) {
   schedule(type === 'auto' ? groups.length : 0);
 }
 
-Airstream.on('session', (_, meta) => render(!meta.replay));
+Airstream.on('session', (next, meta) => {
+  session = next;
+  render(!meta.replay);
+});
+Airstream.on('disconnected', () => {
+  session = null;
+  render();
+});
 configureWidget(() => {
   configured = true;
   widgetTitle(copy().title);

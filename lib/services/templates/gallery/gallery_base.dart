@@ -584,10 +584,12 @@ function subtitleText(value) {
 
 function configureScreen(onFields, onSession = () => {}) {
   let configured = false;
-  Airstream.on('session', next => {
+  function updateSession(next) {
     session = next;
     if (configured) onSession();
-  });
+  }
+  Airstream.on('session', updateSession);
+  Airstream.on('disconnected', () => updateSession(null));
   Airstream.on('fields', next => {
     fields = next || {};
     const nextLanguage = applyGalleryFields(fields);

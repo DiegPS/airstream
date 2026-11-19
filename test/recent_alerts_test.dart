@@ -62,6 +62,92 @@ void main() {
     expect(connection.server.replayRecentAlert('paused'), isFalse);
   });
 
+  test('only an active OBS alerts source can acknowledge when OBS is present',
+      () async {
+    final obs = IOWebSocketChannel.connect(
+        'ws://127.0.0.1:${connection.server.port}/ws');
+    final events = StreamIterator(obs.stream);
+    addTearDown(() async {
+      await events.cancel();
+      await obs.sink.close();
+    });
+    await obs.ready;
+    void send(Map<String, Object> data) => obs.sink.add(jsonEncode(data));
+    Future<Map<String, dynamic>> next(String type) async {
+      while (await events.moveNext().timeout(const Duration(seconds: 2))) {
+        final event =
+            jsonDecode(events.current as String) as Map<String, dynamic>;
+        if (event['type'] == type) return event;
+      }
+      throw StateError('Missing $type event');
+    }
+
+    send({
+      'type': 'register',
+      'view': 'alerts',
+      'inObs': true,
+      'active': false,
+      'alertDisplayAck': true
+    });
+    await next('registered');
+
+    for (final (id, active) in [('hidden', false), ('visible', true)]) {
+      send({'type': 'sourceActivity', 'active': active});
+      final browser =
+          connection.envelopes.stream.firstWhere((e) => e['type'] == 'alert');
+      await connection.send(message(Platform.youtube,
+          id: id, payment: const SuperChat(amount: r'$5', color: '#ffffff')));
+      final fromObs = await next('alert');
+      final delivery = (await browser)['alertDeliveryId'] as int;
+      expect(fromObs['alertDeliveryId'], delivery);
+      await connection.acknowledgeAndWait(delivery);
+      expect(connection.server.recentAlertsSnapshot, isEmpty);
+
+      final processed = connection.server.alertQueueStatusStream
+          .firstWhere((status) => status.pending == (active ? 3 : 2));
+      send({'type': 'alertRendered', 'deliveryId': delivery});
+      send({
+        'type': 'alertQueue',
+        'pending': active ? 3 : 2,
+        'active': false,
+        'paused': false
+      });
+      await processed.timeout(const Duration(seconds: 2));
+      expect(connection.server.recentAlertsSnapshot.map((alert) => alert['id']),
+          active ? ['visible'] : isEmpty);
+    }
+  });
+
+  test(
+      'starting a session clears paused deliveries and rejects stale acknowledgements',
+      () async {
+    final server = connection.server;
+    server.controlAlertQueue(AlertQueueOperation.pause);
+    final stale =
+        connection.envelopes.stream.firstWhere((e) => e['type'] == 'alert');
+    await connection.send(message(Platform.youtube,
+        id: 'old', payment: const SuperChat(amount: r'$5', color: '#ffffff')));
+    final oldId = (await stale)['alertDeliveryId'] as int;
+
+    final controls = <Object?>[];
+    final subscription = connection.envelopes.stream
+        .where((e) => e['type'] == 'alertControl')
+        .listen((e) => controls.add(e['op']));
+    addTearDown(subscription.cancel);
+    server.resetAlertDeliveries();
+    server.clearRecentAlerts();
+    server.controlAlertQueue(AlertQueueOperation.resume);
+    await connection.acknowledgeAndWait(oldId);
+    expect(server.recentAlertsSnapshot, isEmpty);
+    expect(controls, ['clear', 'resume']);
+
+    final fresh = connection.nextAlert();
+    await connection.send(message(Platform.youtube,
+        id: 'new', payment: const SuperChat(amount: r'$5', color: '#ffffff')));
+    final payload = await fresh;
+    expect(server.recentAlertsSnapshot, [payload]);
+  });
+
   test('records exact automatic payloads newest first, including flushed gifts',
       () async {
     for (final msg in [
@@ -307,6 +393,29 @@ class _Connection {
       await recorded.timeout(const Duration(seconds: 2));
     }
     return event['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> acknowledgeAndWait(int id) async {
+    final processed =
+        server.alertQueueStatusStream.firstWhere((status) => status.active);
+    socket!.sink
+      ..add(jsonEncode({'type': 'alertRendered', 'deliveryId': id}))
+      ..add(jsonEncode({
+        'type': 'alertQueue',
+        'pending': 0,
+        'active': true,
+        'paused': false
+      }));
+    await processed.timeout(const Duration(seconds: 2));
+    final reset =
+        server.alertQueueStatusStream.firstWhere((status) => !status.active);
+    socket!.sink.add(jsonEncode({
+      'type': 'alertQueue',
+      'pending': 0,
+      'active': false,
+      'paused': false
+    }));
+    await reset.timeout(const Duration(seconds: 2));
   }
 
   Future<void> close() async {

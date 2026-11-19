@@ -3701,6 +3701,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se reemplazarán tus ajustes, plantillas y biblioteca de medios. Airstream guardará antes una copia de tus datos actuales.';
 
   @override
+  String get backupMissingExternalAudio =>
+      'Faltan estos archivos de referencia de voz o de sonido de alertas. Elige otros después de restaurar.';
+
+  @override
   String backupRestoreContents(
       int rules, int templates, int media, String created) {
     return 'Ajustes\nReglas: $rules\nPlantillas: $templates\nArchivos multimedia: $media\nFecha de creación: $created';

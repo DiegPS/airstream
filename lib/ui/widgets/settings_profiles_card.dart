@@ -254,6 +254,11 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                 if (missingUrls.isNotEmpty)
                   Text(
                       '${l.ruleLabel('kresetHttpUrl')} ${missingUrls.join(', ')}'),
+                if (backup.missingExternalAudio.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(l.backupMissingExternalAudio),
+                  for (final path in backup.missingExternalAudio) Text(path),
+                ],
                 if (applying) const LinearProgressIndicator(),
               ],
             ),

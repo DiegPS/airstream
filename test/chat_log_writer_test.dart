@@ -167,6 +167,10 @@ class _SinkFile extends Fake implements File {
   final IOSink Function() createSink;
 
   @override
+  Future<File> create({bool recursive = false, bool exclusive = false}) async =>
+      this;
+
+  @override
   IOSink openWrite({FileMode mode = FileMode.write, Encoding? encoding}) =>
       createSink();
 }

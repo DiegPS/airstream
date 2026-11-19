@@ -26,12 +26,16 @@ ChatSessionPhase resolveChatSessionPhase({
   required bool requested,
   required SettingsModel settings,
   required Map<String, (ServiceStatus, String?)> statuses,
+  String? Function(String) youtubeVideoIdFromUrl =
+      SettingsInputNormalizer.youtubeVideoId,
 }) {
   if (!requested) return ChatSessionPhase.idle;
 
   final configured = <String>[
     if (hasSingleYoutubeChat(settings)) 'youtube',
-    if (configuredDualYoutubeVideoIds(settings) != null) ...[
+    if (configuredDualYoutubeVideoIds(settings,
+            videoIdFromUrl: youtubeVideoIdFromUrl) !=
+        null) ...[
       'youtubeHorizontal',
       'youtubeVertical',
     ],

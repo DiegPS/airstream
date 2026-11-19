@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/services/media_library.dart';
+import 'package:airstream/services/overlay/alert_sounds.dart';
 import 'package:airstream/services/system_backup.dart';
 import 'package:airstream/services/templates/template_archive.dart';
 import 'package:airstream/services/templates/template_library.dart';
@@ -166,6 +167,55 @@ void main() {
   }
 
   test(
+      'full backup remaps reference WAVs and custom alert sounds in profiles and tiers',
+      () async {
+    final external = await Directory(p.join(temp.path, 'old-pc')).create();
+    final voice = await File(p.join(external.path, 'reference.wav'))
+        .writeAsBytes(AlertSounds.wav('chime'));
+    final alert = await File(p.join(external.path, 'alert.WAV'))
+        .writeAsBytes(AlertSounds.wav('coin'));
+    final tier = await File(p.join(external.path, 'tier.wav'))
+        .writeAsBytes(AlertSounds.wav('fanfare'));
+    final source = SettingsProfiles.save(
+      SettingsModel(
+        ttsReferenceAudioPath: voice.path,
+        ttsReferenceText: 'Reference words',
+        alertTypeOptions: {
+          'bits': {
+            'sound': 'custom',
+            'soundPath': alert.path,
+            'tiers': [
+              {'from': 100, 'sound': 'custom', 'soundPath': tier.path}
+            ],
+          },
+        },
+      ),
+      'Stream',
+    );
+    final path = p.join(temp.path, 'audio.airstream-backup');
+    await backup.export(path, source);
+    await external.delete(recursive: true);
+    final validated = await backup.validate(path);
+    addTearDown(validated.dispose);
+    await backup.restore(validated, settings);
+    final restored = settings.current;
+    expect(restored.ttsReferenceText, 'Reference words');
+    final bits = restored.alertTypeOptions['bits']!;
+    expect(restored.profiles['Stream']!['ttsReferenceAudioPath'],
+        restored.ttsReferenceAudioPath);
+    expect(restored.profiles['Stream']!['alertTypeOptions'],
+        restored.alertTypeOptions);
+    for (final (newPath, sound) in [
+      (restored.ttsReferenceAudioPath, 'chime'),
+      (bits['soundPath'] as String, 'coin'),
+      ((bits['tiers'] as List).single['soundPath'] as String, 'fanfare'),
+    ]) {
+      expect(p.isWithin(support.path, newPath), isTrue);
+      expect(await File(newPath).readAsBytes(), AlertSounds.wav(sound));
+    }
+  });
+
+  test(
       'restores settings, rule counters, templates and media, preserving local credentials',
       () async {
     final path = await makePortable();
@@ -324,6 +374,72 @@ void main() {
     'createdAt': '2026-01-01T00:00:00Z',
     'counts': {'rules': 0, 'templates': 0, 'media': 0},
   };
+
+  test(
+      'legacy restore review lists missing audio but omits files available locally',
+      () async {
+    final localSound = await File(p.join(temp.path, 'available.wav'))
+        .writeAsBytes(AlertSounds.wav('coin'));
+    final missingVoice = p.join(temp.path, 'missing-voice.wav');
+    final missingTier = p.join(temp.path, 'missing-tier.ogg');
+    final source = SettingsModel(
+      ttsReferenceAudioPath: missingVoice,
+      alertTypeOptions: {
+        'bits': {
+          'sound': 'custom',
+          'soundPath': localSound.path,
+          'tiers': [
+            {'from': 100, 'sound': 'custom', 'soundPath': missingTier},
+          ],
+        },
+      },
+    );
+    final archive = Archive()
+      ..addFile(ArchiveFile.string('manifest.json', jsonEncode(validManifest)))
+      ..addFile(
+          ArchiveFile.string('settings.json', SettingsProfiles.export(source)));
+    final file = await File(p.join(temp.path, 'legacy.airstream-backup'))
+        .writeAsBytes(ZipEncoder().encode(archive));
+    final validated = await backup.validate(file.path);
+    addTearDown(validated.dispose);
+    expect(validated.missingExternalAudio, [missingVoice, missingTier]);
+    await backup.restore(validated, settings);
+    expect(settings.current.ttsReferenceAudioPath, missingVoice);
+    expect(settings.current.alertTypeOptions['bits']?['soundPath'],
+        localSound.path);
+  });
+
+  test('external audio obeys the archive file limit and rejects forged paths',
+      () async {
+    final voice = await File(p.join(temp.path, 'reference.wav'))
+        .writeAsBytes(AlertSounds.wav('chime'));
+    final source = SettingsModel(ttsReferenceAudioPath: voice.path);
+    final constrained = SystemBackup(
+      support: support,
+      templates: templates,
+      media: media,
+      limits: const TemplateArchiveLimits(file: 128),
+    );
+    await expectLater(
+      constrained.export(
+          p.join(temp.path, 'oversize.airstream-backup'), source),
+      throwsA(
+          isA<FormatException>().having((e) => e.message, 'message', 'size')),
+    );
+
+    final forged = {
+      ...validManifest,
+      'externalAudio': {voice.path: '../reference.wav'},
+    };
+    final archive = Archive()
+      ..addFile(ArchiveFile.string('manifest.json', jsonEncode(forged)))
+      ..addFile(
+          ArchiveFile.string('settings.json', SettingsProfiles.export(source)));
+    final file = await File(p.join(temp.path, 'forged.airstream-backup'))
+        .writeAsBytes(ZipEncoder().encode(archive));
+    await expectLater(backup.validate(file.path), throwsFormatException);
+  });
+
   for (final (label, manifest, unsafePath, limits, reason) in [
     (
       'bad manifest',

@@ -259,6 +259,10 @@ class FakeOverlayClient implements OverlayClient {
     recent.clear();
   }
 
+  int resetAlertDeliveryCount = 0;
+  @override
+  void resetAlertDeliveries() => resetAlertDeliveryCount++;
+
   final clientsController = StreamController<int>.broadcast(sync: true);
   int startCount = 0;
   int stopCount = 0;

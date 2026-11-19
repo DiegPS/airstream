@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:airstream/application/subathon_timer.dart';
 import 'package:airstream/application/app_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_sound_player.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/chat_log_writer.dart';
 import 'package:airstream/services/obs_service.dart';
 // Flutter's existing test dependency supplies deterministic timers.
 // ignore: depend_on_referenced_packages
@@ -123,10 +125,12 @@ void main() {
           RuleSoundPlayer? clockSounds,
           FakeTtsClient? tts,
           FakeObsClient? obs,
-          FakeAlertSound? alertSound}) =>
+          FakeAlertSound? alertSound,
+          ChatLogWriter? chatLog}) =>
       AppController(
           clock: clock,
           clockSounds: clockSounds,
+          chatLog: chatLog,
           chatCoordinator: chat ??
               ChatCoordinator(
                   youtube: FakeYouTubeChatClient(),
@@ -1055,6 +1059,76 @@ void main() {
     app.applySettings(settings, connectChats: true);
     expect(app.sessionChat, isEmpty);
     expect(app.sessionSummary.participants, isEmpty);
+  });
+
+  test('the last ended chat freezes the session and Start resets it', () async {
+    final logs = await Directory.systemTemp.createTemp('ended-chat-test-');
+    addTearDown(() => logs.delete(recursive: true));
+    final log = ChatLogWriter(
+        directory: () async => logs, clock: () => DateTime(2026, 11, 19));
+    final youtube = FakeYouTubeChatClient();
+    final twitch = FakeChannelChatClient();
+    final app = makeController(twitch, RuleOverlay(),
+        chatLog: log,
+        chat: ChatCoordinator(
+          youtube: youtube,
+          youtubeHorizontal: FakeYouTubeChatClient(),
+          youtubeVertical: FakeYouTubeChatClient(),
+          kick: FakeChannelChatClient(),
+          twitch: twitch,
+        ));
+    addTearDown(app.dispose);
+    const settings = SettingsModel(
+      overlayEnabled: false,
+      youtubeHandle: '@creator',
+      twitchChannel: 'channel',
+      saveChatLog: true,
+    );
+    app.applySettings(settings, connectChats: true);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    twitch.statusController.add((ServiceStatus.connected, null));
+    final first = queueMessage('Ana', 'first', platform: Platform.youtube);
+    youtube.messageController.add(first);
+    await settleCoordinatorTasks();
+    expect(app.sessionSummary.messages, 1);
+    expect(app.sessionChat.single.isFirstInSession, isTrue);
+
+    youtube.statusController.add((ServiceStatus.ended, null));
+    await settleCoordinatorTasks();
+    expect(app.sessionSummary.endedAt, isNull);
+
+    youtube.statusController.add((ServiceStatus.connected, null));
+    app.applySettings(settings.copyWith(twitchEnabled: false),
+        connectChats: true);
+    await settleCoordinatorTasks();
+    expect(app.sessionSummary.endedAt, isNull);
+    youtube.statusController.add((ServiceStatus.ended, null));
+    await settleCoordinatorTasks();
+    final end = app.sessionSummary.endedAt;
+    expect(end, isNotNull);
+    expect(app.sessionSummary.duration(end!.add(const Duration(hours: 1))),
+        app.sessionSummary.duration(end));
+    expect(app.sessionChat.single.plainText, 'first');
+    expect(app.sessionSummary.messages, 1);
+
+    app.retryChatConnections();
+    expect(youtube.connectCount, 2);
+    expect(app.sessionSummary.messages, 0);
+    expect(app.sessionSummary.endedAt, isNull);
+    expect(app.sessionChat, isEmpty);
+    expect(await app.messageListStream.first, isEmpty);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    youtube.messageController
+        .add(queueMessage('Ana', 'second', platform: Platform.youtube));
+    await settleCoordinatorTasks();
+    expect(app.sessionChat.single.isFirstInSession, isTrue);
+    expect(app.sessionSummary.messages, 1);
+    await log.endSession();
+    final files = await logs.list().cast<File>().toList();
+    expect(files, hasLength(2));
+    final lines = await Future.wait(files.map((file) => file.readAsLines()));
+    expect(lines.map((log) => log.single),
+        unorderedEquals([endsWith('Ana: first'), endsWith('Ana: second')]));
   });
 
   test('hidden paid votes count and run support rules with redacted text',
@@ -2046,14 +2120,19 @@ void main() {
     controller.applySettings(settings, connectChats: true);
     expect(overlay.recent, isEmpty);
     expect(overlay.clearRecentCount, 1);
+    expect(overlay.resetAlertDeliveryCount, 1);
     overlay.recent.add({'id': 'current'});
     controller.applySettings(settings.copyWith(alertDisabledTypes: ['bits']),
         connectChats: true);
     expect(overlay.recent.single['id'], 'current');
+    expect(overlay.resetAlertDeliveryCount, 1);
     controller.applySettings(settings, connectChats: false);
+    expect(overlay.resetAlertDeliveryCount, 2);
+    expect(overlay.recent.single['id'], 'current');
     controller.applySettings(settings, connectChats: true);
     expect(overlay.recent, isEmpty);
     expect(overlay.clearRecentCount, 2);
+    expect(overlay.resetAlertDeliveryCount, 3);
   });
 
   test('forwards moderation and provider events to the overlay facade',
