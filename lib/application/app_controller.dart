@@ -758,6 +758,7 @@ class AppController {
       queue.applyFilter(filter);
       if (blocksChanged) {
         _giveaway.applyFilter(filter);
+        _poll.applyFilter(filter);
         _sessionSummary.applyBlockFilter(filter);
         templateServer?.sessionChanged();
       }

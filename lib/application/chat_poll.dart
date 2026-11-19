@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'package:flutter/widgets.dart' show Locale, StringCharacters;
 
 import 'chat_queue.dart';
@@ -19,6 +20,7 @@ typedef _VoteSource = ({
   String id,
   String authorId,
   String name,
+  ChatMessage message,
 });
 
 /// A poll viewers can answer from any connected chat.
@@ -408,12 +410,27 @@ class ChatPollController {
       id: message.id,
       authorId: message.author.channelId,
       name: message.author.name,
+      message: message,
     );
     _schedulePublish();
     return private;
   }
 
-  void handleModeration(ChatModerationEvent event) {
+  void handleModeration(ChatModerationEvent event) =>
+      _removeVotes((source) => event.matchesTarget(
+            targetPlatform: source.platform,
+            orientation: source.orientation,
+            id: source.id,
+            authorId: source.authorId,
+            name: source.name,
+          ));
+
+  /// A block-list change drops open votes from now-blocked viewers or text,
+  /// as if those messages had never arrived.
+  void applyFilter(ChatFilter filter) =>
+      _removeVotes((source) => filter.blocksMessage(source.message));
+
+  void _removeVotes(bool Function(_VoteSource) matches) {
     final poll = _openPoll;
     if (poll == null) return;
     final endsAt = poll.endsAt;
@@ -422,13 +439,7 @@ class ChatPollController {
       return;
     }
     final previousCount = _voteSources.length;
-    _voteSources.removeWhere((_, source) => event.matchesTarget(
-          targetPlatform: source.platform,
-          orientation: source.orientation,
-          id: source.id,
-          authorId: source.authorId,
-          name: source.name,
-        ));
+    _voteSources.removeWhere((_, source) => matches(source));
     if (_voteSources.length == previousCount) return;
     _poll = _openPoll = poll._copyWith(
       votes: Map.unmodifiable({

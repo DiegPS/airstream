@@ -212,6 +212,49 @@ void main() {
     });
   });
 
+  test('a block-list change drops open poll votes from blocked viewers or text',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server);
+      const base = SettingsModel(overlayEnabled: false);
+      app.applySettings(base, connectChats: true);
+      fake.flushMicrotasks();
+      app.startPoll(
+          question: 'Pick',
+          options: const ['Apple', 'Pear'],
+          mode: PollMode.freeAnswer,
+          command: '!vote');
+      void send(String name, String text) {
+        twitch.messageController.add(ChatMessage(
+            platform: Platform.twitch,
+            id: 'm-$name',
+            author: ChatAuthor(name: name, channelId: name.toLowerCase()),
+            items: [MessageItem.text(text)],
+            timestamp: DateTime.utc(2026)));
+        fake.elapse(const Duration(milliseconds: 250));
+      }
+
+      send('Ana', '!vote Apple');
+      send('Beto', '!vote rude words here');
+      send('Carla', '!vote Pear');
+      expect(server.polls.last?['total'], 3);
+      app.applySettings(
+          base.copyWith(blockedUsers: ['ana'], blockedWords: ['rude words']),
+          connectChats: true);
+      fake.flushMicrotasks();
+      expect(server.polls.last?['total'], 1);
+      final answers = server.polls.last?['answers'] as List;
+      expect(answers.map((a) => (a as Map)['text']), ['Pear']);
+      app.endPoll();
+      fake.flushMicrotasks();
+      expect(server.polls.last?['total'], 1);
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
   test('blocking a drawn winner republishes the public giveaway only', () {
     fakeAsync((fake) {
       final twitch = FakeChannelChatClient();
