@@ -1166,6 +1166,95 @@ void main() {
     expect(audio.ttsSessionStartedAt!.isAfter(first!), isTrue);
   });
 
+  test('Retry starts a fresh broadcast when the other chat failed', () async {
+    final logs = await Directory.systemTemp.createTemp('failed-chat-test-');
+    addTearDown(() => logs.delete(recursive: true));
+    final log = ChatLogWriter(directory: () async => logs);
+    final youtube = FakeYouTubeChatClient();
+    final kick = FakeChannelChatClient();
+    final twitch = FakeChannelChatClient();
+    final chat = ChatCoordinator(
+      youtube: youtube,
+      youtubeHorizontal: FakeYouTubeChatClient(),
+      youtubeVertical: FakeYouTubeChatClient(),
+      twitch: twitch,
+      kick: kick,
+    );
+    final app = makeController(twitch, RuleOverlay(), chat: chat, chatLog: log);
+    addTearDown(app.dispose);
+    app.applySettings(
+        const SettingsModel(
+            overlayEnabled: false,
+            youtubeHandle: '@creator',
+            kickSlug: 'channel',
+            saveChatLog: true),
+        connectChats: true);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    kick.statusController.add((ServiceStatus.error, 'unavailable'));
+    youtube.messageController
+        .add(queueMessage('Ana', 'first', platform: Platform.youtube));
+    await settleCoordinatorTasks();
+    youtube.statusController.add((ServiceStatus.ended, null));
+    await settleCoordinatorTasks();
+    expect(chat.sessionPhase.name, 'failed');
+    expect(app.sessionSummary.endedAt, isNotNull);
+    expect(app.sessionChat.single.plainText, 'first');
+
+    app.retryChatConnections();
+    expect(youtube.connectCount, 2);
+    expect(app.sessionSummary.messages, 0);
+    expect(app.sessionSummary.endedAt, isNull);
+    expect(app.sessionChat, isEmpty);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    youtube.messageController
+        .add(queueMessage('Ana', 'second', platform: Platform.youtube));
+    await settleCoordinatorTasks();
+    await log.endSession();
+    final files = await logs.list().cast<File>().toList();
+    expect(files, hasLength(2));
+    final lines = await Future.wait(files.map((file) => file.readAsLines()));
+    expect(lines.map((log) => log.single),
+        unorderedEquals([endsWith('Ana: first'), endsWith('Ana: second')]));
+  });
+
+  test('natural chat end cancels queued chat speech and preserves other speech',
+      () async {
+    final youtube = FakeYouTubeChatClient();
+    final twitch = FakeChannelChatClient();
+    final tts = FakeTtsClient();
+    final app = makeController(twitch, RuleOverlay(),
+        tts: tts,
+        chat: ChatCoordinator(
+          youtube: youtube,
+          youtubeHorizontal: FakeYouTubeChatClient(),
+          youtubeVertical: FakeYouTubeChatClient(),
+          twitch: twitch,
+          kick: FakeChannelChatClient(),
+        ));
+    addTearDown(app.dispose);
+    app.applySettings(
+        const SettingsModel(
+            overlayEnabled: false, youtubeHandle: '@creator', ttsEnabled: true),
+        connectChats: true);
+    youtube.statusController.add((ServiceStatus.connected, null));
+    tts.speak('other speech');
+    for (final text in ['first', 'second']) {
+      youtube.messageController.add(ChatMessage(
+        platform: Platform.youtube,
+        id: text,
+        author: const ChatAuthor(name: 'Ana', channelId: 'ana'),
+        items: [MessageItem.text(text)],
+        timestamp: DateTime.now().toUtc(),
+      ));
+    }
+    await settleCoordinatorTasks();
+    expect(tts.tags.whereType<ChatMessage>(), hasLength(2));
+    youtube.statusController.add((ServiceStatus.ended, null));
+    await settleCoordinatorTasks();
+    expect(app.sessionSummary.endedAt, isNotNull);
+    expect(tts.spoken, ['other speech']);
+  });
+
   test('hidden paid votes count and run support rules with redacted text',
       () async {
     final twitch = FakeChannelChatClient();

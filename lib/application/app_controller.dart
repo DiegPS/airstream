@@ -748,12 +748,9 @@ class AppController {
 
   bool _restartEndedChat() {
     final settings = _lastSettings;
-    if (settings == null ||
-        !_chatRunning ||
-        _chat.sessionPhase != ChatSessionPhase.ended) {
-      return false;
-    }
+    if (settings == null || !_chatRunning) return false;
     _syncChatSession();
+    if (!_chatEnded) return false;
     _chat.applySettings(settings, connectChats: false);
     _startChatSession(settings);
     _chat.applySettings(settings, connectChats: true);
@@ -764,13 +761,15 @@ class AppController {
     final settings = _lastSettings;
     if (settings == null || !_chatRunning) return;
     final phase = _chat.sessionPhase;
-    if (phase == ChatSessionPhase.ended && !_chatEnded) {
+    if (_chat.sessionHasEnded && !_chatEnded) {
       _chatEnded = true;
       _chat.endSession();
+      _audio.cancelChatSpeech();
       _finishChatSession();
     } else if (_chatEnded &&
-        phase != ChatSessionPhase.ended &&
-        phase != ChatSessionPhase.idle) {
+        (phase == ChatSessionPhase.connecting ||
+            phase == ChatSessionPhase.connected ||
+            phase == ChatSessionPhase.partiallyConnected)) {
       _chat.startSession();
       _startChatSession(settings);
     }

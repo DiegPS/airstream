@@ -3731,6 +3731,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Estos archivos de audio superan el tamaño máximo por archivo y quedaron fuera de la copia de seguridad.';
 
   @override
+  String get backupExportAudioSizeLimit =>
+      'Estos archivos de audio superaron el límite por archivo o el espacio disponible en la copia de seguridad y quedaron fuera.';
+
+  @override
+  String get templateLibrarySizeLimit =>
+      'La biblioteca de plantillas puede ocupar hasta 100 MB.';
+
+  @override
   String get backupRestoreDone => 'Se restauró la copia completa.';
 
   @override

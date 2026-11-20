@@ -5,7 +5,8 @@ function matchesAlertModeration(alert, event) {
     return false;
   }
   if (event.scope === 'platform') return true;
-  if (event.scope === 'message') return !!event.messageId && alert.id === event.messageId;
+  if (event.scope === 'message') return !!event.messageId &&
+    (alert.sourceMessageId ?? alert.id) === event.messageId;
   return event.scope === 'author' &&
     ((event.authorChannelId && alert.authorChannelId === event.authorChannelId) ||
      (event.authorName && String(alert.author || '').toLowerCase() === event.authorName.toLowerCase()));

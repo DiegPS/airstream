@@ -470,6 +470,60 @@ void main() {
         voice.path);
   });
 
+  test('omits audio beyond the total budget from exports and safety backups',
+      () async {
+    backup = SystemBackup(
+      support: support,
+      templates: templates,
+      media: media,
+      limits: const TemplateArchiveLimits(total: 115 * 1024),
+    );
+    final incoming = p.join(temp.path, 'incoming.airstream-backup');
+    await backup.export(incoming, const SettingsModel(fontSize: 26));
+    final validated = await backup.validate(incoming);
+    addTearDown(validated.dispose);
+
+    Future<File> voice(String name, int kib) async {
+      final bytes = Uint8List(kib * 1024)
+        ..setAll(0, AlertSounds.wav('chime').take(44));
+      ByteData.sublistView(bytes)
+        ..setUint32(4, bytes.length - 8, Endian.little)
+        ..setUint32(40, bytes.length - 44, Endian.little);
+      return File(p.join(temp.path, name)).writeAsBytes(bytes);
+    }
+
+    final first = await voice('first.wav', 60);
+    final second = await voice('second.wav', 45);
+    await write(templates.root, ['small', 'index.html'], ' ' * (40 * 1024));
+    await settings.update(SettingsProfiles.save(
+      local.copyWith(ttsReferenceAudioPath: second.path),
+      'Other voice',
+    ).copyWith(ttsReferenceAudioPath: first.path));
+
+    final destination = p.join(temp.path, 'outgoing.airstream-backup');
+    expect(await backup.export(destination, settings.current), [second.path]);
+    final exported = await backup.validate(destination);
+    addTearDown(exported.dispose);
+    expect(exported.templates, 1);
+    Future<void> expectOnlyFirstVoice(File file) async {
+      final archive = ZipDecoder().decodeBytes(await file.readAsBytes());
+      final manifest =
+          jsonDecode(utf8.decode(archive.findFile('manifest.json')!.content))
+              as Map;
+      expect(manifest['externalAudio'], {first.path: 'external-audio/1.wav'});
+    }
+
+    await expectOnlyFirstVoice(File(destination));
+
+    await backup.restore(validated, settings);
+    expect(settings.current.fontSize, 26);
+    final safety = Directory(p.join(support.path, 'safety-backups'))
+        .listSync()
+        .whereType<File>()
+        .single;
+    await expectOnlyFirstVoice(safety);
+  });
+
   test('rejects forged external audio paths', () async {
     final voice = await File(p.join(temp.path, 'reference.wav'))
         .writeAsBytes(AlertSounds.wav('chime'));

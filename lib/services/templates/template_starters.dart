@@ -296,5 +296,7 @@ function draw(meta = {replay:true}) {
 }
 // Replayed state draws immediately without celebrating a goal already reached.
 Airstream.on('goals',(values,meta) => { goals = values || []; draw(meta); });
+// Without the server the old total is hidden until a fresh snapshot arrives.
+Airstream.on('disconnected',() => { goals = []; clearTimeout(celebration); content.classList.remove('celebrate'); draw(); });
 Airstream.on('fields',values => { if (values.goalIndex && fields.goalIndex !== values.goalIndex) previous = null; fields = {...fields,...values}; draw(); });
 ''';

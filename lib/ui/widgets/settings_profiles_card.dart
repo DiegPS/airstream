@@ -370,7 +370,7 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l.backupExportOmittedAudio),
+                      Text(l.backupExportAudioSizeLimit),
                       const SizedBox(height: 12),
                       for (final path in omittedAudio) Text(path),
                     ],

@@ -170,6 +170,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
       'zip' => l.templateRejectZip,
       'count' => l.templateRejectCount,
       'total' => l.templateRejectTotal,
+      'libraryTotal' => l.templateLibrarySizeLimit,
       'file' => l.templateRejectFile,
       'path' => l.templateRejectPath,
       'link' => l.templateRejectLink,

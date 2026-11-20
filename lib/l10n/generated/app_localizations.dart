@@ -6028,6 +6028,18 @@ abstract class AppLocalizations {
   /// **'These audio files exceeded the per-file size limit and were left out of the backup.'**
   String get backupExportOmittedAudio;
 
+  /// No description provided for @backupExportAudioSizeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'These audio files exceeded the per-file limit or the remaining space in the backup and were left out.'**
+  String get backupExportAudioSizeLimit;
+
+  /// No description provided for @templateLibrarySizeLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'The template library can contain up to 100 MB.'**
+  String get templateLibrarySizeLimit;
+
   /// No description provided for @backupRestoreDone.
   ///
   /// In en, this message translates to:

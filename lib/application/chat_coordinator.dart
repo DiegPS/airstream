@@ -315,6 +315,17 @@ class ChatCoordinator {
         youtubeVideoIdFromUrl: _youtubeVideoIdFromUrl,
       );
 
+  /// A broadcast ended, and no configured chat can still receive messages.
+  bool get sessionHasEnded {
+    final statuses = _platformStatus.entries
+        .where((entry) => _isPlatformConfigured(entry.key))
+        .map((entry) => entry.value.$1);
+    return _lastConnectChats == true &&
+        statuses.contains(ServiceStatus.ended) &&
+        statuses.every((status) =>
+            status == ServiceStatus.ended || status == ServiceStatus.error);
+  }
+
   void startSession() {
     _pipeline.startSession();
     _clearMessages();

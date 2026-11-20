@@ -98,6 +98,10 @@ Airstream.on('delete', event => {
     if (matchesChatDeletion(entry.source, event)) remove(entry);
   }
 });
+// Without the server the wall empties instead of finishing old lifetimes.
+Airstream.on('disconnected', () => {
+  for (const entry of active.slice()) remove(entry);
+});
 configureWidget(() => {
   widgetTitle(copy[language].title);
   max = limit('maxEmotes', 1, 80, 24);

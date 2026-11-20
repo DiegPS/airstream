@@ -15,6 +15,7 @@ import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/audio_coordinator.dart';
 import 'package:airstream/application/chat_giveaway.dart';
 import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/native_audio_playback_service.dart';
 import 'package:airstream/services/media_library.dart';
@@ -56,7 +57,8 @@ class AlertTarget extends OverlayServer {
       {required String title,
       required String text,
       String mediaId = '',
-      required int seconds}) {
+      required int seconds,
+      ChatMessage? source}) {
     calls++;
     expect(title, '<b>hi</b>');
     expect(text, 'Text');

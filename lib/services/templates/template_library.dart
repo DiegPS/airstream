@@ -177,6 +177,59 @@ class TemplateLibrary {
   TemplateLibrary(this.root);
   final Directory root;
   String get rootPath => root.path;
+  static const totalLimit = 100 * 1024 * 1024;
+
+  Future<void>? _writes;
+
+  /// Runs [operation] after earlier writes. When nothing is pending it starts
+  /// at once instead of chaining on an old future (which may belong to
+  /// another zone, such as a widget test's fake clock, and never resolve).
+  Future<T> withStableFiles<T>(Future<T> Function() operation) {
+    final previous = _writes;
+    final result =
+        previous == null ? operation() : previous.then((_) => operation());
+    late final Future<void> tail;
+    tail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {})
+      ..whenComplete(() {
+        if (identical(_writes, tail)) _writes = null;
+      });
+    _writes = tail;
+    return result;
+  }
+
+  static void checkCapacity(String rootPath, int additionalBytes) {
+    if (additionalBytes <= 0) return;
+    var total = additionalBytes;
+    for (final directory in Directory(rootPath).listSync(followLinks: false)) {
+      if (directory is! Directory || !validId(p.basename(directory.path))) {
+        continue;
+      }
+      for (final entry
+          in directory.listSync(recursive: true, followLinks: false)) {
+        if (entry is File) total += entry.lengthSync();
+        if (total > totalLimit) throw const FormatException('libraryTotal');
+      }
+    }
+    if (total > totalLimit) throw const FormatException('libraryTotal');
+  }
+
+  // Plain async I/O, not an isolate: every value save goes through here and
+  // must stay cheap (and finish under widget tests' fake clock).
+  Future<void> _checkCapacity(int additionalBytes) async {
+    if (additionalBytes <= 0 || !await root.exists()) return;
+    var total = additionalBytes;
+    await for (final directory in root.list(followLinks: false)) {
+      if (directory is! Directory || !validId(p.basename(directory.path))) {
+        continue;
+      }
+      await for (final entry
+          in directory.list(recursive: true, followLinks: false)) {
+        if (entry is File) total += await entry.length();
+        if (total > totalLimit) throw const FormatException('libraryTotal');
+      }
+    }
+  }
+
   static bool validId(String id) =>
       RegExp(r'^[a-z0-9][a-z0-9-]{0,39}$').hasMatch(id);
   static Future<Directory> defaultRoot() async => Directory(p.join(
@@ -439,23 +492,26 @@ class TemplateLibrary {
 
   int _writeSequence = 0;
 
-  Future<void> writeValues(String id, Map values) async {
-    final info = await get(id);
-    if (info == null) throw ArgumentError.value(id, 'id');
-    final target = File(p.join(info.folderPath, 'values.json'));
-    final temp = File(p.join(info.folderPath,
-        '.values-${DateTime.now().microsecondsSinceEpoch}-${++_writeSequence}.tmp'));
-    final encoded = jsonEncode(info.manifest.values(values));
-    if (utf8.encode(encoded).length > 65536) {
-      throw ArgumentError('Template values exceed 64 KB');
-    }
-    try {
-      await temp.writeAsString(encoded, flush: true);
-      await temp.rename(target.path);
-    } finally {
-      if (await temp.exists()) await temp.delete();
-    }
-  }
+  Future<void> writeValues(String id, Map values) => withStableFiles(() async {
+        final info = await get(id);
+        if (info == null) throw ArgumentError.value(id, 'id');
+        final target = File(p.join(info.folderPath, 'values.json'));
+        final temp = File(p.join(info.folderPath,
+            '.values-${DateTime.now().microsecondsSinceEpoch}-${++_writeSequence}.tmp'));
+        final encoded = jsonEncode(info.manifest.values(values));
+        final bytes = utf8.encode(encoded).length;
+        if (bytes > 65536) {
+          throw ArgumentError('Template values exceed 64 KB');
+        }
+        final existing = await safeFile(id, 'values.json');
+        await _checkCapacity(bytes - (await existing?.length() ?? 0));
+        try {
+          await temp.writeAsString(encoded, flush: true);
+          await temp.rename(target.path);
+        } finally {
+          if (await temp.exists()) await temp.delete();
+        }
+      });
 
   static const editorLimit = 512 * 1024;
   static const editableFiles = {'index.html', 'style.css', 'script.js'};
@@ -491,6 +547,12 @@ class TemplateLibrary {
       throw ArgumentError('Invalid template');
     }
     await ensureRoot();
+    return withStableFiles(() => _createTemplate(name, files));
+  }
+
+  Future<String> _createTemplate(String name, Map<String, String> files) async {
+    await _checkCapacity(
+        files.values.fold(0, (size, text) => size + utf8.encode(text).length));
     final base = templateId(name);
     var id = base;
     var suffix = 2;
@@ -533,15 +595,17 @@ class TemplateLibrary {
     }
   }
 
-  Future<void> writeTemplateFile(
-      String id, String name, String contents) async {
-    if (!editableFiles.contains(name)) throw ArgumentError.value(name);
-    final file = await safeFile(id, name);
-    if (file != null && await file.length() > editorLimit) {
-      throw const FormatException('size');
-    }
-    await _writeFile(id, name, contents);
-  }
+  Future<void> writeTemplateFile(String id, String name, String contents) =>
+      withStableFiles(() async {
+        if (!editableFiles.contains(name)) throw ArgumentError.value(name);
+        final file = await safeFile(id, name);
+        final previousBytes = await file?.length() ?? 0;
+        if (previousBytes > editorLimit) {
+          throw const FormatException('size');
+        }
+        await _checkCapacity(utf8.encode(contents).length - previousBytes);
+        await _writeFile(id, name, contents);
+      });
 
   Future<void> _writeFile(String id, String name, String contents) async {
     if (utf8.encode(contents).length > editorLimit) {

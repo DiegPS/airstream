@@ -5,6 +5,8 @@ import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'rule_engine_test.dart' show Target, rule;
@@ -49,6 +51,32 @@ Future<void> _published() =>
     Future<void>.delayed(const Duration(milliseconds: 5));
 
 void main() {
+  test('falls back to the latest eligible vote after filtering or deletion',
+      () async {
+    final polls = ChatPollController();
+    addTearDown(polls.dispose);
+    polls.start(
+        question: 'Pick one', options: ['A', 'B'], allowed: QueueRole.member);
+    final first = _vote('Ana', '!1', role: QueueRole.member);
+    final second = _vote('Ana', '!2 first comment', role: QueueRole.member);
+    polls
+      ..handleMessage(first)
+      ..handleMessage(second)
+      ..handleMessage(_vote('Ana', '!1 blocked phrase', role: QueueRole.member))
+      ..applyFilter(
+          ChatFilter(const SettingsModel(blockedWords: ['blocked phrase'])));
+    expect(polls.current!.counts, [0, 1]);
+    polls
+      ..handleMessage(_vote('Ana', '!2 blocked phrase', role: QueueRole.member))
+      ..handleMessage(_vote('Ana', '!1 ineligible'))
+      ..applyFilter(
+          ChatFilter(const SettingsModel(blockedWords: ['blocked phrase'])));
+    expect(polls.current!.counts, [0, 1]);
+    polls.handleModeration(ChatModerationEvent.message(
+        platform: second.platform, messageId: second.id));
+    expect(polls.current!.counts, [1, 0]);
+  });
+
   test('classic numbered polls preserve the original JSON fields', () {
     final polls = ChatPollController(clock: () => DateTime.utc(1970));
     addTearDown(polls.dispose);

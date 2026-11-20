@@ -135,6 +135,7 @@ class SessionSummaryCollector {
     _SupportIdentity identity,
     bool inSummary
   })>[];
+  final _kickAccountsByName = <String, String?>{};
   int _nextSupporter = 0;
   Map<String, Object?>? _templateSupports;
   ChatFilter? _publicFilter;
@@ -162,6 +163,7 @@ class SessionSummaryCollector {
     _messages.clear();
     _chatters.clear();
     _supporters.clear();
+    _kickAccountsByName.clear();
     _templateSupports = null;
     _seenEvents.clear();
   }
@@ -173,6 +175,8 @@ class SessionSummaryCollector {
 
   bool handleMessage(ChatMessage message, {int? twitchGiftCount}) {
     if (!_running) return false;
+    _rememberKickAccount(
+        message.platform, message.author.accountId, message.author.name);
     final kind = messageAlertKind(message);
     if (kind != null && !_seenEvents.add('message:${message.dedupeKey}')) {
       return false;
@@ -232,6 +236,8 @@ class SessionSummaryCollector {
 
   bool handleProviderEvent(ChatProviderEvent event) {
     if (!_running || event.authorName.trim().isEmpty) return false;
+    _rememberKickAccount(
+        event.platform, event.authorAccountId, event.authorName);
     final legacy = switch (event.kind) {
       ChatProviderEventKind.raid => SupportKind.raid,
       ChatProviderEventKind.support => SupportKind.support,
@@ -279,6 +285,29 @@ class SessionSummaryCollector {
     );
   }
 
+  void _rememberKickAccount(Platform platform, String accountId, String name) {
+    if (platform != Platform.kick) return;
+    final id = accountId.trim();
+    final key = name.trim().toLowerCase();
+    if ((int.tryParse(id) ?? 0) <= 0 || key.isEmpty) return;
+    if (!_kickAccountsByName.containsKey(key)) {
+      _kickAccountsByName[key] = id;
+      _templateSupports = null;
+    } else if (_kickAccountsByName[key] case final previous?
+        when previous != id) {
+      _kickAccountsByName[key] = null;
+      _templateSupports = null;
+    }
+  }
+
+  _SupportIdentity _resolvedSupportIdentity(_SupportIdentity identity) {
+    if (identity.$1 == Platform.kick && identity.accountId.isEmpty) {
+      final id = _kickAccountsByName[identity.fallbackName];
+      if (id != null) return (Platform.kick, accountId: id, fallbackName: '');
+    }
+    return identity;
+  }
+
   /// Builds the template projection on demand, independent of the dialog.
   Map<String, Object?>? templateState({required bool live}) {
     final startedAt = _startedAt;
@@ -316,7 +345,11 @@ class SessionSummaryCollector {
     final supports = [
       for (final (index, entry) in _supporters.indexed)
         if (entry.supporter.type != null)
-          (index: index, supporter: entry.supporter, identity: entry.identity),
+          (
+            index: index,
+            supporter: entry.supporter,
+            identity: _resolvedSupportIdentity(entry.identity),
+          ),
     ]..sort((a, b) {
         final time = a.supporter.at.compareTo(b.supporter.at);
         return time != 0 ? time : a.index.compareTo(b.index);

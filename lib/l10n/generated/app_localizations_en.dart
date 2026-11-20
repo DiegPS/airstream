@@ -3693,6 +3693,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'These audio files exceeded the per-file size limit and were left out of the backup.';
 
   @override
+  String get backupExportAudioSizeLimit =>
+      'These audio files exceeded the per-file limit or the remaining space in the backup and were left out.';
+
+  @override
+  String get templateLibrarySizeLimit =>
+      'The template library can contain up to 100 MB.';
+
+  @override
   String get backupRestoreDone => 'Full backup restored.';
 
   @override

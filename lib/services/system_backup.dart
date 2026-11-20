@@ -20,10 +20,11 @@ const _settingsName = 'settings.json';
 const _manifestName = 'manifest.json';
 const _audioArea = 'external-audio';
 final _audioName = RegExp(r'^external-audio/[1-9][0-9]*\.(wav|mp3|ogg)$');
-const _templateLimit = 100 * 1024 * 1024;
+const _totalLimit =
+    MediaLibrary.totalLimit + TemplateLibrary.totalLimit + 50 * 1024 * 1024;
 const _limits = TemplateArchiveLimits(
-  zip: 660 * 1024 * 1024,
-  total: 650 * 1024 * 1024,
+  zip: _totalLimit + 10 * 1024 * 1024,
+  total: _totalLimit,
   count: 5000,
 );
 
@@ -75,7 +76,7 @@ class SystemBackup {
           String destination, SettingsModel Function() read) =>
       media.withStableFiles(() => export(destination, read()));
 
-  /// Returns the paths of oversized external audio files omitted from the ZIP.
+  /// Returns the paths of external audio files that exceeded the ZIP budget.
   Future<List<String>> export(String destination, SettingsModel settings) =>
       _writeBackup(destination, SettingsProfiles.export(settings));
 
@@ -224,7 +225,7 @@ class SystemBackup {
     );
     if (omittedAudio.isNotEmpty) {
       AppLogger.warning(
-        'Safety backup omitted oversized external audio: '
+        'Safety backup omitted external audio that exceeded the size budget: '
         '${omittedAudio.map(p.basename).join(', ')}',
       );
     }
@@ -356,7 +357,7 @@ class _Budget {
         size < 0 ||
         size > limits.file ||
         total > limits.total ||
-        template > _templateLimit ||
+        template > TemplateLibrary.totalLimit ||
         media > MediaLibrary.totalLimit) {
       throw const FormatException('size');
     }
@@ -644,41 +645,6 @@ Future<List<String>> _export(
       }
 
       final document = jsonDecode(settings) as Map<String, dynamic>;
-      final externalAudio = <String, String>{};
-      for (final entry in _referencedAudio(document).entries) {
-        final file = File(entry.key);
-        final ext = p.extension(file.path).toLowerCase();
-        final name = '$_audioArea/${externalAudio.length + 1}$ext';
-        if (!_audioName.hasMatch(name) ||
-            await FileSystemEntity.type(file.path, followLinks: false) !=
-                FileSystemEntityType.file) {
-          continue;
-        }
-        if (await file.length() > limits.file) {
-          omittedAudio.add(file.path);
-          continue;
-        }
-        if (!await _validAudio(file, entry.value, limits)) continue;
-        if (!await _inside(file.parent, file)) {
-          throw const FormatException('path');
-        }
-        await addFile(name, file);
-        externalAudio[file.path] = name;
-      }
-      add(ArchiveFile.string(
-          _manifestName,
-          jsonEncode({
-            'format': _format,
-            'version': 1,
-            if (appVersion.isNotEmpty) 'appVersion': appVersion,
-            'createdAt': DateTime.now().toUtc().toIso8601String(),
-            if (externalAudio.isNotEmpty) 'externalAudio': externalAudio,
-            'counts': {
-              'rules': model.rules.length,
-              'templates': ids.length,
-              'media': backedUpMedia.length,
-            },
-          })));
       (document['settings'] as Map)['mediaLibrary'] = backedUpMedia;
       add(ArchiveFile.string(_settingsName, jsonEncode(document)));
       for (final id in ids) {
@@ -688,6 +654,56 @@ Future<List<String>> _export(
         }
         await addTemplate(folder, 'templates/$id');
       }
+
+      final createdAt = DateTime.now().toUtc().toIso8601String();
+      ArchiveFile manifest(Map<String, String> audio) => ArchiveFile.string(
+            _manifestName,
+            jsonEncode({
+              'format': _format,
+              'version': 1,
+              if (appVersion.isNotEmpty) 'appVersion': appVersion,
+              'createdAt': createdAt,
+              if (audio.isNotEmpty) 'externalAudio': audio,
+              'counts': {
+                'rules': model.rules.length,
+                'templates': ids.length,
+                'media': backedUpMedia.length,
+              },
+            }),
+          );
+
+      final externalAudio = <String, String>{};
+      var manifestEntry = manifest(externalAudio);
+      for (final entry in _referencedAudio(document).entries) {
+        final file = File(entry.key);
+        final ext = p.extension(file.path).toLowerCase();
+        final name = '$_audioArea/${externalAudio.length + 1}$ext';
+        if (!_audioName.hasMatch(name) ||
+            await FileSystemEntity.type(file.path, followLinks: false) !=
+                FileSystemEntityType.file) {
+          continue;
+        }
+        final bytes = await file.length();
+        if (bytes > limits.file) {
+          omittedAudio.add(file.path);
+          continue;
+        }
+        if (!await _validAudio(file, entry.value, limits)) continue;
+        if (!await _inside(file.parent, file)) {
+          throw const FormatException('path');
+        }
+        final nextManifest = manifest({...externalAudio, file.path: name});
+        if (budget.total + bytes + nextManifest.size > limits.total ||
+            budget.count + 2 > limits.count ||
+            nextManifest.size > limits.file) {
+          omittedAudio.add(file.path);
+          continue;
+        }
+        await addFile(name, file);
+        externalAudio[file.path] = name;
+        manifestEntry = nextManifest;
+      }
+      add(manifestEntry);
       encoder.closeSync();
     } finally {
       stream.closeSync();

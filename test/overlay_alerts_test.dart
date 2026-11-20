@@ -1,7 +1,16 @@
 import 'support/empty_template_library.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:airstream/application/audio_coordinator.dart';
+import 'package:airstream/application/chat_giveaway.dart';
+import 'package:airstream/application/chat_queue.dart';
+import 'package:airstream/application/obs_coordinator.dart';
+import 'package:airstream/application/rules/rule_actions.dart';
+import 'package:airstream/application/rules/rule_engine.dart';
+import 'package:airstream/application/rules/rule_events.dart';
+import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
 import 'package:airstream/preview/sample_messages.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -9,6 +18,8 @@ import 'package:airstream/services/overlay_server.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:web_socket_channel/io.dart';
+
+import 'application/coordinator_fakes.dart';
 
 const window = Duration(milliseconds: 100);
 
@@ -46,6 +57,121 @@ void main() {
     connection = _Connection();
     addTearDown(connection.close);
     await connection.start();
+  });
+
+  test('moderates viewer rule alerts in the queue, recent alerts and replays',
+      () async {
+    final server = connection.server;
+    await connection.registerAcknowledgingAlerts();
+    server.controlAlertQueue(AlertQueueOperation.pause);
+    final audio =
+        AudioCoordinator(tts: FakeTtsClient(), captions: FakeCaptionsClient());
+    final obs = ObsCoordinator(obs: FakeObsClient());
+    final queue = ChatQueueController();
+    final giveaway = ChatGiveawayController();
+    addTearDown(audio.dispose);
+    addTearDown(obs.dispose);
+    addTearDown(queue.dispose);
+    addTearDown(giveaway.dispose);
+    final actions = RuleActions(
+      settings: () => const SettingsModel(),
+      writeSettings: (_, depth) async {},
+      obs: obs,
+      audio: audio,
+      giveaway: giveaway,
+      queue: queue,
+      server: () => server,
+      feature: server.broadcastFeaturedMessage,
+      draw: (_, depth) {},
+    );
+    final source = message(Platform.youtube, id: 'source-message');
+    Future<void> emitAlert(String title, String text) async {
+      final result = await actions.execute(
+          {
+            'type': 'alert.show',
+            'title': title,
+            'text': text,
+            'mediaId': '',
+            'seconds': 3,
+          },
+          RuleRun(
+            id: 'test',
+            rule: {},
+            event: RuleEvent(type: 'chat.message', message: source),
+            startedAt: source.timestamp,
+            generation: 0,
+          ));
+      expect(result.status, 'done');
+    }
+
+    final next =
+        connection.envelopes.stream.firstWhere((e) => e['type'] == 'alert');
+    await emitAlert('From ${source.author.name}', source.plainText);
+    final frame = await next;
+    final data = frame['data'] as Map<String, dynamic>;
+    expect(data['message'], source.plainText);
+    final deliveryId = frame['alertDeliveryId'];
+    expect(deliveryId, isA<int>());
+    expect(data['sourceMessageId'], source.id);
+
+    final moderation = connection.envelopes.stream
+        .firstWhere((e) => e['type'] == 'moderation');
+    server.broadcastModeration(ChatModerationEvent.message(
+        platform: source.platform, messageId: source.id));
+    final deleted = (await moderation)['data'];
+
+    final recent = server.recentAlerts.skip(1).first;
+    connection.socket!.sink
+        .add(jsonEncode({'type': 'alertRendered', 'deliveryId': deliveryId}));
+    final stored = (await recent).single;
+    expect(stored['message'], isEmpty);
+    expect(stored['title'], isEmpty);
+    final replay = connection.nextAlert();
+    expect(server.replayRecentAlert(stored['id'] as String), isTrue);
+    expect((await replay)['message'], isEmpty);
+
+    final rendered = connection.nextAlert(acknowledge: true);
+    await emitAlert('Hello from chat', 'Welcome');
+    final renderedId = (await rendered)['id'] as String;
+    expect(renderedId, isNot(stored['id']));
+    server.setSettings(const SettingsModel(blockedWords: ['hello']));
+    expect(server.recentAlertsSnapshot.first['title'], isEmpty);
+    expect(server.recentAlertsSnapshot.first['message'], isEmpty);
+    final filteredReplay = connection.nextAlert();
+    expect(server.replayRecentAlert(renderedId), isTrue);
+    expect((await filteredReplay)['title'], isEmpty);
+
+    final temp = await Directory.systemTemp.createTemp('alert-moderation-');
+    addTearDown(() => temp.delete(recursive: true));
+    final script = File('${temp.path}/test.js');
+    final page = alertsOverlayHtml()
+        .split('<script>')
+        .last
+        .split('applySettings(DEFAULT_SETTINGS);')
+        .first;
+    final checks = '''
+  queue.push(${jsonEncode(data)});
+  redactModeratedAlerts(${jsonEncode(deleted)});
+  assert.equal(queue[0].message, '');
+  assert.equal(queue[0].title, '');
+  queue[0] = ${jsonEncode(data)};
+  applyAlertFilters({users: [], words: ['hello']});
+  assert.equal(queue[0].message, '');
+  assert.equal(queue[0].title, '');
+''';
+    await script.writeAsString('''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const node = {appendChild() {}};
+vm.runInNewContext(${jsonEncode('$page\n$checks')}, {
+  assert,
+  window: {addEventListener() {}},
+  document: {getElementById: () => node, createElement: () => ({})},
+});
+''');
+    final nodeResult = await Process.run('node', [script.path]);
+    expect(nodeResult.exitCode, 0,
+        reason: '${nodeResult.stdout}\n${nodeResult.stderr}');
   });
 
   test('Twitch Bits produces a bits alert', () async {

@@ -1194,6 +1194,8 @@
   "backupRestoreConfirm": "Restaurar",
   "backupExportDone": "Se exportó la copia completa.",
   "backupExportOmittedAudio": "Estos archivos de audio superan el tamaño máximo por archivo y quedaron fuera de la copia de seguridad.",
+  "backupExportAudioSizeLimit": "Estos archivos de audio superaron el límite por archivo o el espacio disponible en la copia de seguridad y quedaron fuera.",
+  "templateLibrarySizeLimit": "La biblioteca de plantillas puede ocupar hasta 100 MB.",
   "backupRestoreDone": "Se restauró la copia completa.",
   "backupExportError": "No se pudo exportar la copia completa. Revisa el destino y los archivos de tus bibliotecas.",
   "backupRestoreError": "No se pudo restaurar la copia. Revisa el espacio disponible y cierra los programas que usan los archivos de las bibliotecas.",

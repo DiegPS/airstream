@@ -152,6 +152,7 @@ class RecentAlertsCard extends ConsumerWidget {
   }
 
   String _summary(Map<String, Object?> alert, AppLocalizations l) {
+    if (alert['kind'] == 'custom') return alert['title'] as String? ?? '';
     final months = (alert['months'] as num?)?.toInt() ?? 0;
     final count = (alert['count'] as num?)?.toInt();
     return switch (alert['alertType']) {

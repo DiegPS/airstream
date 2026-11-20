@@ -113,25 +113,42 @@ function renderFeatured(data, connection) {
   card.append(header);
   const message = element('div', 'message');
   if (Array.isArray(data.items) && data.items.length) {
-    let stack = null;
+    // Spaces between a base emote and its zero-width modifiers are held back
+    // so the modifier stacks on the base, as on /chat.
+    let stack = null, pendingSpace = '';
+    const flush = () => {
+      if (pendingSpace) message.append(document.createTextNode(pendingSpace));
+      pendingSpace = '';
+    };
     for (const item of data.items) {
       if (item.kind !== 'emoji') {
-        message.append(document.createTextNode(item.text || ''));
+        const value = item.text || '';
+        if (stack && value.trim() === '') {
+          pendingSpace += value;
+          continue;
+        }
+        flush();
+        message.append(document.createTextNode(value));
         stack = null;
         continue;
       }
       const image = picture(item.url, 'emote', item.alt || '');
       if (!image) {
+        flush();
         message.append(document.createTextNode(item.alt || ''));
         stack = null;
         continue;
       }
-      if (!item.isZeroWidth || !stack) {
+      if (item.isZeroWidth && stack) {
+        pendingSpace = '';
+      } else {
+        flush();
         stack = element('span', 'emote-stack');
         message.append(stack);
       }
       stack.append(image);
     }
+    flush();
   } else {
     message.textContent = data.message || '';
   }

@@ -168,6 +168,7 @@ function platformLabel(platform) {
 function alertAccent(alert) {
   if (alert.kind === 'superchat') return alert.color || '#FFD600';
   if (alert.kind === 'featured') return '#FFC83D';
+  if (alert.kind === 'custom') return '#FF4E45';
   if (alert.platform === 'kick') return '#53FC18';
   if (alert.platform === 'twitch') return '#9146FF';
   return '#FF4E45';
@@ -548,29 +549,39 @@ function removeMatchingFeatured(matches) {
 function redactModeratedAlerts(moderation) {
   const matches = alert => matchesAlertModeration(alert, moderation);
   removeMatchingFeatured(matches);
-  if (Number.isInteger(moderation.sequence)) return;
-  for (const alert of queue) {
-    if (alert.kind !== 'featured' && matches(alert)) alert.message = '';
+  for (const alert of [...queue, active]) {
+    if (alert && alert.kind !== 'featured' &&
+        (!Number.isInteger(moderation.sequence) || alert.kind === 'custom') &&
+        matches(alert)) redactAlertText(alert);
   }
-  if (active?.kind !== 'featured' && matches(active)) {
-    active.message = '';
+}
+
+function redactAlertText(alert) {
+  alert.message = '';
+  if (alert.kind === 'custom') alert.title = '';
+  if (alert === active) {
     stage.querySelector('.alert-message')?.remove();
+    if (alert.kind === 'custom') {
+      const title = stage.querySelector('.alert-title');
+      if (title) title.textContent = '';
+    }
   }
 }
 
 function applyAlertFilters(filters) {
   const {blocksAuthor, blocksText} = alertBlockMatcher(filters);
   for (const alert of [...queue, active]) {
-    if (!alert || alert.kind === 'featured' || alert.kind === 'custom') continue;
+    if (!alert || alert.kind === 'featured' ||
+        (alert.kind === 'custom' && alert.sourceMessageId == null)) continue;
     const hideAuthor = blocksAuthor(alert);
-    if (!hideAuthor && !blocksText(alert)) continue;
-    alert.message = '';
+    if (!hideAuthor && !blocksText(alert) &&
+        !(alert.kind === 'custom' && blocksText({message: alert.title}))) continue;
+    redactAlertText(alert);
     if (hideAuthor) {
       Object.assign(alert, {author: '', authorChannelId: '', authorAvatarUrl: null,
         badgeLabel: null, badgeImageUrl: null});
     }
     if (alert !== active) continue;
-    stage.querySelector('.alert-message')?.remove();
     if (hideAuthor) {
       const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
       stage.querySelector('.alert-title').textContent = alertLabels(alert, strings, strings.someone).title;

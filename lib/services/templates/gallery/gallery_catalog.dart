@@ -78,7 +78,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'starting-soon': GalleryItem(
     id: 'starting-soon',
-    version: 3,
+    version: 4,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStartingSoon,
     description: (l) => l.galleryStartingSoonDescription,
@@ -87,7 +87,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'be-right-back': GalleryItem(
     id: 'be-right-back',
-    version: 3,
+    version: 4,
     kind: GalleryKind.screen,
     name: (l) => l.galleryBeRightBack,
     description: (l) => l.galleryBeRightBackDescription,
@@ -96,7 +96,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'stream-ending': GalleryItem(
     id: 'stream-ending',
-    version: 3,
+    version: 4,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStreamEnding,
     description: (l) => l.galleryStreamEndingDescription,
@@ -105,7 +105,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'credits': GalleryItem(
     id: 'credits',
-    version: 3,
+    version: 4,
     kind: GalleryKind.screen,
     name: (l) => l.galleryCredits,
     description: (l) => l.galleryCreditsDescription,
@@ -136,7 +136,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'top-supporters': GalleryItem(
     id: 'top-supporters',
-    version: 3,
+    version: 4,
     kind: GalleryKind.widget,
     width: topSupportersWidth,
     height: topSupportersHeight,
@@ -191,7 +191,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'emote-wall': GalleryItem(
     id: 'emote-wall',
-    version: 2,
+    version: 3,
     kind: GalleryKind.widget,
     width: emoteWallWidth,
     height: emoteWallHeight,

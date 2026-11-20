@@ -373,7 +373,7 @@ function namedEntry(tag, platform, name) {
 
 const galleryRankingScript = r'''
 const rankingLabels = {
-  en: {superchat: 'Top Super Chats', bits: 'Top bits', gift: 'Top gifted subs',
+  en: {superchat: 'Top Super Chats', bits: 'Top bits', gift: 'Top gifters',
     kicks: 'Top kicks', chatters: 'Top chatters'},
   es: {superchat: 'Mayores Super Chats', bits: 'Más bits', gift: 'Más regalos',
     kicks: 'Más kicks', chatters: 'Quienes más escribieron'}

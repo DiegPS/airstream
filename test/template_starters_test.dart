@@ -76,6 +76,15 @@ void main() {
     final result = await Process.run('node', [script.path]);
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
   });
+  test('the Goal starter hides its total when the server disconnects',
+      () async {
+    final files = templateStarterFiles(TemplateStarter.goal, 'Example');
+    final script = File(p.join(temp.path, 'goal-check.js'));
+    await script.writeAsString(
+        'const starter = ${jsonEncode(files['script.js'])};\n$_goalChecks');
+    final result = await Process.run('node', [script.path]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
   test('guarded editor writes atomically and only to small approved files',
       () async {
     final id = await library.createTemplate(
@@ -179,6 +188,43 @@ send('disconnected');
 assert.deepEqual(rows, []);
 send('chat', {platform: 'twitch', id: 'new', authorChannelId: 'new'});
 assert.equal(rows.length, 1);
+''';
+
+const _goalChecks = r'''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const handlers = new Map();
+const timers = new Map();
+let nextTimer = 0;
+function element() {
+  const classes = new Set();
+  return {
+    hidden: false, textContent: '', style: {setProperty() {}},
+    classList: {add: c => classes.add(c), remove: c => classes.delete(c),
+      contains: c => classes.has(c)},
+    appendChild() {},
+  };
+}
+const content = element();
+vm.runInNewContext(starter, {
+  document: {querySelector: () => content, createElement: element},
+  Airstream: {on: (name, callback) => handlers.set(name, callback)},
+  setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; },
+  clearTimeout(id) { timers.delete(id); },
+});
+const send = (name, data, meta) => handlers.get(name)?.(data, meta);
+const goal = current => [{id: 'g', title: 'Subs', current, target: 10}];
+send('goals', goal(5), {replay: true});
+assert.equal(content.hidden, false);
+send('goals', goal(10), {replay: false});
+assert.equal(content.classList.contains('celebrate'), true);
+// Losing the server hides the stale total and stops the celebration.
+send('disconnected');
+assert.equal(content.hidden, true);
+assert.equal(content.classList.contains('celebrate'), false);
+assert.equal(timers.size, 0);
+send('goals', goal(3), {replay: true});
+assert.equal(content.hidden, false);
 ''';
 
 const _alertSoundChecks = r'''

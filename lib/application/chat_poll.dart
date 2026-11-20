@@ -15,12 +15,9 @@ enum PollInputError { invalid, ambiguousOptions, optionTooLong, invalidCommand }
 typedef PollAnswer = ({String text, int votes});
 typedef _FreeVote = ({String normalized, String original});
 typedef _VoteSource = ({
-  Platform platform,
-  YoutubeStreamOrientation? orientation,
-  String id,
-  String authorId,
-  String name,
   ChatMessage message,
+  int? choice,
+  _FreeVote? answer,
 });
 
 /// A poll viewers can answer from any connected chat.
@@ -232,7 +229,8 @@ class ChatPollController {
   ChatPoll? _openPoll;
   Map<String, int> _wordOptions = const {};
   final _privateVoteIds = <String>{};
-  final _voteSources = <String, _VoteSource>{};
+  static const _maxVotesPerVoter = 20;
+  final _voteSources = <String, List<_VoteSource>>{};
   Timer? _endTimer;
   Timer? _publishTimer;
   bool _disposed = false;
@@ -389,48 +387,31 @@ class ChatPollController {
         ? message.author.channelId
         : message.author.name;
     final voter = '${message.platform.name}:${author.trim().toLowerCase()}';
+    final sources = _voteSources.putIfAbsent(voter, () => []);
+    if (!poll.allowChange && sources.isNotEmpty) return private;
+    sources.add((message: message, choice: choice, answer: answer));
+    if (sources.length > _maxVotesPerVoter) sources.removeAt(0);
     if (choice != null) {
-      final previous = poll.votes[voter];
-      if (previous == choice || (!poll.allowChange && previous != null)) {
-        return private;
-      }
+      if (poll.votes[voter] == choice) return private;
       _poll = _openPoll = poll._copyWith(
           votes: Map.unmodifiable({...poll.votes, voter: choice}));
     } else if (answer != null) {
-      final previous = poll.freeVotes[voter];
-      if (previous == answer || (!poll.allowChange && previous != null)) {
-        return private;
-      }
+      if (poll.freeVotes[voter] == answer) return private;
       _poll = _openPoll = poll._copyWith(
           freeVotes: Map.unmodifiable({...poll.freeVotes, voter: answer}));
     }
-    _voteSources[voter] = (
-      platform: message.platform,
-      orientation: message.youtubeStreamOrientation,
-      id: message.id,
-      authorId: message.author.channelId,
-      name: message.author.name,
-      message: message,
-    );
     _schedulePublish();
     return private;
   }
 
   void handleModeration(ChatModerationEvent event) =>
-      _removeVotes((source) => event.matchesTarget(
-            targetPlatform: source.platform,
-            orientation: source.orientation,
-            id: source.id,
-            authorId: source.authorId,
-            name: source.name,
-          ));
+      _removeVotes(event.appliesTo);
 
   /// A block-list change drops open votes from now-blocked viewers or text,
   /// as if those messages had never arrived.
-  void applyFilter(ChatFilter filter) =>
-      _removeVotes((source) => filter.blocksMessage(source.message));
+  void applyFilter(ChatFilter filter) => _removeVotes(filter.blocksMessage);
 
-  void _removeVotes(bool Function(_VoteSource) matches) {
+  void _removeVotes(bool Function(ChatMessage) matches) {
     final poll = _openPoll;
     if (poll == null) return;
     final endsAt = poll.endsAt;
@@ -438,17 +419,26 @@ class ChatPollController {
       end();
       return;
     }
-    final previousCount = _voteSources.length;
-    _voteSources.removeWhere((_, source) => matches(source));
-    if (_voteSources.length == previousCount) return;
+    var changed = false;
+    _voteSources.removeWhere((_, sources) {
+      final previous = sources.last;
+      sources.removeWhere((source) => matches(source.message));
+      if (sources.isEmpty ||
+          sources.last.choice != previous.choice ||
+          sources.last.answer != previous.answer) {
+        changed = true;
+      }
+      return sources.isEmpty;
+    });
+    if (!changed) return;
     _poll = _openPoll = poll._copyWith(
       votes: Map.unmodifiable({
-        for (final entry in poll.votes.entries)
-          if (_voteSources.containsKey(entry.key)) entry.key: entry.value,
+        for (final entry in _voteSources.entries)
+          if (entry.value.last.choice case final choice?) entry.key: choice,
       }),
       freeVotes: Map.unmodifiable({
-        for (final entry in poll.freeVotes.entries)
-          if (_voteSources.containsKey(entry.key)) entry.key: entry.value,
+        for (final entry in _voteSources.entries)
+          if (entry.value.last.answer case final answer?) entry.key: answer,
       }),
     );
     _publishNow();

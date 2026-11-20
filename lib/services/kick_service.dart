@@ -369,7 +369,7 @@ class KickService {
         author: ChatAuthor(
           name: event.username,
           channelId: event.username,
-          accountId: '',
+          accountId: _eventAccountId(event.raw['user_id']),
         ),
         items: event.customMessage.trim().isEmpty
             ? const []
@@ -400,7 +400,8 @@ class KickService {
         author: ChatAuthor(
           name: event.gifterUsername,
           channelId: event.gifterUsername,
-          accountId: '',
+          accountId: _eventAccountId(
+              event.raw['gifter_user_id'] ?? event.raw['gifter_id']),
         ),
         items: const [],
         isMembership: true,
@@ -415,6 +416,11 @@ class KickService {
 
   String _accountId(kick.Sender sender) =>
       sender.id > 0 ? sender.id.toString() : '';
+
+  String _eventAccountId(Object? value) {
+    final id = int.tryParse(value?.toString() ?? '');
+    return id != null && id > 0 ? id.toString() : '';
+  }
 
   ChatModerationEvent? _convertModeration(kick.KickEvent event) {
     if (event is kick.KickMessageDeletedEvent && event.messageId.isNotEmpty) {

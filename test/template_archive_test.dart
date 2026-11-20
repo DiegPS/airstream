@@ -51,6 +51,27 @@ void main() {
     expect(await library.root.exists(), isFalse);
   }
 
+  test('limits the total installed template size before importing', () async {
+    final existing = File(p.join(library.rootPath, 'installed', 'asset.png'));
+    await existing.parent.create(recursive: true);
+    final handle = await existing.open(mode: FileMode.write);
+    try {
+      await handle.truncate(100 * 1024 * 1024);
+    } finally {
+      await handle.close();
+    }
+    final archive = await service.validate(await zip({
+      'index.html': utf8.encode('<html>hi</html>'),
+    }));
+    await expectLater(service.import(library, archive), throwsFormatException);
+    expect(
+        library.root
+            .listSync()
+            .whereType<Directory>()
+            .map((entry) => p.basename(entry.path)),
+        ['installed']);
+  });
+
   for (final prefix in ['', 'my-chat/']) {
     test('imports valid $prefix and round trips identical files', () async {
       final source = {

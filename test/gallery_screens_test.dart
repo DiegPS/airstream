@@ -6,6 +6,7 @@ import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
 import 'package:airstream/services/overlay/templates/captions_overlay.dart';
 import 'package:airstream/services/overlay/templates/chat_overlay.dart';
 import 'package:airstream/services/overlay/templates/clock_overlay.dart';
+import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:airstream/services/overlay/templates/giveaway_overlay.dart';
 import 'package:airstream/services/overlay/templates/goals_overlay.dart';
 import 'package:airstream/services/overlay/templates/timer_overlay.dart';
@@ -63,9 +64,15 @@ void main() {
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
         final version = switch (item.id) {
-          'recent-support' => 5,
-          'ticker' => 4,
-          'poll' || 'scoreboard' || 'word-cloud' || 'emote-wall' => 2,
+          'recent-support' ||
+          'ticker' ||
+          'starting-soon' ||
+          'be-right-back' ||
+          'stream-ending' ||
+          'credits' ||
+          'top-supporters' =>
+            item.id == 'recent-support' ? 5 : 4,
+          'poll' || 'scoreboard' || 'word-cloud' => 2,
           _ => 3,
         };
         expect(manifest.gallery, (id: item.id, version: version));
@@ -190,23 +197,29 @@ void main() {
       () => runGalleryChecks('chat deleted poll'));
   test('/giveaway hides the winner when the server disconnects',
       () => runGalleryChecks('giveaway disconnect'));
+  test('/chat removes a pinned Kick copy when its message is deleted',
+      () => runGalleryChecks('chat deleted pinned'));
+  test('/featured stacks zero-width emotes across spaces like /chat',
+      () => runGalleryChecks('featured zero width'));
+  test('the Emote Wall empties when the server disconnects',
+      () => runGalleryChecks('emote wall disconnect'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
 const _galleryFingerprints = {
   'recent-support': '5:2601b810dc4598a7',
-  'starting-soon': '3:5e035f87f77a2cc5',
-  'be-right-back': '3:f99c1a341897c89c',
-  'stream-ending': '3:a0ed7f1f43e19b22',
-  'credits': '3:9842ea867358a4ef',
+  'starting-soon': '4:8f8561127904bdd3',
+  'be-right-back': '4:c376379a412d2376',
+  'stream-ending': '4:f86969c0c4012d02',
+  'credits': '4:cd38061b7d679e09',
   'ticker': '4:93d445bf82fb29a8',
   'latest-support': '3:23bb43270c94fae1',
-  'top-supporters': '3:124ae83fa1eceaab',
+  'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '3:95c8911b8bbe729b',
   'poll': '2:3b13786635027803',
   'scoreboard': '2:774e4183f60aca19',
   'word-cloud': '2:be2e12ffcdecce94',
-  'emote-wall': '2:0ac5c7bc833b7c45',
+  'emote-wall': '3:baa6ac8f84c04035',
 };
 
 Future<void> runGalleryChecks(String scenario) async {
@@ -252,6 +265,7 @@ Future<void> runGalleryChecks(String scenario) async {
         'const goalsPage = ${jsonEncode(goalsOverlayHtml())};\n'
         'const timerPage = ${jsonEncode(timerOverlayHtml())};\n'
         'const giveawayPage = ${jsonEncode(giveawayOverlayHtml())};\n'
+        'const featuredPage = ${jsonEncode(featuredOverlayHtml())};\n'
         '$_nodeChecks');
     final result =
         await Process.run('node', [script.path], environment: {'TZ': 'UTC'});
@@ -325,6 +339,7 @@ class Element extends EventTarget {
   setAttribute(k, v) { this.attrs[k] = v; }
   getAttribute(k) { return this.attrs[k] ?? null; }
   removeAttribute(k) { delete this.attrs[k]; if (k === 'src') delete this.src; }
+  hasChildNodes() { return this.children.length > 0 || !!this.text; }
   querySelector(tag) { return this.children.find(c => c.tagName === tag.toUpperCase()) || null; }
   pause() { this.paused = true; }
   load() {}
@@ -333,7 +348,7 @@ class Element extends EventTarget {
 function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}) {
   const html = {'/poll': pollPage, '/clock': clockPage, '/giveaway': giveawayPage,
     '/goals': goalsPage, '/timer': timerPage, '/chat': chatPage,
-    '/alerts': alertsPage, '/captions': captionsPage}[id];
+    '/alerts': alertsPage, '/captions': captionsPage, '/featured': featuredPage}[id];
   const item = (screens[id] || widgets[id]);
   const files = html
     ? {'index.html': html, 'script.js': html.split('<script>')[1].split('</script>')[0]}
@@ -396,6 +411,7 @@ function page(id, lang = 'en', {demo = false, reduced = false, values = {}} = {}
     setTimeout: context.setTimeout, clearTimeout: context.clearTimeout,
     requestAnimationFrame: fn => context.setTimeout(fn, 0),
     cancelAnimationFrame: context.clearTimeout});
+  context.requestAnimationFrame = context.window.requestAnimationFrame;
   vm.createContext(context);
   if (!html) {
     vm.runInContext(sdk, context);
@@ -986,6 +1002,41 @@ function checkChatDeletedPoll() {
   assert.doesNotMatch(view.nodes.root.textContent, /Best map/);
 }
 
+function checkChatDeletedPinned() {
+  const view = page('/chat');
+  view.send('providerEvent', {platform: 'kick', kind: 'pinnedMessage', id: 'msg-1',
+    title: 'Pinned', text: 'Pinned words', data: {}});
+  assert.match(view.nodes.root.textContent, /Pinned words/);
+  // Deleting the original message also takes its pinned copy away.
+  view.send('moderation', {scope: 'message', platform: 'kick', messageId: 'msg-1'});
+  assert.doesNotMatch(view.nodes.root.textContent, /Pinned words/);
+}
+
+function checkFeaturedZeroWidth() {
+  const view = page('/featured');
+  view.send('alert', {kind: 'featured', platform: 'twitch', author: 'Ana', items: [
+    {kind: 'emoji', url: 'https://example.invalid/base', alt: 'base'},
+    {kind: 'text', text: ' '},
+    {kind: 'emoji', url: 'https://example.invalid/hat', alt: 'hat', isZeroWidth: true},
+    {kind: 'text', text: ' after'},
+  ]});
+  const message = view.nodes.stage.children[0].children[1];
+  assert.equal(message.children[0].className, 'emote-stack');
+  assert.deepEqual(message.children[0].children.map(image => image.alt), ['base', 'hat']);
+  assert.equal(message.textContent, ' after');
+}
+
+function checkEmoteWallDisconnect() {
+  const view = page('emote-wall');
+  view.fields({lifetime: 20});
+  view.send('message', {id: '1', platform: 'twitch', author: 'Ana',
+    items: [{kind: 'emoji', url: 'https://example.invalid/a', alt: 'a'}]});
+  assert.equal(view.nodes.emotes.children.length, 1);
+  view.close();
+  assert.equal(view.nodes.emotes.children.length, 0);
+  assert.equal(view.nodes.stage.hidden, true);
+}
+
 function checkGiveawayDisconnect() {
   const view = page('/giveaway');
   view.send('giveaway', {phase: 'drawn', drawId: 1, winner: {name: 'Ana', platform: 'twitch'}}, true);
@@ -1111,6 +1162,9 @@ const regressions = {
   'ticker new session': checkTickerNewSession,
   'chat deleted poll': checkChatDeletedPoll,
   'giveaway disconnect': checkGiveawayDisconnect,
+  'chat deleted pinned': checkChatDeletedPinned,
+  'featured zero width': checkFeaturedZeroWidth,
+  'emote wall disconnect': checkEmoteWallDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();
@@ -1261,7 +1315,7 @@ function checkTopSupporters() {
   top.send('session', session, true);
   for (const [type, name, value, heading] of [
     ['superchat', literal, 'MX$100.50', 'Top Super Chats · MX$'], ['bits', 'Cheerer', '1,500', 'Top bits'],
-    ['gift', literal, '10', 'Top gifted subs'], ['kicks', 'Kicker', '300', 'Top kicks'],
+    ['gift', literal, '10', 'Top gifters'], ['kicks', 'Kicker', '300', 'Top kicks'],
     ['chatters', literal, '38', 'Top chatters']
   ]) {
     top.fields({type});
@@ -1563,16 +1617,16 @@ async function main() {
   credits.fields({speed: 60, loop: true, finalText: literal});
   const roll = credits.nodes['credits-roll'];
   const headings = () => roll.children.map(node => node.children[0].textContent);
-  assert.deepEqual(headings(), ['Gifts', 'Top gifted subs']);
+  assert.deepEqual(headings(), ['Gifts', 'Top gifters']);
   assert.deepEqual(roll.children[0].children[1].children.map(node => node.textContent), ['Earlier', literal]);
   assert.equal(roll.style['--roll-duration'], (roll.offsetHeight / 60) + 's');
   const bits = support('bits', 'New viewer', 17);
   credits.send('session', {...payload, supporters: [bits, ...payload.supporters]});
-  assert.deepEqual(headings(), ['Gifts', 'Top gifted subs']);
+  assert.deepEqual(headings(), ['Gifts', 'Top gifters']);
   roll.dispatchEvent(Object.assign(new Event('animationend'), {animationName: 'roll-credits'}));
   assert.ok(credits.nodes['credits-page'].textContent.includes(literal));
   credits.advance(2200);
-  assert.deepEqual(headings(), ['Bits', 'Gifts', 'Top gifted subs']);
+  assert.deepEqual(headings(), ['Bits', 'Gifts', 'Top gifters']);
   const empty = page('credits');
   empty.fields({finalText: literal});
   assert.equal(empty.nodes['credits-page'].textContent, 'Thanks for watching' + literal);

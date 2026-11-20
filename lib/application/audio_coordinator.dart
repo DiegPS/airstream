@@ -268,7 +268,7 @@ class AudioCoordinator {
         previous.kickEnabled != settings.kickEnabled ||
         previous.kickSlug != settings.kickSlug;
     if (wasChatRequested && connectionChanged) {
-      _tts.cancelWhere((tag) => tag is ChatMessage);
+      cancelChatSpeech();
     } else if (wasChatRequested &&
         (youtubeChanged || twitchChanged || kickChanged)) {
       _tts.cancelWhere((tag) =>
@@ -513,6 +513,8 @@ class AudioCoordinator {
   /// A chat session starts (also after every chat ended on its own), so
   /// backlog from the new connections is not read aloud.
   void startSession() => _resetTtsSession();
+
+  void cancelChatSpeech() => _tts.cancelWhere((tag) => tag is ChatMessage);
 
   @visibleForTesting
   DateTime? get ttsSessionStartedAt => _ttsSessionStartedAt;

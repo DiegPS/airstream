@@ -12,6 +12,7 @@ ChatMessage _chat(
   String author, {
   Platform platform = Platform.twitch,
   String? channelId,
+  String? accountId,
   bool owner = false,
   SuperChat? superChat,
   bool membership = false,
@@ -24,7 +25,9 @@ ChatMessage _chat(
       platform: platform,
       id: 'm${_next++}',
       author: ChatAuthor(
-          name: author, channelId: channelId ?? author.toLowerCase()),
+          name: author,
+          channelId: channelId ?? author.toLowerCase(),
+          accountId: accountId),
       items: const [MessageItem.text('hola')],
       isOwner: owner,
       superChat: superChat,
@@ -293,6 +296,25 @@ void main() {
     }
 
     expect(collector.templateState(live: true)!['supporterCount'], 3);
+  });
+
+  test('reconciles Kick support with a unique account for the username', () {
+    final collector = SessionSummaryCollector()..start();
+    collector.handleMessage(_chat('Viewer',
+        platform: Platform.kick,
+        accountId: '',
+        membership: true,
+        kind: MembershipEventKind.gift,
+        gifts: 2));
+    expect(collector.templateState(live: true)!['supporterCount'], 1);
+    collector.handleProviderEvent(_provider(
+        Platform.kick, ChatProviderEventKind.support, 'VIEWER', 10,
+        channelId: '123'));
+    expect(collector.templateState(live: true)!['supporterCount'], 1);
+
+    collector.handleMessage(
+        _chat('viewer', platform: Platform.kick, accountId: '456'));
+    expect(collector.templateState(live: true)!['supporterCount'], 2);
   });
 
   test('ranks all support separately and breaks ties by earliest timestamp',

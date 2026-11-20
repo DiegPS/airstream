@@ -83,6 +83,29 @@ void main() {
     expect(service.currentState.connected, isFalse);
   });
 
+  test('a command reply from the old connection leaves the new status alone',
+      () async {
+    final old = _FakeObsClient()..pendingKind = Completer<String>();
+    final clients = [old, _FakeObsClient()];
+    final service = ObsService(
+      connector: (
+              {required url,
+              required password,
+              required onDone,
+              required onEvent}) async =>
+          clients.removeAt(0),
+    );
+    addTearDown(service.dispose);
+    await service.connect(host: 'localhost:4455', password: '');
+    final refresh = service.ruleRefresh('Browser');
+    await service.disconnect();
+    await service.connect(host: 'localhost:4455', password: '');
+    expect(service.currentState.connected, isTrue);
+    old.pendingKind!.completeError(StateError('old socket closed'));
+    await expectLater(refresh, throwsStateError);
+    expect(service.currentState.error, isNull);
+  });
+
   test('OBS state carries recording status and metrics', () {
     final state = const ObsState().copyWith(
       recordingActive: true,
@@ -813,6 +836,7 @@ class _FakeObsClient implements ObsClient {
   final commands = <String>[];
   final inputWrites = <(String, Map<String, dynamic>, bool)>[];
   String kind = 'text_gdiplus_v3';
+  Completer<String>? pendingKind;
   bool filterIsEnabled = false;
   websocket.ObsRequestException? requestError;
   bool streaming = true;
@@ -828,6 +852,8 @@ class _FakeObsClient implements ObsClient {
   @override
   Future<String> inputKind(String input) async {
     commands.add('kind:$input');
+    final pending = pendingKind;
+    if (pending != null) return pending.future;
     failRequest('GetInputSettings');
     return kind;
   }

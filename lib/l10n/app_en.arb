@@ -1442,6 +1442,8 @@
   "backupRestoreConfirm": "Restore",
   "backupExportDone": "Full backup exported.",
   "backupExportOmittedAudio": "These audio files exceeded the per-file size limit and were left out of the backup.",
+  "backupExportAudioSizeLimit": "These audio files exceeded the per-file limit or the remaining space in the backup and were left out.",
+  "templateLibrarySizeLimit": "The template library can contain up to 100 MB.",
   "backupRestoreDone": "Full backup restored.",
   "backupExportError": "Could not export the full backup. Check the destination and the files in your libraries.",
   "backupRestoreError": "Could not restore the backup. Check disk space and close programs using the library files.",

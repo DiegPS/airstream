@@ -830,6 +830,11 @@ function applyModeration(moderation) {
         event.kind === moderation.providerEventKind && event.id === moderation.messageId;
     }
     if (Number.isInteger(moderation.sequence)) return record.sequence === moderation.sequence;
+    // A pinned copy shares the original's id: deleting the message unpins it here.
+    if (record.event?.kind === 'pinnedMessage') {
+      return moderation.scope === 'message' && !!moderation.messageId &&
+        record.event.platform === moderation.platform && record.event.id === moderation.messageId;
+    }
     const message = record.message;
     if (!message || message.platform !== moderation.platform || !orientationMatches(message)) return false;
     if (moderation.scope === 'platform') return true;

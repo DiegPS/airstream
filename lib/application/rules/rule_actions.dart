@@ -192,7 +192,8 @@ class RuleActions implements RuleActionTarget {
               title: a['title'] as String,
               text: a['text'] as String,
               mediaId: a['mediaId'] as String,
-              seconds: a['seconds'] as int)) {
+              seconds: a['seconds'] as int,
+              source: run.event.message)) {
             return const RuleActionResult('skipped', 'noAlertsPage');
           }
         case 'tts.say':

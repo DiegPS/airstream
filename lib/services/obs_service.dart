@@ -236,16 +236,22 @@ class ObsService {
     if (obs == null || !_state.connected) {
       throw StateError('OBS must be connected to $label.');
     }
+    final generation = _generation;
+    // A reply that arrives after a disconnect or reconnect belongs to the
+    // old connection and must not change the current status.
+    bool current() => generation == _generation && identical(_obs, obs);
     try {
       await action(obs);
-      _emit(_state.copyWith(clearError: true));
+      if (current()) _emit(_state.copyWith(clearError: true));
     } catch (error, stack) {
       AppLogger.error(
         'OBS control failed: $label',
         error: error,
         stackTrace: stack,
       );
-      _emit(_state.copyWith(error: 'Could not $label: $error'));
+      if (current()) {
+        _emit(_state.copyWith(error: 'Could not $label: $error'));
+      }
       rethrow;
     }
   }

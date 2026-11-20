@@ -387,6 +387,7 @@ class OverlayServer {
   final _alertAcknowledgers = <WebSocketChannel>{};
   final _pendingAlerts = <int, _PendingAlert>{};
   int _nextAlertDelivery = 0;
+  int _nextRuleAlert = 0;
   final _recentAlertsController =
       StreamController<List<Map<String, Object?>>>.broadcast(sync: true);
 
@@ -428,36 +429,57 @@ class OverlayServer {
       {required String title,
       required String text,
       String mediaId = '',
-      required int seconds}) {
+      required int seconds,
+      ChatMessage? source}) {
     final medium = _settings.mediaLibrary[mediaId];
-    return _broadcastEnvelope({
-      'type': 'alert',
-      'data': {
-        'kind': 'custom',
-        'title': title,
-        'message': text,
-        'seconds': seconds,
-        if (medium != null && ['image', 'video'].contains(medium['kind']))
-          'media': mediaId,
-        if (medium != null) 'mediaKind': medium['kind'],
-      }
-    }, view: 'alerts');
+    final data = <String, Object?>{
+      'kind': 'custom',
+      'title': title,
+      'message': text,
+      'seconds': seconds,
+      if (medium != null && ['image', 'video'].contains(medium['kind']))
+        'media': mediaId,
+      if (medium != null) 'mediaKind': medium['kind'],
+      if (source != null) ...{
+        'id': 'rule-alert-${++_nextRuleAlert}',
+        'sourceMessageId': source.id,
+        'platform': source.platform.name,
+        'author': source.author.name,
+        'authorChannelId': source.author.channelId,
+        'timestamp': source.timestamp.toUtc().toIso8601String(),
+        if (source.youtubeStreamOrientation case final orientation?)
+          'youtubeStreamOrientation': orientation.name,
+      },
+    };
+    if (source == null) {
+      return _broadcastEnvelope({'type': 'alert', 'data': data},
+          view: 'alerts');
+    }
+    final filtered = _redactBlockedAlert(data);
+    return _deliverAlert(
+        _chatFilter.blocksMessage(source)
+            ? _redactAlertText(filtered)
+            : filtered,
+        view: 'alerts');
   }
 
   void _sendAutomaticAlert(Map<String, Object?> data) {
     if (!_settings.alertPlatforms.contains(data['platform'])) return;
-    data = _withAlertOption(_redactBlockedAlert(data));
+    _deliverAlert(_withAlertOption(_redactBlockedAlert(data)));
+  }
+
+  bool _deliverAlert(Map<String, Object?> data, {String? view}) {
     final deliveryId =
         _alertAcknowledgers.isEmpty ? null : ++_nextAlertDelivery;
     if (deliveryId != null) {
       _pendingAlerts[deliveryId] =
           _PendingAlert(data, {..._alertAcknowledgers});
     }
-    _broadcastEnvelope({
+    return _broadcastEnvelope({
       'type': 'alert',
       'data': data,
       if (deliveryId != null) 'alertDeliveryId': deliveryId,
-    });
+    }, view: view);
   }
 
   void _completeAlertDelivery(WebSocketChannel client, Object? id,
@@ -791,20 +813,7 @@ class OverlayServer {
     _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
     _recentChatMessages.updateAll((_, message) => event.redactReply(message));
     _removePendingFeatured(event.appliesTo);
-    _updateStoredAlerts((alert) {
-      if (alert['message'] == '' ||
-          !event.matchesTarget(
-            targetPlatform: Platform.values.asNameMap()[alert['platform']],
-            orientation: YoutubeStreamOrientation.values
-                .asNameMap()[alert['youtubeStreamOrientation']],
-            id: alert['id'] as String? ?? '',
-            authorId: alert['authorChannelId'] as String? ?? '',
-            name: alert['author'] as String? ?? '',
-          )) {
-        return alert;
-      }
-      return {...alert, 'message': ''};
-    });
+    _updateStoredAlerts((alert) => _redactModeratedAlert(alert, event));
     _broadcastEnvelope({
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
@@ -827,24 +836,47 @@ class OverlayServer {
     if (changed) _recentAlertsController.add(recentAlertsSnapshot);
   }
 
+  Map<String, Object?> _redactModeratedAlert(
+      Map<String, Object?> alert, ChatModerationEvent event) {
+    if (!event.matchesTarget(
+      targetPlatform: Platform.values.asNameMap()[alert['platform']],
+      orientation: YoutubeStreamOrientation.values
+          .asNameMap()[alert['youtubeStreamOrientation']],
+      id: (alert['sourceMessageId'] ?? alert['id']) as String? ?? '',
+      authorId: alert['authorChannelId'] as String? ?? '',
+      name: alert['author'] as String? ?? '',
+    )) {
+      return alert;
+    }
+    return _redactAlertText(alert);
+  }
+
+  Map<String, Object?> _redactAlertText(Map<String, Object?> alert) {
+    final custom = alert['kind'] == 'custom';
+    if (alert['message'] == '' && (!custom || alert['title'] == '')) {
+      return alert;
+    }
+    return {...alert, 'message': '', if (custom) 'title': ''};
+  }
+
   Map<String, Object?> _redactBlockedAlert(Map<String, Object?> alert) {
     final blockedAuthor = _chatFilter.blocksUser(
         alert['author'] as String? ?? '',
         alert['authorChannelId'] as String? ?? '');
     if (!blockedAuthor &&
-        !_chatFilter.blocksText(alert['message'] as String? ?? '')) {
+        !_chatFilter.blocksText(alert['message'] as String? ?? '') &&
+        !_chatFilter.blocksText(alert['title'] as String? ?? '')) {
       return alert;
     }
+    final redacted = _redactAlertText(alert);
+    if (!blockedAuthor) return redacted;
     return {
-      ...alert,
-      'message': '',
-      if (blockedAuthor) ...{
-        'author': '',
-        'authorChannelId': '',
-        'authorAvatarUrl': null,
-        'badgeLabel': null,
-        'badgeImageUrl': null,
-      },
+      ...redacted,
+      'author': '',
+      'authorChannelId': '',
+      'authorAvatarUrl': null,
+      'badgeLabel': null,
+      'badgeImageUrl': null,
     };
   }
 
@@ -861,6 +893,9 @@ class OverlayServer {
         messageId: message.id,
         youtubeStreamOrientation: message.youtubeStreamOrientation,
       );
+      _updateStoredAlerts((alert) => alert['kind'] == 'custom'
+          ? _redactModeratedAlert(alert, event)
+          : alert);
       _broadcastEnvelope({
         'type': 'moderation',
         'data': {

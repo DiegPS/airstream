@@ -40,7 +40,8 @@ class TemplateArchive {
       TemplateLibrary library, ValidatedTemplateArchive archive) async {
     await library.ensureRoot();
     final root = library.rootPath;
-    return Isolate.run(() => _install(root, archive._files, archive.baseId));
+    return library.withStableFiles(() =>
+        Isolate.run(() => _install(root, archive._files, archive.baseId)));
   }
 
   Future<String> installGallery(
@@ -52,7 +53,8 @@ class TemplateArchive {
     await library.ensureRoot();
     final root = library.rootPath;
     final id = item.id;
-    return Isolate.run(() => _install(root, files, id));
+    return library
+        .withStableFiles(() => Isolate.run(() => _install(root, files, id)));
   }
 
   Future<void> export(
@@ -76,20 +78,20 @@ class TemplateArchive {
       TemplateLibrary library, String id, String copyWord) async {
     final root = library.rootPath;
     final limits = this.limits;
-    return Isolate.run(() {
-      final files = _collect(root, id, limits);
-      try {
-        final raw = jsonDecode(utf8.decode(files['template.json']!));
-        if (raw is Map<String, dynamic>) {
-          raw['name'] = '${TemplateManifest(id, raw).name} ($copyWord)';
-          files['template.json'] =
-              Uint8List.fromList(utf8.encode(jsonEncode(raw)));
-        }
-      } catch (_) {/* Preserve invalid/missing manifests. */}
-      _checkFiles(files, limits);
-      return _install(
-          root, files, '${id.substring(0, min(id.length, 35))}-copy');
-    });
+    return library.withStableFiles(() => Isolate.run(() {
+          final files = _collect(root, id, limits);
+          try {
+            final raw = jsonDecode(utf8.decode(files['template.json']!));
+            if (raw is Map<String, dynamic>) {
+              raw['name'] = '${TemplateManifest(id, raw).name} ($copyWord)';
+              files['template.json'] =
+                  Uint8List.fromList(utf8.encode(jsonEncode(raw)));
+            }
+          } catch (_) {/* Preserve invalid/missing manifests. */}
+          _checkFiles(files, limits);
+          return _install(
+              root, files, '${id.substring(0, min(id.length, 35))}-copy');
+        }));
   }
 }
 
@@ -316,6 +318,8 @@ Map<String, Uint8List> _collect(
 }
 
 String _install(String root, Map<String, Uint8List> files, String base) {
+  TemplateLibrary.checkCapacity(
+      root, files.values.fold(0, (size, bytes) => size + bytes.length));
   final temp = Directory(p.join(root,
       '.import-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}'));
   temp.createSync();
