@@ -197,7 +197,8 @@ class RuleActions implements RuleActionTarget {
             return const RuleActionResult('skipped', 'noAlertsPage');
           }
         case 'tts.say':
-          audio.ruleSpeak(a['text'] as String);
+          audio.ruleSpeak(a['text'] as String,
+              source: run.event.moderationSource);
         case 'featured':
           final delivery = feature(run.event.message!);
           if (delivery.status == FeaturedMessageStatus.noReceiver) {

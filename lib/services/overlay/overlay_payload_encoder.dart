@@ -83,6 +83,9 @@ abstract final class OverlayPayloadEncoder {
         'id': event.id,
         'timestamp': event.timestamp.toIso8601String(),
         'authorName': event.authorName,
+        // Who wrote a pinned message, so a ban can take its pinned copy away.
+        'authorChannelId': event.authorChannelId,
+        'viewerName': event.viewerName,
         'text': event.text,
         'count': event.count,
         'data': event.data,

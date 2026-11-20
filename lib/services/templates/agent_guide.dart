@@ -96,7 +96,7 @@ interface Alert {
 }
 interface QueueEntry { id:string; platform:Platform; name:string; note:string; priority:boolean; joinedAt:string; }
 interface Queue { status:'closed'|'open'|'paused'; entries:QueueEntry[]; playing:QueueEntry[]; max:number; command:string; }
-interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage'|'unpinnedMessage'|'poll'|'reward'|'support'|'host'|'goal'|'notice'|'modiversary'|'viewerMilestone'|'watchStreak'|'sharedChat'|'roomState'|'streamOnline'|'streamOffline'|'unknown'; id:string; timestamp:string; authorName:string; text:string; count:number|null; data:Record<string,unknown>; }
+interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage'|'unpinnedMessage'|'poll'|'reward'|'support'|'host'|'goal'|'notice'|'modiversary'|'viewerMilestone'|'watchStreak'|'sharedChat'|'roomState'|'streamOnline'|'streamOffline'|'unknown'; id:string; timestamp:string; authorName:string; authorChannelId:string; viewerName:string|null; text:string; count:number|null; data:Record<string,unknown>; }
 interface Goal { id:string; title:string; type:'subs'|'bits'|'kicks'|'manual'; current:number; target:number; percent:number; reached:boolean; }
 interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; remainingMs:number; serverNowMs:number; addedMs:number; }
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; batchDraw?:true; }
@@ -303,7 +303,7 @@ interface Alert {
 }
 interface QueueEntry { id:string; platform:Platform; name:string; note:string; priority:boolean; joinedAt:string; }
 interface Queue { status:'closed'|'open'|'paused'; entries:QueueEntry[]; playing:QueueEntry[]; max:number; command:string; }
-interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage'|'unpinnedMessage'|'poll'|'reward'|'support'|'host'|'goal'|'notice'|'modiversary'|'viewerMilestone'|'watchStreak'|'sharedChat'|'roomState'|'streamOnline'|'streamOffline'|'unknown'; id:string; timestamp:string; authorName:string; text:string; count:number|null; data:Record<string,unknown>; }
+interface ProviderEvent { platform:Platform; kind:'raid'|'unraid'|'pinnedMessage'|'unpinnedMessage'|'poll'|'reward'|'support'|'host'|'goal'|'notice'|'modiversary'|'viewerMilestone'|'watchStreak'|'sharedChat'|'roomState'|'streamOnline'|'streamOffline'|'unknown'; id:string; timestamp:string; authorName:string; authorChannelId:string; viewerName:string|null; text:string; count:number|null; data:Record<string,unknown>; }
 interface Goal { id:string; title:string; type:'subs'|'bits'|'kicks'|'manual'; current:number; target:number; percent:number; reached:boolean; }
 interface Timer { phase:'idle'|'running'|'paused'|'ended'; endsAtMs:number; remainingMs:number; serverNowMs:number; addedMs:number; }
 interface Giveaway { keyword:string; phase:'open'|'closed'|'drawn'; entrantCount:number; winner:{name:string; platform:Platform}|null; drawId:number; batchDraw?:true; }

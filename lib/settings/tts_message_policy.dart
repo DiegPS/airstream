@@ -25,14 +25,18 @@ bool ttsAllows(ChatMessage message, SettingsModel settings) {
       (message.isModerator && roles.contains(TtsRole.moderator)) ||
       (message.isVip && roles.contains(TtsRole.vip)) ||
       (message.isOwner && roles.contains(TtsRole.owner));
-  final support = settings.ttsAlwaysReadSupport &&
-      message.superChat?.amount.trim().isNotEmpty == true;
-  return (support ||
+  return (ttsAlwaysReadsSupport(message, settings) ||
           (allowedRole && settings.ttsPlatforms.contains(message.platform))) &&
       (settings.ttsLinks != TtsLinks.skip ||
           !_ttsUrl.hasMatch(message.ttsText)) &&
       (!settings.ttsSkipEmoteOnly || !isTtsEmoteOnly(message));
 }
+
+/// Paid support read under "Always read paid support": it skips the role,
+/// platform and command-prefix filters, never moderation or content ones.
+bool ttsAlwaysReadsSupport(ChatMessage message, SettingsModel settings) =>
+    settings.ttsAlwaysReadSupport &&
+    message.superChat?.amount.trim().isNotEmpty == true;
 
 bool isTtsEmoteOnly(ChatMessage message) {
   var hasEmote = false;

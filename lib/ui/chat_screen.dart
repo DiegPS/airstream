@@ -115,6 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// Keeps the event banner (and what it queued) when resizing moves the
   /// chat between the inline and drawer layouts.
   final _providerEventBannerKey = GlobalKey();
+  ChatProviderEvent? _bannerEvent;
   bool _sidebarVisible = true;
   bool _topBarVisible = true;
 
@@ -434,11 +435,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final settings = ref.watch(settingsProvider);
     final latestProviderEvent =
         ref.watch(chatProviderEventProvider).valueOrNull;
-    final providerEvent = latestProviderEvent != null &&
-            settings.providerEventBannerKinds
-                .contains(latestProviderEvent.kind.name)
-        ? latestProviderEvent
-        : null;
+    final providerEvent = _bannerEvent = bannerProviderEvent(
+        latestProviderEvent, _bannerEvent, settings.providerEventBannerKinds);
     final showObsCard = settings.obsEnabled;
     final obsBottomSpacing =
         settings.messageGap < 6 ? 6.0 : settings.messageGap;

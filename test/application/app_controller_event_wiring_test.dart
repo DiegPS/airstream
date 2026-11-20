@@ -256,16 +256,75 @@ void main() {
     });
   }
 
-  test('blocking queue notes and Kicks text redacts paused rule alerts',
+  test('deleting a vertical YouTube join cancels its waiting queue alert', () {
+    fakeAsync((time) {
+      final twitch = FakeChannelChatClient();
+      final youtube = FakeYouTubeChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server,
+          chat: ChatCoordinator(
+              youtube: FakeYouTubeChatClient(),
+              youtubeHorizontal: FakeYouTubeChatClient(),
+              youtubeVertical: youtube,
+              kick: FakeChannelChatClient(),
+              twitch: twitch));
+      app.applySettings(
+          SettingsModel(
+            overlayEnabled: true,
+            queueState: const QueueState(status: QueueStatus.open),
+            queueOptions: const QueueOptions(command: '!join'),
+            rules: [
+              {
+                ...RuleSchema.newRule('queue.joined', id: 'join'),
+                'enabled': true,
+                'actions': [
+                  {'id': 'wait', 'type': 'wait', 'seconds': 30},
+                  {
+                    'id': 'alert',
+                    'type': 'alert.show',
+                    'title': 'Queue',
+                    'text': '{note}',
+                    'seconds': 3,
+                  },
+                ],
+              },
+            ],
+          ),
+          connectChats: false);
+      youtube.messageController.add(ChatMessage(
+        platform: Platform.youtube,
+        youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+        id: 'join-message',
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: const [MessageItem.text('!join private note')],
+        timestamp: DateTime.utc(2026),
+      ));
+      time.elapse(Duration.zero);
+      expect(app.rules.history.single.completed, isFalse);
+      youtube.moderationController.add(const ChatModerationEvent.message(
+        platform: Platform.youtube,
+        youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+        messageId: 'join-message',
+      ));
+      time.elapse(const Duration(seconds: 30));
+      expect(app.rules.history.single.completed, isTrue);
+      expect(server.ruleAlerts, isEmpty);
+      unawaited(app.dispose());
+      time.flushMicrotasks();
+    });
+  });
+
+  test('blocking pending alerts and deleting a rendered join redact their text',
       () async {
     final twitch = FakeChannelChatClient();
     final kick = FakeChannelChatClient();
+    final youtube = FakeYouTubeChatClient();
     final server = OverlayServer(templateLibrary: emptyTemplateLibrary());
     final app = makeController(twitch, server,
         chat: ChatCoordinator(
             youtube: FakeYouTubeChatClient(),
             youtubeHorizontal: FakeYouTubeChatClient(),
-            youtubeVertical: FakeYouTubeChatClient(),
+            youtubeVertical: youtube,
             kick: kick,
             twitch: twitch));
     addTearDown(app.dispose);
@@ -335,8 +394,6 @@ void main() {
     ));
     final support = await next('alert');
     expect(support['data']['message'], 'gift message');
-    expect(
-        joined['data']['sourceMessageId'], app.queue.current.entries.single.id);
     expect(support['data']['sourceMessageId'], 'kicks-event');
     expect(support['data']['authorChannelId'], 'sender');
 
@@ -353,6 +410,32 @@ void main() {
       expect(server.replayRecentAlert(stored['id'] as String), isTrue);
       expect((await next('alert'))['data']['message'], '');
     }
+
+    youtube.messageController.add(ChatMessage(
+      platform: Platform.youtube,
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+      id: 'other-join',
+      author: const ChatAuthor(name: 'Other', channelId: 'other'),
+      items: const [MessageItem.text('!join ordinary note')],
+      timestamp: DateTime.utc(2026),
+    ));
+    final other = await next('alert');
+    final rendered = server.recentAlerts.skip(1).first;
+    send({'type': 'alertRendered', 'deliveryId': other['alertDeliveryId']});
+    expect(
+        (await rendered.timeout(const Duration(seconds: 2))).first['message'],
+        'ordinary note');
+    youtube.moderationController.add(const ChatModerationEvent.message(
+      platform: Platform.youtube,
+      youtubeStreamOrientation: YoutubeStreamOrientation.vertical,
+      messageId: 'other-join',
+    ));
+    await next('moderation');
+    final stored = server.recentAlertsSnapshot.first;
+    expect(stored['message'], '');
+    expect(stored['title'], '');
+    expect(server.replayRecentAlert(stored['id'] as String), isTrue);
+    expect((await next('alert'))['data']['message'], '');
   });
 
   test('Kick pins cannot publish withheld votes while a poll is open',
@@ -1993,6 +2076,123 @@ void main() {
       ),
       (82, deadline + 200),
     );
+  });
+
+  test(
+      'filtered support advances goals and the subathon once without chat text',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final youtube = FakeYouTubeChatClient();
+    final server = _PollOverlay();
+    final tts = FakeTtsClient()
+      ..loadState = const TtsLoadState(phase: TtsLoadPhase.ready);
+    final app = makeController(twitch, server,
+        tts: tts,
+        chat: ChatCoordinator(
+          youtube: youtube,
+          youtubeHorizontal: FakeYouTubeChatClient(),
+          youtubeVertical: FakeYouTubeChatClient(),
+          kick: FakeChannelChatClient(),
+          twitch: twitch,
+        ));
+    addTearDown(app.dispose);
+    final notifier = SettingsNotifier(
+      secureStore: _RestoreSecureStore(),
+      settingsRepository: _RestoreSettingsRepository('{}'),
+    );
+    await notifier.ready;
+    final deadline = DateTime.now().millisecondsSinceEpoch + 120000;
+    await notifier.update(SettingsModel(
+      overlayEnabled: true,
+      twitchChannel: 'channel',
+      ttsEnabled: true,
+      ttsAlwaysReadSupport: true,
+      blockedWords: const ['private'],
+      subathonPhase: 'running',
+      subathonEndsAtMs: deadline,
+      subathonSecondsPer100Bits: 10,
+      subathonSecondsPerSub: 5,
+      goals: {
+        'bits': {'title': 'Bits', 'type': 'bits', 'current': 0, 'target': 1000},
+        'subs': {'title': 'Subs', 'type': 'subs', 'current': 0, 'target': 100},
+      },
+      rules: [
+        for (final type in [
+          'support.bits',
+          'support.membership',
+          'support.gift',
+          'support.superchat',
+        ])
+          {
+            ...RuleSchema.newRule(type, id: type.replaceAll('.', '_')),
+            'enabled': true,
+            'actions': [
+              {
+                'id': 'out',
+                'type': 'template.trigger',
+                'name': 'support',
+                'data': '{message}'
+              },
+            ],
+          },
+      ],
+    ));
+    final container = ProviderContainer(overrides: [
+      appControllerProvider.overrideWithValue(app),
+      settingsProvider.overrideWith((ref) => notifier),
+    ]);
+    addTearDown(container.dispose);
+    final unsubscribe = notifier
+        .addListener((next) => app.applySettings(next, connectChats: true));
+    addTearDown(unsubscribe);
+    container.read(goalTrackingProvider);
+    container.read(subathonTrackingProvider);
+    await settleCoordinatorTasks();
+
+    for (final (id, platform, amount, membership, gifts) in [
+      ('cheer', Platform.twitch, '100 Bits', null, null),
+      ('sub', Platform.twitch, null, MembershipEventKind.resubscription, null),
+      ('gifts', Platform.twitch, null, MembershipEventKind.gift, 3),
+      ('member', Platform.youtube, null, null, null),
+      ('super-chat', Platform.youtube, r'$5.00', null, null),
+      ('visible', Platform.twitch, '25 Bits', null, null),
+    ]) {
+      final message = ChatMessage(
+        platform: platform,
+        id: id,
+        author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+        items: [MessageItem.text(id == 'visible' ? 'Thanks!' : 'private note')],
+        timestamp: DateTime.now().toUtc(),
+        superChat: amount == null ? null : SuperChat(amount: amount, color: ''),
+        isMembershipEvent: membership != null || id == 'member',
+        membershipEventKind: membership,
+        membershipGiftCount: gifts,
+      );
+      final source = platform == Platform.twitch
+          ? twitch.messageController
+          : youtube.messageController;
+      source.add(message);
+      source.add(message);
+    }
+    await settleCoordinatorTasks();
+
+    expect(
+      (
+        notifier.state.goals['bits']!['current'],
+        notifier.state.goals['subs']!['current'],
+        notifier.state.subathonEndsAtMs - deadline,
+      ),
+      (125, 5, 37500),
+    );
+    expect(server.chat, ['Thanks!']);
+    expect(server.support, isEmpty);
+    expect(tts.spoken.single, contains('Thanks!'));
+    expect(app.rules.history.map((run) => run.event.text), ['Thanks!']);
+    await settleCoordinatorTasks();
+    expect(server.triggers.map((event) => event['data']), ['Thanks!']);
+    expect(app.sessionChat.map((message) => message.plainText), ['Thanks!']);
+    expect(app.sessionSummary.supporters.single.type, 'bits');
+    expect(server.sessionState!().toString(), isNot(contains('private')));
   });
 
   test('a viewer-funded goal does not start the stream', () async {

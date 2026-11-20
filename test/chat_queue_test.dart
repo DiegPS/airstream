@@ -245,7 +245,7 @@ void main() {
       final persisted = <QueueState>[];
       final queue = ChatQueueController(
         clock: () => _now,
-        onJoined: (_, position) => joined.add(position),
+        onJoined: (_, position, __) => joined.add(position),
         onPersist: persisted.add,
       );
       final states = <QueueState>[];

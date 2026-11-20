@@ -289,7 +289,7 @@ class ChatQueueController {
   final DateTime Function() _clock;
   final Random _random;
   final Duration publishInterval;
-  final void Function(QueueEntry, int position)? onJoined;
+  final void Function(QueueEntry, int position, ChatMessage source)? onJoined;
   final void Function(List<QueueEntry>, int depth)? onNext;
   final void Function(QueueState)? onPersist;
 
@@ -459,7 +459,7 @@ class ChatQueueController {
         : _entries.length;
     _entries.insert(position, entry);
     _changed();
-    onJoined?.call(entry, position + 1);
+    onJoined?.call(entry, position + 1, message);
   }
 
   static String _identity(ChatMessage message) {

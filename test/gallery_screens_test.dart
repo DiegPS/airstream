@@ -1027,6 +1027,12 @@ function checkChatUnpinnedAndCleared() {
   pin('b');
   view.send('moderation', {scope: 'platform', platform: 'kick'});
   assert.doesNotMatch(view.nodes.root.textContent, /Pinned b/);
+  // Banning the viewer who wrote it takes the pinned copy away too.
+  view.send('providerEvent', {platform: 'kick', kind: 'pinnedMessage', id: 'c',
+    title: 'Pinned', text: 'Pinned c', authorChannelId: 'troll', viewerName: 'Troll', data: {}});
+  view.send('moderation', {scope: 'author', platform: 'kick', authorChannelId: 'troll',
+    authorName: 'Troll'});
+  assert.doesNotMatch(view.nodes.root.textContent, /Pinned c/);
 }
 
 function checkFeaturedZeroWidth() {

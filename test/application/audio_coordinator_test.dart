@@ -88,6 +88,52 @@ void main() {
     });
   }
 
+  test('command mode still reads paid support when it is always read',
+      () async {
+    const settings = SettingsModel(
+      ttsEnabled: true,
+      twitchEnabled: true,
+      twitchChannel: 'channel',
+      ttsCommandMode: true,
+      ttsAlwaysReadSupport: true,
+    );
+    coordinator.applySettings(settings, connectChats: true);
+    ChatMessage message(String id, String text, {String? amount}) =>
+        ChatMessage(
+          platform: Platform.twitch,
+          id: id,
+          author: ChatAuthor(name: 'Viewer $id', channelId: id),
+          items: [MessageItem.text(text)],
+          timestamp: DateTime.now().toUtc(),
+          superChat:
+              amount == null ? null : SuperChat(amount: amount, color: ''),
+        );
+    coordinator.handleChatMessage(
+        message('a', 'thanks for the stream', amount: '\$5.00'));
+    coordinator.handleChatMessage(message('b', 'plain chat'));
+    coordinator.handleChatMessage(message('c', '!v hello'));
+    expect(tts.spoken,
+        ['Viewer a says: thanks for the stream', 'Viewer c says: hello']);
+  });
+
+  test('a deleted message cancels the rule speech that reads it', () async {
+    tts.loadState = const TtsLoadState(phase: TtsLoadPhase.ready);
+    coordinator.applySettings(const SettingsModel(ttsEnabled: true),
+        connectChats: false);
+    final source = ChatMessage(
+      platform: Platform.twitch,
+      id: 'deleted',
+      author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+      items: const [MessageItem.text('bad words')],
+      timestamp: DateTime.now().toUtc(),
+    );
+    coordinator.ruleSpeak('Viewer said bad words', source: source);
+    coordinator.ruleSpeak('Announcement');
+    coordinator.handleModeration(const ChatModerationEvent.message(
+        platform: Platform.twitch, messageId: 'deleted'));
+    expect(tts.spoken, ['Announcement']);
+  });
+
   test('forwards playback errors, captions, and voice commands', () async {
     coordinator.applySettings(
       const SettingsModel(

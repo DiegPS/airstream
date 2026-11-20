@@ -8,6 +8,23 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('a disabled event kind keeps the banner showing the enabled one', () {
+    ChatProviderEvent event(ChatProviderEventKind kind) => ChatProviderEvent(
+        platform: Platform.kick,
+        kind: kind,
+        id: kind.name,
+        timestamp: DateTime.utc(2026, 11, 20));
+    final poll = event(ChatProviderEventKind.poll);
+    final support = event(ChatProviderEventKind.support);
+    const kinds = ['poll'];
+    expect(bannerProviderEvent(poll, null, kinds), same(poll));
+    // A Kicks gift (support banners off) must not unmount the poll banner.
+    expect(bannerProviderEvent(support, poll, kinds), same(poll));
+    expect(bannerProviderEvent(support, null, kinds), isNull);
+    // Turning poll banners off drops the poll event.
+    expect(bannerProviderEvent(support, poll, const ['raid']), isNull);
+  });
+
   testWidgets('shows localized provider event details without raw payload keys',
       (tester) async {
     final event = ChatProviderEvent(

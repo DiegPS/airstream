@@ -205,8 +205,11 @@ class AudioCoordinator {
       !_disposed &&
       _lastSettings?.ttsEnabled == true &&
       _tts.currentLoadState.isReady;
-  void ruleSpeak(String text) {
-    if (ruleTtsReady) _tts.speak(text);
+
+  /// [source] tags the utterance with the chat message it reads, so a
+  /// deletion, ban or block-list change also cancels it while queued.
+  void ruleSpeak(String text, {ChatMessage? source}) {
+    if (ruleTtsReady) _tts.speak(text, tag: source);
   }
 
   bool testTts(String text) {
@@ -405,8 +408,11 @@ class AudioCoordinator {
         prefix: prefix,
         ignoreCase: settings.ttsCommandIgnoreCase,
       );
-      if (commandText == null) return;
-      text = commandText;
+      if (commandText != null) {
+        text = commandText;
+      } else if (!ttsAlwaysReadsSupport(message, settings)) {
+        return;
+      }
     }
 
     final author = message.author.channelId.isNotEmpty

@@ -304,6 +304,8 @@ class ChatCoordinator {
   bool _disposed = false;
 
   Stream<ChatMessage> get messages => _pipeline.stream;
+  Stream<ChatMessage> get supportAccountingMessages =>
+      _pipeline.supportAccountingMessages;
   List<ChatMessage> get bufferedMessages => _pipeline.buffer;
   List<ChatMessage> get sessionMessages => _pipeline.sessionMessages;
   bool get sessionMessagesTruncated => _pipeline.sessionMessagesTruncated;

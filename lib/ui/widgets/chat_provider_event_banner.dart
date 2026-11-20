@@ -10,6 +10,16 @@ import 'package:airstream/ui/widgets/chat_network_image.dart';
 import 'package:airstream/ui/widgets/platform_badge.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// The event the banner shows: the latest one of an enabled kind. An event of
+/// a disabled kind keeps the current one, so the banner is not torn down and
+/// its visible card and queue survive; turning a kind off drops its event.
+ChatProviderEvent? bannerProviderEvent(ChatProviderEvent? latest,
+    ChatProviderEvent? shown, List<String> enabledKinds) {
+  if (latest != null && enabledKinds.contains(latest.kind.name)) return latest;
+  if (shown != null && enabledKinds.contains(shown.kind.name)) return shown;
+  return null;
+}
+
 class TransientChatProviderEventBanner extends StatefulWidget {
   const TransientChatProviderEventBanner({
     super.key,

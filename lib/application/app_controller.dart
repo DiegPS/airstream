@@ -118,7 +118,7 @@ class AppController {
     templateServer?.sessionState = () =>
         _sessionSummary.templateState(live: _chatRunning && _chatConnected);
     _subscriptions.addAll([
-      _chat.messages.listen(
+      _chat.supportAccountingMessages.listen(
           (m) => _emitGoalIncrements(_goalTracker.message(m), message: m)),
       _chat.providerAccountingEvents
           .listen((e) => _emitGoalIncrements(_goalTracker.event(e))),
@@ -260,10 +260,11 @@ class AppController {
   bool _publishingQueueSettings = false;
 
   late final queue = ChatQueueController(
-    onJoined: (entry, position) => _queueEvent(
+    onJoined: (entry, position, source) => _queueEvent(
       'queue.joined',
       entry,
       position: position,
+      moderationSource: source,
     ),
     onNext: (entries, depth) => _queueEvent(
       'queue.next',
@@ -288,7 +289,10 @@ class AppController {
   );
 
   void _queueEvent(String type, QueueEntry entry,
-      {int? position, int count = 0, int depth = 0}) {
+      {int? position,
+      int count = 0,
+      int depth = 0,
+      ChatMessage? moderationSource}) {
     if (!rules.active) return;
     rules.handle(RuleEvent(
       type: type,
@@ -301,19 +305,7 @@ class AppController {
       note: position == null ? null : entry.note,
       position: position,
       count: count,
-      moderationSource: position == null
-          ? null
-          : ChatMessage(
-              id: entry.id,
-              platform: entry.platform,
-              author: ChatAuthor(
-                name: entry.name,
-                channelId:
-                    entry.identity.substring(entry.platform.name.length + 1),
-              ),
-              items: [MessageItem.text(entry.note)],
-              timestamp: entry.joinedAt,
-            ),
+      moderationSource: moderationSource,
     ));
   }
 

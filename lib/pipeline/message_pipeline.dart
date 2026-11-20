@@ -11,6 +11,8 @@ import 'package:airstream/settings/settings_model.dart';
 /// and enforces the maxMessages buffer cap.
 class MessagePipeline {
   final _controller = StreamController<ChatMessage>.broadcast();
+  final _supportAccountingController =
+      StreamController<ChatMessage>.broadcast();
   final _buffer = <ChatMessage>[];
   static const sessionMessageLimit = 20000;
   final _session = Queue<ChatMessage>();
@@ -38,6 +40,11 @@ class MessagePipeline {
 
   /// The filtered, deduplicated output stream.
   Stream<ChatMessage> get stream => _controller.stream;
+
+  /// Support messages for goal accounting, including filtered comments.
+  /// The accounting consumer deduplicates deliveries of filtered messages.
+  Stream<ChatMessage> get supportAccountingMessages =>
+      _supportAccountingController.stream;
 
   /// Current buffered messages (up to settings.maxMessages).
   List<ChatMessage> get buffer => List.unmodifiable(_buffer);
@@ -157,11 +164,17 @@ class MessagePipeline {
     }
     _subscriptions.clear();
     _controller.close();
+    _supportAccountingController.close();
   }
 
   void _handleMessage(ChatMessage incoming) {
-    if (_filter.blocksMessage(incoming)) return;
     if (_isDuplicate(incoming)) return;
+    if (incoming.superChat != null ||
+        incoming.isMembershipEvent ||
+        incoming.membershipEventKind != null) {
+      _supportAccountingController.add(incoming);
+    }
+    if (_filter.blocksMessage(incoming)) return;
 
     _rememberMessage(incoming);
     final msg = _markFirstInSession(_filter.redactReply(incoming));

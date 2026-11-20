@@ -847,6 +847,10 @@ function applyModeration(moderation) {
     if (record.event?.kind === 'pinnedMessage') {
       if (record.event.platform !== moderation.platform) return false;
       if (moderation.scope === 'platform') return true;
+      // Banning the viewer who wrote it takes it away too.
+      if (moderation.scope === 'author') {
+        return authorMatches(record.event.authorChannelId, record.event.viewerName);
+      }
       return moderation.scope === 'message' && !!moderation.messageId &&
         record.event.id === moderation.messageId;
     }

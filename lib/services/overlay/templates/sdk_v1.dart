@@ -238,7 +238,7 @@ String sdkV1() => r"""
     emit('alert',data);
     sampleSupport(Date.now());
     sessionDirty=true;
-    if (['raid','kicks'].includes(type)) emit('event',{platform,kind:type==='raid'?'raid':'support',id:data.id,timestamp:data.timestamp,authorName:data.author,text:data.message,count:data.count,data:{}});
+    if (['raid','kicks'].includes(type)) emit('event',{platform,kind:type==='raid'?'raid':'support',id:data.id,timestamp:data.timestamp,authorName:data.author,authorChannelId:data.authorChannelId||'',viewerName:null,text:data.message,count:data.count,data:{}});
     if (['membership','bits','subscription','gift'].includes(type)) { goals[type==='bits'?1:0].current+=type==='bits'?100:type==='gift'?5:1; sendGoals(); endsAtMs+=60000; sendTimer(60000); }
   },7000);
   setInterval(() => emit('caption',{text:'Demo caption — welcome to the stream!'}),6000);
