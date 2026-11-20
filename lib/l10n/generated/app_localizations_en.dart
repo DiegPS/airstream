@@ -2114,7 +2114,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recentAlertsReplay => 'Show on stream again';
 
   @override
-  String get recentAlertsReplayed => 'Shown on stream again';
+  String get recentAlertsReplayed =>
+      'Replay sent to the alerts page. It plays when the queue reaches it.';
 
   @override
   String get recentAlertsMember => 'New member';

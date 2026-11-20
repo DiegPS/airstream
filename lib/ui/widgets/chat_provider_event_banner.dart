@@ -69,6 +69,19 @@ class _TransientChatProviderEventBannerState
         _advance();
       }
     }
+    // Turning a banner kind off also drops its waiting and visible events.
+    final kinds = widget.settings.providerEventBannerKinds;
+    if (oldWidget.settings.providerEventBannerKinds.join(',') !=
+        kinds.join(',')) {
+      bool disabled(ChatProviderEvent event) =>
+          !kinds.contains(event.kind.name);
+      _pending.removeWhere(disabled);
+      final visible = _visibleEvent;
+      if (visible != null && disabled(visible)) {
+        _hideTimer?.cancel();
+        _advance();
+      }
+    }
     // Kick sends poll updates (new counts, deletion) under the same id, so a
     // new event object counts even when its key did not change.
     if (!identical(widget.event, oldWidget.event)) _enqueue(widget.event);

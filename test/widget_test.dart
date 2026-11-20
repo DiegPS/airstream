@@ -857,7 +857,8 @@ void main() {
     await tester.tap(replay);
     await tester.pumpAndSettle();
     expect(overlay.replayed, ['one']);
-    expect(find.text('Shown on stream again'), findsOneWidget);
+    expect(
+        find.textContaining('Replay sent to the alerts page'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(ProviderScope(

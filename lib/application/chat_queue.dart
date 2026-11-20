@@ -137,6 +137,8 @@ class QueueEntry {
     required this.priority,
     required this.joinedAt,
     this.roles = const [],
+    this.noteMessageId,
+    this.noteYoutubeStreamOrientation,
   });
 
   final String id, name, identity, note;
@@ -144,8 +146,22 @@ class QueueEntry {
   final bool priority;
   final DateTime joinedAt;
   final List<String> roles;
+  final String? noteMessageId;
+  final YoutubeStreamOrientation? noteYoutubeStreamOrientation;
 
-  QueueEntry withNote(String note) => QueueEntry(
+  String get _authorId {
+    final prefix = '${platform.name}:';
+    return identity.startsWith(prefix)
+        ? identity.substring(prefix.length)
+        : identity;
+  }
+
+  QueueEntry withNote(
+    String note, {
+    String? messageId,
+    YoutubeStreamOrientation? orientation,
+  }) =>
+      QueueEntry(
         id: id,
         platform: platform,
         name: name,
@@ -154,6 +170,8 @@ class QueueEntry {
         priority: priority,
         joinedAt: joinedAt,
         roles: roles,
+        noteMessageId: messageId,
+        noteYoutubeStreamOrientation: orientation,
       );
 
   Map<String, Object?> toOverlayJson() => {
@@ -165,8 +183,14 @@ class QueueEntry {
         'joinedAt': joinedAt.toUtc().toIso8601String(),
       };
 
-  Map<String, Object?> toJson() =>
-      {...toOverlayJson(), 'identity': identity, 'roles': roles};
+  Map<String, Object?> toJson() => {
+        ...toOverlayJson(),
+        'identity': identity,
+        'roles': roles,
+        if (noteMessageId != null) 'noteMessageId': noteMessageId,
+        if (noteYoutubeStreamOrientation != null)
+          'noteYoutubeStreamOrientation': noteYoutubeStreamOrientation!.name,
+      };
 
   static QueueEntry? _fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -185,6 +209,7 @@ class QueueEntry {
       return null;
     }
     final roles = raw['roles'];
+    final noteMessageId = raw['noteMessageId'];
     return QueueEntry(
       id: id,
       platform: platform,
@@ -196,6 +221,11 @@ class QueueEntry {
       roles: List.unmodifiable(roles is List
           ? roles.whereType<String>().where(_roleNames.contains).toSet()
           : const <String>[]),
+      noteMessageId: noteMessageId is String ? noteMessageId : null,
+      noteYoutubeStreamOrientation: YoutubeStreamOrientation.values
+          .where((orientation) =>
+              orientation.name == raw['noteYoutubeStreamOrientation'])
+          .firstOrNull,
     );
   }
 
@@ -354,16 +384,48 @@ class ChatQueueController {
     for (final entries in [_entries, _playing]) {
       for (var i = entries.length - 1; i >= 0; i--) {
         final entry = entries[i];
-        final prefix = '${entry.platform.name}:';
-        final id = entry.identity.startsWith(prefix)
-            ? entry.identity.substring(prefix.length)
-            : entry.identity;
-        if (filter.blocksUser(entry.name, id)) {
+        if (filter.blocksUser(entry.name, entry._authorId)) {
           entries.removeAt(i);
         } else if (filter.blocksText(entry.note)) {
           entries[i] = entry.withNote('');
         } else {
           continue;
+        }
+        changed = true;
+      }
+    }
+    if (changed) _changed();
+  }
+
+  void handleModeration(ChatModerationEvent event) {
+    var changed = false;
+    for (final entries in [_entries, _playing]) {
+      for (var i = entries.length - 1; i >= 0; i--) {
+        final entry = entries[i];
+        if (entry.platform != event.platform) continue;
+        switch (event.scope) {
+          case ChatModerationScope.author:
+            if (!event.matchesAuthor(
+                ChatAuthor(name: entry.name, channelId: entry._authorId))) {
+              continue;
+            }
+            entries.removeAt(i);
+          case ChatModerationScope.message:
+            if (event.messageId.isEmpty ||
+                entry.noteMessageId != event.messageId ||
+                entry.noteYoutubeStreamOrientation !=
+                    event.youtubeStreamOrientation) {
+              continue;
+            }
+            entries[i] = entry.withNote('');
+          case ChatModerationScope.platform:
+            if (entry.note.isEmpty ||
+                (event.youtubeStreamOrientation != null &&
+                    entry.noteYoutubeStreamOrientation !=
+                        event.youtubeStreamOrientation)) {
+              continue;
+            }
+            entries[i] = entry.withNote('');
         }
         changed = true;
       }
@@ -425,10 +487,21 @@ class ChatQueueController {
     }
     final identity = _identity(message);
     final index = _entries.indexWhere((entry) => entry.identity == identity);
+    final note = _cleanNote(text.substring(word.length));
+    final noteMessageId =
+        note.isEmpty || message.id.isEmpty ? null : message.id;
+    final noteOrientation =
+        note.isEmpty ? null : message.youtubeStreamOrientation;
     if (index >= 0) {
-      final note = _cleanNote(text.substring(word.length));
-      if (note != _entries[index].note) {
-        _entries[index] = _entries[index].withNote(note);
+      final entry = _entries[index];
+      if (note != entry.note ||
+          noteMessageId != entry.noteMessageId ||
+          noteOrientation != entry.noteYoutubeStreamOrientation) {
+        _entries[index] = entry.withNote(
+          note,
+          messageId: noteMessageId,
+          orientation: noteOrientation,
+        );
         _changed();
       }
       return;
@@ -444,9 +517,11 @@ class ChatQueueController {
       platform: message.platform,
       name: message.author.name,
       identity: identity,
-      note: _cleanNote(text.substring(word.length)),
+      note: note,
       priority: _options.priority && message.isMembership,
       joinedAt: now,
+      noteMessageId: noteMessageId,
+      noteYoutubeStreamOrientation: noteOrientation,
       roles: List.unmodifiable([
         if (message.isOwner) 'owner',
         if (message.isModerator || message.isOwner) 'moderator',

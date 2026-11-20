@@ -72,7 +72,7 @@ void main() {
           'credits' ||
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
-          'poll' || 'scoreboard' || 'word-cloud' => 2,
+          'poll' || 'word-cloud' => 2,
           _ => 3,
         };
         expect(manifest.gallery, (id: item.id, version: version));
@@ -205,6 +205,10 @@ void main() {
       () => runGalleryChecks('emote wall disconnect'));
   test('/chat removes a pinned Kick card on unpin and on chat clear',
       () => runGalleryChecks('chat unpinned and cleared'));
+  test('/chat matches YouTube unpins by banner id and replaces Kick pins',
+      () => runGalleryChecks('chat pin replacement'));
+  test('the Scoreboard hides a stale score while disconnected',
+      () => runGalleryChecks('scoreboard disconnect'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
@@ -219,7 +223,7 @@ const _galleryFingerprints = {
   'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '3:95c8911b8bbe729b',
   'poll': '2:3b13786635027803',
-  'scoreboard': '2:774e4183f60aca19',
+  'scoreboard': '3:d98acaa703303379',
   'word-cloud': '2:be2e12ffcdecce94',
   'emote-wall': '3:baa6ac8f84c04035',
 };
@@ -1035,6 +1039,41 @@ function checkChatUnpinnedAndCleared() {
   assert.doesNotMatch(view.nodes.root.textContent, /Pinned c/);
 }
 
+function checkChatPinReplacement() {
+  const view = page('/chat');
+  const body = () => view.nodes.root.textContent;
+  // YouTube unpins by banner id, which differs from the pinned message id.
+  view.send('providerEvent', {platform: 'youtube', kind: 'pinnedMessage', id: 'message-1',
+    title: 'Pinned', text: 'YouTube pin', data: {bannerId: 'banner-1', youtubeStreamOrientation: 'horizontal'}});
+  view.send('providerEvent', {platform: 'youtube', kind: 'pinnedMessage', id: 'message-2',
+    title: 'Pinned', text: 'Vertical pin', data: {bannerId: 'banner-1', youtubeStreamOrientation: 'vertical'}});
+  view.send('providerEvent', {platform: 'youtube', kind: 'unpinnedMessage', id: 'generated-9',
+    title: 'Unpinned', text: '', data: {bannerId: 'banner-1', youtubeStreamOrientation: 'horizontal'}});
+  assert.doesNotMatch(body(), /YouTube pin/);
+  assert.match(body(), /Vertical pin/);
+  // A new Kick pin (another channel) replaces the previous Kick pin.
+  view.send('providerEvent', {platform: 'kick', kind: 'pinnedMessage', id: 'k1',
+    title: 'Pinned', text: 'First channel pin', data: {}});
+  view.send('providerEvent', {platform: 'kick', kind: 'pinnedMessage', id: 'k2',
+    title: 'Pinned', text: 'Second channel pin', data: {}});
+  assert.doesNotMatch(body(), /First channel pin/);
+  assert.match(body(), /Second channel pin/);
+}
+
+function checkScoreboardDisconnect() {
+  const view = page('scoreboard');
+  view.fields({counters: 'home', labels: 'Home'});
+  view.send('counters', {home: 7});
+  assert.equal(view.nodes.stage.hidden, false);
+  assert.match(view.nodes.scores.textContent, /7/);
+  view.close();
+  assert.equal(view.nodes.stage.hidden, true);
+  view.advance(3000);
+  view.open();
+  view.send('counters', {home: 0}, true);
+  assert.equal(view.nodes.stage.hidden, false);
+}
+
 function checkFeaturedZeroWidth() {
   const view = page('/featured');
   view.send('alert', {kind: 'featured', platform: 'twitch', author: 'Ana', items: [
@@ -1189,6 +1228,8 @@ const regressions = {
   'featured zero width': checkFeaturedZeroWidth,
   'emote wall disconnect': checkEmoteWallDisconnect,
   'chat unpinned and cleared': checkChatUnpinnedAndCleared,
+  'chat pin replacement': checkChatPinReplacement,
+  'scoreboard disconnect': checkScoreboardDisconnect,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

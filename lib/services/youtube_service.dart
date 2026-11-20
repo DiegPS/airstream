@@ -453,7 +453,16 @@ class YouTubeService {
       viewerName: fromViewer ? event.authorName : null,
       text: event.text,
       viewerText: fromViewer ? event.text : null,
-      data: Map<String, Object?>.unmodifiable(event.raw),
+      data: Map<String, Object?>.unmodifiable({
+        ...event.raw,
+        // YouTube names a removed banner by its action id, not by the pinned
+        // message's id: overlays match pin and unpin with it.
+        if (kind == ChatProviderEventKind.pinnedMessage ||
+            kind == ChatProviderEventKind.unpinnedMessage) ...{
+          'bannerId': event.targetActionId,
+          'youtubeStreamOrientation': streamOrientation?.name,
+        },
+      }),
     );
   }
 

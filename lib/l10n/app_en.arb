@@ -845,7 +845,7 @@
   "recentAlertsDescription": "Support events from this session that appeared on stream. Show any of them again.",
   "recentAlertsEmpty": "Alerts from this session will appear here.",
   "recentAlertsReplay": "Show on stream again",
-  "recentAlertsReplayed": "Shown on stream again",
+  "recentAlertsReplayed": "Replay sent to the alerts page. It plays when the queue reaches it.",
   "recentAlertsMember": "New member",
   "recentAlertsSubscription": "Subscription",
   "recentAlertsMonths": "{count} months",

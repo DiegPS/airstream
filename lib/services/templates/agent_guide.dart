@@ -176,7 +176,7 @@ interface Settings {
  featuredSeconds?:number;
 }
 interface Events {
- trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
+ trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; featuredHide:null; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; session:Session; queue:Queue; counters:Record<string,number>; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null; filters:{words:string[]; users:string[]};
 }
@@ -250,6 +250,7 @@ Events and WHEN they fire:
 - alert: automatic support or provider alert, Alert below. alertType superchat (YouTube money), membership (YouTube membership), bits (Twitch), subscription (Twitch/Kick subscription or renewal), gift (gift memberships/subscriptions), raid (Twitch raid/Kick host), kicks (Kick support). kind is membership for membership/subscription/gift, superchat for superchat, bits for bits, raid or host/kicks for provider alerts. count exists ONLY for raid/host/kicks; no count key on message alerts. message is trimmed chat text; provider raid has empty message, kicks has provider text. amount/color/stickerUrl come from superChat and may be null. Kicks alerts include authorChannelId when available. months/giftCount/membershipKind may be null. Use alertType to distinguish celebrations.
 - trigger: automation event {name:string, data:string, rule:string}. All fields are plain text. Use textContent; never interpret data as HTML. Templates cannot trigger or edit rules.
 - featured: manually featured chat copy, same Alert fields, kind:'featured', alertType:null; no deliveryId and no confirmation command. May still contain support amount and membership metadata from the selected message.
+- featuredHide: null, sent when a featured message is removed. Clear visible and queued featured cards.
 - event: provider lifecycle/activity event, ProviderEvent below (including raids, hosts, rewards and provider notices). data is provider-specific, arbitrary JSON; do not assume its keys. This can describe the same activity as an alert: do not celebrate both.
 - goals: full array whenever goals update and on connection; 0..3 goals, percent clamped 0..100, reached indicates current >= target.
 - timer: snapshot on connection or timer change/addition, Timer below. Millisecond epoch endsAtMs/serverNowMs; remainingMs and addedMs are durations. addedMs is 0 on restoration; avoid duplicate time-added celebrations. Draw your own lightweight tick with timerRemaining().
@@ -383,7 +384,7 @@ interface Settings {
  featuredSeconds?:number;
 }
 interface Events {
- trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; goals:Goal[]; timer:Timer;
+ trigger:{name:string; data:string; rule:string}; chat:Chat; delete:Delete; alert:Alert; featured:Alert; featuredHide:null; goals:Goal[]; timer:Timer;
  giveaway:Giveaway|null; poll:Poll|null; session:Session; queue:Queue; counters:Record<string,number>; caption:Caption; event:ProviderEvent;
  settings:Settings; fields:Fields; connected:null; disconnected:null; filters:{words:string[]; users:string[]};
 }

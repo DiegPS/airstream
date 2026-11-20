@@ -3,7 +3,7 @@ String sdkV1() => r"""
 (() => {
   'use strict';
   if (window.Airstream) return;
-  const names = ['trigger','chat','delete','alert','featured','goals','timer','giveaway','poll','caption','event','settings','fields','session','queue','counters','connected','disconnected','filters'];
+  const names = ['trigger','chat','delete','alert','featured','featuredHide','goals','timer','giveaway','poll','caption','event','settings','fields','session','queue','counters','connected','disconnected','filters'];
   const states = new Set(['goals','timer','giveaway','poll','settings','fields','session','queue','counters']);
   const handlers = new Map(names.map(n => [n,new Set()]));
   const state = {};
@@ -67,7 +67,7 @@ String sdkV1() => r"""
   window.Airstream=api;
   window.addEventListener('error',e => report(e.message,e.filename,e.lineno));
   window.addEventListener('unhandledrejection',e => report(e.reason));
-  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session',queue:'queue',counters:'counters',filters:'filters'};
+  const mapping={trigger:'trigger',message:'chat',moderation:'delete',providerEvent:'event',alert:'alert',featured:'featured',featuredHide:'featuredHide',caption:'caption',goals:'goals',timer:'timer',giveaway:'giveaway',poll:'poll',settings:'settings',fields:'fields',session:'session',queue:'queue',counters:'counters',filters:'filters'};
   function connect() {
     if (closing || socket) return;
     const ws=new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')+location.host+'/ws'); socket=ws;

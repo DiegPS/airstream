@@ -63,7 +63,15 @@ void main() {
     final files = templateStarterFiles(TemplateStarter.alerts, 'Example');
     final script = File(p.join(temp.path, 'alerts-check.js'));
     await script.writeAsString(
-        'const starter = ${jsonEncode(files['script.js'])};\n$_alertChecks');
+        'const starter = ${jsonEncode(files['script.js'])};\n$_alertHarness$_alertChecks');
+    final result = await Process.run('node', [script.path]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
+  test('the Alerts starter hides active and queued featured cards', () async {
+    final files = templateStarterFiles(TemplateStarter.alerts, 'Example');
+    final script = File(p.join(temp.path, 'featured-hide-check.js'));
+    await script.writeAsString(
+        'const starter = ${jsonEncode(files['script.js'])};\n$_alertHarness$_featuredHideChecks');
     final result = await Process.run('node', [script.path]);
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
   });
@@ -315,7 +323,7 @@ assert.equal(title(), 'Bits');
 assert.equal(audios.length, count + 1);
 ''';
 
-const _alertChecks = r'''
+const _alertHarness = r'''
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const handlers = new Map();
@@ -346,6 +354,9 @@ const alert = (id, author, message, extra) =>
   send('alert', {id, kind: 'bits', platform: 'twitch', author, message, amount: 42, ...extra});
 const feature = (id, author, message) =>
   send('featured', {id, kind: 'featured', platform: 'twitch', author, message});
+''';
+
+const _alertChecks = r'''
 const remove = (id, extra) =>
   send('delete', {scope: 'message', platform: 'twitch', messageId: id, ...extra});
 
@@ -372,4 +383,26 @@ assert.deepEqual(lines(), ['Featured message', 'Allowed', 'Live feature']);
 send('filters', {users: ['allowed'], words: []});
 assert.deepEqual(lines(), ['Bits', '42']);
 assert.equal(timers.size, 1);
+''';
+
+const _featuredHideChecks = r'''
+feature('active', 'Viewer', 'Active feature');
+feature('queued', 'Viewer', 'Queued feature');
+alert('safe', 'Supporter', 'Regular alert');
+assert.deepEqual(lines(), ['Featured message', 'Viewer', 'Active feature']);
+send('featuredHide', null);
+assert.deepEqual(lines(), ['Bits', 'Supporter', '42', 'Regular alert']);
+
+feature('behind-alert', 'Viewer', 'Feature behind an alert');
+const card = content.children[0];
+const deadline = [...timers.keys()];
+send('featuredHide', null);
+assert.equal(content.children[0], card);
+assert.deepEqual([...timers.keys()], deadline);
+fire(); fire();
+assert.equal(content.children.length, 0);
+assert.equal(timers.size, 0);
+
+feature('later', 'Viewer', 'New feature');
+assert.deepEqual(lines(), ['Featured message', 'Viewer', 'New feature']);
 ''';

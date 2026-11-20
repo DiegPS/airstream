@@ -787,16 +787,28 @@ function addProviderEvent(event) {
     record.event.id === event.id);
   if (existing >= 0) removeRecord(records.splice(existing, 1)[0]);
   // Unpinning takes the pinned card away instead of adding a notice. Kick
-  // keeps one pin, so an unpin without a known id clears that platform's pin.
-  if (event.kind === 'unpinnedMessage') {
+  // keeps one pin, so its unpin, or a new pin, replaces the previous one.
+  // YouTube names a removed banner by its banner id, per stream orientation.
+  const bannerId = event.data && event.data.bannerId;
+  const pinMatches = (pin) => {
+    if (event.platform === 'kick') return true;
+    if (bannerId) {
+      return pin.data?.bannerId === bannerId &&
+        (pin.data?.youtubeStreamOrientation ?? null) ===
+          (event.data.youtubeStreamOrientation ?? null);
+    }
+    return !event.id || pin.id === event.id;
+  };
+  const replacesPin = event.kind === 'unpinnedMessage' ||
+    (event.kind === 'pinnedMessage' && event.platform === 'kick');
+  if (replacesPin) {
     records = records.filter((record) => {
       const pinned = record.event?.kind === 'pinnedMessage' &&
-        record.event.platform === event.platform &&
-        (!event.id || record.event.id === event.id || event.platform === 'kick');
+        record.event.platform === event.platform && pinMatches(record.event);
       if (pinned) removeRecord(record);
       return !pinned;
     });
-    return;
+    if (event.kind === 'unpinnedMessage') return;
   }
   // A deletion (a Kick poll removed) only takes the old card away.
   if (event.data && event.data.deleted === true) return;

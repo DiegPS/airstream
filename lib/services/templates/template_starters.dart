@@ -245,6 +245,8 @@ function removeFeatures(matches) {
   }
 }
 
+Airstream.on('featuredHide', () => removeFeatures(() => true));
+
 Airstream.on('delete', deletion => {
   const matches = event => matchesAlertModeration(event, deletion);
   if (!Number.isInteger(deletion.sequence)) {

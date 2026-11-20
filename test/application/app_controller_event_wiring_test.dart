@@ -826,6 +826,108 @@ void main() {
     });
   });
 
+  test('queue moderation publishes and persists changes to restored join notes',
+      () {
+    fakeAsync((time) {
+      final twitch = FakeChannelChatClient();
+      final youtube = FakeYouTubeChatClient();
+      final app = makeController(twitch, _PollOverlay(),
+          chat: ChatCoordinator(
+              youtube: FakeYouTubeChatClient(),
+              youtubeHorizontal: FakeYouTubeChatClient(),
+              youtubeVertical: youtube,
+              kick: FakeChannelChatClient(),
+              twitch: twitch));
+      final saved = <QueueState>[];
+      app.queueSettingsWriter = (state) async => saved.add(state);
+      const settings = SettingsModel(
+        overlayEnabled: false,
+        queueOptions: QueueOptions(command: '!join'),
+        queueState: QueueState(status: QueueStatus.open),
+      );
+      const vertical = YoutubeStreamOrientation.vertical;
+      app.applySettings(settings, connectChats: false);
+      void join(String id, String note, {String viewer = 'Viewer'}) {
+        youtube.messageController.add(ChatMessage(
+          platform: Platform.youtube,
+          youtubeStreamOrientation: vertical,
+          id: id,
+          author: ChatAuthor(name: viewer, channelId: viewer.toLowerCase()),
+          items: [MessageItem.text('!join $note')],
+          timestamp: DateTime.utc(2026),
+        ));
+      }
+
+      const interval = Duration(milliseconds: 250);
+      join('original', 'original note');
+      join('edit', 'edited note');
+      time.flushMicrotasks();
+      final playerId = app.queue.next(1).single.id;
+      join('waiting', 'waiting note', viewer: 'Waiting');
+      twitch.messageController
+          .add(queueMessage('Viewer', '!join Twitch note', id: 'viewer'));
+      time.elapse(interval);
+      final restored =
+          QueueState.fromJson(jsonDecode(jsonEncode(saved.single.toJson())));
+      app.applySettings(settings.copyWith(queueState: restored),
+          connectChats: false, restoringBackup: true);
+
+      final published = <QueueState>[];
+      final sub = app.queue.states.listen(published.add);
+      void delete(String id, YoutubeStreamOrientation orientation) {
+        youtube.moderationController.add(ChatModerationEvent.message(
+          platform: Platform.youtube,
+          youtubeStreamOrientation: orientation,
+          messageId: id,
+        ));
+      }
+
+      delete('original', vertical);
+      delete('edit', YoutubeStreamOrientation.horizontal);
+      time.elapse(interval);
+      expect(app.queue.current.playing.single.note, 'edited note');
+      expect(saved, hasLength(1));
+
+      delete('edit', vertical);
+      time.elapse(interval);
+      expect(saved, hasLength(2));
+      for (final state in [app.queue.current, published.last, saved.last]) {
+        expect(app.queue.overlayState(state)['playing'], [
+          {
+            'id': playerId,
+            'platform': 'youtube',
+            'name': 'Viewer',
+            'note': '',
+            'priority': false,
+            'joinedAt': restored.playing.single.joinedAt.toIso8601String(),
+          }
+        ]);
+        expect(state.entries.map((entry) => entry.note),
+            ['waiting note', 'Twitch note']);
+      }
+
+      youtube.moderationController
+          .add(const ChatModerationEvent.platform(platform: Platform.youtube));
+      time.elapse(interval);
+      expect(
+          saved.last.entries.map((entry) => entry.note), ['', 'Twitch note']);
+
+      youtube.moderationController.add(const ChatModerationEvent.author(
+        platform: Platform.youtube,
+        youtubeStreamOrientation: vertical,
+        authorChannelId: 'viewer',
+      ));
+      time.elapse(interval);
+      expect(saved.last.playing, isEmpty);
+      expect(
+          saved.last.entries.map((entry) => entry.name), ['Waiting', 'Viewer']);
+      expect(saved.last.entries.last.platform, Platform.twitch);
+      unawaited(sub.cancel());
+      unawaited(app.dispose());
+      time.flushMicrotasks();
+    });
+  });
+
   test('session latest, recent and rankings count a Twitch gift batch once',
       () {
     fakeAsync((fake) {

@@ -455,6 +455,37 @@ void main() {
         event.youtubeStreamOrientation, app.YoutubeStreamOrientation.vertical);
   });
 
+  test('YouTube pin and unpin carry the same banner id', () async {
+    final chat = _FakeYouTubeTransport();
+    final service = YouTubeService(
+      streamOrientation: app.YoutubeStreamOrientation.horizontal,
+      transportFactory: (_) => chat,
+    );
+    addTearDown(service.dispose);
+    await service.connect(liveId: 'abcdefghijk');
+    final events = <ChatProviderEvent>[];
+    service.appEvents.listen(events.add);
+    chat.eventController.add(const yt.LiveChatEvent(
+      kind: yt.LiveChatEventKind.bannerAdded,
+      actionType: 'addBannerToLiveChatCommand',
+      rendererType: 'liveChatBannerRenderer',
+      id: 'message-1',
+      text: 'Pinned words',
+      targetActionId: 'banner-1',
+    ));
+    chat.eventController.add(const yt.LiveChatEvent(
+      kind: yt.LiveChatEventKind.bannerRemoved,
+      actionType: 'removeBannerForLiveChatCommand',
+      rendererType: '',
+      targetActionId: 'banner-1',
+    ));
+    await _eventually(() => events.length == 2);
+    expect(events.map((event) => event.data['bannerId']),
+        ['banner-1', 'banner-1']);
+    expect(events.first.id, 'message-1');
+    expect(events.last.data['youtubeStreamOrientation'], 'horizontal');
+  });
+
   test('YouTube hides only the standard welcome notice', () async {
     final chat = _FakeYouTubeTransport();
     final service = YouTubeService(transportFactory: (_) => chat);

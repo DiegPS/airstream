@@ -196,6 +196,7 @@ class AppController {
       }),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_poll.handleModeration),
+      _chat.moderationEvents.listen(queue.handleModeration),
       _chat.moderationEvents.listen(rules.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
       _chat.providerEvents.listen((event) {

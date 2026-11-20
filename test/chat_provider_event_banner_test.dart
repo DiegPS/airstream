@@ -210,6 +210,45 @@ void main() {
     expect(find.byType(ChatProviderEventBanner), findsNothing);
   });
 
+  testWidgets('turning a banner kind off drops its waiting events',
+      (tester) async {
+    final raid = ChatProviderEvent(
+        platform: Platform.twitch,
+        kind: ChatProviderEventKind.raid,
+        id: 'raid',
+        timestamp: DateTime.utc(2026),
+        authorName: 'Raider',
+        count: 10);
+    final poll = ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.poll,
+        id: 'poll',
+        timestamp: DateTime.utc(2026),
+        text: 'Waiting poll');
+    final host = ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.host,
+        id: 'host',
+        timestamp: DateTime.utc(2026),
+        authorName: 'Hoster');
+    Widget banner(ChatProviderEvent e, List<String> kinds) =>
+        _app(TransientChatProviderEventBanner(
+          event: e,
+          settings: SettingsModel(providerEventBannerKinds: kinds),
+          visibleDuration: const Duration(seconds: 2),
+        ));
+    const all = ['raid', 'poll', 'host'];
+    await tester.pumpWidget(banner(raid, all));
+    await tester.pumpWidget(banner(poll, all));
+    await tester.pumpWidget(banner(host, all));
+    // Poll banners turned off while the poll waits behind the raid.
+    await tester.pumpWidget(banner(host, const ['raid', 'host']));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Waiting poll'), findsNothing);
+    expect(find.textContaining('Hoster'), findsOneWidget);
+  });
+
   testWidgets('Kick poll updates replace and deletions remove the same poll',
       (tester) async {
     ChatProviderEvent poll(String id, int votes, {bool deleted = false}) =>

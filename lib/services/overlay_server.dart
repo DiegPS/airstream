@@ -1228,6 +1228,7 @@ class OverlayServer {
     final envelope = {'type': 'featuredHide'};
     _broadcastEnvelope(envelope, view: 'alerts');
     _broadcastEnvelope(envelope, view: 'featured');
+    _sendCustom({...envelope, 'data': null});
     for (final pending in _featured.values) {
       pending.finish(FeaturedMessageStatus.removed);
     }

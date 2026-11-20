@@ -3816,7 +3816,7 @@ abstract class AppLocalizations {
   /// No description provided for @recentAlertsReplayed.
   ///
   /// In en, this message translates to:
-  /// **'Shown on stream again'**
+  /// **'Replay sent to the alerts page. It plays when the queue reaches it.'**
   String get recentAlertsReplayed;
 
   /// No description provided for @recentAlertsMember.

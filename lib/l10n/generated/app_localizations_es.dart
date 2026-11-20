@@ -2128,7 +2128,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recentAlertsReplay => 'Volver a mostrar en el directo';
 
   @override
-  String get recentAlertsReplayed => 'Mostrado de nuevo en el directo';
+  String get recentAlertsReplayed =>
+      'Repetición enviada a la página de alertas. Sale cuando le toque en la cola.';
 
   @override
   String get recentAlertsMember => 'Nuevo miembro';

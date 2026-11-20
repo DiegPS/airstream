@@ -219,6 +219,23 @@ void main() {
     expect(alerts.sink.frames.last, {'type': 'featuredHide'});
   });
 
+  test('removing a featured message notifies installed and gallery templates',
+      () {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final installed = _Socket(server)..register('custom', template: 'example');
+    final gallery = _Socket(server)..register('gallery', template: 'credits');
+    server.broadcastFeaturedMessage(
+        paid('featured', YoutubeStreamOrientation.horizontal));
+    for (final page in [installed, gallery]) {
+      expect(page.sink.frames.last['type'], 'featured');
+    }
+    server.removeFeaturedMessage();
+    for (final page in [installed, gallery]) {
+      expect(page.sink.frames.last, {'type': 'featuredHide', 'data': null});
+    }
+  });
+
   test('block-list updates send a normalized filter signal to the word cloud',
       () {
     final server = OverlayServer();

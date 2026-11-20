@@ -54,6 +54,7 @@ const _css = r"""
 const _script = r"""
 const scores = byId('scores');
 let ready = false;
+let stale = false;
 const split = source => String(source || '').split(/[,|\n]/).map(value => value.trim());
 function render() {
   if (!ready) return;
@@ -74,8 +75,11 @@ function render() {
     score.appendChild(textElement('strong', 'score-value', number(value)));
     return score;
   }));
-  stage.hidden = !keys.size;
+  stage.hidden = !keys.size || stale;
 }
-Airstream.on('counters', render);
+// Without the server the score may be out of date: hide it until the next
+// counter snapshot arrives.
+Airstream.on('counters', () => { stale = false; render(); });
+Airstream.on('disconnected', () => { stale = true; render(); });
 configureWidget(() => { ready = true; render(); });
 """;
