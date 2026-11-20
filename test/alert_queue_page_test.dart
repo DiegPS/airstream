@@ -79,7 +79,7 @@ void main() {
       'data.amount',
       'data.items',
       'item.isZeroWidth',
-      "registerSource(connection, 'featured')",
+      "registerSource(connection, 'featured',",
       'requestAnimationFrame(() => requestAnimationFrame',
       "type: 'featuredRendered', deliveryId: data.deliveryId",
       "envelope.type === 'featuredHide'",

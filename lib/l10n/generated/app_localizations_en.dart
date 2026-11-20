@@ -2679,6 +2679,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templateRejectFile => 'A file exceeds 50 MB.';
 
   @override
+  String get templateRejectIndexSize =>
+      'index.html exceeds 2 MB. Move large images or data into their own files.';
+
+  @override
   String get templateRejectPath => 'Unsafe or duplicate file path.';
 
   @override

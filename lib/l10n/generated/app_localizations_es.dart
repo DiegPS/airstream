@@ -2700,6 +2700,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get templateRejectFile => 'Un archivo supera los 50 MB.';
 
   @override
+  String get templateRejectIndexSize =>
+      'index.html supera los 2 MB. Pasa las imágenes o datos grandes a archivos aparte.';
+
+  @override
   String get templateRejectPath => 'Ruta de archivo insegura o duplicada.';
 
   @override

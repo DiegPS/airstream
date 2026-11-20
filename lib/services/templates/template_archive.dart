@@ -166,6 +166,14 @@ ValidatedTemplateArchive _validate(String path, TemplateArchiveLimits limits) {
       }
       top = tops.single;
     }
+    // The server does not open an index.html above the library's limit, so
+    // such an archive is refused instead of installed as unusable.
+    final indexPath = top == null ? 'index.html' : '$top/index.html';
+    if (kept.any((h) =>
+        h.filename == indexPath &&
+        h.uncompressedSize > TemplateLibrary.indexLimit)) {
+      throw const FormatException('indexSize');
+    }
     for (final h in headers) {
       if (_skip(h.filename)) continue;
       final name = h.filename.endsWith('/')

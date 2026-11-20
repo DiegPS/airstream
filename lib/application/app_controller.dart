@@ -145,7 +145,7 @@ class AppController {
       _poll.states.listen(
         (poll) => _overlay.broadcastPoll(poll?.toOverlayJson()),
       ),
-      _chat.providerEvents.listen(_audio.handleProviderEvent),
+      chatProviderEvents.listen(_audio.handleProviderEvent),
       _chat.messages.listen((m) {
         final hiddenVote = _poll.hasOpenPoll && _poll.handleMessage(m);
         if (hiddenVote) {
@@ -182,7 +182,7 @@ class AppController {
           }
         }
       }),
-      _chat.providerEvents.listen((e) {
+      chatProviderEvents.listen((e) {
         if (rules.active) {
           final event = _ruleAdapter.provider(e);
           if (event != null) rules.handle(event);
@@ -196,17 +196,11 @@ class AppController {
       }),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_poll.handleModeration),
+      _chat.moderationEvents.listen(_giveaway.handleModeration),
       _chat.moderationEvents.listen(queue.handleModeration),
       _chat.moderationEvents.listen(rules.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
-      _chat.providerEvents.listen((event) {
-        if (event.kind == ChatProviderEventKind.pinnedMessage &&
-            _poll.hasOpenPoll &&
-            _withheldVoteIds.contains((event.platform, event.id))) {
-          return;
-        }
-        _overlay.broadcastProviderEvent(event);
-      }),
+      chatProviderEvents.listen(_overlay.broadcastProviderEvent),
       _audio.finalizedCaptions.listen(_overlay.broadcastCaption),
       _audio.voiceCommands.listen(
         (command) => unawaited(_obs.executeVoiceCommand(command)),
@@ -607,7 +601,12 @@ class AppController {
   Stream<String?> get youtubeBadgeValueStream => _chat.youtubeBadgeValueStream;
   Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream =>
       _chat.youtubeMetadataStream;
-  Stream<ChatProviderEvent> get chatProviderEvents => _chat.providerEvents;
+  late final Stream<ChatProviderEvent> chatProviderEvents = _chat.providerEvents
+      .where((event) =>
+          event.kind != ChatProviderEventKind.pinnedMessage ||
+          !_poll.hasOpenPoll ||
+          !_withheldVoteIds.contains((event.platform, event.id)))
+      .asBroadcastStream();
   Stream<ChatModerationEvent> get chatModerationEvents =>
       _chat.moderationEvents;
   Stream<Map<Platform, PlatformLiveMetadata>> get platformMetadataStream =>

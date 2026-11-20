@@ -647,6 +647,14 @@ function createProviderEventBubble(event) {
   const detail = document.createElement('span');
   detail.className = 'provider-event-text';
   const parts = [event.authorName, event.text, event.count == null ? '' : String(event.count)].filter(Boolean);
+  // Kick polls carry their choices and tallies, as in the desktop banner.
+  if (event.kind === 'poll' && Array.isArray(event.data && event.data.options)) {
+    for (const option of event.data.options) {
+      const optionLabel = String((option && option.label) || '').trim();
+      if (!optionLabel) continue;
+      parts.push(Number.isInteger(option.votes) ? optionLabel + ' (' + option.votes + ')' : optionLabel);
+    }
+  }
   detail.textContent = parts.join(' · ');
   item.appendChild(platformIcon(event.platform));
   item.appendChild(label);

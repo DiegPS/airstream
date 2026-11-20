@@ -4713,6 +4713,12 @@ abstract class AppLocalizations {
   /// **'A file exceeds 50 MB.'**
   String get templateRejectFile;
 
+  /// No description provided for @templateRejectIndexSize.
+  ///
+  /// In en, this message translates to:
+  /// **'index.html exceeds 2 MB. Move large images or data into their own files.'**
+  String get templateRejectIndexSize;
+
   /// No description provided for @templateRejectPath.
   ///
   /// In en, this message translates to:

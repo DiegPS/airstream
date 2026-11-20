@@ -176,7 +176,8 @@ void main() {
     }
   });
 
-  test('active OBS then inactive OBS outrank browser previews', () async {
+  test('featured delivery waits for an inactive OBS recipient to go live',
+      () async {
     final server = OverlayServer();
     addTearDown(server.dispose);
     final browser = _Socket(server)..register('featured', inObs: false);
@@ -194,10 +195,35 @@ void main() {
 
     await checkRecipient(alerts);
     alerts.reportActivity(false);
-    await checkRecipient(hidden);
+    final delivery = server.broadcastFeaturedMessage(
+        paid('featured', YoutubeStreamOrientation.horizontal));
+    expect(hidden.sink.frames.last['data']['deliveryId'], delivery.id);
+    FeaturedMessageStatus? status;
+    unawaited(delivery.completed.then((value) => status = value));
+    hidden.acknowledgeFeatured(delivery.id);
+    await Future<void>.value();
+    expect(status, isNull);
+    hidden.reportActivity(true);
+    hidden.acknowledgeFeatured(delivery.id);
+    expect(await delivery.completed, FeaturedMessageStatus.rendered);
     await alerts.disconnect();
     await hidden.disconnect();
     await checkRecipient(browser);
+  });
+
+  test('a browser featured receipt is ignored when OBS connects before paint',
+      () async {
+    final server = OverlayServer();
+    addTearDown(server.dispose);
+    final browser = _Socket(server)..register('featured', inObs: false);
+    final delivery = server.broadcastFeaturedMessage(
+        paid('featured', YoutubeStreamOrientation.horizontal));
+    expect(browser.sink.frames.last['data']['deliveryId'], delivery.id);
+    _Socket(server).register('alerts', active: false, inObs: true);
+
+    browser.acknowledgeFeatured(delivery.id);
+    await browser.disconnect();
+    expect(await delivery.completed, FeaturedMessageStatus.disconnected);
   });
 
   test('featured replacement clears the pinned card on inactive alerts',

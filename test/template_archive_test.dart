@@ -51,6 +51,23 @@ void main() {
     expect(await library.root.exists(), isFalse);
   }
 
+  for (final prefix in ['', 'big/']) {
+    test('refuses a ${prefix}index.html the server would not open', () async {
+      final path = await zip({
+        '${prefix}index.html':
+            List.filled(TemplateLibrary.indexLimit + 1, 0x20),
+      });
+      await expectLater(
+          service.validate(path),
+          throwsA(isA<FormatException>()
+              .having((e) => e.message, 'message', 'indexSize')));
+      // At the limit it still imports.
+      await service.validate(await zip({
+        '${prefix}index.html': List.filled(TemplateLibrary.indexLimit, 0x20),
+      }));
+    });
+  }
+
   test('limits the total installed template size before importing', () async {
     final existing = File(p.join(library.rootPath, 'installed', 'asset.png'));
     await existing.parent.create(recursive: true);

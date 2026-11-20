@@ -438,7 +438,7 @@ void main() {
     expect((await next('alert'))['data']['message'], '');
   });
 
-  test('Kick pins cannot publish withheld votes while a poll is open',
+  test('Kick pins cannot publish withheld votes to the provider stream or OBS',
       () async {
     final kick = FakeChannelChatClient();
     final server = _PollOverlay();
@@ -450,6 +450,10 @@ void main() {
             kick: kick,
             twitch: FakeChannelChatClient()));
     addTearDown(app.dispose);
+    final providerIds = <String>[];
+    final subscription =
+        app.chatProviderEvents.listen((event) => providerIds.add(event.id));
+    addTearDown(subscription.cancel);
     app.applySettings(const SettingsModel(overlayEnabled: true),
         connectChats: false);
     app.startPoll(
@@ -480,10 +484,12 @@ void main() {
     await settleCoordinatorTasks();
     expect(server.chat, isEmpty);
     expect(server.providerIds, ['ordinary']);
+    expect(providerIds, ['ordinary']);
     app.endPoll();
     pin('hidden', answer);
     await settleCoordinatorTasks();
     expect(server.providerIds, ['ordinary', 'hidden']);
+    expect(providerIds, ['ordinary', 'hidden']);
   });
 
   test('moderation republishes open votes in every mode and preserves results',
@@ -668,6 +674,58 @@ void main() {
         'name': 'AllowedViewer',
         'platform': 'twitch',
       });
+      unawaited(app.dispose());
+      fake.flushMicrotasks();
+    });
+  });
+
+  test('author moderation removes giveaway entries and hides drawn winners',
+      () {
+    fakeAsync((fake) {
+      final twitch = FakeChannelChatClient();
+      final kick = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final app = makeController(twitch, server,
+          chat: ChatCoordinator(
+              youtube: FakeYouTubeChatClient(),
+              youtubeHorizontal: FakeYouTubeChatClient(),
+              youtubeVertical: FakeYouTubeChatClient(),
+              kick: kick,
+              twitch: twitch));
+      app.applySettings(const SettingsModel(overlayEnabled: false),
+          connectChats: false);
+      app.startGiveaway(keyword: 'go', membersOnly: false);
+      twitch.messageController.add(queueMessage('Viewer', 'go', id: 'viewer'));
+      kick.messageController.add(
+          queueMessage('Viewer', 'go', id: 'viewer', platform: Platform.kick));
+      fake.elapse(const Duration(milliseconds: 250));
+      expect(server.giveaways.last?['entrantCount'], 2);
+
+      kick.moderationController
+          .add(const ChatModerationEvent.platform(platform: Platform.kick));
+      twitch.moderationController.add(const ChatModerationEvent.author(
+          platform: Platform.twitch, authorChannelId: 'viewer'));
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['entrantCount'], 1);
+      expect(app.drawGiveaways(10).map((entrant) => entrant.platform),
+          [Platform.kick]);
+      fake.flushMicrotasks();
+      final drawId = server.giveaways.last?['drawId'];
+      expect(server.giveaways.last?['winner'],
+          {'name': 'Viewer', 'platform': 'kick'});
+
+      kick.moderationController.add(const ChatModerationEvent.author(
+          platform: Platform.kick,
+          authorChannelId: 'viewer-slug',
+          authorName: 'viewer'));
+      fake.flushMicrotasks();
+      expect(server.giveaways.last?['entrantCount'], 0);
+      expect(server.giveaways.last?['winner'], isNull);
+      expect(server.giveaways.last?['hiddenDrawIds'], [drawId]);
+      ChatGiveaway? state;
+      app.giveawayStream.first.then((value) => state = value);
+      fake.flushMicrotasks();
+      expect(state?.winner?.platform, Platform.kick);
       unawaited(app.dispose());
       fake.flushMicrotasks();
     });

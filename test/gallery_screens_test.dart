@@ -209,6 +209,8 @@ void main() {
       () => runGalleryChecks('chat pin replacement'));
   test('the Scoreboard hides a stale score while disconnected',
       () => runGalleryChecks('scoreboard disconnect'));
+  test('/chat shows Kick poll choices and their tallies',
+      () => runGalleryChecks('chat kick poll tallies'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
@@ -1060,6 +1062,17 @@ function checkChatPinReplacement() {
   assert.match(body(), /Second channel pin/);
 }
 
+function checkChatKickPollTallies() {
+  const view = page('/chat');
+  const poll = votes => view.send('providerEvent', {platform: 'kick', kind: 'poll', id: 'p1',
+    title: 'Poll', text: 'Best map?', data: {options: [{label: 'Dust', votes}, {label: 'Mirage', votes: 2}]}});
+  poll(1);
+  assert.match(view.nodes.root.textContent, /Best map\? · Dust \(1\) · Mirage \(2\)/);
+  poll(5);
+  assert.match(view.nodes.root.textContent, /Dust \(5\)/);
+  assert.doesNotMatch(view.nodes.root.textContent, /Dust \(1\)/);
+}
+
 function checkScoreboardDisconnect() {
   const view = page('scoreboard');
   view.fields({counters: 'home', labels: 'Home'});
@@ -1230,6 +1243,7 @@ const regressions = {
   'chat unpinned and cleared': checkChatUnpinnedAndCleared,
   'chat pin replacement': checkChatPinReplacement,
   'scoreboard disconnect': checkScoreboardDisconnect,
+  'chat kick poll tallies': checkChatKickPollTallies,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

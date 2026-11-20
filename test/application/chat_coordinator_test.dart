@@ -372,6 +372,30 @@ void main() {
     expect(await forwarded, same(event));
   });
 
+  test('a filtered Kick pin still clears the previous pin', () async {
+    coordinator.applySettings(
+        const SettingsModel(
+            kickEnabled: true, kickSlug: 'creator', blockedWords: ['spoiler']),
+        connectChats: true);
+    final events = <ChatProviderEvent>[];
+    final subscription = coordinator.providerEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+    ChatProviderEvent pin(String id, String text) => ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.pinnedMessage,
+        id: id,
+        timestamp: DateTime.utc(2026, 11, 20),
+        text: text,
+        viewerText: text);
+    kick.eventController.add(pin('a', 'welcome'));
+    kick.eventController.add(pin('b', 'a big spoiler'));
+    await Future<void>.delayed(Duration.zero);
+    expect(events.map((event) => (event.kind, event.id, event.text)), [
+      (ChatProviderEventKind.pinnedMessage, 'a', 'welcome'),
+      (ChatProviderEventKind.unpinnedMessage, 'b', ''),
+    ]);
+  });
+
   test('forwards common provider events and live platform metadata', () async {
     final eventFuture = coordinator.providerEvents.first;
     final metadataFuture = coordinator.platformMetadataStream.firstWhere(

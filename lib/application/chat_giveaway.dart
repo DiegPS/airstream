@@ -9,10 +9,14 @@ enum GiveawayPhase { open, closed, drawn }
 
 class GiveawayEntrant {
   const GiveawayEntrant(
-      {required this.platform, required this.authorId, required this.name});
+      {required this.platform,
+      required this.authorId,
+      required this.name,
+      this.youtubeStreamOrientation});
   final Platform platform;
   final String authorId;
   final String name;
+  final YoutubeStreamOrientation? youtubeStreamOrientation;
   String get identity => '${platform.name}:$authorId';
 }
 
@@ -132,11 +136,13 @@ class ChatGiveaway {
           winners: winners ?? this.winners,
           drawId: drawId ?? this.drawId,
           batchDraw: batchDraw ?? this.batchDraw);
-  Map<String, Object?> toOverlayJson({ChatFilter? filter}) {
+  Map<String, Object?> toOverlayJson(
+      {ChatFilter? filter, Set<String> moderatedWinners = const {}}) {
     // Draw IDs are consecutive within a round, in the same order as winners.
     final hiddenDrawIds = [
       for (final (index, entrant) in winners.indexed)
-        if (filter?.blocksUser(entrant.name, entrant.authorId) == true)
+        if (moderatedWinners.contains(entrant.identity) ||
+            filter?.blocksUser(entrant.name, entrant.authorId) == true)
           drawId - winners.length + index + 1,
     ];
     final visibleWinner = hiddenDrawIds.lastOrNull == drawId ? null : winner;
@@ -217,6 +223,7 @@ class ChatGiveawayController {
   final _random = Random.secure();
   final _states = StreamController<ChatGiveaway?>.broadcast();
   final _identities = <String>{};
+  final _moderatedWinners = <String>{};
   // Batch immutable snapshots rather than copying up to 50,000 entries for
   // every arriving message. Published states never share this mutable list.
   final _entrants = <GiveawayEntrant>[];
@@ -240,8 +247,8 @@ class ChatGiveawayController {
     yield* _states.stream;
   }
 
-  Map<String, Object?>? overlayState(ChatGiveaway? state) =>
-      state?.toOverlayJson(filter: _filter);
+  Map<String, Object?>? overlayState(ChatGiveaway? state) => state
+      ?.toOverlayJson(filter: _filter, moderatedWinners: _moderatedWinners);
 
   void start({required String keyword, required bool membersOnly}) {
     if (normalizeVoiceText(keyword).isEmpty) {
@@ -252,6 +259,7 @@ class ChatGiveawayController {
     _endedAt = null;
     _record = null;
     _identities.clear();
+    _moderatedWinners.clear();
     _entrants.clear();
     _dirty = false;
     _keyword = normalizeVoiceText(keyword);
@@ -279,11 +287,32 @@ class ChatGiveawayController {
         authorId: message.author.channelId.trim().isNotEmpty
             ? message.author.channelId.trim()
             : message.author.name.trim().toLowerCase(),
-        name: message.author.name);
+        name: message.author.name,
+        youtubeStreamOrientation: message.youtubeStreamOrientation);
     if (!_identities.add(entrant.identity)) return;
     _entrants.add(entrant);
     _dirty = true;
     _publishTimer ??= Timer(publishInterval, _publishNow);
+  }
+
+  void handleModeration(ChatModerationEvent event) {
+    // Entries are registrations tied to an author.
+    if (event.scope != ChatModerationScope.author) return;
+    bool matches(GiveawayEntrant entrant) => event.matchesTarget(
+          targetPlatform: entrant.platform,
+          orientation: entrant.youtubeStreamOrientation,
+          id: '',
+          authorId: entrant.authorId,
+          name: entrant.name,
+        );
+
+    final previousCount = _moderatedWinners.length;
+    for (final winner in _current?.winners ?? const <GiveawayEntrant>[]) {
+      if (matches(winner)) _moderatedWinners.add(winner.identity);
+    }
+    if (_removeEntrants(matches) || _moderatedWinners.length != previousCount) {
+      _publishNow();
+    }
   }
 
   void applyFilter(ChatFilter filter) {
@@ -299,9 +328,14 @@ class ChatGiveawayController {
   bool _removeBlockedEntrants() {
     final filter = _filter;
     if (filter == null) return false;
+    return _removeEntrants(
+        (entrant) => filter.blocksUser(entrant.name, entrant.authorId));
+  }
+
+  bool _removeEntrants(bool Function(GiveawayEntrant) matches) {
     final previousCount = _entrants.length;
     _entrants.removeWhere((entrant) {
-      if (!filter.blocksUser(entrant.name, entrant.authorId)) return false;
+      if (!matches(entrant)) return false;
       _identities.remove(entrant.identity);
       return true;
     });
@@ -356,6 +390,7 @@ class ChatGiveawayController {
     _close(publish: false);
     _current = null;
     _identities.clear();
+    _moderatedWinners.clear();
     _entrants.clear();
     _dirty = false;
     _publishNow();

@@ -11,6 +11,7 @@ import 'package:airstream/application/rules/rule_actions.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/services/overlay/templates/alerts_overlay.dart';
+import 'package:airstream/services/overlay/templates/featured_overlay.dart';
 import 'package:airstream/preview/sample_messages.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/models/chat_provider_event.dart';
@@ -145,7 +146,7 @@ void main() {
     expect(server.replayRecentAlert(renderedId), isTrue);
     expect((await filteredReplay)['title'], isEmpty);
 
-    await _runAlertsPage('''
+    await _runOverlayPage('''
   queue.push(${jsonEncode(data)});
   redactModeratedAlerts(${jsonEncode(deleted)});
   assert.equal(queue[0].message, '');
@@ -188,7 +189,7 @@ void main() {
             source: source),
         isTrue);
     final frame = await next;
-    final result = await _runAlertsPage('''
+    final result = await _runOverlayPage('''
 controlQueue('resume');
 const frame = ${jsonEncode(frame)};
 const alert = {...frame.data, alertDeliveryId: frame.alertDeliveryId, deliverySocket: socket};
@@ -221,6 +222,37 @@ console.log(JSON.stringify(deliveryMessages().slice(0, 2)));
         containsPair('message', 'Visible after activation'));
   });
 
+  test('featured cards in both OBS pages acknowledge after activation',
+      () async {
+    for (final (view, seconds) in [
+      ('featured', 7),
+      ('alerts', 7),
+      ('alerts', 0),
+    ]) {
+      await _runOverlayPage('''
+if ('$view' === 'alerts') {
+  settings.featuredSeconds = $seconds;
+  controlQueue('resume');
+}
+socket.listeners.message({data: JSON.stringify({
+  type: 'alert', data: {kind: 'featured', message: 'Hello', deliveryId: 'test'},
+})});
+paint();
+assert.equal(deliveryMessages().length, 0, '$view ($seconds seconds)');
+setObsSourceActive(true);
+assert.equal(deliveryMessages().map(event => event.type).join(','), 'sourceActivity');
+paint();
+assert.equal(deliveryMessages().map(event => event.type).join(','),
+  'sourceActivity,featuredRendered');
+assert.equal(deliveryMessages()[1].deliveryId, 'test');
+setObsSourceActive(false);
+setObsSourceActive(true);
+paint();
+assert.equal(deliveryMessages().filter(event => event.type === 'featuredRendered').length, 1);
+''', view: view);
+    }
+  });
+
   test('alerts renders featured emotes safely and stacks zero-width modifiers',
       () async {
     await connection.registerAcknowledgingAlerts();
@@ -241,7 +273,7 @@ console.log(JSON.stringify(deliveryMessages().slice(0, 2)));
           EmojiItem(url: 'data:image/png;base64,xyz', alt: '<unsafe>')),
     ]));
     final data = await next;
-    await _runAlertsPage('''
+    await _runOverlayPage('''
 const alert = ${jsonEncode(data)};
 renderAlert(alert);
 const copy = stage.firstElementChild.children.find(node => node.className === 'alert-copy');
@@ -916,26 +948,29 @@ assert.equal(unsafe.textContent, '<unsafe>');
   });
 }
 
-Future<String> _runAlertsPage(String checks) async {
+Future<String> _runOverlayPage(String checks, {String view = 'alerts'}) async {
   final temp = await Directory.systemTemp.createTemp('alerts-page-');
   addTearDown(() => temp.delete(recursive: true));
   final script = File('${temp.path}/test.js');
-  final page = alertsOverlayHtml()
-      .split('<script>')
-      .last
-      .split('applySettings(DEFAULT_SETTINGS);')
-      .first;
+  final page = view == 'alerts'
+      ? alertsOverlayHtml()
+          .split('<script>')
+          .last
+          .split('applySettings(DEFAULT_SETTINGS);')
+          .first
+      : featuredOverlayHtml().split('<script>').last.split('</script>').first;
   await script.writeAsString('''
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 class Node {
-  constructor(tag) { this.tag = tag; this.children = []; this.style = {}; }
+  constructor(tag) { this.tag = tag; this.children = []; this.style = {setProperty() {}}; }
   get firstElementChild() { return this.children[0]; }
   get isConnected() { return true; }
   set innerHTML(_) { throw new Error('Unexpected HTML assignment'); }
   append(...nodes) { this.children.push(...nodes); }
   appendChild(node) { this.append(node); }
   replaceChildren(...nodes) { this.children = nodes; }
+  hasChildNodes() { return this.children.length > 0 || Boolean(this.textContent); }
   querySelectorAll() { return []; }
   addEventListener() {}
 }
@@ -949,21 +984,23 @@ class Socket {
   send(raw) { frames.push(JSON.parse(raw)); }
 }
 const paints = [];
-vm.runInNewContext(${jsonEncode(page + r'''
+vm.runInNewContext(${jsonEncode(page + (view == 'alerts' ? r'''
 connect();
+''' : '') + r'''
 socket.listeners.open();
 function paint() {
   while (paints.length) paints.shift()();
 }
 function deliveryMessages() {
   return frames.filter(event =>
-    ['sourceActivity', 'alertRendered', 'alertDiscarded'].includes(event.type));
+    ['sourceActivity', 'alertRendered', 'alertDiscarded', 'featuredRendered'].includes(event.type));
 }
 ''' + checks)}, {
   assert, console, frames, paints,
   location: {protocol: 'http:', host: 'localhost'},
   WebSocket: Socket,
   requestAnimationFrame: callback => paints.push(callback),
+  setTimeout() {}, clearTimeout() {},
   window: {obsstudio: {}, addEventListener() {}, setTimeout() {}, clearTimeout() {}},
   document: {
     visibilityState: 'hidden',

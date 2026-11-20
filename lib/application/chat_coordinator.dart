@@ -217,9 +217,23 @@ class ChatCoordinator {
           if (!_providerAccountingController.isClosed) {
             _providerAccountingController.add(event);
           }
-          if (!_pipeline.allowsProviderEvent(event)) return;
+          var published = event;
+          if (!_pipeline.allowsProviderEvent(event)) {
+            // A filtered Kick pin still replaces the previous pin: publish a
+            // text-free unpin so overlays take the old pinned card away.
+            if (event.platform != Platform.kick ||
+                event.kind != ChatProviderEventKind.pinnedMessage) {
+              return;
+            }
+            published = ChatProviderEvent(
+              platform: event.platform,
+              kind: ChatProviderEventKind.unpinnedMessage,
+              id: event.id,
+              timestamp: event.timestamp,
+            );
+          }
           if (!_providerEventController.isClosed) {
-            _providerEventController.add(event);
+            _providerEventController.add(published);
           }
         }));
       }

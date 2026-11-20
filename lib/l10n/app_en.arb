@@ -1130,6 +1130,7 @@
   "templateRejectCount": "More than 500 files.",
   "templateRejectTotal": "Uncompressed content exceeds 100 MB.",
   "templateRejectFile": "A file exceeds 50 MB.",
+  "templateRejectIndexSize": "index.html exceeds 2 MB. Move large images or data into their own files.",
   "templateRejectPath": "Unsafe or duplicate file path.",
   "templateRejectLink": "Links and special files are not allowed.",
   "templateRejectType": "Unsupported file type.",

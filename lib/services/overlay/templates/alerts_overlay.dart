@@ -663,9 +663,9 @@ function afterPaint(displayed, target, getDisplayed, acknowledge) {
 }
 
 function acknowledgeFeatured(displayed, target, getDisplayed) {
-  if (!displayed.deliveryId) return;
+  if (!displayed?.deliveryId || !sourceIsActive()) return;
   afterPaint(displayed, target, getDisplayed, () => {
-    if (!acknowledgedFeatured.has(displayed)) {
+    if (sourceIsActive() && !acknowledgedFeatured.has(displayed)) {
       const connection = displayed.deliverySocket;
       connection.send(JSON.stringify({
         type: 'featuredRendered', deliveryId: displayed.deliveryId,
@@ -743,7 +743,11 @@ function connect() {
   queueReady = false;
   lastQueueStatus = '';
   connection.addEventListener('open', () => {
-    registerSource(connection, 'alerts', {alertDisplayAck: true}, acknowledgeActiveAlert);
+    registerSource(connection, 'alerts', {alertDisplayAck: true}, () => {
+      acknowledgeActiveAlert();
+      if (active?.kind === 'featured') acknowledgeFeatured(active, stage, () => active);
+      acknowledgeFeatured(pinnedFeatured, featuredStage, () => pinnedFeatured);
+    });
   });
   connection.addEventListener('message', (event) => {
     try {

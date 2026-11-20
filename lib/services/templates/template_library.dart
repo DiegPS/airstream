@@ -179,6 +179,9 @@ class TemplateLibrary {
   String get rootPath => root.path;
   static const totalLimit = 100 * 1024 * 1024;
 
+  /// A larger index.html is not served (the template shows oversizedIndex).
+  static const indexLimit = 2 * 1024 * 1024;
+
   Future<void>? _writes;
 
   /// Runs [operation] after earlier writes. When nothing is pending it starts
@@ -428,7 +431,7 @@ class TemplateLibrary {
     final index = await safeFile(id, 'index.html');
     if (index == null) {
       problems.add('missingIndex');
-    } else if (await index.length() > 2 * 1024 * 1024) {
+    } else if (await index.length() > indexLimit) {
       problems.add('oversizedIndex');
     }
     return TemplateInfo(id, cached.manifest, problems, folder.path);

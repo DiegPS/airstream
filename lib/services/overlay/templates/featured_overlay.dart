@@ -55,6 +55,7 @@ let socket = null;
 /* MODERATION */
 /* MESSAGE_ITEMS */
 let displayed = null;
+let acknowledged = false;
 let retryTimer = 0;
 let shuttingDown = false;
 
@@ -122,12 +123,21 @@ function renderFeatured(data, connection) {
   if (message.hasChildNodes()) card.append(message);
   stage.replaceChildren(card);
   displayed = data;
+  acknowledged = false;
   shownAt = Date.now();
   scheduleHide();
+  acknowledgeFeatured(connection);
+}
+
+function acknowledgeFeatured(connection) {
+  const data = displayed;
+  if (!data?.deliveryId || acknowledged || !sourceIsActive()) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (card.isConnected && data.deliveryId && connection === socket &&
+    if (displayed === data && !acknowledged && sourceIsActive() &&
+        stage.firstElementChild?.isConnected && connection === socket &&
         connection.readyState === WebSocket.OPEN) {
       connection.send(JSON.stringify({ type: 'featuredRendered', deliveryId: data.deliveryId }));
+      acknowledged = true;
     }
   }));
 }
@@ -136,7 +146,7 @@ function connect() {
   const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
   const connection = socket = new WebSocket(protocol + location.host + '/ws');
   connection.addEventListener('open', () => {
-    registerSource(connection, 'featured');
+    registerSource(connection, 'featured', {}, () => acknowledgeFeatured(connection));
   });
   connection.addEventListener('message', ({data}) => {
     try {

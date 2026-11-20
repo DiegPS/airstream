@@ -1364,7 +1364,11 @@ class OverlayServer {
       } else if (envelope['type'] == 'featuredRendered') {
         final id = envelope['deliveryId'];
         final pending = _featured[id];
-        if (pending != null && pending.recipients.contains(client)) {
+        if (pending != null &&
+            pending.recipients.contains(client) &&
+            (_obsSources.isEmpty ||
+                (_obsSources.contains(client) &&
+                    !_inactiveSources.contains(client)))) {
           _featured.remove(id);
           pending.finish(FeaturedMessageStatus.rendered);
         }

@@ -917,6 +917,7 @@
   "templateRejectCount": "Más de 500 archivos.",
   "templateRejectTotal": "El contenido descomprimido supera los 100 MB.",
   "templateRejectFile": "Un archivo supera los 50 MB.",
+  "templateRejectIndexSize": "index.html supera los 2 MB. Pasa las imágenes o datos grandes a archivos aparte.",
   "templateRejectPath": "Ruta de archivo insegura o duplicada.",
   "templateRejectLink": "No se permiten enlaces ni archivos especiales.",
   "templateRejectType": "Tipo de archivo no permitido.",

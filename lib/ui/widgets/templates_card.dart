@@ -177,6 +177,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
       'type' => l.templateRejectType,
       'layout' => l.templateRejectLayout,
       'index' => l.templateRejectIndex,
+      'indexSize' => l.templateRejectIndexSize,
       _ => l.templateRejectSize,
     };
   }
