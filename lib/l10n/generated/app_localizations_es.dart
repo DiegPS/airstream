@@ -2208,6 +2208,10 @@ class AppLocalizationsEs extends AppLocalizations {
             'Conectado, pero una de las dos transmisiones de YouTube falló',
         'connecting': 'Conectando / reconectando',
         'waiting': 'Esperando la transmisión en vivo',
+        'verticalWaiting':
+            'Horizontal en vivo; la vertical espera su transmisión',
+        'horizontalWaiting':
+            'Vertical en vivo; la horizontal espera su transmisión',
         'ended': 'Transmisión terminada',
         'failed': 'Error (detalles privados omitidos)',
         'portBusy': 'El puerto ya está en uso',
@@ -2661,7 +2665,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get templatePlatformImages =>
-      'Esta plantilla puede cargar imágenes de YouTube, Twitch, Kick, 7TV, BetterTTV y FrankerFaceZ.';
+      'Sin acceso a Internet, esta plantilla aún puede cargar imágenes de YouTube, Twitch, Kick, 7TV, BetterTTV y FrankerFaceZ, y código y fuentes de CDN públicos. No queda aislada: su código recibe tu chat y puede abrir otros sitios web.';
 
   @override
   String get templateDuplicate => 'Duplicar';

@@ -108,6 +108,23 @@ void main() {
         'youtube');
     expect(partial.status, DiagnosticStatus.warning);
     expect(partial.summary, contains('one of the two YouTube streams'));
+    // Horizontal live, vertical scheduled: says which one is waiting.
+    final waiting = item(
+        DiagnosticsSnapshot(
+            settings: settings.copyWith(
+                youtubeDualStreamEnabled: true,
+                youtubeHorizontalUrl: 'https://youtu.be/dQw4w9WgXcQ',
+                youtubeVerticalUrl: 'https://youtu.be/aqz-KE-bpKQ'),
+            connections: {
+              'youtubeHorizontal': (ServiceStatus.connected, null),
+              'youtubeVertical': (
+                ServiceStatus.connecting,
+                youtubeWaitingForLiveStatus
+              ),
+            }),
+        'youtube');
+    expect(waiting.status, DiagnosticStatus.warning);
+    expect(waiting.summary, contains('the vertical one is waiting'));
     // Stopped dual chat is idle, not connecting.
     expect(combineYoutubeChatStatuses(null, null), (ServiceStatus.idle, null));
     expect(

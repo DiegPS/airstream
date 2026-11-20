@@ -203,6 +203,8 @@ void main() {
       () => runGalleryChecks('featured zero width'));
   test('the Emote Wall empties when the server disconnects',
       () => runGalleryChecks('emote wall disconnect'));
+  test('/chat removes a pinned Kick card on unpin and on chat clear',
+      () => runGalleryChecks('chat unpinned and cleared'));
 }
 
 /// Version and file digest of each gallery item (see the version test).
@@ -1012,6 +1014,21 @@ function checkChatDeletedPinned() {
   assert.doesNotMatch(view.nodes.root.textContent, /Pinned words/);
 }
 
+function checkChatUnpinnedAndCleared() {
+  const view = page('/chat');
+  const pin = id => view.send('providerEvent', {platform: 'kick', kind: 'pinnedMessage', id,
+    title: 'Pinned', text: 'Pinned ' + id, data: {}});
+  pin('a');
+  // Unpinning takes the card away instead of adding a notice beside it.
+  view.send('providerEvent', {platform: 'kick', kind: 'unpinnedMessage', id: 'a',
+    title: 'Message unpinned', text: '', data: {}});
+  assert.doesNotMatch(view.nodes.root.textContent, /Pinned a|unpinned/);
+  // Clearing the chat also clears the pinned copy.
+  pin('b');
+  view.send('moderation', {scope: 'platform', platform: 'kick'});
+  assert.doesNotMatch(view.nodes.root.textContent, /Pinned b/);
+}
+
 function checkFeaturedZeroWidth() {
   const view = page('/featured');
   view.send('alert', {kind: 'featured', platform: 'twitch', author: 'Ana', items: [
@@ -1165,6 +1182,7 @@ const regressions = {
   'chat deleted pinned': checkChatDeletedPinned,
   'featured zero width': checkFeaturedZeroWidth,
   'emote wall disconnect': checkEmoteWallDisconnect,
+  'chat unpinned and cleared': checkChatUnpinnedAndCleared,
 };
 if (scenario !== 'gallery') {
   regressions[scenario]();

@@ -1,4 +1,5 @@
 import 'alert_moderation.dart';
+import 'featured_message_items.dart';
 import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 import 'overlay_page_locale.dart';
@@ -105,6 +106,7 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
     opacity: 0.94;
     overflow-wrap: anywhere;
   }
+  $featuredMessageItemStyles
   .alert-sticker {
     max-width: 118px;
     max-height: 118px;
@@ -356,10 +358,16 @@ function renderAlert(alert, target = stage) {
   titleNode.className = 'alert-title';
   titleNode.textContent = title;
   copy.append(kickerNode, titleNode);
-  if (message) {
+  const hasItems = alert.kind === 'featured' && Array.isArray(alert.items) && alert.items.length;
+  if (message || hasItems) {
     const messageNode = document.createElement('div');
     messageNode.className = 'alert-message';
-    messageNode.textContent = message;
+    if (hasItems) {
+      messageNode.style.whiteSpace = 'pre-wrap';
+      renderFeaturedItems(messageNode, alert.items);
+    } else {
+      messageNode.textContent = message;
+    }
     copy.appendChild(messageNode);
   }
   card.appendChild(copy);
@@ -390,6 +398,7 @@ let retryTimer = 0;
 let socket = null;
 $featuredSourceActivityScript
 $alertModerationScript
+$featuredMessageItemsScript
 let shuttingDown = false;
 const acknowledgedFeatured = new WeakSet();
 
@@ -570,11 +579,12 @@ function redactAlertText(alert) {
 
 function applyAlertFilters(filters) {
   const {blocksAuthor, blocksText} = alertBlockMatcher(filters);
+  const blockedAlertIds = new Set(filters.alertIds || []);
   for (const alert of [...queue, active]) {
     if (!alert || alert.kind === 'featured' ||
         (alert.kind === 'custom' && alert.sourceMessageId == null)) continue;
     const hideAuthor = blocksAuthor(alert);
-    if (!hideAuthor && !blocksText(alert) &&
+    if (!hideAuthor && !blockedAlertIds.has(alert.id) && !blocksText(alert) &&
         !(alert.kind === 'custom' && blocksText({message: alert.title}))) continue;
     redactAlertText(alert);
     if (hideAuthor) {
@@ -674,6 +684,14 @@ function completeAlertDelivery(alert, type) {
   }
 }
 
+function acknowledgeActiveAlert() {
+  const displayed = active;
+  if (!displayed?.alertDeliveryId || !sourceIsActive()) return;
+  afterPaint(displayed, stage, () => active, () => {
+    if (sourceIsActive()) completeAlertDelivery(displayed, 'alertRendered');
+  });
+}
+
 function showNext() {
   if (queueReady && queue[0]?.kind === 'featured' && !(featuredDuration() > 0)) {
     showPinnedFeatured(queue.shift());
@@ -710,11 +728,7 @@ function showNext() {
     featuredShownAt = Date.now();
     scheduleFeaturedHide();
   } else {
-    const displayed = active;
-    if (displayed.alertDeliveryId) {
-      afterPaint(displayed, stage, () => active,
-        () => completeAlertDelivery(displayed, sourceIsActive() ? 'alertRendered' : 'alertDiscarded'));
-    }
+    acknowledgeActiveAlert();
     const seconds = Math.max(1, Number(typeOption(active).seconds) || Number(settings.alertDisplaySeconds) || DEFAULT_SETTINGS.alertDisplaySeconds);
     const duration = active.kind !== 'custom' && queue.length >= 5
       ? Math.max(2, seconds / 2) : seconds;
@@ -729,7 +743,7 @@ function connect() {
   queueReady = false;
   lastQueueStatus = '';
   connection.addEventListener('open', () => {
-    registerSource(connection, 'alerts', {alertDisplayAck: true});
+    registerSource(connection, 'alerts', {alertDisplayAck: true}, acknowledgeActiveAlert);
   });
   connection.addEventListener('message', (event) => {
     try {

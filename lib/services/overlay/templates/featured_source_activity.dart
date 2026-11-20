@@ -2,6 +2,7 @@ const featuredSourceActivityScript = r'''
 let obsSourceActive;
 let registeredSourceSocket;
 let lastReportedSourceActivity;
+let onSourceActive;
 const obsStudio = window.obsstudio;
 
 function sourceIsActive() {
@@ -14,6 +15,7 @@ function reportSourceActivity() {
       active === lastReportedSourceActivity) return;
   socket.send(JSON.stringify({type: 'sourceActivity', active}));
   lastReportedSourceActivity = active;
+  if (active) onSourceActive?.();
 }
 
 function setObsSourceActive(active) {
@@ -22,8 +24,9 @@ function setObsSourceActive(active) {
   reportSourceActivity();
 }
 
-function registerSource(connection, view, capabilities = {}) {
+function registerSource(connection, view, capabilities = {}, onActive) {
   registeredSourceSocket = connection;
+  onSourceActive = onActive;
   lastReportedSourceActivity = sourceIsActive();
   connection.send(JSON.stringify({
     type: 'register', view, active: lastReportedSourceActivity, inObs: Boolean(obsStudio),

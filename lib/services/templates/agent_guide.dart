@@ -212,7 +212,7 @@ template.json is a JSON object, at most 65,536 bytes. It is optional in the load
 - sdk: integer, default 1. Only 1 is supported. Explicit non-1 values report unsupportedSdk.
 - width: integer 100..3840 (clamped), default 800.
 - height: integer 32..2160 (clamped), default 600.
-- network: boolean, default false; only true enables external connections.
+- network: boolean, default false. true allows fetch, WebSocket, images, media, scripts and frames from any HTTPS host. false limits them to this server, the public code CDNs and the chat image hosts; it does not block page navigation, so it is not isolation.
 - fields: array, default []; only the first 40 entries are examined. Invalid entries and duplicate keys are skipped. Each field has key (required, ^[A-Za-z][A-Za-z0-9_]{0,31}$), label (string max 60, defaults to key), type (required), default (type-specific, see below). Options:
   - text: maxLength integer 1..500 (clamped), default 200; default text ""; values trimmed and truncated.
   - color: #RRGGBB or #RRGGBBAA; normalized lowercase; invalid/missing default becomes #ffffff.

@@ -196,8 +196,16 @@ class AppController {
       }),
       _chat.moderationEvents.listen(_audio.handleModeration),
       _chat.moderationEvents.listen(_poll.handleModeration),
+      _chat.moderationEvents.listen(rules.handleModeration),
       _chat.moderationEvents.listen(_overlay.broadcastModeration),
-      _chat.providerEvents.listen(_overlay.broadcastProviderEvent),
+      _chat.providerEvents.listen((event) {
+        if (event.kind == ChatProviderEventKind.pinnedMessage &&
+            _poll.hasOpenPoll &&
+            _withheldVoteIds.contains((event.platform, event.id))) {
+          return;
+        }
+        _overlay.broadcastProviderEvent(event);
+      }),
       _audio.finalizedCaptions.listen(_overlay.broadcastCaption),
       _audio.voiceCommands.listen(
         (command) => unawaited(_obs.executeVoiceCommand(command)),
@@ -293,6 +301,19 @@ class AppController {
       note: position == null ? null : entry.note,
       position: position,
       count: count,
+      moderationSource: position == null
+          ? null
+          : ChatMessage(
+              id: entry.id,
+              platform: entry.platform,
+              author: ChatAuthor(
+                name: entry.name,
+                channelId:
+                    entry.identity.substring(entry.platform.name.length + 1),
+              ),
+              items: [MessageItem.text(entry.note)],
+              timestamp: entry.joinedAt,
+            ),
     ));
   }
 
@@ -817,6 +838,7 @@ class AppController {
       final filter = ChatFilter(settings);
       queue.applyFilter(filter);
       if (blocksChanged) {
+        rules.applyFilter(filter);
         _giveaway.applyFilter(filter);
         _poll.applyFilter(filter);
         _sessionSummary.applyBlockFilter(filter);

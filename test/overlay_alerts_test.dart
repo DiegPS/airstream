@@ -131,25 +131,21 @@ void main() {
     expect((await replay)['message'], isEmpty);
 
     final rendered = connection.nextAlert(acknowledge: true);
-    await emitAlert('Hello from chat', 'Welcome');
-    final renderedId = (await rendered)['id'] as String;
+    await emitAlert('From chat', 'Welcome');
+    final renderedData = await rendered;
+    final renderedId = renderedData['id'] as String;
     expect(renderedId, isNot(stored['id']));
+    final nextFilters =
+        connection.envelopes.stream.firstWhere((e) => e['type'] == 'filters');
     server.setSettings(const SettingsModel(blockedWords: ['hello']));
+    final filters = (await nextFilters)['data'];
     expect(server.recentAlertsSnapshot.first['title'], isEmpty);
     expect(server.recentAlertsSnapshot.first['message'], isEmpty);
     final filteredReplay = connection.nextAlert();
     expect(server.replayRecentAlert(renderedId), isTrue);
     expect((await filteredReplay)['title'], isEmpty);
 
-    final temp = await Directory.systemTemp.createTemp('alert-moderation-');
-    addTearDown(() => temp.delete(recursive: true));
-    final script = File('${temp.path}/test.js');
-    final page = alertsOverlayHtml()
-        .split('<script>')
-        .last
-        .split('applySettings(DEFAULT_SETTINGS);')
-        .first;
-    final checks = '''
+    await _runAlertsPage('''
   queue.push(${jsonEncode(data)});
   redactModeratedAlerts(${jsonEncode(deleted)});
   assert.equal(queue[0].message, '');
@@ -158,20 +154,11 @@ void main() {
   applyAlertFilters({users: [], words: ['hello']});
   assert.equal(queue[0].message, '');
   assert.equal(queue[0].title, '');
-''';
-    await script.writeAsString('''
-const assert = require('node:assert/strict');
-const vm = require('node:vm');
-const node = {appendChild() {}};
-vm.runInNewContext(${jsonEncode('$page\n$checks')}, {
-  assert,
-  window: {addEventListener() {}},
-  document: {getElementById: () => node, createElement: () => ({})},
-});
+  queue[0] = ${jsonEncode(renderedData)};
+  applyAlertFilters(${jsonEncode(filters)});
+  assert.equal(queue[0].message, '');
+  assert.equal(queue[0].title, '');
 ''');
-    final nodeResult = await Process.run('node', [script.path]);
-    expect(nodeResult.exitCode, 0,
-        reason: '${nodeResult.stdout}\n${nodeResult.stderr}');
   });
 
   test('Twitch Bits produces a bits alert', () async {
@@ -184,6 +171,93 @@ vm.runInNewContext(${jsonEncode('$page\n$checks')}, {
     expect(connection.alerts.single['membershipKind'], isNull);
     expect(connection.alerts.single['months'], isNull);
     expect(connection.alerts.single['giftCount'], isNull);
+  });
+
+  test('an alert painted off-scene enters Recent Alerts after activation',
+      () async {
+    await connection.registerAcknowledgingAlerts(inactiveObs: true);
+    final server = connection.server;
+    final source = message(Platform.twitch);
+    final next =
+        connection.envelopes.stream.firstWhere((e) => e['type'] == 'alert');
+    expect(
+        server.broadcastRuleAlert(
+            title: 'Scene change',
+            text: 'Visible after activation',
+            seconds: 10,
+            source: source),
+        isTrue);
+    final frame = await next;
+    final result = await _runAlertsPage('''
+controlQueue('resume');
+const frame = ${jsonEncode(frame)};
+const alert = {...frame.data, alertDeliveryId: frame.alertDeliveryId, deliverySocket: socket};
+enqueueAlert(alert);
+showNext();
+paint();
+  assert.equal(deliveryMessages().length, 0);
+setObsSourceActive(true);
+  assert.equal(deliveryMessages().map(event => event.type).join(','), 'sourceActivity');
+paint();
+  assert.equal(deliveryMessages().map(event => event.type).join(','), 'sourceActivity,alertRendered');
+finishAlert();
+setObsSourceActive(false);
+enqueueAlert({...alert, alertDeliveryId: 123});
+showNext();
+paint();
+finishAlert();
+setObsSourceActive(true);
+paint();
+  assert.equal(deliveryMessages().filter(event => event.deliveryId === 123)
+    .map(event => event.type).join(','), 'alertDiscarded');
+console.log(JSON.stringify(deliveryMessages().slice(0, 2)));
+''');
+    expect(server.recentAlertsSnapshot, isEmpty);
+    final recent = server.recentAlerts.skip(1).first;
+    for (final event in jsonDecode(result) as List) {
+      connection.socket!.sink.add(jsonEncode(event));
+    }
+    expect((await recent.timeout(const Duration(seconds: 2))).single,
+        containsPair('message', 'Visible after activation'));
+  });
+
+  test('alerts renders featured emotes safely and stacks zero-width modifiers',
+      () async {
+    await connection.registerAcknowledgingAlerts();
+    final next = connection.nextAlert();
+    connection.server.broadcastFeaturedMessage(
+        message(Platform.twitch).copyWith(items: const [
+      MessageItem.text('<b>literal</b> '),
+      MessageItem.emoji(
+          EmojiItem(url: 'https://example.com/base', alt: 'Base')),
+      MessageItem.text(' '),
+      MessageItem.emoji(EmojiItem(
+        url: 'http://example.com/modifier',
+        alt: 'Modifier',
+        isZeroWidth: true,
+      )),
+      MessageItem.text(' '),
+      MessageItem.emoji(
+          EmojiItem(url: 'data:image/png;base64,xyz', alt: '<unsafe>')),
+    ]));
+    final data = await next;
+    await _runAlertsPage('''
+const alert = ${jsonEncode(data)};
+renderAlert(alert);
+const copy = stage.firstElementChild.children.find(node => node.className === 'alert-copy');
+const message = copy.children.find(node => node.className === 'alert-message');
+assert.equal(message.children.length, 4);
+const [literal, stack, space, unsafe] = message.children;
+assert.equal(literal.textContent, '<b>literal</b> ');
+assert.equal(stack.className, 'emote-stack');
+assert.deepEqual(Array.from(stack.children, image => [image.tag, image.src, image.alt]), [
+  ['img', 'https://example.com/base', 'Base'],
+  ['img', 'http://example.com/modifier', 'Modifier'],
+]);
+assert.equal(space.textContent, ' ');
+assert.equal(unsafe.tag, '#text');
+assert.equal(unsafe.textContent, '<unsafe>');
+''');
   });
 
   test('Kick subscriptions carry their kind and months', () async {
@@ -842,6 +916,68 @@ vm.runInNewContext(${jsonEncode('$page\n$checks')}, {
   });
 }
 
+Future<String> _runAlertsPage(String checks) async {
+  final temp = await Directory.systemTemp.createTemp('alerts-page-');
+  addTearDown(() => temp.delete(recursive: true));
+  final script = File('${temp.path}/test.js');
+  final page = alertsOverlayHtml()
+      .split('<script>')
+      .last
+      .split('applySettings(DEFAULT_SETTINGS);')
+      .first;
+  await script.writeAsString('''
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+class Node {
+  constructor(tag) { this.tag = tag; this.children = []; this.style = {}; }
+  get firstElementChild() { return this.children[0]; }
+  get isConnected() { return true; }
+  set innerHTML(_) { throw new Error('Unexpected HTML assignment'); }
+  append(...nodes) { this.children.push(...nodes); }
+  appendChild(node) { this.append(node); }
+  replaceChildren(...nodes) { this.children = nodes; }
+  querySelectorAll() { return []; }
+  addEventListener() {}
+}
+const frames = [];
+const root = new Node('root');
+class Socket {
+  static OPEN = 1;
+  readyState = 1;
+  listeners = {};
+  addEventListener(type, listener) { this.listeners[type] = listener; }
+  send(raw) { frames.push(JSON.parse(raw)); }
+}
+const paints = [];
+vm.runInNewContext(${jsonEncode(page + r'''
+connect();
+socket.listeners.open();
+function paint() {
+  while (paints.length) paints.shift()();
+}
+function deliveryMessages() {
+  return frames.filter(event =>
+    ['sourceActivity', 'alertRendered', 'alertDiscarded'].includes(event.type));
+}
+''' + checks)}, {
+  assert, console, frames, paints,
+  location: {protocol: 'http:', host: 'localhost'},
+  WebSocket: Socket,
+  requestAnimationFrame: callback => paints.push(callback),
+  window: {obsstudio: {}, addEventListener() {}, setTimeout() {}, clearTimeout() {}},
+  document: {
+    visibilityState: 'hidden',
+    getElementById: () => root,
+    createElement: tag => new Node(tag),
+    createTextNode: text => Object.assign(new Node('#text'), {textContent: text}),
+  },
+});
+''');
+  final result = await Process.run('node', [script.path]);
+  expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  return result.stdout as String;
+}
+
 class _Connection {
   OverlayServer server = OverlayServer(
       templateLibrary: emptyTemplateLibrary(), giftGroupingWindow: window);
@@ -886,13 +1022,14 @@ class _Connection {
     await delivered.timeout(const Duration(seconds: 2));
   }
 
-  Future<void> registerAcknowledgingAlerts() async {
+  Future<void> registerAcknowledgingAlerts({bool inactiveObs = false}) async {
     final registered =
         envelopes.stream.firstWhere((e) => e['type'] == 'registered');
     socket!.sink.add(jsonEncode({
       'type': 'register',
       'view': 'alerts',
       'alertDisplayAck': true,
+      if (inactiveObs) ...{'inObs': true, 'active': false},
     }));
     await registered;
   }

@@ -63,8 +63,13 @@ class _ConnectionDots extends ConsumerWidget {
           };
           return Tooltip(
             message: switch (serviceStatus) {
-              ServiceStatus.connected when partial =>
-                l.youtubePartiallyConnected,
+              ServiceStatus.connected when partial => switch (s?.$2) {
+                  youtubeVerticalWaitingStatus =>
+                    l.diagnosticsMessage('verticalWaiting', ''),
+                  youtubeHorizontalWaitingStatus =>
+                    l.diagnosticsMessage('horizontalWaiting', ''),
+                  _ => l.youtubePartiallyConnected,
+                },
               ServiceStatus.connected => l.platformStatusConnected(p.$4),
               ServiceStatus.connecting => s?.$2 == youtubeWaitingForLiveStatus
                   ? l.youtubeWaitingForLive

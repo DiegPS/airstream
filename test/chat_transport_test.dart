@@ -721,6 +721,34 @@ void main() {
     expect(events[2].scope, app.ChatModerationScope.platform);
   });
 
+  test('a Kick unpin names the message that was pinned', () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final events = <ChatProviderEvent>[];
+    service.appEvents.listen(events.add);
+    await service.connect('creator');
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\PinnedMessageCreatedEvent',
+      {
+        'message': {
+          'id': 'pin-7',
+          'content': 'Rules',
+          'sender': {'id': 1, 'username': 'viewer', 'slug': 'viewer'},
+        },
+      },
+    ));
+    transport.eventController.add(kick.parseKickEvent(
+      r'App\Events\PinnedMessageDeletedEvent',
+      const <String, Object?>{},
+    ));
+    await _eventually(() => events.length == 2);
+    expect(events.map((event) => (event.kind, event.id)), [
+      (ChatProviderEventKind.pinnedMessage, 'pin-7'),
+      (ChatProviderEventKind.unpinnedMessage, 'pin-7'),
+    ]);
+  });
+
   test('Kick exposes anonymous live viewer metadata', () async {
     final transport = _FakeKickTransport();
     final service = KickService(transportFactory: () async => transport);

@@ -92,6 +92,15 @@ void main() {
     expect(combineYoutubeChatStatuses(connecting, connecting), connecting);
   });
 
+  test('dual YouTube with one stream live and the other waiting is up', () {
+    const waiting = (ServiceStatus.connecting, youtubeWaitingForLiveStatus);
+    const connected = (ServiceStatus.connected, null);
+    expect(combineYoutubeChatStatuses(connected, waiting),
+        (ServiceStatus.connected, youtubeVerticalWaitingStatus));
+    expect(combineYoutubeChatStatuses(waiting, connected),
+        (ServiceStatus.connected, youtubeHorizontalWaitingStatus));
+  });
+
   test('starts as connecting before the first status event arrives', () {
     expect(
       resolveChatSessionPhase(

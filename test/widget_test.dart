@@ -415,8 +415,12 @@ void main() {
           expect(find.text('Internet access'), findsOneWidget);
         } else {
           expect(
-              find.textContaining('can load images from YouTube, Twitch, Kick'),
+              find.textContaining(
+                  'can still load images from YouTube, Twitch, Kick'),
               findsOneWidget);
+          // Without Internet access the template is still not isolated.
+          expect(
+              find.textContaining('can open other websites'), findsOneWidget);
         }
         expect(
             find.textContaining('Import only templates from people you trust.'),

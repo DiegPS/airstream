@@ -2192,6 +2192,10 @@ class AppLocalizationsEn extends AppLocalizations {
         'partial': 'Connected, but one of the two YouTube streams failed',
         'connecting': 'Connecting / reconnecting',
         'waiting': 'Waiting for live stream',
+        'verticalWaiting':
+            'Horizontal stream live; the vertical one is waiting for its broadcast',
+        'horizontalWaiting':
+            'Vertical stream live; the horizontal one is waiting for its broadcast',
         'ended': 'Broadcast ended',
         'failed': 'Failed (private details omitted)',
         'portBusy': 'Port is already in use',
@@ -2641,7 +2645,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get templatePlatformImages =>
-      'This template can load images from YouTube, Twitch, Kick, 7TV, BetterTTV, and FrankerFaceZ.';
+      'Without Internet access, this template can still load images from YouTube, Twitch, Kick, 7TV, BetterTTV, and FrankerFaceZ, and code and fonts from public CDNs. It is not isolated: its code receives your chat and can open other websites.';
 
   @override
   String get templateDuplicate => 'Duplicate';

@@ -1,10 +1,13 @@
 import 'alert_moderation.dart';
+import 'featured_message_items.dart';
 import 'featured_source_activity.dart';
 import 'overlay_font.dart';
 
 String featuredOverlayHtml() => _featuredPage
     .replaceFirst('/* OVERLAY_FONT */', overlayFontScript)
     .replaceFirst('/* SOURCE_ACTIVITY */', featuredSourceActivityScript)
+    .replaceFirst('/* EMOTE_STYLES */', featuredMessageItemStyles)
+    .replaceFirst('/* MESSAGE_ITEMS */', featuredMessageItemsScript)
     .replaceFirst('/* MODERATION */', alertModerationScript);
 
 const _featuredPage = r'''<!doctype html>
@@ -33,9 +36,7 @@ header { display: flex; align-items: center; gap: .45em; }
 .avatar { width: 1.55em; height: 1.55em; flex: none; object-fit: cover; border-radius: 50%; }
 .amount { color: var(--accent); font-size: .7em; font-weight: 700; max-width: 40%; }
 .message { margin-top: .4em; line-height: 1.3; white-space: pre-wrap; }
-.emote { height: 1.15em; width: auto; vertical-align: -.21em; }
-.emote-stack { display: inline-grid; vertical-align: -.21em; }
-.emote-stack > img { grid-area: 1 / 1; }
+/* EMOTE_STYLES */
 </style>
 </head>
 <body>
@@ -52,6 +53,7 @@ let hideTimer = 0;
 let socket = null;
 /* SOURCE_ACTIVITY */
 /* MODERATION */
+/* MESSAGE_ITEMS */
 let displayed = null;
 let retryTimer = 0;
 let shuttingDown = false;
@@ -113,42 +115,7 @@ function renderFeatured(data, connection) {
   card.append(header);
   const message = element('div', 'message');
   if (Array.isArray(data.items) && data.items.length) {
-    // Spaces between a base emote and its zero-width modifiers are held back
-    // so the modifier stacks on the base, as on /chat.
-    let stack = null, pendingSpace = '';
-    const flush = () => {
-      if (pendingSpace) message.append(document.createTextNode(pendingSpace));
-      pendingSpace = '';
-    };
-    for (const item of data.items) {
-      if (item.kind !== 'emoji') {
-        const value = item.text || '';
-        if (stack && value.trim() === '') {
-          pendingSpace += value;
-          continue;
-        }
-        flush();
-        message.append(document.createTextNode(value));
-        stack = null;
-        continue;
-      }
-      const image = picture(item.url, 'emote', item.alt || '');
-      if (!image) {
-        flush();
-        message.append(document.createTextNode(item.alt || ''));
-        stack = null;
-        continue;
-      }
-      if (item.isZeroWidth && stack) {
-        pendingSpace = '';
-      } else {
-        flush();
-        stack = element('span', 'emote-stack');
-        message.append(stack);
-      }
-      stack.append(image);
-    }
-    flush();
+    renderFeaturedItems(message, data.items);
   } else {
     message.textContent = data.message || '';
   }

@@ -786,6 +786,18 @@ function addProviderEvent(event) {
     record.event.platform === event.platform && record.event.kind === event.kind &&
     record.event.id === event.id);
   if (existing >= 0) removeRecord(records.splice(existing, 1)[0]);
+  // Unpinning takes the pinned card away instead of adding a notice. Kick
+  // keeps one pin, so an unpin without a known id clears that platform's pin.
+  if (event.kind === 'unpinnedMessage') {
+    records = records.filter((record) => {
+      const pinned = record.event?.kind === 'pinnedMessage' &&
+        record.event.platform === event.platform &&
+        (!event.id || record.event.id === event.id || event.platform === 'kick');
+      if (pinned) removeRecord(record);
+      return !pinned;
+    });
+    return;
+  }
   // A deletion (a Kick poll removed) only takes the old card away.
   if (event.data && event.data.deleted === true) return;
   const record = {
@@ -831,9 +843,12 @@ function applyModeration(moderation) {
     }
     if (Number.isInteger(moderation.sequence)) return record.sequence === moderation.sequence;
     // A pinned copy shares the original's id: deleting the message unpins it here.
+    // Clearing the chat also clears it.
     if (record.event?.kind === 'pinnedMessage') {
+      if (record.event.platform !== moderation.platform) return false;
+      if (moderation.scope === 'platform') return true;
       return moderation.scope === 'message' && !!moderation.messageId &&
-        record.event.platform === moderation.platform && record.event.id === moderation.messageId;
+        record.event.id === moderation.messageId;
     }
     const message = record.message;
     if (!message || message.platform !== moderation.platform || !orientationMatches(message)) return false;

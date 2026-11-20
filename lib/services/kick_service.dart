@@ -40,6 +40,7 @@ class KickService {
   final _seenGiftBatches = <String>{};
   String? _lastRoomStateSignature;
   String? _lastPinnedMessageId;
+  String _unpinnedMessageId = '';
   int _generation = 0;
   Future<void> _disconnecting = Future.value();
 
@@ -158,6 +159,9 @@ class KickService {
       if (event is kick.KickPinnedMessageCreatedEvent) {
         _lastPinnedMessageId = event.message.id;
       } else if (event is kick.KickPinnedMessageDeletedEvent) {
+        // The unpin event names no message: keep the id so overlays can
+        // take the right pinned card away.
+        _unpinnedMessageId = _lastPinnedMessageId ?? '';
         _lastPinnedMessageId = '';
       }
       final moderation = _convertModeration(event);
@@ -505,6 +509,8 @@ class KickService {
     };
     final id = switch (event) {
       kick.KickPinnedMessageCreatedEvent(:final message) => message.id,
+      kick.KickPinnedMessageDeletedEvent() when _unpinnedMessageId.isNotEmpty =>
+        _unpinnedMessageId,
       kick.KickPollUpdatedEvent(:final pollId) => pollId,
       kick.KickPollDeletedEvent(:final pollId) => pollId,
       kick.KickRewardRedeemedEvent(:final redemptionId) => redemptionId,

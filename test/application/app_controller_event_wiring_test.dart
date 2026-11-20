@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:airstream/application/subathon_timer.dart';
 import 'package:airstream/application/app_providers.dart';
@@ -7,6 +8,7 @@ import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/application/rules/rule_model.dart';
 import 'package:airstream/application/rules/rule_sound_player.dart';
 import 'package:airstream/services/overlay_server.dart';
+import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/services/chat_log_writer.dart';
 import 'package:airstream/services/obs_service.dart';
 // Flutter's existing test dependency supplies deterministic timers.
@@ -24,13 +26,16 @@ import 'package:airstream/application/chat_queue.dart';
 import '../chat_queue_test.dart' show queueMessage;
 import 'package:airstream/application/obs_coordinator.dart';
 import 'package:airstream/application/overlay_coordinator.dart';
+import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/models/chat_message.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/services/overlay/featured_message_delivery.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:web_socket_channel/io.dart';
 
 import 'coordinator_fakes.dart';
+import '../support/empty_template_library.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/secure_settings_store.dart';
 import 'package:airstream/settings/settings_notifier.dart';
@@ -55,7 +60,24 @@ class _PollOverlay extends RuleOverlay {
   final feed = <ChatMessage>[];
   final support = <ChatMessage>[];
   final providerIds = <String>[];
+  final ruleAlerts = <String>[];
+  final featuredMessages = <ChatMessage>[];
   FeaturedMessageDelivery? featuredDelivery;
+
+  @override
+  Map<String, int> get viewCounts => {...super.viewCounts, 'alerts': 1};
+
+  @override
+  bool broadcastRuleAlert({
+    required String title,
+    required String text,
+    String mediaId = '',
+    required int seconds,
+    ChatMessage? source,
+  }) {
+    ruleAlerts.add(text);
+    return true;
+  }
 
   @override
   void broadcastChatSupport(ChatMessage message) => support.add(message);
@@ -66,8 +88,10 @@ class _PollOverlay extends RuleOverlay {
       providerIds.add(event.id);
 
   @override
-  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) =>
-      featuredDelivery ?? super.broadcastFeaturedMessage(message);
+  FeaturedMessageDelivery broadcastFeaturedMessage(ChatMessage message) {
+    featuredMessages.add(message);
+    return featuredDelivery ?? super.broadcastFeaturedMessage(message);
+  }
 
   final polls = <Map<String, Object?>?>[];
   StreamSubscription<ChatMessage>? _messages;
@@ -145,6 +169,239 @@ void main() {
           obsCoordinator: ObsCoordinator(obs: obs ?? FakeObsClient()),
           overlayCoordinator:
               OverlayCoordinator(overlay: OverlayServerAdapter(server)));
+
+  for (final change in [
+    'deleting the message',
+    'banning the author',
+    'blocking a word'
+  ]) {
+    test('$change during a rule wait prevents viewer text from resurfacing',
+        () {
+      fakeAsync((time) {
+        final twitch = FakeChannelChatClient();
+        final server = _PollOverlay();
+        final tts = FakeTtsClient()
+          ..loadState = const TtsLoadState(phase: TtsLoadPhase.ready);
+        final app = makeController(twitch, server, tts: tts);
+        final settings = SettingsModel(
+          overlayEnabled: true,
+          ttsEnabled: true,
+          rules: [
+            {
+              ...RuleSchema.newRule('chat.message', id: 'delayed'),
+              'enabled': true,
+              'trigger': {
+                'type': 'chat.message',
+                'match': 'contains',
+                'text': 'words'
+              },
+              'cooldownSeconds': 0,
+              'overlap': 'queue',
+              'actions': [
+                {'id': 'wait', 'type': 'wait', 'seconds': 30},
+                {
+                  'id': 'alert',
+                  'type': 'alert.show',
+                  'title': 'From chat',
+                  'text': '{message}',
+                  'seconds': 3,
+                },
+                {'id': 'say', 'type': 'tts.say', 'text': '{message}'},
+                {'id': 'feature', 'type': 'featured'},
+              ],
+            },
+          ],
+        );
+        app.applySettings(settings, connectChats: false);
+        ChatMessage source(String id, String text) => ChatMessage(
+              platform: Platform.twitch,
+              id: id,
+              author: ChatAuthor(name: id, channelId: id),
+              items: [MessageItem.text(text)],
+              timestamp: DateTime.now(),
+            );
+        twitch.messageController.add(source('delayed', 'private words'));
+        time.elapse(Duration.zero);
+        expect(app.rules.history.single.completed, isFalse);
+        switch (change) {
+          case 'deleting the message':
+            twitch.moderationController.add(const ChatModerationEvent.message(
+                platform: Platform.twitch, messageId: 'delayed'));
+          case 'banning the author':
+            twitch.moderationController.add(const ChatModerationEvent.author(
+                platform: Platform.twitch, authorChannelId: 'delayed'));
+          case 'blocking a word':
+            app.applySettings(settings.copyWith(blockedWords: ['private']),
+                connectChats: false);
+            app.applySettings(settings, connectChats: false);
+        }
+        time.flushMicrotasks();
+        // Ignore the original chat speech and check only what the rule emits.
+        final spoken = tts.spoken.length;
+        time.elapse(const Duration(seconds: 30));
+        expect(app.rules.history.single.completed, isTrue);
+        expect(server.ruleAlerts, isEmpty);
+        expect(tts.spoken, hasLength(spoken));
+        expect(server.featuredMessages, isEmpty);
+
+        // A later, unmoderated source can still use the same rule.
+        twitch.messageController.add(source('fresh', 'ordinary words'));
+        time.elapse(const Duration(seconds: 30));
+        expect(server.ruleAlerts, ['ordinary words']);
+        expect(tts.spoken.last, 'ordinary words');
+        expect(server.featuredMessages.single.id, 'fresh');
+        unawaited(app.dispose());
+        time.flushMicrotasks();
+      });
+    });
+  }
+
+  test('blocking queue notes and Kicks text redacts paused rule alerts',
+      () async {
+    final twitch = FakeChannelChatClient();
+    final kick = FakeChannelChatClient();
+    final server = OverlayServer(templateLibrary: emptyTemplateLibrary());
+    final app = makeController(twitch, server,
+        chat: ChatCoordinator(
+            youtube: FakeYouTubeChatClient(),
+            youtubeHorizontal: FakeYouTubeChatClient(),
+            youtubeVertical: FakeYouTubeChatClient(),
+            kick: kick,
+            twitch: twitch));
+    addTearDown(app.dispose);
+    final settings = SettingsModel(
+      overlayEnabled: true,
+      overlayPort: 0,
+      alertDisabledTypes: const ['kicks'],
+      queueState: const QueueState(status: QueueStatus.open),
+      queueOptions: const QueueOptions(command: '!join'),
+      rules: [
+        for (final (id, type, text) in [
+          ('join', 'queue.joined', '{note}'),
+          ('kicks', 'support.kicks', '{message}'),
+        ])
+          {
+            ...RuleSchema.newRule(type, id: id),
+            'enabled': true,
+            'actions': [
+              {
+                'id': 'alert',
+                'type': 'alert.show',
+                'title': type,
+                'text': text,
+                'seconds': 3,
+              },
+            ],
+          },
+      ],
+    );
+    app.applySettings(settings, connectChats: false);
+    await app.overlayStateStream
+        .firstWhere((state) => state.phase == OverlayServerPhase.ready);
+    final socket =
+        IOWebSocketChannel.connect('ws://127.0.0.1:${server.port}/ws');
+    final events = StreamIterator(socket.stream);
+    addTearDown(() async {
+      await events.cancel();
+      await socket.sink.close();
+    });
+    await socket.ready;
+    void send(Map<String, Object?> data) => socket.sink.add(jsonEncode(data));
+    Future<Map<String, dynamic>> next(String type) async {
+      while (await events.moveNext().timeout(const Duration(seconds: 2))) {
+        final event =
+            jsonDecode(events.current as String) as Map<String, dynamic>;
+        if (event['type'] == type) return event;
+      }
+      throw StateError('Missing $type event');
+    }
+
+    send({'type': 'register', 'view': 'alerts', 'alertDisplayAck': true});
+    await next('registered');
+    server.controlAlertQueue(AlertQueueOperation.pause);
+    twitch.messageController.add(queueMessage('viewer', '!join secret note'));
+    final joined = await next('alert');
+    expect(joined['data']['message'], 'secret note');
+    kick.eventController.add(ChatProviderEvent(
+      platform: Platform.kick,
+      kind: ChatProviderEventKind.support,
+      id: 'kicks-event',
+      authorName: 'Sender',
+      authorChannelId: 'sender',
+      text: 'gift message',
+      viewerText: 'gift message · private gift note',
+      count: 1,
+      timestamp: DateTime.now(),
+    ));
+    final support = await next('alert');
+    expect(support['data']['message'], 'gift message');
+    expect(
+        joined['data']['sourceMessageId'], app.queue.current.entries.single.id);
+    expect(support['data']['sourceMessageId'], 'kicks-event');
+    expect(support['data']['authorChannelId'], 'sender');
+
+    app.applySettings(settings.copyWith(blockedWords: ['secret', 'private']),
+        connectChats: false);
+    expect(app.queue.current.entries.single.note, isEmpty);
+    server.controlAlertQueue(AlertQueueOperation.resume);
+    for (final frame in [joined, support]) {
+      final recent = server.recentAlerts.skip(1).first;
+      send({'type': 'alertRendered', 'deliveryId': frame['alertDeliveryId']});
+      final stored = (await recent.timeout(const Duration(seconds: 2))).first;
+      expect(stored['message'], '');
+      expect(stored['title'], '');
+      expect(server.replayRecentAlert(stored['id'] as String), isTrue);
+      expect((await next('alert'))['data']['message'], '');
+    }
+  });
+
+  test('Kick pins cannot publish withheld votes while a poll is open',
+      () async {
+    final kick = FakeChannelChatClient();
+    final server = _PollOverlay();
+    final app = makeController(FakeChannelChatClient(), server,
+        chat: ChatCoordinator(
+            youtube: FakeYouTubeChatClient(),
+            youtubeHorizontal: FakeYouTubeChatClient(),
+            youtubeVertical: FakeYouTubeChatClient(),
+            kick: kick,
+            twitch: FakeChannelChatClient()));
+    addTearDown(app.dispose);
+    app.applySettings(const SettingsModel(overlayEnabled: true),
+        connectChats: false);
+    app.startPoll(
+        question: 'Q',
+        mode: PollMode.freeAnswer,
+        command: '!vote',
+        hideResults: true);
+    const answer = '!vote private answer';
+    kick.messageController.add(ChatMessage(
+      platform: Platform.kick,
+      id: 'hidden',
+      author: const ChatAuthor(name: 'Viewer', channelId: 'viewer'),
+      items: const [MessageItem.text(answer)],
+      timestamp: DateTime.now(),
+    ));
+    void pin(String id, String text) {
+      kick.eventController.add(ChatProviderEvent(
+        platform: Platform.kick,
+        kind: ChatProviderEventKind.pinnedMessage,
+        id: id,
+        text: text,
+        timestamp: DateTime.now(),
+      ));
+    }
+
+    pin('hidden', answer);
+    pin('ordinary', 'hello');
+    await settleCoordinatorTasks();
+    expect(server.chat, isEmpty);
+    expect(server.providerIds, ['ordinary']);
+    app.endPoll();
+    pin('hidden', answer);
+    await settleCoordinatorTasks();
+    expect(server.providerIds, ['ordinary', 'hidden']);
+  });
 
   test('moderation republishes open votes in every mode and preserves results',
       () {

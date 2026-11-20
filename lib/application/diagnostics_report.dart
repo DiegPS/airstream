@@ -88,6 +88,10 @@ const diagnosticEnglish = <String, String>{
   'partial': 'Connected, but one of the two YouTube streams failed',
   'connecting': 'Connecting / reconnecting',
   'waiting': 'Waiting for live stream',
+  'verticalWaiting':
+      'Horizontal stream live; the vertical one is waiting for its broadcast',
+  'horizontalWaiting':
+      'Vertical stream live; the horizontal one is waiting for its broadcast',
   'ended': 'Broadcast ended',
   'failed': 'Failed (private details omitted)',
   'portBusy': 'Port is already in use',
@@ -176,7 +180,11 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
     final message = !active
         ? t('off')
         : switch (state.$1) {
-            ServiceStatus.connected when partial => t('partial'),
+            ServiceStatus.connected when partial => t(switch (state.$2) {
+                youtubeVerticalWaitingStatus => 'verticalWaiting',
+                youtubeHorizontalWaitingStatus => 'horizontalWaiting',
+                _ => 'partial',
+              }),
             ServiceStatus.connected => t('connected'),
             ServiceStatus.connecting => t(
                 state.$2 == youtubeWaitingForLiveStatus

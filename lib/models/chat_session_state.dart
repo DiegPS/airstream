@@ -100,6 +100,17 @@ ChatSessionPhase resolveChatSessionPhase({
         horizontal?.$1 == ServiceStatus.error ? horizontal : vertical;
     return (ServiceStatus.connected, failed?.$2 ?? youtubePartialStatus);
   }
+  // One stream live and the other still waiting for its broadcast: YouTube
+  // is up, and the detail names the stream that is waiting.
+  bool waitingFor((ServiceStatus, String?)? status) =>
+      status?.$1 == ServiceStatus.connecting &&
+      status?.$2 == youtubeWaitingForLiveStatus;
+  if (horizontal?.$1 == ServiceStatus.connected && waitingFor(vertical)) {
+    return (ServiceStatus.connected, youtubeVerticalWaitingStatus);
+  }
+  if (vertical?.$1 == ServiceStatus.connected && waitingFor(horizontal)) {
+    return (ServiceStatus.connected, youtubeHorizontalWaitingStatus);
+  }
   // Scheduled broadcasts: keep "waiting for live" when a stream still
   // connecting is waiting, so the title bar, Diagnostics and the empty
   // chat say so instead of a generic "connecting".
@@ -149,3 +160,7 @@ const youtubeWaitingForLiveStatus = 'youtube-waiting-for-live';
 /// Fallback detail for a dual YouTube chat where one stream connected and the
 /// other failed without a message.
 const youtubePartialStatus = 'youtube-partial';
+
+/// Dual YouTube details: one stream is live, the named one is still waiting.
+const youtubeVerticalWaitingStatus = 'youtube-vertical-waiting';
+const youtubeHorizontalWaitingStatus = 'youtube-horizontal-waiting';

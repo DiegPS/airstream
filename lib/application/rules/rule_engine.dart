@@ -1,4 +1,5 @@
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/pipeline/chat_filter.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'rule_model.dart';
@@ -42,6 +43,7 @@ class RuleRun {
   String get ruleName => rule['name'] as String;
   String get triggerSummary => manual ? 'manual' : event.type;
   bool completed = false;
+  bool _sourceInvalidated = false;
 }
 
 class RuleSimulation {
@@ -138,11 +140,33 @@ class RuleEngine {
   final _queues = <String, List<(RuleRun, List<Map<String, dynamic>>)>>{};
   final _running = <String, RuleRun>{};
   final _waits = <RuleRun, ({Timer timer, Completer<void> completer})>{};
+  ChatFilter? _sourceFilter;
   final _cooldowns = <String, DateTime>{},
       _userCooldowns = <String, DateTime>{};
   final _seen = <String, Set<String>>{};
   final _starts = <DateTime>[];
   int _sequence = 0;
+
+  void handleModeration(ChatModerationEvent event) =>
+      _invalidateSources(event.appliesTo);
+
+  void applyFilter(ChatFilter filter) {
+    _sourceFilter = filter;
+    _invalidateSources(filter.blocksMessage);
+  }
+
+  void _invalidateSources(bool Function(ChatMessage) matches) {
+    final pending = [
+      ..._running.values,
+      for (final queue in _queues.values)
+        for (final (run, _) in queue) run,
+    ];
+    for (final run in pending) {
+      final source = run.event.moderationSource;
+      if (source != null && matches(source)) run._sourceInvalidated = true;
+    }
+  }
+
   void updateSettings(
       {required bool enabled, required List<Map<String, dynamic>> rules}) {
     final next = RuleSchema.sanitize(rules);
@@ -316,6 +340,22 @@ class RuleEngine {
     _running[id] = run;
     for (final raw in actions) {
       if (!_current(run)) break;
+      final source = run.event.moderationSource;
+      if (source != null &&
+          const {
+            'alert.show',
+            'tts.say',
+            'featured',
+            'obs.text',
+            'template.trigger',
+            'http.request',
+          }.contains(raw['type']) &&
+          (run._sourceInvalidated ||
+              _sourceFilter?.blocksMessage(source) == true)) {
+        run.results.add(const RuleActionResult('cancelled'));
+        _publish();
+        continue;
+      }
       final a = _resolve(Map<String, dynamic>.of(raw), run.event);
       RuleActionResult result;
       final skip =

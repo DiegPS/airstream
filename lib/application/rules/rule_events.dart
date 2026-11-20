@@ -54,8 +54,10 @@ class RuleEvent {
       this.goalId = '',
       this.chainDepth = 0,
       RuleEventOrigin? origin,
-      this.message})
-      : _origin = origin;
+      this.message,
+      ChatMessage? moderationSource})
+      : moderationSource = moderationSource ?? message,
+        _origin = origin;
 
   final RuleEventOrigin? _origin;
   RuleEventOrigin get origin =>
@@ -83,6 +85,7 @@ class RuleEvent {
   final String? note, winner;
   final int? position, total;
   final ChatMessage? message;
+  final ChatMessage? moderationSource;
   String get command => text.trim().split(RegExp(r'\s+')).first.toLowerCase();
   String get args {
     final m = RegExp(r'^\s*\S+\s*(.*)$', dotAll: true).firstMatch(text);
@@ -195,6 +198,18 @@ class RuleEventAdapter {
             eventId: 'provider:${e.platform.name}:${e.id}',
             author: RuleAuthor(name: e.authorName),
             text: e.text,
+            moderationSource: type == 'support.kicks'
+                ? ChatMessage(
+                    id: e.id,
+                    platform: e.platform,
+                    author: ChatAuthor(
+                      name: e.viewerName ?? e.authorName,
+                      channelId: e.authorChannelId,
+                    ),
+                    items: [MessageItem.text(e.viewerText ?? e.text)],
+                    timestamp: e.timestamp,
+                  )
+                : null,
             count: e.count ?? 0);
   }
 }

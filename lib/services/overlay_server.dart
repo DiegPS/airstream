@@ -383,7 +383,7 @@ class OverlayServer {
     }
   }
 
-  final _recentAlerts = <Map<String, Object?>>[];
+  final _recentAlerts = <_AlertRecord>[];
   final _alertAcknowledgers = <WebSocketChannel>{};
   final _pendingAlerts = <int, _PendingAlert>{};
   int _nextAlertDelivery = 0;
@@ -392,7 +392,7 @@ class OverlayServer {
       StreamController<List<Map<String, Object?>>>.broadcast(sync: true);
 
   List<Map<String, Object?>> get recentAlertsSnapshot =>
-      List.unmodifiable(_recentAlerts);
+      List.unmodifiable(_recentAlerts.map((alert) => alert.data));
 
   Stream<List<Map<String, Object?>>> get recentAlerts =>
       Stream.multi((listener) {
@@ -417,8 +417,8 @@ class OverlayServer {
 
   bool replayRecentAlert(String id) {
     for (final alert in _recentAlerts) {
-      if (alert['id'] == id) {
-        return _broadcastEnvelope({'type': 'alert', 'data': alert},
+      if (alert.data['id'] == id) {
+        return _broadcastEnvelope({'type': 'alert', 'data': alert.data},
             view: 'alerts');
       }
     }
@@ -455,12 +455,11 @@ class OverlayServer {
       return _broadcastEnvelope({'type': 'alert', 'data': data},
           view: 'alerts');
     }
-    final filtered = _redactBlockedAlert(data);
     return _deliverAlert(
-        _chatFilter.blocksMessage(source)
-            ? _redactAlertText(filtered)
-            : filtered,
-        view: 'alerts');
+        _redactBlockedAlert(data,
+            sourceBlocked: _chatFilter.blocksMessage(source)),
+        view: 'alerts',
+        source: source);
   }
 
   void _sendAutomaticAlert(Map<String, Object?> data) {
@@ -468,12 +467,13 @@ class OverlayServer {
     _deliverAlert(_withAlertOption(_redactBlockedAlert(data)));
   }
 
-  bool _deliverAlert(Map<String, Object?> data, {String? view}) {
+  bool _deliverAlert(Map<String, Object?> data,
+      {String? view, ChatMessage? source}) {
     final deliveryId =
         _alertAcknowledgers.isEmpty ? null : ++_nextAlertDelivery;
     if (deliveryId != null) {
       _pendingAlerts[deliveryId] =
-          _PendingAlert(data, {..._alertAcknowledgers});
+          _PendingAlert(_AlertRecord(data, source), {..._alertAcknowledgers});
     }
     return _broadcastEnvelope({
       'type': 'alert',
@@ -492,7 +492,7 @@ class OverlayServer {
             : true);
     if (qualifies || delivery.recipients.isEmpty) _pendingAlerts.remove(id);
     if (!qualifies) return;
-    _recentAlerts.insert(0, Map.unmodifiable(delivery.data));
+    _recentAlerts.insert(0, delivery.alert);
     if (_recentAlerts.length > 30) _recentAlerts.removeLast();
     _recentAlertsController.add(recentAlertsSnapshot);
   }
@@ -634,10 +634,11 @@ class OverlayServer {
     _settings = settings;
     if (!ChatFilter.sameBlockLists(previous, settings)) {
       _chatFilter = ChatFilter(settings);
-      _removeBlockedRecords();
+      final blockedAlertIds = _removeBlockedRecords();
       final filters = _filterEnvelope();
       _sendCustom(filters);
-      _broadcastEnvelope(filters, view: 'alerts');
+      _broadcastEnvelope(_filterEnvelope(blockedAlertIds: blockedAlertIds),
+          view: 'alerts');
       _broadcastEnvelope(filters, view: 'featured');
     }
     if (previous.appLanguageCode != settings.appLanguageCode) {
@@ -813,25 +814,20 @@ class OverlayServer {
     _recentChatMessages.removeWhere((_, message) => event.appliesTo(message));
     _recentChatMessages.updateAll((_, message) => event.redactReply(message));
     _removePendingFeatured(event.appliesTo);
-    _updateStoredAlerts((alert) => _redactModeratedAlert(alert, event));
+    _updateStoredAlerts((alert) => _redactModeratedAlert(alert.data, event));
     _broadcastEnvelope({
       'type': 'moderation',
       'data': OverlayPayloadEncoder.moderation(event),
     });
   }
 
-  void _updateStoredAlerts(
-      Map<String, Object?> Function(Map<String, Object?>) update) {
+  void _updateStoredAlerts(Map<String, Object?> Function(_AlertRecord) update) {
     for (final delivery in _pendingAlerts.values) {
-      delivery.data = update(delivery.data);
+      delivery.alert.update(update(delivery.alert));
     }
     var changed = false;
-    for (var i = 0; i < _recentAlerts.length; i++) {
-      final alert = _recentAlerts[i];
-      final updated = update(alert);
-      if (identical(updated, alert)) continue;
-      _recentAlerts[i] = Map.unmodifiable(updated);
-      changed = true;
+    for (final alert in _recentAlerts) {
+      if (alert.update(update(alert))) changed = true;
     }
     if (changed) _recentAlertsController.add(recentAlertsSnapshot);
   }
@@ -859,11 +855,13 @@ class OverlayServer {
     return {...alert, 'message': '', if (custom) 'title': ''};
   }
 
-  Map<String, Object?> _redactBlockedAlert(Map<String, Object?> alert) {
+  Map<String, Object?> _redactBlockedAlert(Map<String, Object?> alert,
+      {bool sourceBlocked = false}) {
     final blockedAuthor = _chatFilter.blocksUser(
         alert['author'] as String? ?? '',
         alert['authorChannelId'] as String? ?? '');
     if (!blockedAuthor &&
+        !sourceBlocked &&
         !_chatFilter.blocksText(alert['message'] as String? ?? '') &&
         !_chatFilter.blocksText(alert['title'] as String? ?? '')) {
       return alert;
@@ -880,9 +878,17 @@ class OverlayServer {
     };
   }
 
-  void _removeBlockedRecords() {
+  Set<String> _removeBlockedRecords() {
     _removePendingFeatured(_chatFilter.blocksMessage);
-    _updateStoredAlerts(_redactBlockedAlert);
+    final blockedAlertIds = <String>{};
+    _updateStoredAlerts((alert) {
+      final source = alert.source;
+      final sourceBlocked = source != null && _chatFilter.blocksMessage(source);
+      if (sourceBlocked) {
+        blockedAlertIds.add(alert.data['id'] as String);
+      }
+      return _redactBlockedAlert(alert.data, sourceBlocked: sourceBlocked);
+    });
     final chat = _recentChatMessages.entries
         .where((entry) => _chatFilter.blocksMessage(entry.value))
         .toList();
@@ -893,9 +899,9 @@ class OverlayServer {
         messageId: message.id,
         youtubeStreamOrientation: message.youtubeStreamOrientation,
       );
-      _updateStoredAlerts((alert) => alert['kind'] == 'custom'
-          ? _redactModeratedAlert(alert, event)
-          : alert);
+      _updateStoredAlerts((alert) => alert.data['kind'] == 'custom'
+          ? _redactModeratedAlert(alert.data, event)
+          : alert.data);
       _broadcastEnvelope({
         'type': 'moderation',
         'data': {
@@ -936,6 +942,7 @@ class OverlayServer {
         },
       });
     }
+    return blockedAlertIds;
   }
 
   Map<String, Object?>? _timer;
@@ -1188,8 +1195,7 @@ class OverlayServer {
       'data': {
         ..._alertData(msg, 'featured'),
         'deliveryId': id,
-        if (featured.contains(recipients.first))
-          'items': OverlayPayloadEncoder.messageItems(msg),
+        'items': OverlayPayloadEncoder.messageItems(msg),
       },
     });
     for (final client in recipients) {
@@ -1459,9 +1465,14 @@ class OverlayServer {
     client.sink.add(jsonEncode({'type': type, 'data': data, 'replay': true}));
   }
 
-  Map<String, Object?> _filterEnvelope({bool replay = false}) => {
+  Map<String, Object?> _filterEnvelope(
+          {bool replay = false, Set<String> blockedAlertIds = const {}}) =>
+      {
         'type': 'filters',
-        'data': _chatFilter.templateFilters,
+        'data': {
+          ..._chatFilter.templateFilters,
+          if (blockedAlertIds.isNotEmpty) 'alertIds': blockedAlertIds.toList(),
+        },
         if (replay) 'replay': true,
       };
 
@@ -1526,10 +1537,25 @@ class OverlayServer {
   }
 }
 
-class _PendingAlert {
-  _PendingAlert(this.data, this.recipients);
+class _AlertRecord {
+  _AlertRecord(Map<String, Object?> data, this.source)
+      : data = Map.unmodifiable(data);
 
   Map<String, Object?> data;
+  // Used for block-list changes even when the rendered text omits part of it.
+  final ChatMessage? source;
+
+  bool update(Map<String, Object?> next) {
+    if (identical(next, data)) return false;
+    data = Map.unmodifiable(next);
+    return true;
+  }
+}
+
+class _PendingAlert {
+  _PendingAlert(this.alert, this.recipients);
+
+  final _AlertRecord alert;
   final Set<WebSocketChannel> recipients;
 }
 
