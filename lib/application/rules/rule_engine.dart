@@ -520,7 +520,10 @@ class RuleEngine {
       months: 12,
       scene: 'Gameplay',
       goalId: 'goal',
-      message: type.startsWith('chat.') || type.startsWith('support.')
+      // Raids, hosts and Kicks arrive as provider events with no chat message,
+      // so Test must not offer one to an action live runs cannot feature.
+      message: (type.startsWith('chat.') || type.startsWith('support.')) &&
+              !const {'support.raid', 'support.kicks'}.contains(type)
           ? ChatMessage(
               platform: type == 'support.superchat'
                   ? Platform.youtube

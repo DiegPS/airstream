@@ -601,12 +601,30 @@ class AppController {
   Stream<String?> get youtubeBadgeValueStream => _chat.youtubeBadgeValueStream;
   Stream<YoutubeLiveMetadataSummary> get youtubeMetadataStream =>
       _chat.youtubeMetadataStream;
-  late final Stream<ChatProviderEvent> chatProviderEvents = _chat.providerEvents
-      .where((event) =>
-          event.kind != ChatProviderEventKind.pinnedMessage ||
-          !_poll.hasOpenPoll ||
-          !_withheldVoteIds.contains((event.platform, event.id)))
-      .asBroadcastStream();
+  late final Stream<ChatProviderEvent> chatProviderEvents =
+      _chat.providerEvents.expand(_withoutWithheldVotePin).asBroadcastStream();
+
+  /// A pinned withheld vote never leaves the app. Kick keeps one pin, so its
+  /// withheld replacement still publishes a text-free unpin that takes the old
+  /// pinned card away.
+  Iterable<ChatProviderEvent> _withoutWithheldVotePin(
+      ChatProviderEvent event) sync* {
+    if (event.kind != ChatProviderEventKind.pinnedMessage ||
+        !_poll.hasOpenPoll ||
+        !_withheldVoteIds.contains((event.platform, event.id))) {
+      yield event;
+      return;
+    }
+    if (event.platform == Platform.kick) {
+      yield ChatProviderEvent(
+        platform: event.platform,
+        kind: ChatProviderEventKind.unpinnedMessage,
+        id: event.id,
+        timestamp: event.timestamp,
+      );
+    }
+  }
+
   Stream<ChatModerationEvent> get chatModerationEvents =>
       _chat.moderationEvents;
   Stream<Map<Platform, PlatformLiveMetadata>> get platformMetadataStream =>
@@ -673,6 +691,15 @@ class AppController {
         origin: depth == 0 ? null : RuleEventOrigin.current,
         platform: winner.platform.name,
         author: RuleAuthor(name: winner.name, id: winner.authorId),
+        // Banning the winner cancels a pending announcement and its speech.
+        moderationSource: ChatMessage(
+          id: 'draw:$drawId',
+          platform: winner.platform,
+          author: ChatAuthor(name: winner.name, channelId: winner.authorId),
+          items: const [],
+          timestamp: DateTime.now(),
+          youtubeStreamOrientation: winner.youtubeStreamOrientation,
+        ),
       ));
     });
     if (events.isNotEmpty) {

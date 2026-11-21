@@ -489,6 +489,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     key: _providerEventBannerKey,
                     event: providerEvent,
                     settings: settings,
+                    moderationEvents:
+                        ref.read(appControllerProvider).chatModerationEvents,
                     visibleDuration: Duration(
                       seconds: settings.providerEventBannerSeconds,
                     ),

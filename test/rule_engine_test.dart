@@ -8,6 +8,7 @@ import 'package:airstream/application/rules/rule_validation.dart';
 import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/application/rules/rule_events.dart';
 import 'package:airstream/models/chat_message.dart';
+import 'package:airstream/models/chat_provider_event.dart';
 
 class Target implements RuleActionTarget {
   final calls = <String>[];
@@ -276,6 +277,31 @@ void main() {
             expect(e.handle(const RuleEvent(type: 'manual')), isEmpty);
             expect(a.nonPeriodicTimerCount, 0);
           })));
+  test('Test samples carry a chat message only where live events do', () {
+    final engine = RuleEngine(target: Target());
+    addTearDown(engine.dispose);
+    final adapter = RuleEventAdapter();
+    for (final (kind, platform) in [
+      (ChatProviderEventKind.raid, Platform.twitch),
+      (ChatProviderEventKind.host, Platform.kick),
+      (ChatProviderEventKind.support, Platform.kick),
+    ]) {
+      final live = adapter.provider(ChatProviderEvent(
+        platform: platform,
+        kind: kind,
+        id: kind.name,
+        authorName: 'Alex',
+        timestamp: DateTime.utc(2026),
+      ))!;
+      expect(live.message, isNull, reason: live.type);
+      // A featured-message action is skipped live, so Test must agree.
+      expect(engine.sampleEvent(live.type).message, isNull, reason: live.type);
+    }
+    for (final type in ['chat.message', 'support.superchat', 'support.bits']) {
+      expect(engine.sampleEvent(type).message, isNotNull, reason: type);
+    }
+  });
+
   test('simulation resolves subsequent text against dry-run counters only', () {
     final target = Target();
     target.counters = {'count': 2};

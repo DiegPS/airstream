@@ -13,9 +13,15 @@ import 'package:material_ui/material_ui.dart';
 /// The event the banner shows: the latest one of an enabled kind. An event of
 /// a disabled kind keeps the current one, so the banner is not torn down and
 /// its visible card and queue survive; turning a kind off drops its event.
+/// An unpin always reaches the banner, which takes the old pin away and shows
+/// the unpin itself only when its kind is enabled.
 ChatProviderEvent? bannerProviderEvent(ChatProviderEvent? latest,
     ChatProviderEvent? shown, List<String> enabledKinds) {
-  if (latest != null && enabledKinds.contains(latest.kind.name)) return latest;
+  if (latest != null &&
+      (enabledKinds.contains(latest.kind.name) ||
+          latest.kind == ChatProviderEventKind.unpinnedMessage)) {
+    return latest;
+  }
   if (shown != null && enabledKinds.contains(shown.kind.name)) return shown;
   return null;
 }
@@ -26,11 +32,15 @@ class TransientChatProviderEventBanner extends StatefulWidget {
     required this.event,
     this.settings = const SettingsModel(),
     this.visibleDuration = const Duration(seconds: 6),
+    this.moderationEvents,
   });
 
   final ChatProviderEvent? event;
   final SettingsModel settings;
   final Duration visibleDuration;
+
+  /// Deleted messages and banned authors take their pins off the banner.
+  final Stream<ChatModerationEvent>? moderationEvents;
 
   @override
   State<TransientChatProviderEventBanner> createState() =>
@@ -47,17 +57,71 @@ class _TransientChatProviderEventBannerState
   final _pending = <ChatProviderEvent>[];
   late ChatFilter _filter;
   int _blockRevision = 0;
+  StreamSubscription<ChatModerationEvent>? _moderation;
 
   @override
   void initState() {
     super.initState();
     _filter = ChatFilter(widget.settings);
+    _moderation = widget.moderationEvents?.listen(_moderate);
     _enqueue(widget.event);
+  }
+
+  void _moderate(ChatModerationEvent moderation) {
+    if (!mounted) return;
+    setState(() => _removePins((pin) => moderation.matchesTarget(
+          targetPlatform: pin.platform,
+          orientation: _orientation(pin),
+          id: pin.id,
+          authorId: pin.authorChannelId,
+          name: pin.viewerName ?? pin.authorName,
+        )));
+  }
+
+  static YoutubeStreamOrientation? _orientation(ChatProviderEvent event) {
+    final name = event.data['youtubeStreamOrientation'];
+    return YoutubeStreamOrientation.values
+        .where((value) => value.name == name)
+        .firstOrNull;
+  }
+
+  /// Drops matching pins from the queue and from the screen.
+  void _removePins(bool Function(ChatProviderEvent pin) matches) {
+    bool pinned(ChatProviderEvent event) =>
+        event.kind == ChatProviderEventKind.pinnedMessage && matches(event);
+    _pending.removeWhere(pinned);
+    final visible = _visibleEvent;
+    if (visible != null && pinned(visible)) {
+      _hideTimer?.cancel();
+      _advance();
+    }
+  }
+
+  /// Kick keeps one pin, so its unpin or a new pin replaces any earlier one.
+  /// YouTube names a removed banner by its banner id, per stream orientation.
+  bool _replacedBy(ChatProviderEvent event, ChatProviderEvent pin) {
+    if (pin.platform != event.platform) return false;
+    if (event.kind == ChatProviderEventKind.pinnedMessage) {
+      return event.platform == Platform.kick &&
+          _eventKey(pin) != _eventKey(event);
+    }
+    if (event.platform == Platform.kick) return true;
+    final bannerId = event.data['bannerId'];
+    if (bannerId != null) {
+      return pin.data['bannerId'] == bannerId &&
+          pin.data['youtubeStreamOrientation'] ==
+              event.data['youtubeStreamOrientation'];
+    }
+    return event.id.isEmpty || pin.id == event.id;
   }
 
   @override
   void didUpdateWidget(TransientChatProviderEventBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(widget.moderationEvents, oldWidget.moderationEvents)) {
+      _moderation?.cancel();
+      _moderation = widget.moderationEvents?.listen(_moderate);
+    }
     if (!ChatFilter.sameBlockLists(oldWidget.settings, widget.settings)) {
       _filter = ChatFilter(widget.settings);
       _pending.removeWhere(_filter.blocksProviderEvent);
@@ -91,6 +155,15 @@ class _TransientChatProviderEventBannerState
     if (event == null ||
         event.data['duplicatesMessage'] == true ||
         _filter.blocksProviderEvent(event)) {
+      return;
+    }
+    if (event.kind == ChatProviderEventKind.pinnedMessage ||
+        event.kind == ChatProviderEventKind.unpinnedMessage) {
+      _removePins((pin) => _replacedBy(event, pin));
+    }
+    if (event.kind == ChatProviderEventKind.unpinnedMessage &&
+        !widget.settings.providerEventBannerKinds
+            .contains(ChatProviderEventKind.unpinnedMessage.name)) {
       return;
     }
     final key = _eventKey(event);
@@ -146,6 +219,7 @@ class _TransientChatProviderEventBannerState
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _moderation?.cancel();
     super.dispose();
   }
 

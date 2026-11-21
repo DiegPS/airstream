@@ -134,12 +134,18 @@ void main() {
       '<html><HEAD lang="en">Hello</HEAD></html>',
       '<html lang="en">Hello</html>',
       '<b>Hello</b>',
-      '<head><script src="/sdk/v1.js"></script></head>'
+      '<head><script src="/sdk/v1.js"></script></head>',
+      '<!-- put scripts in <head> --><html><head><title>A</title></head></html>'
     ]) {
       await put('one/index.html', html);
       final (res, body) = await get('/custom/one/');
       expect(res.statusCode, 200);
       expect('/sdk/v1.js'.allMatches(body).length, 1);
+      if (html.startsWith('<!--')) {
+        // A tag inside the opening comment is not the real head.
+        expect(body.indexOf('/sdk/v1.js'), greaterThan(body.indexOf('-->')));
+        expect(body, contains('<head><script src="/sdk/v1.js"></script>'));
+      }
       if (html.startsWith('<b>')) {
         expect(body, startsWith('<!DOCTYPE html>'));
         expect(body, contains('<body><b>Hello</b>'));

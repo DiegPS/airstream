@@ -256,6 +256,65 @@ void main() {
     });
   }
 
+  test('banning a drawn winner cancels its waiting announcement and speech',
+      () {
+    fakeAsync((time) {
+      final twitch = FakeChannelChatClient();
+      final server = _PollOverlay();
+      final tts = FakeTtsClient()
+        ..loadState = const TtsLoadState(phase: TtsLoadPhase.ready);
+      final app = makeController(twitch, server, tts: tts);
+      app.applySettings(
+          SettingsModel(
+            overlayEnabled: true,
+            ttsEnabled: true,
+            rules: [
+              {
+                ...RuleSchema.newRule('giveaway.winner', id: 'winner'),
+                'enabled': true,
+                'cooldownSeconds': 0,
+                'overlap': 'queue',
+                'actions': [
+                  {'id': 'wait', 'type': 'wait', 'seconds': 20},
+                  {
+                    'id': 'alert',
+                    'type': 'alert.show',
+                    'title': 'Winner',
+                    'text': '{user}',
+                    'seconds': 3,
+                  },
+                  {'id': 'say', 'type': 'tts.say', 'text': '{user} won'},
+                ],
+              },
+            ],
+          ),
+          connectChats: false);
+      app.startGiveaway(keyword: 'go', membersOnly: false);
+      twitch.messageController.add(ChatMessage(
+        platform: Platform.twitch,
+        id: 'entry',
+        author: const ChatAuthor(name: 'Winner', channelId: 'winner-id'),
+        items: const [MessageItem.text('go')],
+        timestamp: DateTime.now(),
+      ));
+      time.elapse(Duration.zero);
+      expect(app.drawGiveaway()?.name, 'Winner');
+      time.elapse(Duration.zero);
+      expect(app.rules.history.single.completed, isFalse);
+      twitch.moderationController.add(const ChatModerationEvent.author(
+          platform: Platform.twitch, authorChannelId: 'winner-id'));
+      time.flushMicrotasks();
+      // The ban also withdraws the entry's own chat speech; count only the rule.
+      final spoken = tts.spoken.length;
+      time.elapse(const Duration(seconds: 20));
+      expect(app.rules.history.single.completed, isTrue);
+      expect(server.ruleAlerts, isEmpty);
+      expect(tts.spoken, hasLength(spoken));
+      unawaited(app.dispose());
+      time.flushMicrotasks();
+    });
+  });
+
   test('deleting a vertical YouTube join cancels its waiting queue alert', () {
     fakeAsync((time) {
       final twitch = FakeChannelChatClient();
@@ -451,8 +510,11 @@ void main() {
             twitch: FakeChannelChatClient()));
     addTearDown(app.dispose);
     final providerIds = <String>[];
-    final subscription =
-        app.chatProviderEvents.listen((event) => providerIds.add(event.id));
+    final providerEvents = <ChatProviderEvent>[];
+    final subscription = app.chatProviderEvents.listen((event) {
+      providerIds.add(event.id);
+      providerEvents.add(event);
+    });
     addTearDown(subscription.cancel);
     app.applySettings(const SettingsModel(overlayEnabled: true),
         connectChats: false);
@@ -479,17 +541,20 @@ void main() {
       ));
     }
 
-    pin('hidden', answer);
     pin('ordinary', 'hello');
+    pin('hidden', answer);
     await settleCoordinatorTasks();
     expect(server.chat, isEmpty);
-    expect(server.providerIds, ['ordinary']);
-    expect(providerIds, ['ordinary']);
+    // The withheld replacement still takes the old Kick pin away, text-free.
+    expect(server.providerIds, ['ordinary', 'hidden']);
+    expect(providerIds, ['ordinary', 'hidden']);
+    expect(providerEvents.last.kind, ChatProviderEventKind.unpinnedMessage);
+    expect(providerEvents.last.text, isNot(contains('private')));
     app.endPoll();
     pin('hidden', answer);
     await settleCoordinatorTasks();
-    expect(server.providerIds, ['ordinary', 'hidden']);
-    expect(providerIds, ['ordinary', 'hidden']);
+    expect(server.providerIds, ['ordinary', 'hidden', 'hidden']);
+    expect(providerEvents.last.kind, ChatProviderEventKind.pinnedMessage);
   });
 
   test('moderation republishes open votes in every mode and preserves results',

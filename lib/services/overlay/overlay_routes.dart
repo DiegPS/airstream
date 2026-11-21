@@ -215,9 +215,18 @@ String _stripTemplateSdk(String html) => html.replaceAll(
         caseSensitive: false),
     '');
 
-RegExpMatch? _templateHead(String html) =>
-    RegExp(r'<head\b[^>]*>', caseSensitive: false).firstMatch(html) ??
-    RegExp(r'<html\b[^>]*>', caseSensitive: false).firstMatch(html);
+/// The real `<head>` (or `<html>`) start tag, skipping any that only appear
+/// inside an HTML comment.
+RegExpMatch? _templateHead(String html) {
+  final comments = RegExp(r'<!--[\s\S]*?(?:-->|$)').allMatches(html).toList();
+  bool commented(RegExpMatch tag) => comments
+      .any((comment) => tag.start >= comment.start && tag.start < comment.end);
+  RegExpMatch? first(String pattern) => RegExp(pattern, caseSensitive: false)
+      .allMatches(html)
+      .where((tag) => !commented(tag))
+      .firstOrNull;
+  return first(r'<head\b[^>]*>') ?? first(r'<html\b[^>]*>');
+}
 
 String _injectTemplateSdk(String html) {
   final body = _stripTemplateSdk(html);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/models/chat_message.dart';
@@ -294,6 +296,94 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ChatProviderEventBanner), findsNothing);
     await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('deleted, banned and unpinned pins leave the banner',
+      (tester) async {
+    final moderation = StreamController<ChatModerationEvent>.broadcast();
+    addTearDown(moderation.close);
+    ChatProviderEvent pin(String id, String text,
+            {Platform platform = Platform.kick}) =>
+        ChatProviderEvent(
+          platform: platform,
+          kind: ChatProviderEventKind.pinnedMessage,
+          id: id,
+          timestamp: DateTime.utc(2026),
+          authorName: 'Writer $id',
+          authorChannelId: 'writer-$id',
+          text: text,
+        );
+    final raid = ChatProviderEvent(
+        platform: Platform.twitch,
+        kind: ChatProviderEventKind.raid,
+        id: 'raid',
+        timestamp: DateTime.utc(2026),
+        authorName: 'Raider');
+    Future<void> show(ChatProviderEvent e, [List<String>? kinds]) =>
+        tester.pumpWidget(_app(TransientChatProviderEventBanner(
+          event: e,
+          settings: kinds == null
+              ? const SettingsModel()
+              : SettingsModel(providerEventBannerKinds: kinds),
+          moderationEvents: moderation.stream,
+          visibleDuration: const Duration(seconds: 2),
+        )));
+    Future<void> expire() async {
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+    }
+
+    // A pin waiting behind a raid is deleted before it comes up.
+    await show(raid);
+    await show(pin('deleted', 'Deleted pin'));
+    moderation.add(const ChatModerationEvent.message(
+        platform: Platform.kick, messageId: 'deleted'));
+    await tester.pump();
+    await expire();
+    expect(find.textContaining('Deleted pin'), findsNothing);
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+
+    // A visible pin leaves when its author is banned.
+    await show(pin('banned', 'Banned pin'));
+    expect(find.textContaining('Banned pin'), findsOneWidget);
+    moderation.add(const ChatModerationEvent.author(
+        platform: Platform.kick, authorChannelId: 'writer-banned'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Banned pin'), findsNothing);
+
+    // An unpin takes the old Kick pin away even with unpin banners off.
+    await show(pin('old', 'Old pin'));
+    expect(find.textContaining('Old pin'), findsOneWidget);
+    await show(
+        ChatProviderEvent(
+            platform: Platform.kick,
+            kind: ChatProviderEventKind.unpinnedMessage,
+            id: 'old',
+            timestamp: DateTime.utc(2026)),
+        const ['pinnedMessage', 'raid']);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Old pin'), findsNothing);
+    expect(find.byType(ChatProviderEventBanner), findsNothing);
+
+    // A new Kick pin replaces a waiting older one.
+    await show(raid);
+    await show(pin('first', 'First pin'));
+    await show(pin('second', 'Second pin'));
+    await expire();
+    expect(find.textContaining('First pin'), findsNothing);
+    expect(find.textContaining('Second pin'), findsOneWidget);
+    await expire();
+    expect(
+        bannerProviderEvent(
+            ChatProviderEvent(
+                platform: Platform.kick,
+                kind: ChatProviderEventKind.unpinnedMessage,
+                id: 'x',
+                timestamp: DateTime.utc(2026)),
+            null,
+            const ['raid'])?.kind,
+        ChatProviderEventKind.unpinnedMessage);
   });
 
   testWidgets('block changes remove visible and queued provider events',

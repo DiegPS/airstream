@@ -61,7 +61,7 @@ void main() {
       () => runPage(_harness + _fontChecks));
   for (final pinned in [true, false]) {
     test(
-        '${pinned ? 'pinned' : 'timed'} featured text changes language without rebuilding or retiming',
+        '${pinned ? 'pinned' : 'timed'} featured text, layout and avatar change without rebuilding or retiming',
         () => runPage('$_harness\nconst pinned = $pinned;\n$_languageChecks'));
   }
   test('a video error releases and removes the alert media',
@@ -128,6 +128,7 @@ function element() { return {
   set firstElementChild(child) { this.replaceChildren(...(child ? [child] : [])); },
   appendChild(child) { child.parent = this; this.children.push(child); },
   append(...children) { children.forEach(child => this.appendChild(child)); },
+  prepend(child) { child.parent = this; this.children.unshift(child); },
   addEventListener() {},
   remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); },
   replaceWith(next) {
@@ -690,6 +691,19 @@ assert.equal(kicker.textContent, 'YouTube · Del chat');
 assert.equal(run(shownAtName), shownAt);
 assert.equal(run(hideTimerName), hideTimer);
 assert.equal(paints.length, paintCount);
+
+// Layout and avatar changes reach the card on screen in place.
+socket.deliver({type: 'settings', data: {alertLayout: 'stacked', alertShowAvatars: false}});
+assert.equal(target.firstElementChild, card);
+assert.equal(card.className, 'alert-card stacked');
+assert.equal(target.querySelector('.alert-avatar'), null);
+assert.equal(target.querySelector('.alert-sticker'), sticker);
+socket.deliver({type: 'settings', data: {alertLayout: 'row', alertShowAvatars: true}});
+assert.equal(target.firstElementChild, card);
+assert.equal(card.className, 'alert-card');
+assert.equal(card.children[0].textContent, 'AL');
+assert.equal(run(shownAtName), shownAt);
+assert.equal(run(hideTimerName), hideTimer);
 ''';
 
 const _videoErrorChecks = r'''

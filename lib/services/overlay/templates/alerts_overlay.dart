@@ -301,6 +301,46 @@ function alertLabels(alert, strings, author) {
   return {title, kicker};
 }
 
+function alertCardClass() {
+  return 'alert-card' + (settings.alertLayout === 'stacked' ? ' stacked' : '');
+}
+
+function showsAvatar(alert) {
+  return Boolean(settings.alertShowAvatars) && alert.kind !== 'custom';
+}
+
+function alertAvatar(author, avatarUrl) {
+  const fallback = () => {
+    const node = document.createElement('div');
+    node.className = 'alert-avatar alert-avatar-fallback';
+    node.textContent = initials(author);
+    return node;
+  };
+  if (!avatarUrl) return fallback();
+  return createImage('alert-avatar', avatarUrl, author, (image) => {
+    const node = fallback();
+    node.textContent = initials(image.alt);
+    image.replaceWith(node);
+  });
+}
+
+// Layout and avatar settings reach a card already on screen in place, so a
+// pinned feature, or a playing alert's media, is not rebuilt.
+function syncCardLayout(alert, target) {
+  const card = target.firstElementChild;
+  if (!alert || !card || typeof card.querySelector !== 'function') return;
+  card.className = alertCardClass();
+  const avatar = card.querySelector('.alert-avatar');
+  if (!showsAvatar(alert)) {
+    if (avatar) avatar.remove();
+    return;
+  }
+  if (avatar) return;
+  const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
+  const author = String(alert.author || strings.someone);
+  card.prepend(alertAvatar(author, normalizeUrl(alert.authorAvatarUrl)));
+}
+
 function renderAlert(alert, target = stage) {
   const strings = UI_STRINGS[settings.appLanguageCode] || UI_STRINGS.en;
   const accent = alertAccent(alert);
@@ -311,26 +351,12 @@ function renderAlert(alert, target = stage) {
   const stickerUrl = normalizeUrl(alert.stickerUrl);
 
   const card = document.createElement('div');
-  card.className = 'alert-card' + (settings.alertLayout === 'stacked' ? ' stacked' : '');
+  card.className = alertCardClass();
   const entrance = typeOption(alert).animation || settings.alertAnimation;
   card.style.animationName = ENTRANCES[entrance] || ENTRANCES.pop;
   card.style.borderBottom = '5px solid ' + accent;
 
-  if (settings.alertShowAvatars && alert.kind !== 'custom') {
-    if (avatarUrl) {
-      card.appendChild(createImage('alert-avatar', avatarUrl, author, (image) => {
-        const fallback = document.createElement('div');
-        fallback.className = 'alert-avatar alert-avatar-fallback';
-        fallback.textContent = initials(image.alt);
-        image.replaceWith(fallback);
-      }));
-    } else {
-      const fallback = document.createElement('div');
-      fallback.className = 'alert-avatar alert-avatar-fallback';
-      fallback.textContent = initials(author);
-      card.appendChild(fallback);
-    }
-  }
+  if (showsAvatar(alert)) card.appendChild(alertAvatar(author, avatarUrl));
 
   const copy = document.createElement('div');
   copy.className = 'alert-copy';
@@ -406,7 +432,14 @@ function applySettings(next) {
   applyOverlayFont(next);
   const previousFeaturedSeconds = settings.featuredSeconds;
   const previousLanguage = settings.appLanguageCode;
+  const previousLayout = settings.alertLayout;
+  const previousAvatars = settings.alertShowAvatars;
   settings = { ...settings, ...next };
+  if (settings.alertLayout !== previousLayout ||
+      settings.alertShowAvatars !== previousAvatars) {
+    syncCardLayout(pinnedFeatured, featuredStage);
+    syncCardLayout(active, stage);
+  }
   if (settings.featuredSeconds !== previousFeaturedSeconds) {
     if (active?.kind === 'featured') {
       if (featuredDuration() > 0) {
