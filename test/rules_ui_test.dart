@@ -39,6 +39,12 @@ Future<void> visible(WidgetTester t, Finder f) async {
   await t.pumpAndSettle();
 }
 
+/// The label shown above a rule editor field (labels sit outside the box).
+String? ruleFieldLabel(WidgetTester t, String path) => t
+    .widget<Text>(find.descendant(
+        of: find.byKey(Key('rule-$path-label')), matching: find.byType(Text)))
+    .data;
+
 void main() {
   late RulesTestTarget target;
   late RuleEngine engine;
@@ -446,7 +452,7 @@ void main() {
       void field(int action, String key, String label, String value) {
         final widget =
             t.widget<TextField>(find.byKey(Key('rule-action-$action-$key')));
-        expect(widget.decoration?.labelText, label);
+        expect(ruleFieldLabel(t, 'action-$action-$key'), label);
         expect(widget.controller?.text, value);
       }
 
@@ -467,10 +473,7 @@ void main() {
       field(1, 'filter', spanish ? 'Filtro' : 'Filter', 'Filter');
       final state = find.byKey(const Key('rule-action-1-state'));
       await visible(t, state);
-      expect(
-          find.descendant(
-              of: state, matching: find.text(spanish ? 'Estado' : 'State')),
-          findsOneWidget);
+      expect(ruleFieldLabel(t, 'action-1-state'), spanish ? 'Estado' : 'State');
       await t.tap(state);
       await t.pumpAndSettle();
       for (final label in spanish
@@ -534,15 +537,14 @@ void main() {
       await add('obs.replay', ['op'], 1);
       await add('obs.media', ['source', 'op'], 2);
       await add('obs.volume', ['input', 'mode', 'db'], 3);
-      final db = field(3, 'db');
-      expect(t.widget<TextField>(db).decoration?.labelText, 'dB (-100–26)');
+      expect(ruleFieldLabel(t, 'action-3-db'), 'dB (-100–26)');
       final mode = field(3, 'mode');
       await visible(t, mode);
       await t.tap(mode);
       await t.pumpAndSettle();
       await t.tap(find.text(ruleText(l, 'change')).last);
       await t.pumpAndSettle();
-      expect(t.widget<TextField>(db).decoration?.labelText, 'dB (-100–100)');
+      expect(ruleFieldLabel(t, 'action-3-db'), 'dB (-100–100)');
 
       await add('obs.refresh', ['source'], 4);
       await add('http.request', ['method', 'url', 'contentType', 'body'], 5);

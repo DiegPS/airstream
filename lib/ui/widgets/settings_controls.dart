@@ -31,15 +31,60 @@ const settingsItemTitleStyle =
 const settingsHintStyle =
     TextStyle(color: Colors.white54, fontSize: 11, height: 1.3);
 
-/// Gives every stock control inside the settings panel the panel's own look,
-/// so cards built from plain Material widgets match the hand-styled ones.
+/// The app's look for stock Material controls (lists, text and outlined
+/// buttons, expanding rows, dividers, menus), so screens and dialogs built
+/// from plain widgets match the hand-styled settings cards.
+ThemeData withAirstreamComponents(ThemeData base) => base.copyWith(
+      listTileTheme: const ListTileThemeData(
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        minVerticalPadding: 4,
+        titleTextStyle: settingsItemTitleStyle,
+        subtitleTextStyle: settingsHintStyle,
+        iconColor: Colors.white70,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: _settingsGreen,
+          disabledForegroundColor: Colors.white30,
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          minimumSize: const Size(0, 32),
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFF3A3A3A)),
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        tilePadding: EdgeInsets.zero,
+        iconColor: _settingsGreen,
+        collapsedIconColor: Colors.white54,
+        shape: Border(),
+        collapsedShape: Border(),
+      ),
+      dividerTheme:
+          const DividerThemeData(color: Color(0xFF2A2A2A), thickness: 1),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: Color(0xFF1E1E1E),
+        textStyle: TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
+
+/// The settings panel's text sizes: 12 px body text and 13 px typed text, on
+/// top of [withAirstreamComponents] (applied again for panels tested alone).
 class SettingsPanelTheme extends StatelessWidget {
   const SettingsPanelTheme({super.key, required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context);
+    final base = withAirstreamComponents(Theme.of(context));
     // Typed text in fields matches the fields styled by hand (13 px).
     const fieldText = TextStyle(color: Colors.white, fontSize: 13);
     return Theme(
@@ -48,48 +93,6 @@ class SettingsPanelTheme extends StatelessWidget {
           bodyLarge: base.textTheme.bodyLarge?.merge(fieldText) ?? fieldText,
           titleMedium:
               base.textTheme.titleMedium?.merge(fieldText) ?? fieldText,
-        ),
-        listTileTheme: const ListTileThemeData(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          minVerticalPadding: 4,
-          titleTextStyle: settingsItemTitleStyle,
-          subtitleTextStyle: settingsHintStyle,
-          iconColor: Colors.white70,
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: _settingsGreen,
-            disabledForegroundColor: Colors.white30,
-            textStyle:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            minimumSize: const Size(0, 32),
-            visualDensity: VisualDensity.compact,
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFF3A3A3A)),
-            textStyle:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-        expansionTileTheme: const ExpansionTileThemeData(
-          tilePadding: EdgeInsets.zero,
-          iconColor: _settingsGreen,
-          collapsedIconColor: Colors.white54,
-          shape: Border(),
-          collapsedShape: Border(),
-        ),
-        dividerTheme:
-            const DividerThemeData(color: Color(0xFF2A2A2A), thickness: 1),
-        popupMenuTheme: const PopupMenuThemeData(
-          color: Color(0xFF1E1E1E),
-          textStyle: TextStyle(color: Colors.white, fontSize: 12),
         ),
       ),
       child: DefaultTextStyle.merge(style: settingsBodyStyle, child: child),

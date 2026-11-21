@@ -216,11 +216,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
 
     final problem = problems[path];
 
+    // The label sits above the field, as everywhere else in the app.
     final decoration = settingsInput(
             hint: hint, error: problem == null ? null : ruleText(l, problem))
-        .copyWith(
-            labelText: label,
-            errorMaxLines: problem == 'publicStreamControl' ? 3 : null);
+        .copyWith(errorMaxLines: problem == 'publicStreamControl' ? 3 : null);
 
     Widget child;
 
@@ -238,6 +237,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
           initialValue: selected,
           isExpanded: true,
           decoration: decoration,
+          dropdownColor: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(8),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
           items: [
             for (final e in items.entries)
               DropdownMenuItem(
@@ -275,8 +277,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                     : TextInputType.text,
             onChanged: (v) => change(() =>
                 update(field?.numeric == true ? num.tryParse(v) ?? v : v))),
-        if (placeholders.isNotEmpty)
-          Wrap(spacing: 4, children: [
+        if (placeholders.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Wrap(spacing: 4, runSpacing: 4, children: [
             for (final p in placeholders)
               ActionChip(
                   label: Text('{$p}', style: const TextStyle(fontSize: 11)),
@@ -292,10 +295,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                     change(() => update(c.text));
                   })
           ]),
+        ],
       ]);
     }
 
-    return Padding(padding: const EdgeInsets.only(top: 14), child: child);
+    if (field?.fallback is! bool) {
+      child = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        KeyedSubtree(key: Key('rule-$path-label'), child: settingsLabel(label)),
+        child
+      ]);
+    }
+    return Padding(padding: const EdgeInsets.only(top: 12), child: child);
   }
 
   RuleEvent event() {
@@ -353,10 +363,15 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
           'counter.${a['name']}'
     ];
 
+    // Section titles read like the settings card titles.
     Widget section(String name) => Padding(
-        padding: const EdgeInsets.only(top: 24, bottom: 4),
+        padding: const EdgeInsets.only(top: 22, bottom: 2),
         child: Text(ruleText(l, name),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)));
+            style: const TextStyle(
+                color: Color(0xFF53FC18),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8)));
 
     List<Widget> params(Map<String, dynamic> map, Map<String, RuleField> schema,
             String prefix) =>
@@ -427,378 +442,482 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
             child: SizedBox(
                 width: 820,
                 height: MediaQuery.sizeOf(context).height * .88,
-                child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(children: [
-                            Expanded(
-                                child: Text(
-                                    saved &&
-                                            (draft['name'] as String? ?? '')
-                                                .isNotEmpty
-                                        ? draft['name'] as String
-                                        : ruleText(l, 'new'),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 20))),
-                            IconButton(
-                                tooltip: ruleText(l, 'close'),
-                                onPressed: close,
-                                icon: const Icon(Icons.close))
-                          ]),
-                          Expanded(
-                              child: SingleChildScrollView(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                input('name', ruleText(l, 'name'),
-                                    draft['name'], (v) => draft['name'] = v),
-                                section('when'),
-                                DropdownButtonFormField<String>(
-                                    key: const Key('rule-trigger'),
-                                    initialValue: type,
-                                    isExpanded: true,
-                                    decoration: settingsInput(),
-                                    items: [
-                                      if (!RuleSchema.triggers
-                                          .containsKey(type))
-                                        DropdownMenuItem(
-                                            value: type,
-                                            child:
-                                                Text(ruleText(l, 'invalid'))),
-                                      ...types(RuleSchema.triggers.keys)
-                                    ],
-                                    onChanged: (v) {
-                                      if (v == null) return;
-                                      change(() {
-                                        final fresh = widget.engine.newRule(v,
-                                            id: draft['id'] as String);
-                                        draft['trigger'] = fresh['trigger'];
-                                        if (!RuleSchema.supportsPlatformFilter(
-                                            v)) {
-                                          conditions['platforms'] = <String>[];
-                                        }
-                                        if (!RuleSchema.supportsRoleFilter(v)) {
-                                          conditions['roles'] = <String>[];
-                                        }
-                                        if (v == 'manual') {
-                                          draft['trigger']['webhook'] =
-                                              suggestWebhook(
-                                                  draft['name'] as String);
-                                        }
-                                        if (!saved) {
-                                          draft['cooldownSeconds'] =
-                                              fresh['cooldownSeconds'];
-                                        }
-                                        sampleText = null;
-                                        sampleAmount = null;
-                                      });
-                                    }),
-                                ...params(t, RuleSchema.triggers[type] ?? {},
-                                    'trigger'),
-                                section('if'),
-                                if (RuleSchema.supportsPlatformFilter(type))
-                                  Wrap(spacing: 6, children: [
-                                    for (final p in RuleSchema.platforms)
-                                      FilterChip(
-                                          label: Text({
-                                            'youtube': 'YouTube',
-                                            'twitch': 'Twitch',
-                                            'kick': 'Kick'
-                                          }[p]!),
-                                          selected:
-                                              (conditions['platforms'] as List)
-                                                  .contains(p),
-                                          onSelected: (v) => change(() {
-                                                final list =
-                                                    conditions['platforms']
-                                                        as List;
-                                                v
-                                                    ? list.add(p)
-                                                    : list.remove(p);
-                                              }))
-                                  ]),
-                                if (RuleSchema.supportsRoleFilter(type))
-                                  Wrap(spacing: 6, children: [
-                                    for (final r in RuleSchema.roles)
-                                      FilterChip(
-                                          label: Text(ruleText(l, r)),
-                                          // No role filter means everyone.
-                                          selected: (conditions['roles']
-                                                      as List)
-                                                  .contains(r) ||
-                                              (r == 'everyone' &&
-                                                  (conditions['roles'] as List)
-                                                      .isEmpty),
-                                          onSelected: (v) => change(() {
-                                                final list =
-                                                    conditions['roles'] as List;
-                                                if (r == 'everyone') {
-                                                  list.clear();
-                                                  if (v) list.add(r);
-                                                } else {
-                                                  list.remove('everyone');
-                                                  v
-                                                      ? list.add(r)
-                                                      : list.remove(r);
-                                                }
-                                              }))
-                                  ]),
-                                SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title:
-                                        Text(ruleText(l, 'onlyWhileStreaming')),
-                                    value: conditions['onlyWhileStreaming'] ==
-                                        true,
-                                    onChanged: (v) => change(() =>
-                                        conditions['onlyWhileStreaming'] = v)),
-                                section('do'),
-                                if (showsPublicChatText(draft))
-                                  Text(ruleText(l, 'publicChatText'),
-                                      style: const TextStyle(
-                                          color: Color(0xFFFFB15C))),
-                                for (var i = 0; i < actions.length; i++)
-                                  Container(
-                                      key: ValueKey(actions[i]['id']),
-                                      margin: const EdgeInsets.only(top: 12),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                          color: const Color(0xFF1E1E1E),
-                                          border: Border.all(
-                                              color: const Color(0xFF2E2E2E)),
-                                          borderRadius:
-                                              BorderRadius.circular(8)),
+                child: SettingsPanelTheme(
+                    child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(children: [
+                                Expanded(
+                                    child: Text(
+                                        saved &&
+                                                (draft['name'] as String? ?? '')
+                                                    .isNotEmpty
+                                            ? draft['name'] as String
+                                            : ruleText(l, 'new'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700))),
+                                IconButton(
+                                    tooltip: ruleText(l, 'close'),
+                                    onPressed: close,
+                                    color: Colors.white70,
+                                    icon: const Icon(Icons.close_rounded,
+                                        size: 20))
+                              ]),
+                              Expanded(
+                                  child: SingleChildScrollView(
                                       child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            Text(
-                                                '${i + 1}. ${ruleText(l, actions[i]['type'] as String)}'),
-                                            Wrap(children: [
-                                              IconButton(
-                                                  tooltip: ruleText(l, 'up'),
-                                                  onPressed: i == 0
-                                                      ? null
-                                                      : () => change(() {
-                                                            final a = actions
-                                                                .removeAt(i);
-                                                            actions.insert(
-                                                                i - 1, a);
-                                                          }),
-                                                  icon: const Icon(
-                                                      Icons.arrow_upward)),
-                                              IconButton(
-                                                  tooltip: ruleText(l, 'down'),
-                                                  onPressed: i ==
-                                                          actions.length - 1
-                                                      ? null
-                                                      : () => change(() {
-                                                            final a = actions
-                                                                .removeAt(i);
-                                                            actions.insert(
-                                                                i + 1, a);
-                                                          }),
-                                                  icon: const Icon(
-                                                      Icons.arrow_downward)),
-                                              IconButton(
-                                                  tooltip:
-                                                      ruleText(l, 'delete'),
-                                                  color:
-                                                      const Color(0xFFFF6B6B),
-                                                  onPressed: () => change(() {
-                                                        actions.removeAt(i);
-                                                      }),
-                                                  icon: const Icon(
-                                                      Icons.delete_outline))
-                                            ]),
-                                            ...params(
-                                                actions[i]
-                                                    as Map<String, dynamic>,
-                                                RuleSchema.actionFields(
-                                                    actions[i] as Map),
-                                                'action-$i')
-                                          ])),
-                                PopupMenuButton<String>(
-                                    key: const Key('rule-add-action'),
-                                    enabled:
-                                        actions.length < RuleSchema.maxActions,
-                                    onSelected: (v) =>
-                                        change(() => actions.add({
-                                              'id': freshRuleId(),
-                                              'type': v,
-                                              for (final f in RuleSchema
-                                                  .actions[v]!.entries)
-                                                f.key: f.value.fallback
-                                            })),
-                                    itemBuilder: (_) => [
-                                          for (final g in [
-                                            'flow',
-                                            'obs',
-                                            'voice',
-                                            'sound',
-                                            'pages',
-                                            'live'
-                                          ]) ...[
-                                            PopupMenuItem<String>(
-                                                enabled: false,
-                                                child: Text(ruleText(l, g))),
-                                            for (final a in RuleSchema
-                                                .actions.keys
-                                                .where((a) => group(a) == g))
-                                              PopupMenuItem(
-                                                  value: a,
-                                                  child: Text(ruleText(l, a)))
-                                          ]
+                                    input(
+                                        'name',
+                                        ruleText(l, 'name'),
+                                        draft['name'],
+                                        (v) => draft['name'] = v),
+                                    section('when'),
+                                    const SizedBox(height: 8),
+                                    DropdownButtonFormField<String>(
+                                        key: const Key('rule-trigger'),
+                                        initialValue: type,
+                                        isExpanded: true,
+                                        decoration: settingsInput(),
+                                        dropdownColor: const Color(0xFF1E1E1E),
+                                        borderRadius: BorderRadius.circular(8),
+                                        menuMaxHeight: 420,
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 13),
+                                        items: [
+                                          if (!RuleSchema.triggers
+                                              .containsKey(type))
+                                            DropdownMenuItem(
+                                                value: type,
+                                                child: Text(
+                                                    ruleText(l, 'invalid'))),
+                                          ...types(RuleSchema.triggers.keys)
                                         ],
-                                    child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Text(
-                                            '+ ${ruleText(l, 'addAction')}'))),
-                                section('limits'),
-                                for (final k in [
-                                  'cooldownSeconds',
-                                  'userCooldownSeconds'
-                                ])
-                                  input(k, ruleText(l, k), draft[k],
-                                      (v) => draft[k] = v,
-                                      field: const RuleField.number(0, 3600)),
-                                input(
-                                    'overlap',
-                                    ruleText(l, 'overlap'),
-                                    draft['overlap'],
-                                    (v) => draft['overlap'] = v,
-                                    field: const RuleField.choice(
-                                        ['queue', 'skip'], 'queue')),
-                                section('testWith'),
-                                TextField(
-                                    key: const Key('rule-sample-text'),
-                                    decoration:
-                                        settingsInput(hint: event().text)
-                                            .copyWith(
-                                                labelText: ruleText(l, 'text')),
-                                    onChanged: (v) => setState(() {
-                                          sampleText = v;
-                                          simulation = null;
-                                        })),
-                                if (type == 'support.superchat')
-                                  TextField(
-                                      key: const Key('rule-sample-amount'),
-                                      decoration: settingsInput(hint: '5')
-                                          .copyWith(
-                                              labelText:
-                                                  ruleText(l, 'minAmount')),
-                                      onChanged: (v) => setState(() {
-                                            sampleAmount = v;
-                                            simulation = null;
-                                          })),
-                                if (simulation != null)
-                                  KeyedSubtree(
-                                      key: _resultKey,
-                                      child: Container(
-                                          key: const Key('rule-test-result'),
-                                          margin: const EdgeInsets.only(top: 8),
+                                        onChanged: (v) {
+                                          if (v == null) return;
+                                          change(() {
+                                            final fresh = widget.engine.newRule(
+                                                v,
+                                                id: draft['id'] as String);
+                                            draft['trigger'] = fresh['trigger'];
+                                            if (!RuleSchema
+                                                .supportsPlatformFilter(v)) {
+                                              conditions['platforms'] =
+                                                  <String>[];
+                                            }
+                                            if (!RuleSchema.supportsRoleFilter(
+                                                v)) {
+                                              conditions['roles'] = <String>[];
+                                            }
+                                            if (v == 'manual') {
+                                              draft['trigger']['webhook'] =
+                                                  suggestWebhook(
+                                                      draft['name'] as String);
+                                            }
+                                            if (!saved) {
+                                              draft['cooldownSeconds'] =
+                                                  fresh['cooldownSeconds'];
+                                            }
+                                            sampleText = null;
+                                            sampleAmount = null;
+                                          });
+                                        }),
+                                    ...params(
+                                        t,
+                                        RuleSchema.triggers[type] ?? {},
+                                        'trigger'),
+                                    section('if'),
+                                    const SizedBox(height: 8),
+                                    if (RuleSchema.supportsPlatformFilter(type))
+                                      Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                            for (final p
+                                                in RuleSchema.platforms)
+                                              FilterChip(
+                                                  label: Text({
+                                                    'youtube': 'YouTube',
+                                                    'twitch': 'Twitch',
+                                                    'kick': 'Kick'
+                                                  }[p]!),
+                                                  selected:
+                                                      (conditions['platforms']
+                                                              as List)
+                                                          .contains(p),
+                                                  onSelected: (v) => change(() {
+                                                        final list = conditions[
+                                                                'platforms']
+                                                            as List;
+                                                        v
+                                                            ? list.add(p)
+                                                            : list.remove(p);
+                                                      }))
+                                          ]),
+                                    if (RuleSchema.supportsRoleFilter(
+                                        type)) ...[
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                            for (final r in RuleSchema.roles)
+                                              FilterChip(
+                                                  label: Text(ruleText(l, r)),
+                                                  // No role filter means everyone.
+                                                  selected: (conditions['roles']
+                                                              as List)
+                                                          .contains(r) ||
+                                                      (r == 'everyone' &&
+                                                          (conditions['roles']
+                                                                  as List)
+                                                              .isEmpty),
+                                                  onSelected: (v) => change(() {
+                                                        final list =
+                                                            conditions['roles']
+                                                                as List;
+                                                        if (r == 'everyone') {
+                                                          list.clear();
+                                                          if (v) list.add(r);
+                                                        } else {
+                                                          list.remove(
+                                                              'everyone');
+                                                          v
+                                                              ? list.add(r)
+                                                              : list.remove(r);
+                                                        }
+                                                      }))
+                                          ]),
+                                    ],
+                                    SwitchListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                            ruleText(l, 'onlyWhileStreaming')),
+                                        value:
+                                            conditions['onlyWhileStreaming'] ==
+                                                true,
+                                        onChanged: (v) => change(() =>
+                                            conditions['onlyWhileStreaming'] =
+                                                v)),
+                                    section('do'),
+                                    if (showsPublicChatText(draft))
+                                      Text(ruleText(l, 'publicChatText'),
+                                          style: const TextStyle(
+                                              color: Color(0xFFFFB15C),
+                                              fontSize: 11,
+                                              height: 1.3)),
+                                    for (var i = 0; i < actions.length; i++)
+                                      Container(
+                                          key: ValueKey(actions[i]['id']),
+                                          margin:
+                                              const EdgeInsets.only(top: 12),
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                               color: const Color(0xFF1E1E1E),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
                                               border: Border.all(
-                                                  color: simulation!.matched
-                                                      ? const Color(0xFF53FC18)
-                                                      : const Color(
-                                                          0xFFFFB15C))),
+                                                  color:
+                                                      const Color(0xFF2E2E2E)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
                                           child: Column(
                                               crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                                  CrossAxisAlignment.stretch,
                                               children: [
-                                                Text(ruleText(
-                                                    l,
-                                                    simulation!.reason ??
-                                                        'matched')),
-                                                for (var i = 0;
-                                                    i <
-                                                        simulation!
-                                                            .actions.length;
-                                                    i++)
-                                                  Text(
-                                                      '${ruleText(l, simulation!.actions[i]['type'] as String)}${[
-                                                    for (final v in simulation!
-                                                        .actions[i].entries
-                                                        .where((e) => ![
-                                                              'type',
-                                                              'id'
-                                                            ].contains(e.key))
-                                                        .map((e) =>
-                                                            '${e.value}'))
-                                                      if (v.isNotEmpty) v
-                                                  ].map((v) => ' · $v').join()}\n${ruleText(l, simulation!.results[i].status == 'skipped' ? 'wouldSkip' : simulation!.results[i].status)}${simulation!.results[i].reason == null ? '' : ': ${ruleText(l, simulation!.results[i].reason!)}'}')
-                                              ]))),
-                                if (notice != null) Text(ruleText(l, notice!)),
-                                if (!valid)
-                                  Text(ruleText(l, 'invalid'),
-                                      style: const TextStyle(
-                                          color: Color(0xFFFFB15C))),
-                              ]))),
-                          const SizedBox(height: 12),
-                          Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                OutlinedButton(
-                                    key: const Key('rule-test'),
-                                    style: secondarySettingsStyle(),
-                                    onPressed: valid
-                                        ? () {
-                                            setState(() => simulation =
-                                                    widget.engine.simulate({
-                                                  ...draft,
-                                                  'invalid': false,
-                                                  'enabled': true
-                                                }, event()));
-                                            // The result sits under the
-                                            // actions: bring it into view.
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                              final target =
-                                                  _resultKey.currentContext;
-                                              if (target != null &&
-                                                  target.mounted) {
-                                                unawaited(
-                                                    Scrollable.ensureVisible(
-                                                        target,
-                                                        duration:
-                                                            const Duration(
-                                                                milliseconds:
-                                                                    200)));
+                                                Row(children: [
+                                                  Expanded(
+                                                      child: Text(
+                                                          '${i + 1}. ${ruleText(l, actions[i]['type'] as String)}',
+                                                          style:
+                                                              settingsItemTitleStyle)),
+                                                  IconButton(
+                                                      tooltip:
+                                                          ruleText(l, 'up'),
+                                                      onPressed: i == 0
+                                                          ? null
+                                                          : () => change(() {
+                                                                final a = actions
+                                                                    .removeAt(
+                                                                        i);
+                                                                actions.insert(
+                                                                    i - 1, a);
+                                                              }),
+                                                      iconSize: 18,
+                                                      color: Colors.white70,
+                                                      icon: const Icon(Icons
+                                                          .arrow_upward_rounded)),
+                                                  IconButton(
+                                                      tooltip:
+                                                          ruleText(l, 'down'),
+                                                      onPressed: i ==
+                                                              actions.length - 1
+                                                          ? null
+                                                          : () => change(() {
+                                                                final a = actions
+                                                                    .removeAt(
+                                                                        i);
+                                                                actions.insert(
+                                                                    i + 1, a);
+                                                              }),
+                                                      iconSize: 18,
+                                                      color: Colors.white70,
+                                                      icon: const Icon(Icons
+                                                          .arrow_downward_rounded)),
+                                                  IconButton(
+                                                      tooltip:
+                                                          ruleText(l, 'delete'),
+                                                      color: const Color(
+                                                          0xFFFF6B6B),
+                                                      onPressed: () =>
+                                                          change(() {
+                                                            actions.removeAt(i);
+                                                          }),
+                                                      iconSize: 18,
+                                                      icon: const Icon(Icons
+                                                          .delete_outline_rounded))
+                                                ]),
+                                                ...params(
+                                                    actions[i]
+                                                        as Map<String, dynamic>,
+                                                    RuleSchema.actionFields(
+                                                        actions[i] as Map),
+                                                    'action-$i')
+                                              ])),
+                                    PopupMenuButton<String>(
+                                        key: const Key('rule-add-action'),
+                                        enabled: actions.length <
+                                            RuleSchema.maxActions,
+                                        onSelected: (v) =>
+                                            change(() => actions.add({
+                                                  'id': freshRuleId(),
+                                                  'type': v,
+                                                  for (final f in RuleSchema
+                                                      .actions[v]!.entries)
+                                                    f.key: f.value.fallback
+                                                })),
+                                        itemBuilder: (_) => [
+                                              for (final g in [
+                                                'flow',
+                                                'obs',
+                                                'voice',
+                                                'sound',
+                                                'pages',
+                                                'live'
+                                              ]) ...[
+                                                PopupMenuItem<String>(
+                                                    enabled: false,
+                                                    child:
+                                                        Text(ruleText(l, g))),
+                                                for (final a in RuleSchema
+                                                    .actions.keys
+                                                    .where(
+                                                        (a) => group(a) == g))
+                                                  PopupMenuItem(
+                                                      value: a,
+                                                      child:
+                                                          Text(ruleText(l, a)))
+                                              ]
+                                            ],
+                                        // Looks like the app's secondary button.
+                                        child: Container(
+                                            margin:
+                                                const EdgeInsets.only(top: 12),
+                                            height: 40,
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color: const Color(
+                                                        0xFF3A3A3A))),
+                                            child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.add_rounded,
+                                                      size: 16,
+                                                      color: actions.length <
+                                                              RuleSchema
+                                                                  .maxActions
+                                                          ? const Color(
+                                                              0xFF53FC18)
+                                                          : Colors.white30),
+                                                  const SizedBox(width: 6),
+                                                  Text(ruleText(l, 'addAction'),
+                                                      style: TextStyle(
+                                                          color: actions
+                                                                      .length <
+                                                                  RuleSchema
+                                                                      .maxActions
+                                                              ? Colors.white
+                                                              : Colors.white30,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                ]))),
+                                    section('limits'),
+                                    for (final k in [
+                                      'cooldownSeconds',
+                                      'userCooldownSeconds'
+                                    ])
+                                      input(k, ruleText(l, k), draft[k],
+                                          (v) => draft[k] = v,
+                                          field:
+                                              const RuleField.number(0, 3600)),
+                                    input(
+                                        'overlap',
+                                        ruleText(l, 'overlap'),
+                                        draft['overlap'],
+                                        (v) => draft['overlap'] = v,
+                                        field: const RuleField.choice(
+                                            ['queue', 'skip'], 'queue')),
+                                    section('testWith'),
+                                    const SizedBox(height: 8),
+                                    settingsLabel(ruleText(l, 'text')),
+                                    TextField(
+                                        key: const Key('rule-sample-text'),
+                                        decoration:
+                                            settingsInput(hint: event().text),
+                                        onChanged: (v) => setState(() {
+                                              sampleText = v;
+                                              simulation = null;
+                                            })),
+                                    if (type == 'support.superchat') ...[
+                                      const SizedBox(height: 8),
+                                      settingsLabel(ruleText(l, 'minAmount')),
+                                      TextField(
+                                          key: const Key('rule-sample-amount'),
+                                          decoration: settingsInput(hint: '5'),
+                                          onChanged: (v) => setState(() {
+                                                sampleAmount = v;
+                                                simulation = null;
+                                              })),
+                                    ],
+                                    if (simulation != null)
+                                      KeyedSubtree(
+                                          key: _resultKey,
+                                          child: Container(
+                                              key:
+                                                  const Key('rule-test-result'),
+                                              margin:
+                                                  const EdgeInsets.only(top: 8),
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                  color:
+                                                      const Color(0xFF1E1E1E),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                      color: simulation!.matched
+                                                          ? const Color(
+                                                              0xFF53FC18)
+                                                          : const Color(
+                                                              0xFFFFB15C))),
+                                              child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(ruleText(
+                                                        l,
+                                                        simulation!.reason ??
+                                                            'matched')),
+                                                    for (var i = 0;
+                                                        i <
+                                                            simulation!
+                                                                .actions.length;
+                                                        i++)
+                                                      Text(
+                                                          '${ruleText(l, simulation!.actions[i]['type'] as String)}${[
+                                                        for (final v
+                                                            in simulation!
+                                                                .actions[i]
+                                                                .entries
+                                                                .where((e) => ![
+                                                                      'type',
+                                                                      'id'
+                                                                    ].contains(
+                                                                        e.key))
+                                                                .map((e) =>
+                                                                    '${e.value}'))
+                                                          if (v.isNotEmpty) v
+                                                      ].map((v) => ' · $v').join()}\n${ruleText(l, simulation!.results[i].status == 'skipped' ? 'wouldSkip' : simulation!.results[i].status)}${simulation!.results[i].reason == null ? '' : ': ${ruleText(l, simulation!.results[i].reason!)}'}')
+                                                  ]))),
+                                    if (notice != null)
+                                      Text(ruleText(l, notice!)),
+                                    if (!valid)
+                                      Text(ruleText(l, 'invalid'),
+                                          style: const TextStyle(
+                                              color: Color(0xFFFFB15C))),
+                                  ]))),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  alignment: WrapAlignment.end,
+                                  children: [
+                                    OutlinedButton(
+                                        key: const Key('rule-test'),
+                                        style: secondarySettingsStyle().copyWith(
+                                            minimumSize:
+                                                const WidgetStatePropertyAll(
+                                                    Size(100, 40))),
+                                        onPressed: valid
+                                            ? () {
+                                                setState(() => simulation =
+                                                        widget.engine.simulate({
+                                                      ...draft,
+                                                      'invalid': false,
+                                                      'enabled': true
+                                                    }, event()));
+                                                // The result sits under the
+                                                // actions: bring it into view.
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                  final target =
+                                                      _resultKey.currentContext;
+                                                  if (target != null &&
+                                                      target.mounted) {
+                                                    unawaited(Scrollable
+                                                        .ensureVisible(target,
+                                                            duration:
+                                                                const Duration(
+                                                                    milliseconds:
+                                                                        200)));
+                                                  }
+                                                });
                                               }
-                                            });
-                                          }
-                                        : null,
-                                    child: Text(ruleText(l, 'test'))),
-                                OutlinedButton(
-                                    key: const Key('rule-run'),
-                                    style: secondarySettingsStyle(),
-                                    onPressed: saved && !dirty && valid
-                                        ? () => setState(() => notice =
-                                            widget.engine.runNow(
-                                                    draft['id'] as String,
-                                                    event()) ??
-                                                'accepted')
-                                        : null,
-                                    child: Text(ruleText(l, 'run'))),
-                                ElevatedButton(
-                                    key: const Key('rule-save'),
-                                    style: primarySettingsStyle().copyWith(
-                                        minimumSize:
-                                            const WidgetStatePropertyAll(
-                                                Size(100, 40))),
-                                    onPressed: valid && !saving ? _save : null,
-                                    child: Text(ruleText(l, 'save')))
-                              ]),
-                        ])))));
+                                            : null,
+                                        child: Text(ruleText(l, 'test'))),
+                                    OutlinedButton(
+                                        key: const Key('rule-run'),
+                                        style: secondarySettingsStyle().copyWith(
+                                            minimumSize:
+                                                const WidgetStatePropertyAll(
+                                                    Size(100, 40))),
+                                        onPressed: saved && !dirty && valid
+                                            ? () => setState(() => notice =
+                                                widget.engine.runNow(
+                                                        draft['id'] as String,
+                                                        event()) ??
+                                                    'accepted')
+                                            : null,
+                                        child: Text(ruleText(l, 'run'))),
+                                    ElevatedButton(
+                                        key: const Key('rule-save'),
+                                        style: primarySettingsStyle().copyWith(
+                                            minimumSize:
+                                                const WidgetStatePropertyAll(
+                                                    Size(100, 40))),
+                                        onPressed:
+                                            valid && !saving ? _save : null,
+                                        child: Text(ruleText(l, 'save')))
+                                  ]),
+                            ]))))));
   }
 }

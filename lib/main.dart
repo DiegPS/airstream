@@ -8,6 +8,7 @@ import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/chat_screen.dart';
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/legacy_image_cache_cleaner.dart';
 import 'package:airstream/window/window_bounds.dart';
@@ -79,12 +80,48 @@ void main() async {
 
 /// Built once: a theme rebuilt on every frame compares unequal (its switch
 /// colors are closures), which rebuilds every Material widget in the app.
-final _airstreamTheme = ThemeData(
+final _airstreamTheme = withAirstreamComponents(ThemeData(
   colorScheme: const ColorScheme.dark(
     primary: Color(0xFF53FC18),
     surface: Color(0xFF121212),
   ),
   scaffoldBackgroundColor: const Color(0xFF0D0D0D),
+  // Dialogs look like the settings cards: same surface, border and radius.
+  dialogTheme: const DialogThemeData(
+    backgroundColor: Color(0xFF191919),
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+      side: BorderSide(color: Color(0xFF2E2E2E)),
+    ),
+    titleTextStyle: TextStyle(
+        color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+    contentTextStyle:
+        TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+  ),
+  // Choices (rule platforms and roles, placeholders) use the app's green.
+  chipTheme: ChipThemeData(
+    color: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected)
+            ? const Color(0x2653FC18)
+            : const Color(0xFF1E1E1E)),
+    side: WidgetStateBorderSide.resolveWith((states) => BorderSide(
+        color: states.contains(WidgetState.selected)
+            ? const Color(0xFF53FC18)
+            : const Color(0xFF3A3A3A))),
+    labelStyle: TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: WidgetStateColor.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? const Color(0xFF53FC18)
+              : Colors.white70),
+    ),
+    checkmarkColor: const Color(0xFF53FC18),
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(8))),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+  ),
   // Every switch looks like the settings ones: a green thumb on a green track.
   switchTheme: SwitchThemeData(
     thumbColor: WidgetStateProperty.resolveWith(
@@ -110,7 +147,7 @@ final _airstreamTheme = ThemeData(
     ),
   ),
   useMaterial3: true,
-);
+));
 
 class AirstreamApp extends ConsumerWidget {
   const AirstreamApp({super.key});
