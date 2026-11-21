@@ -49,6 +49,22 @@ class KickService {
   int _localEventSequence = 0;
   ServiceStatus _lastStatus = ServiceStatus.idle;
 
+  /// Kick can report one renewal twice: as a subscription event and as the
+  /// celebration the viewer shares in chat. Only the first one counts.
+  final _renewals = <String, (String source, DateTime at)>{};
+  static const _renewalWindow = Duration(minutes: 30);
+
+  bool _firstRenewal(String user, int months, String source) {
+    final now = DateTime.now();
+    _renewals
+        .removeWhere((_, entry) => now.difference(entry.$2) > _renewalWindow);
+    final key = '${user.trim().toLowerCase()}:$months';
+    final previous = _renewals[key];
+    if (previous != null) return previous.$1 == source;
+    _renewals[key] = (source, now);
+    return true;
+  }
+
   Stream<ChatMessage> get messages => _controller.stream;
   Stream<(ServiceStatus, String?)> get statusStream => _statusController.stream;
   Stream<kick.KickEvent> get events => _eventController.stream;
@@ -324,6 +340,10 @@ class KickService {
     final celebration = msg.metadata.celebration;
     final isRenewal = msg.type == 'celebration' &&
         celebration?.type == 'subscription_renewed';
+    // A renewal Kick already reported stays a chat message, not a second one.
+    final countsRenewal = isRenewal &&
+        _firstRenewal(
+            msg.sender.username, celebration!.totalMonths, 'message:${msg.id}');
     return ChatMessage(
       platform: Platform.kick,
       id: msg.id,
@@ -341,10 +361,10 @@ class KickService {
       ),
       items: items,
       isMembership: identity.isSubscriber || isRenewal,
-      isMembershipEvent: isRenewal,
+      isMembershipEvent: countsRenewal,
       membershipEventKind:
-          isRenewal ? MembershipEventKind.resubscription : null,
-      membershipMonths: isRenewal ? celebration!.totalMonths : null,
+          countsRenewal ? MembershipEventKind.resubscription : null,
+      membershipMonths: countsRenewal ? celebration.totalMonths : null,
       isOwner: identity.isBroadcaster,
       isModerator: identity.isModerator,
       isVip: identity.isVip,
@@ -364,6 +384,11 @@ class KickService {
   ChatMessage? _convertEvent(kick.KickEvent event) {
     if (event is kick.KickSubscriptionEvent) {
       final isRenewal = event.months > 1;
+      if (isRenewal &&
+          !_firstRenewal(event.username, event.months,
+              'event:${identityHashCode(event)}')) {
+        return null;
+      }
       return ChatMessage(
         platform: Platform.kick,
         // Kick's client already drops repeated deliveries of one event, so

@@ -1033,6 +1033,63 @@ void main() {
     expect(message.membershipMonths, 12);
   });
 
+  test('a Kick renewal reported as event and celebration counts once',
+      () async {
+    final transport = _FakeKickTransport();
+    final service = KickService(transportFactory: () async => transport);
+    addTearDown(service.dispose);
+    final messages = <app.ChatMessage>[];
+    service.messages.listen(messages.add);
+    await service.connect('creator');
+    void celebrate(String id, String user, int months) =>
+        transport.messageController.add(kick.ChatMessage.fromJson({
+          'id': id,
+          'chatroom_id': 9,
+          'content': 'thanks for $months months',
+          'type': 'celebration',
+          'metadata': {
+            'celebration': {
+              'type': 'subscription_renewed',
+              'total_months': months
+            },
+          },
+          'created_at': '2026-11-21T12:00:00Z',
+          'sender': {
+            'id': 7,
+            'username': user,
+            'slug': user.toLowerCase(),
+            'identity': {'color': '', 'badges': []},
+          },
+        }));
+    void renew(String user, int months) =>
+        transport.eventController.add(kick.parseKickEvent(
+          r'App\Events\SubscriptionEvent',
+          {'username': user, 'months': months},
+        ));
+
+    // Celebration first: the matching subscription event is dropped.
+    celebrate('first', 'Viewer', 6);
+    await _eventually(() => messages.length == 1);
+    renew('viewer', 6);
+    // Event first: the celebration stays as chat without counting again.
+    renew('Other', 3);
+    await _eventually(() => messages.length == 2);
+    celebrate('second', 'Other', 3);
+    await _eventually(() => messages.length == 3);
+    // A different renewal still counts.
+    renew('Viewer', 7);
+    await _eventually(() => messages.length == 4);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(messages, hasLength(4));
+    final counted = messages.where((m) => m.membershipEventKind != null);
+    expect(counted.map((m) => '${m.author.name}:${m.membershipMonths}'),
+        ['Viewer:6', 'Other:3', 'Viewer:7']);
+    final shared = messages.singleWhere((m) => m.id == 'second');
+    expect(shared.isMembershipEvent, isFalse);
+    expect(shared.plainText, 'thanks for 3 months');
+  });
+
   test('Kick preserves legacy multi-month subscription renewals', () async {
     final transport = _FakeKickTransport();
     final service = KickService(transportFactory: () async => transport);
