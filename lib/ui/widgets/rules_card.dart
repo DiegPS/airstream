@@ -105,15 +105,10 @@ class RulesCard extends ConsumerWidget {
                           'name': ruleText(l, 'new')
                         }, saved: false),
                 child: Text(ruleText(l, 'new'))),
-            Wrap(children: [
-              TextButton(
-                  onPressed: () => exportRules(context, s.rules),
-                  child: Text(ruleText(l, 'exportRules'))),
-              TextButton(
-                  onPressed: () => importRules(context, ref),
-                  child: Text(ruleText(l, 'importRules')))
-            ]),
-            OutlinedButton(
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                  child: OutlinedButton(
                 key: const Key('rules-recipes'),
                 style: secondarySettingsStyle(),
                 onPressed: s.rules.length >= RuleSchema.maxRules
@@ -168,10 +163,24 @@ class RulesCard extends ConsumerWidget {
                             write([...ref.read(settingsProvider).rules, rule]));
                         if (context.mounted) await edit(rule);
                       },
-                child: Text(ruleText(l, 'recipes'))),
+                child: Text(ruleText(l, 'recipes')),
+              )),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: OutlinedButton(
+                      style: secondarySettingsStyle(),
+                      onPressed: () => importRules(context, ref),
+                      child: Text(ruleText(l, 'importRules')))),
+            ]),
+            Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                    onPressed: () => exportRules(context, s.rules),
+                    child: Text(ruleText(l, 'exportRules')))),
             if (s.rules.isEmpty) ...[
-              Text(ruleText(l, 'empty')),
-              Text(ruleText(l, 'empty2'))
+              const SizedBox(height: 4),
+              Text(ruleText(l, 'empty'), style: settingsHintStyle),
+              Text(ruleText(l, 'empty2'), style: settingsHintStyle),
             ],
             for (final r in s.rules)
               Builder(builder: (context) {
@@ -198,7 +207,10 @@ class RulesCard extends ConsumerWidget {
                                             else
                                               old
                                         ])),
-                            Expanded(child: Text(r['name'] as String)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                                child: Text(r['name'] as String,
+                                    style: settingsItemTitleStyle)),
                             PopupMenuButton<String>(
                                 key: Key('rule-menu-$id'),
                                 onSelected: (v) async {
@@ -251,7 +263,9 @@ class RulesCard extends ConsumerWidget {
                                     ])
                           ]),
                           Text(ruleSummary(l, r),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              style: settingsHintStyle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           for (final warning in [
                             if (r['invalid'] == true) 'invalid',
                             if (isPublicChatRule(r) &&
@@ -262,8 +276,10 @@ class RulesCard extends ConsumerWidget {
                             if (chat && r['cooldownSeconds'] == 0) 'noCooldown'
                           ])
                             Text(ruleText(l, warning),
-                                style:
-                                    const TextStyle(color: Color(0xFFFFB15C))),
+                                style: const TextStyle(
+                                    color: Color(0xFFFFB15C),
+                                    fontSize: 11,
+                                    height: 1.3)),
                         ]));
               }),
           ]),
@@ -297,12 +313,14 @@ class _RuleHistoryCardState extends State<RuleHistoryCard> {
           return UiCard(
               key: const Key('rules-history'),
               title: ruleText(l, 'history'),
+              icon: Icons.history_rounded,
               trailing: TextButton(
                   onPressed: () => setState(() =>
                       hidden.addAll(widget.engine.history.map((r) => r.id))),
                   child: Text(ruleText(l, 'clear'))),
               children: [
-                if (runs.isEmpty) Text(ruleText(l, 'noHistory')),
+                if (runs.isEmpty)
+                  Text(ruleText(l, 'noHistory'), style: settingsHintStyle),
                 for (final r in runs)
                   Material(
                       color: Colors.transparent,

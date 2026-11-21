@@ -9,12 +9,11 @@ import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/settings/settings_profiles.dart';
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-const _accent = Color(0xFF53FC18);
 
 /// Saves the current setup under a name and switches between setups.
 class SettingsProfilesCard extends ConsumerStatefulWidget {
@@ -150,11 +149,8 @@ class _SettingsProfilesCardState extends ConsumerState<SettingsProfilesCard> {
                       }
                     }
                   : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: const Color(0xFF262626),
-              ),
+              style: primarySettingsStyle().copyWith(
+                  minimumSize: const WidgetStatePropertyAll(Size(0, 40))),
               child: Text(l.profileSave),
             ),
           ],
@@ -461,43 +457,49 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
       description: l.settingsBackupDescription,
       children: [
         if (_busy) const LinearProgressIndicator(),
-        Wrap(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: 8,
-          runSpacing: 8,
           children: [
             OutlinedButton.icon(
               key: const Key('settings-export'),
+              style: secondarySettingsStyle(),
               onPressed: _busy ? null : export,
               icon: const Icon(Icons.upload_file_rounded, size: 16),
               label: Text(l.settingsExport),
             ),
             OutlinedButton.icon(
               key: const Key('settings-import'),
+              style: secondarySettingsStyle(),
               onPressed: _busy ? null : import,
               icon: const Icon(Icons.download_rounded, size: 16),
               label: Text(l.settingsImport),
             ),
             OutlinedButton.icon(
               key: const Key('backup-export-everything'),
+              style: secondarySettingsStyle(),
               onPressed: _busy ? null : exportEverything,
               icon: const Icon(Icons.archive_outlined, size: 16),
               label: Text(l.backupExportEverything),
             ),
             OutlinedButton.icon(
               key: const Key('backup-restore-everything'),
+              style: secondarySettingsStyle(),
               onPressed: _busy ? null : restoreEverything,
               icon: const Icon(Icons.restore_rounded, size: 16),
               label: Text(l.backupRestoreEverything),
             ),
-            TextButton.icon(
-              key: const Key('settings-reset'),
-              onPressed: _busy ? null : reset,
-              icon: const Icon(Icons.restart_alt_rounded, size: 16),
-              label: Text(l.settingsReset),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFFF8A80),
-              ),
-            ),
+            Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: const Key('settings-reset'),
+                  onPressed: _busy ? null : reset,
+                  icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                  label: Text(l.settingsReset),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFFF8A80),
+                  ),
+                )),
           ],
         ),
       ],

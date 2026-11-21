@@ -197,8 +197,9 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                         controller.closeGiveaway),
                   Row(children: [
                     Expanded(child: Text(l.giveawayDrawCount)),
-                    DropdownButton<int>(
+                    settingsDropdown<int>(
                       key: const Key('giveaway-draw-count'),
+                      expanded: false,
                       value: _drawCount,
                       items: [
                         for (var count = 1; count <= 10; count++)

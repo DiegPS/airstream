@@ -92,23 +92,22 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
             Container(
               key: Key('gallery-item-${item.id}'),
               margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF222222),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF2C2C2C)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(item.name(l),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 3),
-                  Text(item.description(l),
-                      style: const TextStyle(color: Colors.white70)),
+                  Text(item.name(l), style: settingsItemTitleStyle),
+                  const SizedBox(height: 2),
+                  Text(item.description(l), style: settingsHintStyle),
                   const SizedBox(height: 4),
                   Text('${item.width}×${item.height}',
                       style:
-                          const TextStyle(color: Colors.white70, fontSize: 12)),
+                          const TextStyle(color: Colors.white38, fontSize: 11)),
                   Wrap(
                     spacing: 8,
                     children: [
@@ -134,8 +133,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(l.galleryPreviewUnavailable,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
+                          style: settingsHintStyle),
                     ),
                 ],
               ),
@@ -393,8 +391,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       Row(children: [
                         Expanded(
                             child: Text(info.manifest.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold))),
+                                style: settingsItemTitleStyle)),
                         PopupMenuButton<String>(
                             key: Key('template-menu-${info.id}'),
                             enabled: enabled,
@@ -422,7 +419,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       ]),
                       Text(
                           '${info.id} · ${info.manifest.width}×${info.manifest.height}',
-                          style: const TextStyle(color: Colors.white70)),
+                          style: settingsHintStyle),
                       if (_galleryUpdate(info, l, enabled) case final update?)
                         update,
                       if (info.manifest.network)
@@ -439,7 +436,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                               _ => l.templatesOversizedIndex
                             },
                             style: const TextStyle(color: Color(0xFFFFB15C))),
-                      Text(l.templatesOpenCount(counts[info.id] ?? 0)),
+                      Text(l.templatesOpenCount(counts[info.id] ?? 0),
+                          style: settingsHintStyle),
                       if (info.manifest.fields.isNotEmpty)
                         TemplateFields(
                             key: ValueKey('fields-${info.id}'),

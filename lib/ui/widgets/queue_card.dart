@@ -286,12 +286,11 @@ class _QueueSelect<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
 
   @override
-  Widget build(BuildContext context) => InputDecorator(
-        decoration: settingsInput().copyWith(labelText: label),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<T>(
-            isDense: true,
-            isExpanded: true,
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          settingsLabel(label),
+          settingsDropdown<T>(
             menuMaxHeight: 280,
             value: value,
             items: [
@@ -305,7 +304,7 @@ class _QueueSelect<T> extends StatelessWidget {
               if (next != null) onChanged(next);
             },
           ),
-        ),
+        ],
       );
 }
 

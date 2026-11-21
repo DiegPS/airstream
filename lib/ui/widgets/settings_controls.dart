@@ -17,6 +17,125 @@ InputDecoration settingsInput({String? hint, String? error}) => InputDecoration(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFF2E2E2E))),
     );
+const _settingsGreen = Color(0xFF53FC18);
+
+/// Body text of the settings panel: the size and colour every card uses.
+const settingsBodyStyle =
+    TextStyle(color: Colors.white70, fontSize: 12, height: 1.35);
+
+/// Titles inside a card (a rule, a gallery item, a switch with a hint).
+const settingsItemTitleStyle =
+    TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600);
+
+/// Hints under a title.
+const settingsHintStyle =
+    TextStyle(color: Colors.white54, fontSize: 11, height: 1.3);
+
+/// Gives every stock control inside the settings panel the panel's own look,
+/// so cards built from plain Material widgets match the hand-styled ones.
+class SettingsPanelTheme extends StatelessWidget {
+  const SettingsPanelTheme({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context);
+    // Typed text in fields matches the fields styled by hand (13 px).
+    const fieldText = TextStyle(color: Colors.white, fontSize: 13);
+    return Theme(
+      data: base.copyWith(
+        textTheme: base.textTheme.copyWith(
+          bodyLarge: base.textTheme.bodyLarge?.merge(fieldText) ?? fieldText,
+          titleMedium:
+              base.textTheme.titleMedium?.merge(fieldText) ?? fieldText,
+        ),
+        listTileTheme: const ListTileThemeData(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          minVerticalPadding: 4,
+          titleTextStyle: settingsItemTitleStyle,
+          subtitleTextStyle: settingsHintStyle,
+          iconColor: Colors.white70,
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: _settingsGreen,
+            disabledForegroundColor: Colors.white30,
+            textStyle:
+                const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            minimumSize: const Size(0, 32),
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFF3A3A3A)),
+            textStyle:
+                const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        expansionTileTheme: const ExpansionTileThemeData(
+          tilePadding: EdgeInsets.zero,
+          iconColor: _settingsGreen,
+          collapsedIconColor: Colors.white54,
+          shape: Border(),
+          collapsedShape: Border(),
+        ),
+        dividerTheme:
+            const DividerThemeData(color: Color(0xFF2A2A2A), thickness: 1),
+        popupMenuTheme: const PopupMenuThemeData(
+          color: Color(0xFF1E1E1E),
+          textStyle: TextStyle(color: Colors.white, fontSize: 12),
+        ),
+      ),
+      child: DefaultTextStyle.merge(style: settingsBodyStyle, child: child),
+    );
+  }
+}
+
+/// The settings drop-down: a boxed field like [settingsInput], never the
+/// underlined stock one. [key] goes to the [DropdownButton] itself.
+Widget settingsDropdown<T>({
+  Key? key,
+  required T? value,
+  required List<DropdownMenuItem<T>> items,
+  required ValueChanged<T?>? onChanged,
+  double? menuMaxHeight,
+  DropdownButtonBuilder? selectedItemBuilder,
+  bool expanded = true,
+}) =>
+    Container(
+      // As tall as a settings text field and button, so rows line up.
+      constraints: const BoxConstraints(minHeight: 40),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2E2E2E)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          key: key,
+          value: value,
+          items: items,
+          onChanged: onChanged,
+          isDense: true,
+          isExpanded: expanded,
+          menuMaxHeight: menuMaxHeight,
+          selectedItemBuilder: selectedItemBuilder,
+          dropdownColor: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(8),
+          iconEnabledColor: Colors.white54,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+      ),
+    );
+
 Widget settingsLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(text,

@@ -158,9 +158,8 @@ class GoalsCard extends ConsumerWidget {
                                 maxLength: 60,
                                 decoration: settingsInput()),
                             settingsLabel(l.goalsType),
-                            DropdownButton<String>(
+                            settingsDropdown<String>(
                                 value: type,
-                                isExpanded: true,
                                 items: [
                                   for (final t in goalTypes)
                                     DropdownMenuItem(

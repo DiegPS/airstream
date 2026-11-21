@@ -830,7 +830,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
             ),
             const Divider(height: 1, color: Color(0xFF242424)),
             Expanded(
-              child: Stack(
+              child: SettingsPanelTheme(
+                  child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Offstage(
@@ -851,7 +852,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   ),
                   if (searching) _searchResults(l),
                 ],
-              ),
+              )),
             ),
           ],
         ),

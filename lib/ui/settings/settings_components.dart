@@ -507,40 +507,26 @@ Widget _dropdownRow(
           const SizedBox(width: 8),
           Flexible(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF222222),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFF333333)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: value,
-                  isDense: true,
-                  isExpanded: true,
-                  dropdownColor: const Color(0xFF1E1E1E),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  items: options
-                      .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(optionLabel?.call(e) ?? e),
-                          ))
-                      .toList(),
-                  selectedItemBuilder: (context) => options
-                      .map((e) => Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              optionLabel?.call(e) ?? e,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) onChanged(v);
-                  },
-                ),
-              ),
+            child: settingsDropdown<String>(
+              value: value,
+              items: options
+                  .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(optionLabel?.call(e) ?? e),
+                      ))
+                  .toList(),
+              selectedItemBuilder: (context) => options
+                  .map((e) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          optionLabel?.call(e) ?? e,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) onChanged(v);
+              },
             ),
           ),
         ],

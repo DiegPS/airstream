@@ -367,20 +367,12 @@ class _PollCardState extends ConsumerState<PollCard> {
               ),
             ),
         ],
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Text(
-                l.pollDuration,
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ),
-            DropdownButton<int?>(
+            settingsLabel(l.pollDuration),
+            settingsDropdown<int?>(
               value: _minutes,
-              isDense: true,
-              underline: const SizedBox.shrink(),
-              dropdownColor: const Color(0xFF1E1E1E),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
               items: [
                 DropdownMenuItem(value: null, child: Text(l.pollNoTimeLimit)),
                 for (final minutes in SavedPoll.durations)
@@ -468,14 +460,10 @@ class _PollCardState extends ConsumerState<PollCard> {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          DropdownButton<T>(
+          settingsLabel(label),
+          settingsDropdown<T>(
             key: key,
             value: value,
-            isDense: true,
-            isExpanded: true,
-            dropdownColor: const Color(0xFF1E1E1E),
             items: [
               for (final item in values)
                 DropdownMenuItem(

@@ -207,8 +207,7 @@ class _ClockCardState extends ConsumerState<ClockCard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           settingsLabel(label),
-          DropdownButton<T>(
-            isExpanded: true,
+          settingsDropdown<T>(
             value: value,
             items: [
               for (final entry in options.entries)

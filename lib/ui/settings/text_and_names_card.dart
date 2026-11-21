@@ -105,7 +105,11 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
 
   DropdownMenuItem<String> _fontGroup(String label) => DropdownMenuItem(
         enabled: false,
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        child: Text(label,
+            style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.w700)),
       );
 
   Future<void> _pickColor(AppLocalizations l) async {
@@ -138,10 +142,9 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
       icon: Icons.text_fields_rounded,
       children: [
         settingsLabel(l.chatFontFamily),
-        DropdownButton<String>(
+        settingsDropdown<String>(
           key: const Key('font-family'),
           value: _showCustomFont ? _otherFont : font,
-          isExpanded: true,
           menuMaxHeight: 360,
           items: [
             _fontGroup(l.chatFontWindows),
@@ -152,7 +155,8 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
           ],
           onChanged: _selectFont,
         ),
-        if (_showCustomFont)
+        if (_showCustomFont) ...[
+          const SizedBox(height: 6),
           TextField(
             key: const Key('font-family-custom'),
             controller: _customFont,
@@ -161,15 +165,18 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
               hint: l.chatFontOther,
               error: _invalidFont ? l.chatFontInvalid : null,
             ).copyWith(errorMaxLines: 3),
+            style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
-        if (!_showCustomFont && ChatFonts.google.contains(font))
-          settingsLabel(l.chatFontGoogleNote),
-        const SizedBox(height: 8),
+        ],
+        if (!_showCustomFont && ChatFonts.google.contains(font)) ...[
+          const SizedBox(height: 6),
+          Text(l.chatFontGoogleNote, style: settingsHintStyle),
+        ],
+        const SizedBox(height: 12),
         settingsLabel(l.nameColorMode),
-        DropdownButton<NameColorMode>(
+        settingsDropdown<NameColorMode>(
           key: const Key('name-color-mode'),
           value: s.nameColorMode,
-          isExpanded: true,
           items: [
             for (final entry in modeLabels.entries)
               DropdownMenuItem(
@@ -181,15 +188,19 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
             if (mode != null) widget.onChanged(s.copyWith(nameColorMode: mode));
           },
         ),
-        if (s.nameColorMode == NameColorMode.single)
+        if (s.nameColorMode == NameColorMode.single) ...[
+          const SizedBox(height: 8),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: OutlinedButton.icon(
+              style: secondarySettingsStyle(),
               onPressed: () => _pickColor(l),
               icon: _nameColorSwatch(s.nameColorSingle),
               label: Text(s.nameColorSingle),
             ),
           ),
+        ],
+        const SizedBox(height: 8),
         _switchRow(l.nameRoleColors, s.nameRoleColors,
             (value) => widget.onChanged(s.copyWith(nameRoleColors: value))),
         _switchRow(l.nameReadability, s.nameReadability,
@@ -224,6 +235,7 @@ class _TextAndNamesCardState extends State<_TextAndNamesCard> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: resolveNameColor(sample, s),
+                          fontSize: 13,
                           fontFamily: font,
                           fontFamilyFallback: const [ChatFonts.defaultFamily],
                           fontWeight: FontWeight.w700,

@@ -159,10 +159,9 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
         }
       }
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(f.label),
-        DropdownButton<String>(
+        settingsLabel(f.label),
+        settingsDropdown<String>(
             key: key,
-            isExpanded: true,
             value: entries.containsKey(value)
                 ? value as String
                 : entries.keys.first,
