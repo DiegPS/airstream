@@ -85,23 +85,25 @@ class RulesImportDialog extends ConsumerWidget {
         content: SizedBox(
             width: 560,
             child: SingleChildScrollView(
+                padding: const EdgeInsets.only(right: 14),
                 child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(ruleText(l, 'importDisabled')),
-                  Text('${ruleText(l, 'importSkipped')}: ${review.skipped}'),
-                  for (final r in review.rules)
-                    ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(r['name'] as String),
-                        subtitle: Text([
-                          ruleSummary(l, r),
-                          for (final w in review.warnings[r['id']] ??
-                              <(String, String)>[])
-                            '${ruleText(l, w.$1)} ${w.$2}'
-                        ].join('\n')))
-                ]))),
+                      Text(ruleText(l, 'importDisabled')),
+                      Text(
+                          '${ruleText(l, 'importSkipped')}: ${review.skipped}'),
+                      for (final r in review.rules)
+                        ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(r['name'] as String),
+                            subtitle: Text([
+                              ruleSummary(l, r),
+                              for (final w in review.warnings[r['id']] ??
+                                  <(String, String)>[])
+                                '${ruleText(l, w.$1)} ${w.$2}'
+                            ].join('\n')))
+                    ]))),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),

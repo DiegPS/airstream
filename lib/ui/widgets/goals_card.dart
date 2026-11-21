@@ -145,37 +145,39 @@ class GoalsCard extends ConsumerWidget {
                   content: SizedBox(
                       width: 280,
                       child: SingleChildScrollView(
+                          padding: const EdgeInsets.only(right: 14),
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                            settingsLabel(l.goalsName),
-                            TextField(
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 13),
-                                key: const Key('goal-title'),
-                                controller: title,
-                                maxLength: 60,
-                                decoration: settingsInput()),
-                            settingsLabel(l.goalsType),
-                            settingsDropdown<String>(
-                                value: type,
-                                items: [
-                                  for (final t in goalTypes)
-                                    DropdownMenuItem(
-                                        value: t, child: Text(_type(l, t)))
-                                ],
-                                onChanged: (v) => setState(() => type = v!)),
-                            settingsLabel(l.goalsTarget),
-                            TextField(
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 13),
-                                key: const Key('goal-target'),
-                                controller: target,
-                                keyboardType: TextInputType.number,
-                                decoration: settingsInput()),
-                            if (invalid) Text(l.goalsInvalid),
-                          ]))),
+                                settingsLabel(l.goalsName),
+                                TextField(
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 13),
+                                    key: const Key('goal-title'),
+                                    controller: title,
+                                    maxLength: 60,
+                                    decoration: settingsInput()),
+                                settingsLabel(l.goalsType),
+                                settingsDropdown<String>(
+                                    value: type,
+                                    items: [
+                                      for (final t in goalTypes)
+                                        DropdownMenuItem(
+                                            value: t, child: Text(_type(l, t)))
+                                    ],
+                                    onChanged: (v) =>
+                                        setState(() => type = v!)),
+                                settingsLabel(l.goalsTarget),
+                                TextField(
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 13),
+                                    key: const Key('goal-target'),
+                                    controller: target,
+                                    keyboardType: TextInputType.number,
+                                    decoration: settingsInput()),
+                                if (invalid) Text(l.goalsInvalid),
+                              ]))),
                   actions: [
                     OutlinedButton(
                         style: secondarySettingsStyle(),

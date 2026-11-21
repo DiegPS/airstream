@@ -518,26 +518,27 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
         content: SizedBox(
             width: 420,
             child: SingleChildScrollView(
+                padding: const EdgeInsets.only(right: 14),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-              settingsLabel(l.templatesName),
-              TextField(
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  key: const Key('template-new-name'),
-                  controller: _name,
-                  autofocus: true,
-                  maxLength: 60,
-                  decoration: settingsInput(
-                      error: _invalid ? l.templatesRequired : null)),
-              for (final starter in TemplateStarter.values)
-                ListTile(
-                    key: Key('template-starter-${starter.name}'),
-                    title: Text(labels[starter.index]),
-                    subtitle: Text(descriptions[starter.index]),
-                    leading: Icon(_starter == starter
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked),
-                    onTap: () => setState(() => _starter = starter)),
-            ]))),
+                  settingsLabel(l.templatesName),
+                  TextField(
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      key: const Key('template-new-name'),
+                      controller: _name,
+                      autofocus: true,
+                      maxLength: 60,
+                      decoration: settingsInput(
+                          error: _invalid ? l.templatesRequired : null)),
+                  for (final starter in TemplateStarter.values)
+                    ListTile(
+                        key: Key('template-starter-${starter.name}'),
+                        title: Text(labels[starter.index]),
+                        subtitle: Text(descriptions[starter.index]),
+                        leading: Icon(_starter == starter
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked),
+                        onTap: () => setState(() => _starter = starter)),
+                ]))),
         actions: [
           OutlinedButton(
               style: secondarySettingsStyle(),
@@ -827,36 +828,37 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
       content: SizedBox(
           width: 480,
           child: SingleChildScrollView(
+              padding: const EdgeInsets.only(right: 14),
               child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.templatesAiSteps),
-              const SizedBox(height: 20),
-              settingsLabel(l.templatesAiDescription),
-              TextField(
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  key: const Key('templates-ai-description'),
-                  controller: _description,
-                  autofocus: true,
-                  enabled: !_busy,
-                  minLines: 3,
-                  maxLines: 6,
-                  decoration: settingsInput(
-                      error: _invalid ? l.templatesRequired : null),
-                  onChanged: (_) {
-                    if (_invalid) setState(() => _invalid = false);
-                  }),
-              if (_busy)
-                const LinearProgressIndicator(
-                    color: Color(0xFF53FC18),
-                    backgroundColor: Color(0xFF262626)),
-              if (_notice != null)
-                Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(_notice!)),
-            ],
-          ))),
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.templatesAiSteps),
+                  const SizedBox(height: 20),
+                  settingsLabel(l.templatesAiDescription),
+                  TextField(
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      key: const Key('templates-ai-description'),
+                      controller: _description,
+                      autofocus: true,
+                      enabled: !_busy,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: settingsInput(
+                          error: _invalid ? l.templatesRequired : null),
+                      onChanged: (_) {
+                        if (_invalid) setState(() => _invalid = false);
+                      }),
+                  if (_busy)
+                    const LinearProgressIndicator(
+                        color: Color(0xFF53FC18),
+                        backgroundColor: Color(0xFF262626)),
+                  if (_notice != null)
+                    Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(_notice!)),
+                ],
+              ))),
       actions: [
         OutlinedButton(
             style: secondarySettingsStyle(),

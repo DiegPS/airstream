@@ -123,29 +123,33 @@ class RulesCard extends ConsumerWidget {
                                     content: SizedBox(
                                         width: 580,
                                         child: SingleChildScrollView(
+                                            padding: const EdgeInsets.only(
+                                                right: 14),
                                             child: Column(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                              for (var n = 1;
-                                                  n <= recipes.length;
-                                                  n++)
-                                                ListTile(
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
-                                                    title: Text(ruleText(
-                                                        l, 'recipe$n')),
-                                                    subtitle: Text(ruleText(
-                                                        l, 'recipeDesc$n')),
-                                                    trailing: OutlinedButton(
-                                                        key: Key(
-                                                            'recipe-add-$n'),
-                                                        style:
-                                                            secondarySettingsStyle(),
-                                                        onPressed: () =>
-                                                            Navigator.pop(c, n),
-                                                        child: Text(ruleText(
-                                                            l, 'add'))))
-                                            ]))),
+                                                  for (var n = 1;
+                                                      n <= recipes.length;
+                                                      n++)
+                                                    ListTile(
+                                                        contentPadding:
+                                                            EdgeInsets.zero,
+                                                        title: Text(ruleText(
+                                                            l, 'recipe$n')),
+                                                        subtitle: Text(ruleText(
+                                                            l, 'recipeDesc$n')),
+                                                        trailing: OutlinedButton(
+                                                            key: Key(
+                                                                'recipe-add-$n'),
+                                                            style:
+                                                                secondarySettingsStyle(),
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                    c, n),
+                                                            child: Text(
+                                                                ruleText(
+                                                                    l, 'add'))))
+                                                ]))),
                                     actions: [
                                       TextButton(
                                           onPressed: () => Navigator.pop(c),

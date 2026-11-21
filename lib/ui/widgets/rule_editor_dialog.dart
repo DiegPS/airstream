@@ -513,6 +513,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                               ]),
                               Expanded(
                                   child: SingleChildScrollView(
+                                      // A gutter for the scrollbar, as in the
+                                      // settings panel: it never covers cards.
+                                      padding: const EdgeInsets.only(right: 14),
                                       child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,

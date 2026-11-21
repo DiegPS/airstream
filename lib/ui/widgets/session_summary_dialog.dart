@@ -162,6 +162,7 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: SingleChildScrollView(
+          padding: const EdgeInsets.only(right: 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
