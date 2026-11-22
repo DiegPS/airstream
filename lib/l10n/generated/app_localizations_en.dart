@@ -835,6 +835,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toggleTopBarShortcut => 'Toggle top bar';
 
   @override
+  String get toggleSidebarShortcut => 'Toggle side menu';
+
+  @override
   String get toggleAlwaysOnTopShortcut => 'Toggle Always on Top';
 
   @override

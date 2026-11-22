@@ -1622,6 +1622,12 @@ abstract class AppLocalizations {
   /// **'Toggle top bar'**
   String get toggleTopBarShortcut;
 
+  /// No description provided for @toggleSidebarShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle side menu'**
+  String get toggleSidebarShortcut;
+
   /// No description provided for @toggleAlwaysOnTopShortcut.
   ///
   /// In en, this message translates to:

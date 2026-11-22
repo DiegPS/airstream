@@ -844,6 +844,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get toggleTopBarShortcut => 'Mostrar / Ocultar barra superior';
 
   @override
+  String get toggleSidebarShortcut => 'Mostrar / Ocultar menú lateral';
+
+  @override
   String get toggleAlwaysOnTopShortcut => 'Alternar Siempre visible';
 
   @override

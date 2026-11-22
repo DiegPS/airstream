@@ -257,6 +257,7 @@
   "antiCaptureDescription": "Ocultar la ventana de capturas de pantalla y OBS",
   "keyboardShortcuts": "Atajos de teclado",
   "toggleTopBarShortcut": "Mostrar / Ocultar barra superior",
+  "toggleSidebarShortcut": "Mostrar / Ocultar menú lateral",
   "toggleAlwaysOnTopShortcut": "Alternar Siempre visible",
   "toggleClickThroughShortcut": "Alternar ignorar clics",
   "globalClickThroughShortcutUnavailable": "Para desactivar Ignorar clics hace falta Ctrl+Shift+C, y otra aplicación usa ese atajo. Ciérrala e inténtalo de nuevo.",

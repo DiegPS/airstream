@@ -343,6 +343,7 @@
   "antiCaptureDescription": "Hide window from screen capture and OBS",
   "keyboardShortcuts": "Keyboard Shortcuts",
   "toggleTopBarShortcut": "Toggle top bar",
+  "toggleSidebarShortcut": "Toggle side menu",
   "toggleAlwaysOnTopShortcut": "Toggle Always on Top",
   "toggleClickThroughShortcut": "Toggle Click-Through",
   "globalClickThroughShortcutUnavailable": "Click-Through needs Ctrl+Shift+C to turn it back off, and another app is using that shortcut. Close that app and try again.",

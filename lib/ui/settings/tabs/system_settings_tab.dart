@@ -61,9 +61,14 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
           title: l.keyboardShortcuts,
           icon: Icons.keyboard_rounded,
           children: [
+            // Labels without the keys: the key chip already shows them.
             _shortcutRow(
               'Ctrl + B',
-              l.hideSidebarTooltip,
+              l.toggleSidebarShortcut,
+            ),
+            _shortcutRow(
+              'Ctrl + F',
+              l.chatSearch,
             ),
             _shortcutRow(
               'Ctrl + Shift + T',
