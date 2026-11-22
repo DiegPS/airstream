@@ -3032,7 +3032,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kbody': 'Cuerpo',
         'kstreamAlready': 'La transmisión ya está en ese estado',
         'kpublicStreamControl':
-            'Los espectadores no pueden iniciar ni detener la transmisión. Elige un disparador manual, de temporizador, de transmisión o de grabación, o limita los disparadores de chat, ingreso a la lista o aportes a moderadores o al propietario.',
+            'Los espectadores no pueden iniciar ni detener la transmisión. Elige un disparador manual, de temporizador, de transmisión o de grabación, o limita los disparadores de chat, ingreso a la lista o apoyos a moderadores o al propietario.',
         'kreplayOff': 'El búfer de repetición está apagado',
         'kreplayAlready': 'El búfer de repetición ya está en ese estado',
         'knotBrowserSource': 'No es una fuente de navegador',
