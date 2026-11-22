@@ -352,17 +352,9 @@ Widget _section(String t) => Padding(
       ),
     );
 
-Widget _label(String t) => Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        t,
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
+/// Field labels in the connection, voice and OBS tabs: the same as every
+/// other settings label.
+Widget _label(String t) => settingsLabel(t);
 
 Widget _sidebarHeader({
   required String? youtubeValue,
