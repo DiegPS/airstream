@@ -114,6 +114,7 @@ class _PollCardState extends ConsumerState<PollCard> {
               key: const Key('poll-setup-name'),
               initialValue: input,
               autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
               inputFormatters: [LengthLimitingTextInputFormatter(60)],
               decoration: settingsInput(
                 hint: l.pollSetupName,
