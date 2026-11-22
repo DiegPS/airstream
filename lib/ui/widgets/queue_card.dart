@@ -342,35 +342,39 @@ class _QueueCommandFieldState extends State<_QueueCommandField> {
     final l = AppLocalizations.of(context)!;
     return Form(
       key: _form,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: TextFormField(
-              initialValue: widget.command,
-              decoration: settingsInput().copyWith(
-                labelText: l.queueCommand,
-                errorMaxLines: 3,
+          settingsLabel(l.queueCommand),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: widget.command,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: settingsInput().copyWith(errorMaxLines: 3),
+                  validator: (value) {
+                    final command = value?.trim() ?? '';
+                    if (!QueueOptions.validCommand(command)) {
+                      return l.queueInvalidCommand;
+                    }
+                    if (QueueOptions.reservedCommand(command)) {
+                      return l.queueReservedCommand;
+                    }
+                    return null;
+                  },
+                  onChanged: (value) => _draft = value,
+                  onFieldSubmitted: (_) => _save(),
+                ),
               ),
-              validator: (value) {
-                final command = value?.trim() ?? '';
-                if (!QueueOptions.validCommand(command)) {
-                  return l.queueInvalidCommand;
-                }
-                if (QueueOptions.reservedCommand(command)) {
-                  return l.queueReservedCommand;
-                }
-                return null;
-              },
-              onChanged: (value) => _draft = value,
-              onFieldSubmitted: (_) => _save(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            style: secondarySettingsStyle(),
-            onPressed: _save,
-            child: Text(l.queueSave),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                style: secondarySettingsStyle(),
+                onPressed: _save,
+                child: Text(l.queueSave),
+              ),
+            ],
           ),
         ],
       ),

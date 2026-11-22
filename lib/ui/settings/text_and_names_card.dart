@@ -291,10 +291,15 @@ class _NameColorDialogState extends State<_NameColorDialog> {
                   ),
               ],
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: settingsLabel(l.nameColorHex),
+            ),
             TextFormField(
               initialValue: _hex,
-              decoration: settingsInput(hint: '#RRGGBB')
-                  .copyWith(labelText: l.nameColorHex),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: settingsInput(hint: '#RRGGBB'),
               onChanged: (value) => setState(() => _hex = value),
             ),
           ],
