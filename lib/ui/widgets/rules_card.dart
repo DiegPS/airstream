@@ -74,7 +74,8 @@ class RulesCard extends ConsumerWidget {
                 child: SwitchListTile(
                     key: const Key('rules-enabled'),
                     contentPadding: EdgeInsets.zero,
-                    title: Text(ruleText(l, 'automation')),
+                    title: Text(ruleText(l, 'automation'),
+                        style: settingsBodyStyle),
                     value: s.rulesEnabled,
                     onChanged: (v) => ref
                         .read(settingsProvider.notifier)

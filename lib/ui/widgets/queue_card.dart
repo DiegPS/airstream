@@ -248,21 +248,21 @@ class QueueCard extends ConsumerWidget {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l.queuePriority),
+                    title: Text(l.queuePriority, style: settingsBodyStyle),
                     value: options.priority,
                     onChanged: (value) =>
                         save((s) => s.copyWith(priority: value)),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l.queueRejoin),
+                    title: Text(l.queueRejoin, style: settingsBodyStyle),
                     value: options.rejoin,
                     onChanged: (value) =>
                         save((s) => s.copyWith(rejoin: value)),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(l.queueChatMods),
+                    title: Text(l.queueChatMods, style: settingsBodyStyle),
                     subtitle: Text(l.queueChatModsHint,
                         style: const TextStyle(color: Color(0xFFFFB15C))),
                     value: options.moderatorCommands,

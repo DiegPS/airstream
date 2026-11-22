@@ -418,14 +418,14 @@ class _PollCardState extends ConsumerState<PollCard> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  title: Text(l.pollHideResults),
+                  title: Text(l.pollHideResults, style: settingsBodyStyle),
                   value: _hideResults,
                   onChanged: (hidden) => setState(() => _hideResults = hidden),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  title: Text(l.pollAllowChange),
+                  title: Text(l.pollAllowChange, style: settingsBodyStyle),
                   value: _allowChange,
                   onChanged: (allow) => setState(() => _allowChange = allow),
                 ),

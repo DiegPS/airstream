@@ -129,7 +129,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     if (f.type == 'boolean') {
       return SwitchListTile(
           key: key,
-          title: Text(f.label),
+          title: Text(f.label, style: settingsBodyStyle),
           value: value == true,
           onChanged: (v) => _change(f, v));
     }

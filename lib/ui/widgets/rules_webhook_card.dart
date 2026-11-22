@@ -30,7 +30,8 @@ class _RulesWebhookCardState extends ConsumerState<RulesWebhookCard> {
               color: Colors.transparent,
               child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(ruleText(l, 'webhookEnable')),
+                  title: Text(ruleText(l, 'webhookEnable'),
+                      style: settingsBodyStyle),
                   value: s.rulesWebhookEnabled,
                   onChanged: (v) => notifier.update(
                       enableRulesWebhook(ref.read(settingsProvider), v)))),

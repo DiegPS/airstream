@@ -253,7 +253,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
     } else if (field?.fallback is bool) {
       child = SwitchListTile(
           key: Key('rule-$path'),
-          title: Text(label),
+          title: Text(label, style: settingsBodyStyle),
           value: value == true,
           onChanged: (v) => change(() => update(v)));
     } else {
@@ -671,8 +671,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                             ],
                                             SwitchListTile(
                                                 contentPadding: EdgeInsets.zero,
-                                                title: Text(ruleText(
-                                                    l, 'onlyWhileStreaming')),
+                                                title: Text(
+                                                    ruleText(l,
+                                                        'onlyWhileStreaming'),
+                                                    style: settingsBodyStyle),
                                                 value: conditions[
                                                         'onlyWhileStreaming'] ==
                                                     true,
