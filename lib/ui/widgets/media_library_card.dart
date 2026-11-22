@@ -130,29 +130,42 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
 
         return AlertDialog(
           title: Text(l.mediaRename),
-          content: Form(
-            key: form,
-            child: TextFormField(
-              key: const Key('media-rename-name'),
-              initialValue: name,
-              autofocus: true,
-              maxLength: 80,
-              decoration: InputDecoration(labelText: l.mediaDisplayName),
-              onChanged: (value) => name = value,
-              onFieldSubmitted: (_) => submit(),
-              validator: (value) =>
-                  MediaLibraryEntries.displayName(value ?? '') == null
-                      ? l.mediaRenameInvalid
-                      : null,
+          content: SizedBox(
+            width: 300,
+            child: Form(
+              key: form,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  settingsLabel(l.mediaDisplayName),
+                  TextFormField(
+                    key: const Key('media-rename-name'),
+                    initialValue: name,
+                    autofocus: true,
+                    maxLength: 80,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: settingsInput(),
+                    onChanged: (value) => name = value,
+                    onFieldSubmitted: (_) => submit(),
+                    validator: (value) =>
+                        MediaLibraryEntries.displayName(value ?? '') == null
+                            ? l.mediaRenameInvalid
+                            : null,
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
+              style: secondarySettingsStyle(),
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(l.cancel),
             ),
-            FilledButton(
+            ElevatedButton(
               key: const Key('media-rename-save'),
+              style: primarySettingsStyle(),
               onPressed: submit,
               child: Text(l.ruleLabel('ksave')),
             ),
@@ -259,13 +272,22 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                   label: Text(l.mediaAdd))),
           for (final error in _errors)
             Text(error, style: const TextStyle(color: Color(0xFFFFB15C))),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('media-search'),
-            onChanged: (value) => setState(() => _query = value),
-            decoration: settingsInput(hint: l.mediaSearch)
-                .copyWith(prefixIcon: const Icon(Icons.search, size: 18)),
-          ),
+          // Searching an empty library is pointless; the box appears with
+          // the first file. Same height as every other settings field.
+          if (entries.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('media-search'),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              onChanged: (value) => setState(() => _query = value),
+              decoration: settingsInput(hint: l.mediaSearch).copyWith(
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 16, color: Colors.white38),
+                prefixIconConstraints:
+                    const BoxConstraints(minWidth: 34, minHeight: 0),
+              ),
+            ),
+          ],
           if (_query.trim().isNotEmpty && matches.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
