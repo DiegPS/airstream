@@ -847,10 +847,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get toggleSidebarShortcut => 'Mostrar / Ocultar menú lateral';
 
   @override
-  String get toggleAlwaysOnTopShortcut => 'Alternar Siempre visible';
+  String get toggleAlwaysOnTopShortcut =>
+      'Activar / desactivar Siempre visible';
 
   @override
-  String get toggleClickThroughShortcut => 'Alternar ignorar clics';
+  String get toggleClickThroughShortcut => 'Activar / desactivar Ignorar clics';
 
   @override
   String get globalClickThroughShortcutUnavailable =>
@@ -2237,7 +2238,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'shortcutsNone': 'Ninguno asignado',
         'shortcutTaken': 'Atajo usado por otra aplicación: $value',
         'silenceTts': 'Silenciar lector de voz',
-        'toggleTts': 'Alternar lector de voz',
+        'toggleTts': 'Activar / desactivar lector de voz',
         'channelSet': 'Canal configurado',
         'channelUnset': 'Canal sin configurar',
         'scene': 'Escena: $value',
@@ -2930,7 +2931,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kgoalNotFound': 'Meta no encontrada',
         'ktimerNotRunning': 'El subatón no está activo',
         'kclockUnchanged': 'El temporizador ya está en ese estado',
-        'ksubathonUnchanged': 'Ese tiempo no cambia el subathon',
+        'ksubathonUnchanged': 'Ese tiempo no cambia el subatón',
         'knoReceiver': 'Sin receptor de plantillas conectado',
         'kinvalidKeyword': 'Palabra clave inválida',
         'kalreadyOpen': 'El sorteo ya está abierto',
