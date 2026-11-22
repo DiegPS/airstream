@@ -409,6 +409,7 @@ class _AudioPreviewState extends State<_AudioPreview> {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       OutlinedButton.icon(
         key: const Key('media-audio-preview-toggle'),
+        style: secondarySettingsStyle(),
         onPressed: _playing ? _stop : _play,
         icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
         label: Text(_playing ? l.mediaPreviewStop : l.mediaPreviewPlay),

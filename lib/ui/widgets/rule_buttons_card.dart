@@ -5,6 +5,7 @@ import 'package:airstream/application/rules/rule_engine.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'rules_card.dart';
+import 'settings_controls.dart';
 import 'ui_card.dart';
 
 class RuleButtonsCard extends ConsumerWidget {
@@ -26,6 +27,7 @@ class RuleButtonsCard extends ConsumerWidget {
             for (final rule in rules)
               OutlinedButton(
                   key: Key('rule-button-${rule['id']}'),
+                  style: secondarySettingsStyle(),
                   onPressed: () {
                     final target =
                         engine ?? ref.read(appControllerProvider).rules;
