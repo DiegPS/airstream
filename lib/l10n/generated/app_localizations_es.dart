@@ -831,7 +831,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mantener sobre todas las demás ventanas';
 
   @override
-  String get antiCapture => 'Protección de captura / Privacidad';
+  String get antiCapture => 'Protección de captura (privacidad)';
 
   @override
   String get antiCaptureDescription =>
@@ -841,10 +841,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get keyboardShortcuts => 'Atajos de teclado';
 
   @override
-  String get toggleTopBarShortcut => 'Mostrar / Ocultar barra superior';
+  String get toggleTopBarShortcut => 'Mostrar / ocultar barra superior';
 
   @override
-  String get toggleSidebarShortcut => 'Mostrar / Ocultar menú lateral';
+  String get toggleSidebarShortcut => 'Mostrar / ocultar menú lateral';
 
   @override
   String get toggleAlwaysOnTopShortcut =>
