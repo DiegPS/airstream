@@ -432,11 +432,14 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                           style: settingsHintStyle),
                       if (_galleryUpdate(info, l, enabled) case final update?)
                         update,
+                      // A property of the template, not a button.
                       if (info.manifest.network)
-                        Chip(
-                            label: Text(l.templatesInternet),
-                            labelStyle:
-                                const TextStyle(color: Color(0xFFFFB15C))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: settingsStatus(
+                              l.templatesInternet, const Color(0xFFFFB15C),
+                              key: Key('template-internet-${info.id}')),
+                        ),
                       for (final problem in info.problems)
                         Text(
                             switch (problem) {
