@@ -137,7 +137,7 @@
   "recordingDuration": "Recording duration",
   "recordingSize": "Recording size",
   "obsDisabledHelp": "Turn it on to enter the OBS host, password and connect on demand.",
-  "overlayServer": "Overlay Server",
+  "overlayServer": "Overlay server",
   "overlayServerDescription": "Enable a local browser source for OBS. When active, Airstream serves an overlay URL that you can paste into OBS.",
   "port": "Port",
   "chatObsUrl": "Chat OBS URL",
@@ -341,7 +341,7 @@
   "alwaysOnTopDescription": "Keep on top of all other windows",
   "antiCapture": "Anti-Capture / Privacy",
   "antiCaptureDescription": "Hide window from screen capture and OBS",
-  "keyboardShortcuts": "Keyboard Shortcuts",
+  "keyboardShortcuts": "Keyboard shortcuts",
   "toggleTopBarShortcut": "Toggle top bar",
   "toggleSidebarShortcut": "Toggle side menu",
   "toggleAlwaysOnTopShortcut": "Toggle Always on Top",
@@ -375,7 +375,7 @@
   "obsOutputOffline": "Output: Offline",
   "obsRecordingPaused": "Recording: Paused",
   "obsRecordingActive": "Recording: Active",
-  "ttsCardTitle": "Voice Reader (TTS)",
+  "ttsCardTitle": "Voice reader (TTS)",
   "voiceStatusBadge": "Voice: {status}",
   "@voiceStatusBadge": {
     "placeholders": {

@@ -406,7 +406,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn it on to enter the OBS host, password and connect on demand.';
 
   @override
-  String get overlayServer => 'Overlay Server';
+  String get overlayServer => 'Overlay server';
 
   @override
   String get overlayServerDescription =>
@@ -829,7 +829,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Hide window from screen capture and OBS';
 
   @override
-  String get keyboardShortcuts => 'Keyboard Shortcuts';
+  String get keyboardShortcuts => 'Keyboard shortcuts';
 
   @override
   String get toggleTopBarShortcut => 'Toggle top bar';
@@ -916,7 +916,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get obsRecordingActive => 'Recording: Active';
 
   @override
-  String get ttsCardTitle => 'Voice Reader (TTS)';
+  String get ttsCardTitle => 'Voice reader (TTS)';
 
   @override
   String voiceStatusBadge(String status) {

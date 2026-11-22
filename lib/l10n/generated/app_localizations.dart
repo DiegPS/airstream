@@ -851,7 +851,7 @@ abstract class AppLocalizations {
   /// No description provided for @overlayServer.
   ///
   /// In en, this message translates to:
-  /// **'Overlay Server'**
+  /// **'Overlay server'**
   String get overlayServer;
 
   /// No description provided for @overlayServerDescription.
@@ -1613,7 +1613,7 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardShortcuts.
   ///
   /// In en, this message translates to:
-  /// **'Keyboard Shortcuts'**
+  /// **'Keyboard shortcuts'**
   String get keyboardShortcuts;
 
   /// No description provided for @toggleTopBarShortcut.
@@ -1775,7 +1775,7 @@ abstract class AppLocalizations {
   /// No description provided for @ttsCardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Voice Reader (TTS)'**
+  /// **'Voice reader (TTS)'**
   String get ttsCardTitle;
 
   /// No description provided for @voiceStatusBadge.

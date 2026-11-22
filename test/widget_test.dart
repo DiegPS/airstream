@@ -923,7 +923,7 @@ void main() {
 
     await tester.tap(find.byTooltip('TTS & Voice'));
     await tester.pump();
-    expect(find.text('Voice Reader (TTS)'), findsOneWidget);
+    expect(find.text('Voice reader (TTS)'), findsOneWidget);
     expect(find.text('Lector de voz (TTS)'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -993,7 +993,7 @@ void main() {
 
     expect(find.text('Connections'), findsWidgets);
     for (final tab in const <(String, String)>[
-      ('TTS & Voice', 'Voice Reader (TTS)'),
+      ('TTS & Voice', 'Voice reader (TTS)'),
       ('Appearance', 'Message Design'),
       ('OBS & Overlay', 'OBS Integration'),
       ('System & Window', 'Desktop Window'),
@@ -1241,7 +1241,7 @@ void main() {
     await tester.tap(find.byTooltip('TTS y voz'));
     await tester.pump();
     expect(find.text('Lector de voz (TTS)'), findsOneWidget);
-    expect(find.text('Voice Reader (TTS)'), findsNothing);
+    expect(find.text('Voice reader (TTS)'), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
