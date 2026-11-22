@@ -213,9 +213,19 @@ class RulesCard extends ConsumerWidget {
                                               old
                                         ])),
                             const SizedBox(width: 6),
+                            // Summary under the name, not under the switch.
                             Expanded(
-                                child: Text(r['name'] as String,
-                                    style: settingsItemTitleStyle)),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(r['name'] as String,
+                                      style: settingsItemTitleStyle),
+                                  Text(ruleSummary(l, r),
+                                      style: settingsHintStyle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ])),
                             PopupMenuButton<String>(
                                 key: Key('rule-menu-$id'),
                                 onSelected: (v) async {
@@ -267,10 +277,6 @@ class RulesCard extends ConsumerWidget {
                                             child: Text(ruleText(l, v)))
                                     ])
                           ]),
-                          Text(ruleSummary(l, r),
-                              style: settingsHintStyle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
                           for (final warning in [
                             if (r['invalid'] == true) 'invalid',
                             if (isPublicChatRule(r) &&
