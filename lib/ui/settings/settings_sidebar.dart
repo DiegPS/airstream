@@ -27,6 +27,13 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   /// Bumped to rebuild one tab's content.
   final _tabRevisions = List.generate(_tabCount, (_) => ValueNotifier<int>(0));
 
+  /// One storage per tab for what is inside it. Without it every unkeyed
+  /// expanding card (a bool) and text field (a scroll offset) inside a tab
+  /// shared the tab's own `sidebar-tab-N` entry: opening "List settings"
+  /// broke the join-command field, and hiding/showing the sidebar after
+  /// expanding a card made the tab restore a bool as its scroll offset.
+  final _tabStorage = List.generate(_tabCount, (_) => PageStorageBucket());
+
   /// Hidden tabs whose data changed since they were last shown.
   final _staleTabs = <int>{};
 
@@ -553,19 +560,22 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
   Widget _tabPage(int index) => _tabPages[index] ??= SingleChildScrollView(
         key: PageStorageKey<String>('sidebar-tab-$index'),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-        child: ValueListenableBuilder<int>(
-          valueListenable: _tabRevisions[index],
-          builder: (context, _, __) => Consumer(
-            builder: (context, ref, _) {
-              final cached = _tabContents[index];
-              if (index != _selectedTab && cached != null) {
-                // Something it shows changed while hidden: keep the old build
-                // (and stop watching) until the tab is opened again.
-                _staleTabs.add(index);
-                return cached;
-              }
-              return _tabContents[index] = _tabContent(context, ref, index);
-            },
+        child: PageStorage(
+          bucket: _tabStorage[index],
+          child: ValueListenableBuilder<int>(
+            valueListenable: _tabRevisions[index],
+            builder: (context, _, __) => Consumer(
+              builder: (context, ref, _) {
+                final cached = _tabContents[index];
+                if (index != _selectedTab && cached != null) {
+                  // Something it shows changed while hidden: keep the old
+                  // build (and stop watching) until the tab is opened again.
+                  _staleTabs.add(index);
+                  return cached;
+                }
+                return _tabContents[index] = _tabContent(context, ref, index);
+              },
+            ),
           ),
         ),
       );

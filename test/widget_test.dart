@@ -1143,6 +1143,40 @@ void main() {
     });
   }
 
+  testWidgets(
+      'expanding a card keeps its fields and the tab scroll working, '
+      'also after hiding and showing the sidebar', (tester) async {
+    tester.view.physicalSize = const Size(1280, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    final l = AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+    await tester.tap(find.byTooltip(l.liveTab).first);
+    await tester.pump();
+    await tester.tap(find.text(l.queueSettings));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(tester.takeException(), isNull);
+    expect(find.text(l.queueCommand), findsOneWidget);
+
+    for (var i = 0; i < 2; i++) {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+    }
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('hides the app name while the sidebar is hidden',
       (WidgetTester tester) async {
     await tester.pumpWidget(
