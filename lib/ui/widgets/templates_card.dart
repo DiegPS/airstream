@@ -540,11 +540,11 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
                 ]))),
         actions: [
           OutlinedButton(
-              style: secondarySettingsStyle(),
+              style: dialogSecondaryStyle(),
               onPressed: () => Navigator.pop(context),
               child: Text(l.templatesCancel)),
           ElevatedButton(
-              style: primarySettingsStyle(),
+              style: dialogPrimaryStyle(),
               key: const Key('template-new-create'),
               onPressed: () {
                 if (_name.text.trim().isEmpty) {
@@ -632,11 +632,11 @@ class _TemplateEditorState extends State<_TemplateEditor> {
           builder: (context) =>
               AlertDialog(title: Text(l.templatesUnsaved), actions: [
                 OutlinedButton(
-                    style: secondarySettingsStyle(),
+                    style: dialogSecondaryStyle(),
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(l.templatesCancel)),
-                ElevatedButton(
-                    style: primarySettingsStyle(),
+                OutlinedButton(
+                    style: dialogSecondaryStyle(destructive: true),
                     onPressed: () => Navigator.pop(context, true),
                     child: Text(l.templatesDiscard))
               ]));
@@ -860,16 +860,16 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
               ))),
       actions: [
         OutlinedButton(
-            style: secondarySettingsStyle(),
+            style: dialogSecondaryStyle(),
             onPressed: _busy ? null : () => Navigator.pop(context),
             child: Text(l.templatesClose)),
         OutlinedButton(
-            style: secondarySettingsStyle(),
+            style: dialogSecondaryStyle(),
             key: const Key('templates-ai-open'),
             onPressed: _busy ? null : () => _run(false),
             child: Text(l.templatesOpenFolder)),
         ElevatedButton(
-            style: primarySettingsStyle(),
+            style: dialogPrimaryStyle(),
             key: const Key('templates-ai-copy'),
             onPressed: _busy ? null : () => _run(true),
             child: Text(l.templatesAiCopy)),
