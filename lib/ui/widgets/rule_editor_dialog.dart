@@ -976,8 +976,19 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                                                     v
                                                               ].map((v) => ' · $v').join()}\n${ruleText(l, simulation!.results[i].status == 'skipped' ? 'wouldSkip' : simulation!.results[i].status)}${simulation!.results[i].reason == null ? '' : ': ${ruleText(l, simulation!.results[i].reason!)}'}')
                                                           ]))),
+                                            // Accepted in green, any reason
+                                            // it did not run in orange.
                                             if (notice != null)
-                                              Text(ruleText(l, notice!)),
+                                              Text(ruleText(l, notice!),
+                                                  key: const Key('rule-notice'),
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color:
+                                                          notice == 'accepted'
+                                                              ? const Color(
+                                                                  0xFF53FC18)
+                                                              : const Color(
+                                                                  0xFFFFB15C))),
                                             if (!valid)
                                               Text(ruleText(l, 'invalid'),
                                                   style: const TextStyle(
