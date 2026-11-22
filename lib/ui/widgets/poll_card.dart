@@ -316,11 +316,15 @@ class _PollCardState extends ConsumerState<PollCard> {
           key: const Key('poll-mode'),
         ),
         const SizedBox(height: 8),
-        _input(_question, l.pollQuestionHint, key: const Key('poll-question')),
+        // Labels above the field, like Voting mode and Duration.
+        settingsLabel(l.pollQuestionHint),
+        _input(_question, '', key: const Key('poll-question')),
         const SizedBox(height: 8),
-        if (_mode == PollMode.freeAnswer)
-          _input(_command, l.pollCommand,
-              key: const Key('poll-command'), label: l.pollCommand),
+        if (_mode == PollMode.freeAnswer) ...[
+          settingsLabel(l.pollCommand),
+          _input(_command, '', key: const Key('poll-command')),
+          const SizedBox(height: 8),
+        ],
         if (_usesOptions) ...[
           for (var i = 0; i < _options.length; i++) ...[
             Row(
@@ -659,8 +663,7 @@ class _PollCardState extends ConsumerState<PollCard> {
         });
   }
 
-  Widget _input(TextEditingController controller, String hint,
-          {Key? key, String? label}) =>
+  Widget _input(TextEditingController controller, String hint, {Key? key}) =>
       TextField(
         key: key,
         controller: controller,
@@ -668,8 +671,7 @@ class _PollCardState extends ConsumerState<PollCard> {
         style: const TextStyle(color: Colors.white, fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
-          labelText: label,
-          hintText: hint,
+          hintText: hint.isEmpty ? null : hint,
           hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
           filled: true,
           fillColor: const Color(0xFF1E1E1E),
