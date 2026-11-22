@@ -1028,7 +1028,7 @@
   "queueJoinHint": "Escribe {command} para jugar",
   "queueEmpty": "No hay nadie en espera",
   "queueNext": "Siguiente",
-  "queueNextCount": "Jugadores",
+  "queueNextCount": "Jugadores por turno",
   "queueRandom": "Al azar",
   "queueClear": "Vaciar",
   "queueClearConfirm": "¿Vaciar la lista y quitar a quienes están jugando?",

@@ -74,28 +74,25 @@ class QueueCard extends ConsumerWidget {
                     style: const TextStyle(color: Colors.white70)),
               ],
             ),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+            const SizedBox(height: 8),
+            // Equal columns, like the goal and timer buttons.
+            Row(
               children: [
-                button(
-                    'open',
-                    l.queueOpen,
-                    state.status == QueueStatus.open
-                        ? null
-                        : () => queue.setStatus(QueueStatus.open)),
-                button(
-                    'pause',
-                    l.queuePause,
-                    state.status == QueueStatus.paused
-                        ? null
-                        : () => queue.setStatus(QueueStatus.paused)),
-                button(
-                    'close',
-                    l.queueClose,
-                    state.status == QueueStatus.closed
-                        ? null
-                        : () => queue.setStatus(QueueStatus.closed)),
+                for (final (id, label, status) in [
+                  ('open', l.queueOpen, QueueStatus.open),
+                  ('pause', l.queuePause, QueueStatus.paused),
+                  ('close', l.queueClose, QueueStatus.closed),
+                ]) ...[
+                  if (id != 'open') const SizedBox(width: 8),
+                  Expanded(
+                    child: button(
+                        id,
+                        label,
+                        state.status == status
+                            ? null
+                            : () => queue.setStatus(status)),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
@@ -124,77 +121,88 @@ class QueueCard extends ConsumerWidget {
               const SizedBox(height: 6),
             ],
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    key: const Key('queue-next'),
-                    style: primarySettingsStyle(),
-                    onPressed: state.entries.isEmpty || playingFull
-                        ? null
-                        : () => queue.next(options.nextCount),
-                    child: Text(l.queueNext),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                Expanded(child: Text(l.queueNextCount)),
                 SizedBox(
                   width: 90,
-                  child: _QueueSelect<int>(
-                    label: l.queueNextCount,
+                  child: settingsDropdown<int>(
+                    key: const Key('queue-next-count'),
+                    menuMaxHeight: 280,
                     value: options.nextCount,
-                    choices: {for (var n = 1; n <= 10; n++) n: '$n'},
-                    onChanged: (value) =>
-                        save((s) => s.copyWith(nextCount: value)),
+                    items: [
+                      for (var n = 1; n <= 10; n++)
+                        DropdownMenuItem(value: n, child: Text('$n')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        save((s) => s.copyWith(nextCount: value));
+                      }
+                    },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('queue-next'),
+                style: primarySettingsStyle(),
+                onPressed: state.entries.isEmpty || playingFull
+                    ? null
+                    : () => queue.next(options.nextCount),
+                child: Text(l.queueNext),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                button(
-                    'random',
-                    l.queueRandom,
-                    state.entries.isEmpty || playingFull
-                        ? null
-                        : () => queue.next(options.nextCount, random: true)),
-                button(
-                    'clear',
-                    l.queueClear,
-                    state.entries.isEmpty &&
-                            state.playing.isEmpty &&
-                            state.played.isEmpty
-                        ? null
-                        : () async {
-                            final confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (dialog) => AlertDialog(
-                                title: Text(l.queueClearConfirm),
-                                actions: [
-                                  OutlinedButton(
-                                    style: dialogSecondaryStyle(),
-                                    onPressed: () =>
-                                        Navigator.pop(dialog, false),
-                                    child: Text(l.cancel),
-                                  ),
-                                  OutlinedButton(
-                                    key: const Key('queue-clear-confirm'),
-                                    style:
-                                        dialogSecondaryStyle(destructive: true),
-                                    onPressed: () =>
-                                        Navigator.pop(dialog, true),
-                                    child: Text(l.queueClear),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirmed == true && context.mounted) {
-                              queue.clear();
-                            }
-                          },
-                    destructive: true),
+                Expanded(
+                  child: button(
+                      'random',
+                      l.queueRandom,
+                      state.entries.isEmpty || playingFull
+                          ? null
+                          : () => queue.next(options.nextCount, random: true)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: button(
+                      'clear',
+                      l.queueClear,
+                      state.entries.isEmpty &&
+                              state.playing.isEmpty &&
+                              state.played.isEmpty
+                          ? null
+                          : () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (dialog) => AlertDialog(
+                                  title: Text(l.queueClearConfirm),
+                                  actions: [
+                                    OutlinedButton(
+                                      style: dialogSecondaryStyle(),
+                                      onPressed: () =>
+                                          Navigator.pop(dialog, false),
+                                      child: Text(l.cancel),
+                                    ),
+                                    OutlinedButton(
+                                      key: const Key('queue-clear-confirm'),
+                                      style: dialogSecondaryStyle(
+                                          destructive: true),
+                                      onPressed: () =>
+                                          Navigator.pop(dialog, true),
+                                      child: Text(l.queueClear),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true && context.mounted) {
+                                queue.clear();
+                              }
+                            },
+                      destructive: true),
+                ),
               ],
             ),
             const SizedBox(height: 12),

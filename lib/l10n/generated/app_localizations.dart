@@ -5202,7 +5202,7 @@ abstract class AppLocalizations {
   /// No description provided for @queueNextCount.
   ///
   /// In en, this message translates to:
-  /// **'Players'**
+  /// **'Players per turn'**
   String get queueNextCount;
 
   /// No description provided for @queueRandom.

@@ -3244,7 +3244,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get queueNext => 'Next';
 
   @override
-  String get queueNextCount => 'Players';
+  String get queueNextCount => 'Players per turn';
 
   @override
   String get queueRandom => 'Random';

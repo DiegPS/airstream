@@ -1241,7 +1241,7 @@
   "queueJoinHint": "Type {command} to play",
   "queueEmpty": "Nobody is waiting",
   "queueNext": "Next",
-  "queueNextCount": "Players",
+  "queueNextCount": "Players per turn",
   "queueRandom": "Random",
   "queueClear": "Clear",
   "queueClearConfirm": "Clear the queue and everyone playing?",
