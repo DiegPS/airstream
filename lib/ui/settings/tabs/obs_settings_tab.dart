@@ -555,7 +555,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               if (s.featuredSeconds != 0)
                 StyledSliderRow(
                   wrapLabel: true,
-                  label: l.alertDuration,
+                  label: l.featuredDuration,
                   value: s.featuredSeconds.toDouble(),
                   min: 5,
                   max: 120,
@@ -565,7 +565,6 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       notifier.update(s.copyWith(featuredSeconds: v.round())),
                 ),
               const SizedBox(height: 12),
-              _searchSection('media', const MediaLibraryCard()),
               _searchSection('overlayMode', _section(l.overlayMode)),
               _switchRow(
                 l.chromaKey,
@@ -897,8 +896,9 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
             ],
           ],
         ),
-        if (!s.overlayEnabled)
-          _searchSection('media', const MediaLibraryCard()),
+        // Its own card after the server card, with the server on or off;
+        // with the server on it used to sit nested inside it.
+        _searchSection('media', const MediaLibraryCard()),
       ],
     );
   }
