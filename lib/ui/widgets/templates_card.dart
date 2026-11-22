@@ -367,11 +367,22 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
             const LinearProgressIndicator(
                 color: Color(0xFF53FC18), backgroundColor: Color(0xFF262626)),
           if (library.hasError) Text(l.templatesFailed),
+          // Done / sent / copied in green; failures and "nothing to send"
+          // stay orange, so success no longer reads as a warning.
           if (_notice != null)
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(_notice!,
-                    style: const TextStyle(color: Color(0xFFFFB15C)))),
+                    key: const Key('templates-notice'),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: {
+                          l.templateArchiveDone,
+                          l.templatesTestSent,
+                          l.templatesCopied,
+                        }.contains(_notice)
+                            ? const Color(0xFF53FC18)
+                            : const Color(0xFFFFB15C)))),
           if (_items.isEmpty && !library.isLoading)
             Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -734,7 +745,13 @@ class _TemplateEditorState extends State<_TemplateEditor> {
               ),
           ]),
         ),
-        if (_notice != null) Text(_notice!),
+        if (_notice != null)
+          Text(_notice!,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: _notice == l.templatesFailed
+                      ? const Color(0xFFFFB15C)
+                      : const Color(0xFF53FC18))),
         if (compact)
           Row(children: [
             Expanded(child: close),
@@ -855,7 +872,12 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
                   if (_notice != null)
                     Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: Text(_notice!)),
+                        child: Text(_notice!,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: _notice == l.templatesFailed
+                                    ? const Color(0xFFFFB15C)
+                                    : const Color(0xFF53FC18)))),
                 ],
               ))),
       actions: [
