@@ -427,12 +427,16 @@ class _ChatFilterButton extends ConsumerWidget {
         ),
         const Divider(height: 8),
         _menuHeader(l.chatFilterShowOnly),
+        // One choice at a time: radio buttons, not check boxes.
         for (final role in ChatViewRole.values)
-          CheckboxMenuButton(
+          RadioMenuButton<ChatViewRole>(
             key: Key('chat-filter-${role.name}'),
-            value: filter.role == role,
+            value: role,
+            groupValue: filter.role,
             closeOnActivate: false,
-            onChanged: (_) => update(filter.withRole(role)),
+            onChanged: (next) {
+              if (next != null) update(filter.withRole(next));
+            },
             child: Text(chatFilterRoleName(l, role)),
           ),
       ],
