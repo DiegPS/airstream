@@ -257,7 +257,7 @@ List<SettingsSearchEntry> _index(AppLocalizations l) => [
             l.alertPositionBottom,
             l.featuredFontScale,
             l.featuredKeepVisible,
-            l.alertDuration
+            l.featuredDuration
           ],
           fallback: 'server'),
       SettingsSearchEntry('media', 3, l.mediaLibraryTitle, [

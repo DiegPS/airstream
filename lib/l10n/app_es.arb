@@ -1103,6 +1103,7 @@
   "featuredUrlCopied": "Enlace de la página de destacados copiado",
   "featuredRemove": "Quitar destacado",
   "featuredFontScale": "Tamaño del texto destacado",
+  "featuredDuration": "Duración del destacado",
   "featuredKeepVisible": "Mantener visible hasta quitarlo",
   "ttsWhatToRead": "Qué leer",
   "ttsReaderRoles": "Roles",

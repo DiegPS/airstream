@@ -3455,6 +3455,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get featuredFontScale => 'Tamaño del texto destacado';
 
   @override
+  String get featuredDuration => 'Duración del destacado';
+
+  @override
   String get featuredKeepVisible => 'Mantener visible hasta quitarlo';
 
   @override

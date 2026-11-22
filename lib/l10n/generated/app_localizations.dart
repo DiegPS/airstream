@@ -5523,6 +5523,12 @@ abstract class AppLocalizations {
   /// **'Featured text size'**
   String get featuredFontScale;
 
+  /// No description provided for @featuredDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Featured message duration'**
+  String get featuredDuration;
+
   /// No description provided for @featuredKeepVisible.
   ///
   /// In en, this message translates to:

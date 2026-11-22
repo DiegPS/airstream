@@ -1316,6 +1316,7 @@
   "featuredUrlCopied": "Featured page URL copied",
   "featuredRemove": "Remove featured",
   "featuredFontScale": "Featured text size",
+  "featuredDuration": "Featured message duration",
   "featuredKeepVisible": "Keep visible until removed",
   "@alertQueueWaiting": {
     "placeholders": {

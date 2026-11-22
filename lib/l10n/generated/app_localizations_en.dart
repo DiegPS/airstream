@@ -3418,6 +3418,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get featuredFontScale => 'Featured text size';
 
   @override
+  String get featuredDuration => 'Featured message duration';
+
+  @override
   String get featuredKeepVisible => 'Keep visible until removed';
 
   @override
