@@ -1,7 +1,7 @@
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/overlay_style_presets.dart';
 import 'package:airstream/settings/settings_notifier.dart';
-import 'package:airstream/ui/widgets/ui_card.dart';
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -34,17 +34,16 @@ class OverlayStylePresetsCard extends ConsumerWidget {
         l.overlayStyleVerticalDescription
       ),
     };
-    return UiCard(
+    // A section of the overlay server card (its heading comes from the
+    // caller), not a card nested inside it.
+    return Column(
       key: const Key('overlay-style-presets-card'),
-      title: l.overlayStylePresetsTitle,
-      margin: EdgeInsets.zero,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(l.overlayStylePresetsDescription, style: settingsHintStyle),
         if (selected == null)
-          Text(l.overlayStyleCustom,
-              style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        Text(l.overlayStylePresetsDescription,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        const SizedBox(height: 8),
+          Text(l.overlayStyleCustom, style: settingsHintStyle),
+        const SizedBox(height: 4),
         for (final preset in OverlayStylePreset.values)
           Material(
             color: Colors.transparent,
@@ -52,13 +51,8 @@ class OverlayStylePresetsCard extends ConsumerWidget {
               key: Key('overlay-style-preset-${preset.name}'),
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text(labels[preset]!.$1,
-                  style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
-              subtitle: Text(labels[preset]!.$2,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              title: Text(labels[preset]!.$1, style: settingsItemTitleStyle),
+              subtitle: Text(labels[preset]!.$2, style: settingsHintStyle),
               trailing: selected == preset
                   ? const Icon(Icons.check, size: 18, color: Color(0xFF53FC18))
                   : null,
@@ -84,9 +78,8 @@ class OverlayStylePresetsCard extends ConsumerWidget {
               },
             ),
           ),
-        const SizedBox(height: 8),
-        Text(l.overlayStylePreviewHint,
-            style: const TextStyle(color: Colors.white38, fontSize: 11)),
+        const SizedBox(height: 4),
+        Text(l.overlayStylePreviewHint, style: settingsHintStyle),
       ],
     );
   }

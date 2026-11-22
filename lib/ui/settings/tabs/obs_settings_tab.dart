@@ -615,9 +615,15 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   s.copyWith(overlayKickBubbleAccent: v),
                 ),
               ),
-              const SizedBox(height: 12),
-              _searchSection('presets', const OverlayStylePresetsCard()),
-              const SizedBox(height: 12),
+              _searchSection(
+                  'presets',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _section(l.overlayStylePresetsTitle),
+                      const OverlayStylePresetsCard(),
+                    ],
+                  )),
               _searchSection('overlayStyle', _section(l.styleSettings)),
               StyledSliderRow(
                 wrapLabel: true,
