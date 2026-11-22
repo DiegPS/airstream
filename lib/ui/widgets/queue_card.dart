@@ -67,9 +67,25 @@ class QueueCard extends ConsumerWidget {
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Chip(
-                    label:
-                        Text(statusText, style: TextStyle(color: statusColor))),
+                // A status, not a button: dot + text, like the diagnostics.
+                Row(
+                  key: const Key('queue-status'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                          color: statusColor, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(statusText,
+                        style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
                 Text('${state.entries.length} / ${options.max}',
                     style: const TextStyle(color: Colors.white70)),
               ],
