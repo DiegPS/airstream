@@ -41,9 +41,12 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
         key: const Key('giveaway-history'),
         title: Text(l.giveawayHistory),
         tilePadding: EdgeInsets.zero,
+        expandedAlignment: Alignment.centerLeft,
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (rounds.isEmpty) Text(l.giveawayHistoryEmpty),
+          // Same look as the other empty states ("Nobody is waiting").
+          if (rounds.isEmpty)
+            Text(l.giveawayHistoryEmpty, style: settingsBodyStyle),
           if (rounds.isNotEmpty) ...[
             Wrap(
               spacing: 6,
@@ -61,7 +64,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
             for (final round in rounds)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(detail(round)),
+                child: Text(detail(round), style: settingsBodyStyle),
               ),
           ],
         ],
