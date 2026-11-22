@@ -2590,7 +2590,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get templatesChatDescription =>
-      'Mensajes en vivo con emoticonos y avatares';
+      'Mensajes en vivo con emotes y avatares';
 
   @override
   String get templatesAlertsDescription => 'Alertas animadas, una a la vez';
@@ -3475,7 +3475,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ttsAlwaysReadSupport => 'Leer siempre los apoyos con importe';
 
   @override
-  String get ttsSkipEmoteOnly => 'Omitir mensajes de solo emoticonos';
+  String get ttsSkipEmoteOnly => 'Omitir mensajes de solo emotes';
 
   @override
   String get ttsLinks => 'Enlaces';
