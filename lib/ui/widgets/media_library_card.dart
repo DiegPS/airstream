@@ -302,6 +302,9 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                   SizedBox(
                       width: 40,
                       height: 40,
+                      // The kind picks the icon; the library service only
+                      // adds the thumbnail. Before, an image showed the audio
+                      // icon while the service loaded or if it failed.
                       child: e.value['kind'] == 'image' && service != null
                           ? FutureBuilder<File?>(
                               future: _thumbnail(service, e),
@@ -313,9 +316,11 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                                           fit: BoxFit.contain,
                                           errorBuilder: (_, error, stack) =>
                                               const Icon(Icons.image_outlined)))
-                          : Icon(e.value['kind'] == 'video'
-                              ? Icons.videocam_outlined
-                              : Icons.audio_file_outlined)),
+                          : Icon(switch (e.value['kind']) {
+                              'image' => Icons.image_outlined,
+                              'video' => Icons.videocam_outlined,
+                              _ => Icons.audio_file_outlined,
+                            })),
                   const SizedBox(width: 8),
                   Expanded(
                       child: Column(
@@ -341,7 +346,12 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                     onPressed: _busy || service == null
                         ? null
                         : () => _preview(service, e),
-                    icon: const Icon(Icons.play_circle_outline, size: 18),
+                    // Images are looked at, sounds and videos are played.
+                    icon: Icon(
+                        e.value['kind'] == 'image'
+                            ? Icons.visibility_outlined
+                            : Icons.play_circle_outline,
+                        size: 18),
                   ),
                   IconButton(
                     key: Key('media-rename-${e.key}'),
