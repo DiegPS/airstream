@@ -901,18 +901,20 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         style: const TextStyle(color: Colors.white, fontSize: 13),
+        // Same fill, border, hint and 40 px height as settingsInput, used by
+        // the live tools and dialogs.
         decoration: InputDecoration(
           constraints: minLines == 1 && maxLines == 1 && errorText == null
-              ? const BoxConstraints.tightFor(height: 36)
+              ? const BoxConstraints.tightFor(height: 40)
               : null,
           hintText: hint,
           errorText: errorText,
-          hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+          hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
           filled: true,
-          fillColor: const Color(0xFF222222),
+          fillColor: const Color(0xFF1E1E1E),
           isDense: true,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           suffixIconConstraints: const BoxConstraints.tightFor(
             width: 36,
             height: 36,
@@ -938,11 +940,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                   : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF333333)),
+            borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF333333)),
+            borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),

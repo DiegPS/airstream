@@ -964,7 +964,8 @@ void main() {
     await tester.pump();
     final populatedHeight = paintedHeight();
 
-    expect(emptyHeight, 36);
+    // Same 40 px as every other settings field and button.
+    expect(emptyHeight, 40);
     expect(populatedHeight, emptyHeight);
     expect(find.byTooltip('Clear'), findsOneWidget);
 
