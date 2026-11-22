@@ -2952,7 +2952,7 @@ abstract class AppLocalizations {
   /// No description provided for @pollNoAnswers.
   ///
   /// In en, this message translates to:
-  /// **'No answers yet'**
+  /// **'No answers yet.'**
   String get pollNoAnswers;
 
   /// No description provided for @galleryPollDescription.
@@ -4380,7 +4380,7 @@ abstract class AppLocalizations {
   /// No description provided for @templatesEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No templates yet'**
+  /// **'No templates yet.'**
   String get templatesEmpty;
 
   /// No description provided for @templatesInternet.

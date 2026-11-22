@@ -1596,7 +1596,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get pollAnswerExample => 'tu respuesta';
 
   @override
-  String get pollNoAnswers => 'Todavía no hay respuestas';
+  String get pollNoAnswers => 'Todavía no hay respuestas.';
 
   @override
   String get galleryPollDescription =>
@@ -2514,7 +2514,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get templatesTestEmpty => 'Abre primero una plantilla en OBS';
 
   @override
-  String get templatesEmpty => 'Aún no hay plantillas';
+  String get templatesEmpty => 'Todavía no hay plantillas.';
 
   @override
   String get templatesInternet => 'Acceso a internet';
@@ -2786,7 +2786,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kaccepted': 'Ejecución aceptada',
         'khistory': 'Historial',
         'kclear': 'Limpiar',
-        'knoHistory': 'Aún no hay ejecuciones.',
+        'knoHistory': 'Todavía no hay ejecuciones.',
         'kup': 'Subir',
         'kdown': 'Bajar',
         'kfieldError': 'Revisa este valor y sus límites',

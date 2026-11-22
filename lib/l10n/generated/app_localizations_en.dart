@@ -1583,7 +1583,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pollAnswerExample => 'your answer';
 
   @override
-  String get pollNoAnswers => 'No answers yet';
+  String get pollNoAnswers => 'No answers yet.';
 
   @override
   String get galleryPollDescription =>
@@ -2494,7 +2494,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templatesTestEmpty => 'Open a template in OBS first';
 
   @override
-  String get templatesEmpty => 'No templates yet';
+  String get templatesEmpty => 'No templates yet.';
 
   @override
   String get templatesInternet => 'Internet access';
