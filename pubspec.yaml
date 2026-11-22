@@ -1,7 +1,7 @@
 name: airstream
 description: Airstream - YouTube/Twitch/Kick chat viewer for streamers, with OBS overlay server.
 publish_to: 'none'
-version: 1.0.0-rc.1+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.0.0
@@ -81,7 +81,22 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  msix: ^3.18.0
 
 flutter:
   generate: true
   uses-material-design: true
+
+# Microsoft Store package: `dart run msix:create`.
+# The three identity values come from Partner Center
+# (Product management > Product identity) once the name is reserved.
+msix_config:
+  display_name: Airstream
+  publisher_display_name: PENDIENTE_PUBLISHER_DISPLAY_NAME
+  identity_name: PENDIENTE.Airstream
+  publisher: CN=PENDIENTE
+  msix_version: 1.0.0.0
+  logo_path: windows\runner\resources\store_logo.png
+  languages: es-mx, en-us
+  capabilities: internetClient,internetClientServer,privateNetworkClientServer,microphone
+  store: true
