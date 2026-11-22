@@ -109,7 +109,8 @@ const diagnosticEnglish = <String, String>{
   'missingModel': 'Model download required',
   'commandsOn': 'Voice commands on',
   'commandsOff': 'Voice commands off',
-  'shortcutsOk': 'None assigned or all registered',
+  'shortcutsOk': 'All registered',
+  'shortcutsNone': 'None assigned',
   'shortcutTaken': 'Shortcut taken by another app: {value}',
   'silenceTts': 'Silence voice reader',
   'toggleTts': 'Toggle voice reader',
@@ -288,13 +289,19 @@ List<DiagnosticItem> diagnosticItems(DiagnosticsSnapshot snapshot,
                   ? DiagnosticStatus.ok
                   : DiagnosticStatus.warning,
       '${!captionsEnabled ? t('off') : captions.phase == LiveCaptionsPhase.error ? err(captions.error) : captions.isListening ? t('listening') : captions.phase == LiveCaptionsPhase.missingModel ? t('missingModel') : t(captions.phase == LiveCaptionsPhase.downloading ? 'downloading' : 'loading', captions.progress == null ? '' : '${(captions.progress! * 100).round()}%')} · ${t(s.voiceCommandsEnabled ? 'commandsOn' : 'commandsOff')}'));
+  // Nothing assigned is "off", not "fine": a green dot there read as if the
+  // shortcuts were working.
+  final shortcutsAssigned =
+      s.shortcutSilenceTts.isNotEmpty || s.shortcutToggleTts.isNotEmpty;
   items.add(DiagnosticItem(
       'shortcuts',
+      snapshot.shortcutFailures.isNotEmpty
+          ? DiagnosticStatus.warning
+          : shortcutsAssigned
+              ? DiagnosticStatus.ok
+              : DiagnosticStatus.off,
       snapshot.shortcutFailures.isEmpty
-          ? DiagnosticStatus.ok
-          : DiagnosticStatus.warning,
-      snapshot.shortcutFailures.isEmpty
-          ? t('shortcutsOk')
+          ? t(shortcutsAssigned ? 'shortcutsOk' : 'shortcutsNone')
           : t(
               'shortcutTaken',
               GlobalShortcutAction.values

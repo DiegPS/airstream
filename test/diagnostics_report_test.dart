@@ -255,6 +255,18 @@ void main() {
       expect(row.summary, contains('Voice commands on'));
     });
   }
+  test('no shortcuts assigned is off; assigned and registered is ok', () {
+    final none =
+        item(const DiagnosticsSnapshot(settings: SettingsModel()), 'shortcuts');
+    expect(none.status, DiagnosticStatus.off);
+    expect(none.summary, 'None assigned');
+    final set = item(
+        const DiagnosticsSnapshot(
+            settings: SettingsModel(shortcutToggleTts: 'Ctrl+Alt+T')),
+        'shortcuts');
+    expect(set.status, DiagnosticStatus.ok);
+    expect(set.summary, 'All registered');
+  });
   test('shortcut conflict lists action and counts attention', () {
     final rows = diagnosticItems(const DiagnosticsSnapshot(
         settings: SettingsModel(),
