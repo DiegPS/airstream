@@ -1796,7 +1796,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profilesEmpty => 'No profiles yet.';
 
   @override
-  String get profileNameHint => 'Profile name, for example Gaming';
+  String get profileNameHint => 'For example: Gaming';
+
+  @override
+  String get profileNameLabel => 'Profile name';
 
   @override
   String get profileSave => 'Save';

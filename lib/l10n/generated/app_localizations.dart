@@ -3228,8 +3228,14 @@ abstract class AppLocalizations {
   /// No description provided for @profileNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Profile name, for example Gaming'**
+  /// **'For example: Gaming'**
   String get profileNameHint;
+
+  /// No description provided for @profileNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile name'**
+  String get profileNameLabel;
 
   /// No description provided for @profileSave.
   ///

@@ -104,6 +104,9 @@ class _SettingsProfilesCardState extends ConsumerState<SettingsProfilesCard> {
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ),
+        // Label above and a short example inside: the long hint was cut off
+        // next to the Save button.
+        settingsLabel(l.profileNameLabel),
         Row(
           children: [
             Expanded(
@@ -112,24 +115,7 @@ class _SettingsProfilesCardState extends ConsumerState<SettingsProfilesCard> {
                 controller: _name,
                 onChanged: (_) => setState(() {}),
                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: l.profileNameHint,
-                  hintStyle:
-                      const TextStyle(color: Colors.white30, fontSize: 13),
-                  filled: true,
-                  fillColor: const Color(0xFF1E1E1E),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
-                  ),
-                ),
+                decoration: settingsInput(hint: l.profileNameHint),
               ),
             ),
             const SizedBox(width: 8),

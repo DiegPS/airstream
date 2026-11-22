@@ -1810,7 +1810,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profilesEmpty => 'Todavía no hay perfiles.';
 
   @override
-  String get profileNameHint => 'Nombre del perfil, por ejemplo Juegos';
+  String get profileNameHint => 'Por ejemplo: Juegos';
+
+  @override
+  String get profileNameLabel => 'Nombre del perfil';
 
   @override
   String get profileSave => 'Guardar';
