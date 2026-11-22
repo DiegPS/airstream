@@ -219,10 +219,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                         onPressed: hasChannels ? _startChat : null,
                         icon: const Icon(Icons.refresh_rounded, size: 20),
                         label: Text(l.retry),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF53FC18),
-                          foregroundColor: Colors.black,
-                        ),
+                        style: primarySettingsStyle(),
                       ),
                     ),
                   ),

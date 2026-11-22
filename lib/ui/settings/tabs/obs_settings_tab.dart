@@ -104,11 +104,19 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                                 ? l.reconnectObs
                                 : l.connectObs,
                   ),
+                  // OBS keeps its blue (as in its status badge) but the
+                  // shape and height of every other main button.
                   style: ElevatedButton.styleFrom(
                     backgroundColor: obsState.connected
                         ? const Color(0xFFFF5252)
                         : const Color(0xFF5B9CFF),
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFF262626),
+                    elevation: 0,
+                    minimumSize: const Size(double.infinity, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),

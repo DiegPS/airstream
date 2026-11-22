@@ -442,11 +442,7 @@ class _PollCardState extends ConsumerState<PollCard> {
             onPressed: _canStart ? () => _start(l) : null,
             icon: const Icon(Icons.play_arrow_rounded, size: 18),
             label: Text(l.pollStart),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _accent,
-              foregroundColor: Colors.black,
-              disabledBackgroundColor: const Color(0xFF262626),
-            ),
+            style: primarySettingsStyle(),
           ),
         ),
       ];
@@ -521,6 +517,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                 onPressed: () => ref.read(appControllerProvider).endPoll(),
                 icon: const Icon(Icons.stop_rounded, size: 16),
                 label: Text(l.pollEnd),
+                style: secondarySettingsStyle(),
               ),
             ),
           if (poll.closed)
@@ -530,10 +527,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                 onPressed: () => ref.read(appControllerProvider).clearPoll(),
                 icon: const Icon(Icons.add_rounded, size: 16),
                 label: Text(l.pollNew),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accent,
-                  foregroundColor: Colors.black,
-                ),
+                style: primarySettingsStyle(),
               ),
             ),
         ],

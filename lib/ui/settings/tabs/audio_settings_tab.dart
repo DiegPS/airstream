@@ -404,10 +404,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                             ? l.loadingTts
                             : l.testTts,
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF53FC18),
-                    foregroundColor: Colors.black,
-                  ),
+                  style: primarySettingsStyle(),
                 ),
               ),
               const SizedBox(height: 12),
