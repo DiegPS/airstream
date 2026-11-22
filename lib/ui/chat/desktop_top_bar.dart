@@ -285,7 +285,12 @@ class _TopBarActionButton extends StatelessWidget {
     final foregroundColor = enabled ? accentColor : const Color(0xFF5E5E5E);
 
     return Tooltip(
-      message: label,
+      // Greyed out, the button says why instead of repeating its label.
+      message: enabled
+          ? label
+          : AppLocalizations.of(context)!
+              .noChannelsConfigured
+              .replaceAll('\n', ' '),
       child: Material(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
