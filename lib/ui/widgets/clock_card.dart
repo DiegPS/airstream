@@ -161,38 +161,51 @@ class _ClockCardState extends ConsumerState<ClockCard> {
             key: const Key('clock-value'),
             style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700)),
         if (current.phase == ClockPhase.ended) Text(l.clockEnded),
-        if (clock.mode != ClockMode.clock)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+        if (clock.mode != ClockMode.clock) ...[
+          const SizedBox(height: 8),
+          // Main action at full width, adjustments in equal columns: the
+          // same layout as the subathon timer.
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              key: const Key('clock-toggle'),
+              style: primarySettingsStyle(),
+              onPressed: () => _operate(running ? 'pause' : 'start'),
+              child: Text(running ? l.clockPause : l.start),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
             children: [
-              OutlinedButton(
-                key: const Key('clock-toggle'),
-                style: secondarySettingsStyle(),
-                onPressed: () => _operate(running ? 'pause' : 'start'),
-                child: Text(running ? l.clockPause : l.start),
-              ),
-              OutlinedButton(
-                style: secondarySettingsStyle(),
-                onPressed: current.phase == ClockPhase.idle
-                    ? null
-                    : () => _operate('reset'),
-                child: Text(l.clockReset),
-              ),
-              if (isCountdown) ...[
-                OutlinedButton(
+              Expanded(
+                child: OutlinedButton(
                   style: secondarySettingsStyle(),
-                  onPressed: adjustable ? () => _operate('add', -60) : null,
-                  child: Text(l.clockMinusMinute),
+                  onPressed: current.phase == ClockPhase.idle
+                      ? null
+                      : () => _operate('reset'),
+                  child: Text(l.clockReset,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
-                OutlinedButton(
-                  style: secondarySettingsStyle(),
-                  onPressed: adjustable ? () => _operate('add', 60) : null,
-                  child: Text(l.clockPlusMinute),
-                ),
-              ],
+              ),
+              if (isCountdown)
+                for (final (label, delta) in [
+                  (l.clockMinusMinute, -60),
+                  (l.clockPlusMinute, 60),
+                ]) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: secondarySettingsStyle(),
+                      onPressed:
+                          adjustable ? () => _operate('add', delta) : null,
+                      child: Text(label,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
             ],
           ),
+        ],
         if (url != null &&
             ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
                 OverlayServerPhase.ready)
