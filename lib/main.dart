@@ -84,6 +84,9 @@ final _airstreamTheme = withAirstreamComponents(ThemeData(
   colorScheme: const ColorScheme.dark(
     primary: Color(0xFF53FC18),
     surface: Color(0xFF121212),
+    // Field errors use the app's red (delete buttons, failed status), not
+    // Material's pale pink.
+    error: Color(0xFFFF6B6B),
   ),
   scaffoldBackgroundColor: const Color(0xFF0D0D0D),
   // Dialogs look like the settings cards: same surface, border and radius.
