@@ -108,22 +108,20 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.w700))),
-            Chip(
-                label: Text(switch (phase) {
+            settingsStatus(
+                switch (phase) {
                   'running' => l.subathonRunning,
                   'paused' => l.subathonPaused,
                   'ended' => l.subathonEnded,
                   _ => l.subathonIdle
-                }),
-                labelStyle: TextStyle(
-                    fontSize: 11,
-                    color: switch (phase) {
-                      'running' => const Color(0xFF53FC18),
-                      'paused' => Colors.amber,
-                      'ended' => const Color(0xFFFF6B6B),
-                      _ => Colors.white54
-                    }),
-                backgroundColor: const Color(0xFF262626)),
+                },
+                switch (phase) {
+                  'running' => const Color(0xFF53FC18),
+                  'paused' => const Color(0xFFFFB15C),
+                  'ended' => const Color(0xFFFF6B6B),
+                  _ => Colors.white54
+                },
+                key: const Key('subathon-status')),
           ]),
           const SizedBox(height: 12),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [

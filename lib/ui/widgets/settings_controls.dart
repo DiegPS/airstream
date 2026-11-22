@@ -159,6 +159,24 @@ ButtonStyle secondarySettingsStyle({bool destructive = false}) =>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
+/// A state shown next to a tool (queue open, subathon paused): a coloured
+/// dot and text, so it never reads as one more button.
+Widget settingsStatus(String text, Color color, {Key? key}) => Row(
+      key: key,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(text,
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      ],
+    );
+
 /// Main action of a dialog: the settings look, sized to its label. The panel
 /// style stretches to the full width, which in a dialog pushed Cancel and the
 /// action onto separate lines.
