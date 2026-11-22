@@ -140,7 +140,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get youtubeInvalidStreamUrl =>
-      'Ingresa una URL directa de video o transmisión de YouTube';
+      'Escribe una URL directa de video o transmisión de YouTube';
 
   @override
   String get youtubeDuplicateStreamUrl => 'Usa la URL de otra transmisión';
@@ -641,7 +641,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get invalidOverlayPort => 'Introduce un puerto entre 1 y 65535.';
+  String get invalidOverlayPort => 'Escribe un puerto entre 1 y 65535.';
 
   @override
   String get ttsPlaybackFailed =>
@@ -3033,7 +3033,7 @@ class AppLocalizationsEs extends AppLocalizations {
         'kreplayAlready': 'El búfer de repetición ya está en ese estado',
         'knotBrowserSource': 'No es una fuente de navegador',
         'knoUrl': 'Falta la URL',
-        'kinvalidHttpUrl': 'Introduce una URL HTTP o HTTPS válida',
+        'kinvalidHttpUrl': 'Escribe una URL HTTP o HTTPS válida',
         'khttpStatus': 'La URL respondió con error',
         'khttpError': 'No se pudo conectar con la URL',
         'kresetHttpUrl': 'Vuelve a poner la URL en:',
