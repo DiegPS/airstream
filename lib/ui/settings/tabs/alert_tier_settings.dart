@@ -157,13 +157,15 @@ class _AlertTierRowState extends State<_AlertTierRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        settingsLabel(l.alertTierFrom),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: TextFormField(
                 key: Key('alert-tier-from-${widget.type}-${widget.index}'),
-                decoration:
-                    InputDecoration(labelText: l.alertTierFrom, isDense: true),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: settingsInput(),
                 controller: _threshold,
                 focusNode: _thresholdFocus,
                 keyboardType:
@@ -177,10 +179,14 @@ class _AlertTierRowState extends State<_AlertTierRow> {
                 },
               ),
             ),
+            const SizedBox(width: 4),
             IconButton(
               tooltip: l.alertTierRemove,
               onPressed: widget.onRemove,
-              icon: const Icon(Icons.remove_circle_outline_rounded),
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.remove_circle_outline_rounded,
+                  size: 20, color: Color(0xFFFF6B6B)),
             ),
           ],
         ),
