@@ -128,6 +128,7 @@
   "overlayServer": "Servidor de superposición",
   "overlayServerDescription": "Activa una fuente local de navegador para OBS. Cuando está habilitada, Airstream genera una URL de superposición que puedes pegar en OBS.",
   "port": "Puerto",
+  "pageUrlForObs": "URL para OBS",
   "chatObsUrl": "URL de chat para OBS",
   "chatObsUrlDescription": "Usa este enlace como fuente de navegador para el chat en OBS.",
   "chatOverlayUrlCopied": "URL de la superposición del chat copiada",

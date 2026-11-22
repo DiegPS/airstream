@@ -225,7 +225,9 @@ class PageUrlRow extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(
-                child: Text(title ?? l.obsAndOverlay,
+                // Untitled rows (live tools) say what the link is for, not
+                // the name of the OBS tab.
+                child: Text(title ?? l.pageUrlForObs,
                     style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 11,

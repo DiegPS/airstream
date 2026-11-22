@@ -416,6 +416,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get port => 'Port';
 
   @override
+  String get pageUrlForObs => 'URL for OBS';
+
+  @override
   String get chatObsUrl => 'Chat OBS URL';
 
   @override

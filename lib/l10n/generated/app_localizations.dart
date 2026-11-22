@@ -866,6 +866,12 @@ abstract class AppLocalizations {
   /// **'Port'**
   String get port;
 
+  /// No description provided for @pageUrlForObs.
+  ///
+  /// In en, this message translates to:
+  /// **'URL for OBS'**
+  String get pageUrlForObs;
+
   /// No description provided for @chatObsUrl.
   ///
   /// In en, this message translates to:

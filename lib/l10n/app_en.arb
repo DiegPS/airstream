@@ -140,6 +140,7 @@
   "overlayServer": "Overlay server",
   "overlayServerDescription": "Enable a local browser source for OBS. When active, Airstream serves an overlay URL that you can paste into OBS.",
   "port": "Port",
+  "pageUrlForObs": "URL for OBS",
   "chatObsUrl": "Chat OBS URL",
   "chatObsUrlDescription": "Use this link as a Browser Source for chat in OBS.",
   "chatOverlayUrlCopied": "Chat overlay URL copied",
