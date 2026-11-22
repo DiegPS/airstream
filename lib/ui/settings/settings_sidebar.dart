@@ -532,22 +532,30 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     final tabs = settingsTabLabels(l);
     return Material(
       type: MaterialType.transparency,
+      // Same 14 px gutter as the tabs; each result is a card-coloured row.
       child: ListView(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
         children: [
-          if (results.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(l.settingsSearchEmpty),
-            ),
+          if (results.isEmpty) Text(l.settingsSearchEmpty),
           for (final entry in results)
-            ListTile(
-              key: Key('settings-search-result-${entry.id}'),
-              dense: true,
-              title: Text(entry.title),
-              subtitle: Text(tabs[entry.tab]),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _openSearchResult(entry),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                key: Key('settings-search-result-${entry.id}'),
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                tileColor: const Color(0xFF191919),
+                hoverColor: const Color(0xFF222222),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: Color(0xFF282828)),
+                ),
+                title: Text(entry.title),
+                subtitle: Text(tabs[entry.tab]),
+                trailing: const Icon(Icons.chevron_right_rounded,
+                    size: 18, color: Colors.white38),
+                onTap: () => _openSearchResult(entry),
+              ),
             ),
         ],
       ),
