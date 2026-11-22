@@ -99,6 +99,27 @@ final _airstreamTheme = withAirstreamComponents(ThemeData(
     contentTextStyle:
         TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
   ),
+  // Notices and hints are dark like the rest of the app; Material 3 draws
+  // both light (inverse surface) on a dark theme.
+  snackBarTheme: const SnackBarThemeData(
+    backgroundColor: Color(0xFF222222),
+    contentTextStyle: TextStyle(color: Colors.white, fontSize: 13),
+    actionTextColor: Color(0xFF53FC18),
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8)),
+      side: BorderSide(color: Color(0xFF333333)),
+    ),
+  ),
+  tooltipTheme: TooltipThemeData(
+    decoration: BoxDecoration(
+      color: const Color(0xFF222222),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: const Color(0xFF333333)),
+    ),
+    textStyle: const TextStyle(color: Colors.white, fontSize: 12),
+    waitDuration: const Duration(milliseconds: 400),
+  ),
   // Choices (rule platforms and roles, placeholders) use the app's green.
   chipTheme: ChipThemeData(
     color: WidgetStateProperty.resolveWith((states) =>
