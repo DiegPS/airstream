@@ -1,3 +1,4 @@
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'dart:io' show File;
 
 import 'package:airstream/application/app_providers.dart';
@@ -253,7 +254,8 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
       ),
       actions: [
         if (summary.startedAt != null && !summary.isEmpty)
-          TextButton.icon(
+          OutlinedButton.icon(
+            style: dialogSecondaryStyle(),
             key: const Key('session-summary-copy'),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(
@@ -270,7 +272,8 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
             icon: const Icon(Icons.copy_rounded, size: 16),
             label: Text(l.sessionSummaryCopy),
           ),
-        TextButton(
+        ElevatedButton(
+          style: dialogPrimaryStyle(),
           onPressed: () => Navigator.of(context).pop(),
           child: Text(l.close),
         ),

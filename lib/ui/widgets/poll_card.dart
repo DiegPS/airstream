@@ -122,10 +122,12 @@ class _PollCardState extends ConsumerState<PollCard> {
               onChanged: (value) => setDialogState(() => input = value),
             ),
             actions: [
-              TextButton(
+              OutlinedButton(
+                  style: dialogSecondaryStyle(),
                   onPressed: () => Navigator.pop(context),
                   child: Text(l.cancel)),
-              TextButton(
+              ElevatedButton(
+                style: dialogPrimaryStyle(),
                 onPressed: duplicate || clean.isEmpty
                     ? null
                     : () => Navigator.pop(context, clean),

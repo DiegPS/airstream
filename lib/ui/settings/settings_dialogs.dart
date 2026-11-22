@@ -15,11 +15,13 @@ Future<void> _removeSelectedTtsModel({
       title: Text(l.removeTtsModelTitle(model.name)),
       content: Text(l.removeTtsModelConfirmationNamed(model.name)),
       actions: [
-        TextButton(
+        OutlinedButton(
+          style: dialogSecondaryStyle(),
           onPressed: () => Navigator.pop(dialogContext, false),
           child: Text(l.cancel),
         ),
-        FilledButton(
+        OutlinedButton(
+          style: dialogSecondaryStyle(destructive: true),
           onPressed: () => Navigator.pop(dialogContext, true),
           child: Text(l.remove),
         ),

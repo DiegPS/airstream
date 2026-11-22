@@ -1,3 +1,4 @@
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -105,10 +106,12 @@ class RulesImportDialog extends ConsumerWidget {
                             ].join('\n')))
                     ]))),
         actions: [
-          TextButton(
+          OutlinedButton(
+              style: dialogSecondaryStyle(),
               onPressed: () => Navigator.pop(context),
               child: Text(ruleText(l, 'cancel'))),
-          TextButton(
+          ElevatedButton(
+              style: dialogPrimaryStyle(),
               key: const Key('rules-import-confirm'),
               onPressed: review.rules.isEmpty
                   ? null

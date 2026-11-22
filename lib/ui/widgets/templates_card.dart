@@ -207,11 +207,12 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       Text(l.templateTrust)
                     ]),
                 actions: [
-                  TextButton(
+                  OutlinedButton(
+                      style: dialogSecondaryStyle(),
                       onPressed: () => Navigator.pop(context, false),
                       child: Text(l.templatesCancel)),
                   ElevatedButton(
-                      style: primarySettingsStyle(),
+                      style: dialogPrimaryStyle(),
                       key: const Key('template-import-confirm'),
                       onPressed: () => Navigator.pop(context, true),
                       child: Text(l.templateImport))
@@ -259,14 +260,13 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                     content: Text(l.templatesDeleteConfirm(info.manifest.name)),
                     actions: [
                       OutlinedButton(
-                          style: secondarySettingsStyle(),
+                          style: dialogSecondaryStyle(),
                           onPressed: () => Navigator.pop(context, false),
                           child: Text(l.templatesCancel)),
                       OutlinedButton(
-                          style: secondarySettingsStyle(destructive: true),
+                          style: dialogSecondaryStyle(destructive: true),
                           onPressed: () => Navigator.pop(context, true),
-                          child: Text(l.templatesDelete,
-                              style: const TextStyle(color: Color(0xFFFF6B6B))))
+                          child: Text(l.templatesDelete))
                     ]));
         if (yes == true) {
           await _library!.deleteTemplate(info.id);

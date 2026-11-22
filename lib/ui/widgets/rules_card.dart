@@ -34,11 +34,11 @@ Future<bool> ruleConfirm(BuildContext context, String title,
           context: context,
           builder: (c) => AlertDialog(title: Text(title), actions: [
                 OutlinedButton(
-                    style: secondarySettingsStyle(),
+                    style: dialogSecondaryStyle(),
                     onPressed: () => Navigator.pop(c, false),
                     child: Text(ruleText(l, 'cancel'))),
                 OutlinedButton(
-                    style: secondarySettingsStyle(destructive: true),
+                    style: dialogSecondaryStyle(destructive: true),
                     onPressed: () => Navigator.pop(c, true),
                     child: Text(ruleText(l, action))),
               ])) ??
@@ -151,7 +151,8 @@ class RulesCard extends ConsumerWidget {
                                                                     l, 'add'))))
                                                 ]))),
                                     actions: [
-                                      TextButton(
+                                      OutlinedButton(
+                                          style: dialogSecondaryStyle(),
                                           onPressed: () => Navigator.pop(c),
                                           child: Text(ruleText(l, 'close')))
                                     ]));

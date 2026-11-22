@@ -159,13 +159,13 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
           ),
           actions: [
             OutlinedButton(
-              style: secondarySettingsStyle(),
+              style: dialogSecondaryStyle(),
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(l.cancel),
             ),
             ElevatedButton(
               key: const Key('media-rename-save'),
-              style: primarySettingsStyle(),
+              style: dialogPrimaryStyle(),
               onPressed: submit,
               child: Text(l.ruleLabel('ksave')),
             ),
@@ -229,7 +229,8 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
               },
             ),
             actions: [
-              TextButton(
+              OutlinedButton(
+                style: dialogSecondaryStyle(),
                 onPressed: () => Navigator.pop(context),
                 child: Text(MaterialLocalizations.of(context).closeButtonLabel),
               ),

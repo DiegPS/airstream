@@ -205,13 +205,13 @@ void main() {
         await tester.enterText(
             find.byKey(const Key('poll-setup-name')), 'Saved setup');
         await tester.pumpAndSettle();
-        await click(find.widgetWithText(TextButton, l.ruleLabel('ksave')));
+        await click(find.widgetWithText(ElevatedButton, l.ruleLabel('ksave')));
         expect(find.text('Saved setup'), findsOneWidget);
         await click(find.byTooltip(l.pollRenameSetup));
         await tester.enterText(
             find.byKey(const Key('poll-setup-name')), 'Renamed setup');
         await tester.pumpAndSettle();
-        await click(find.widgetWithText(TextButton, l.ruleLabel('ksave')));
+        await click(find.widgetWithText(ElevatedButton, l.ruleLabel('ksave')));
         expect(find.text('Renamed setup'), findsOneWidget);
         await click(find.widgetWithText(TextButton, l.pollStart));
         expect(app.polls.current?.mode, PollMode.freeAnswer);

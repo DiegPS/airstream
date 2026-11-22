@@ -180,12 +180,12 @@ class GoalsCard extends ConsumerWidget {
                               ]))),
                   actions: [
                     OutlinedButton(
-                        style: secondarySettingsStyle(),
+                        style: dialogSecondaryStyle(),
                         onPressed: () => Navigator.pop(context),
                         child: Text(l.cancel)),
                     ElevatedButton(
                         key: const Key('goal-save'),
-                        style: primarySettingsStyle(),
+                        style: dialogPrimaryStyle(),
                         child: Text(l.goalsSave),
                         onPressed: () {
                           final n = int.tryParse(target.text);

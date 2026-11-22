@@ -159,6 +159,31 @@ ButtonStyle secondarySettingsStyle({bool destructive = false}) =>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
+/// Main action of a dialog: the settings look, sized to its label. The panel
+/// style stretches to the full width, which in a dialog pushed Cancel and the
+/// action onto separate lines.
+ButtonStyle dialogPrimaryStyle() => ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFF53FC18),
+      foregroundColor: Colors.black,
+      disabledBackgroundColor: const Color(0xFF262626),
+      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      minimumSize: const Size(88, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+
+/// Cancel / secondary action of a dialog, next to [dialogPrimaryStyle];
+/// [destructive] (red text) confirms deleting or resetting something.
+ButtonStyle dialogSecondaryStyle({bool destructive = false}) =>
+    OutlinedButton.styleFrom(
+      foregroundColor: destructive ? const Color(0xFFFF6B6B) : Colors.white,
+      side: const BorderSide(color: Color(0xFF3A3A3A)),
+      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      minimumSize: const Size(88, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+
 class PageUrlRow extends StatelessWidget {
   const PageUrlRow(
       {super.key,

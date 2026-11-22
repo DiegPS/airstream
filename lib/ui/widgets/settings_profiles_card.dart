@@ -259,12 +259,14 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
               ],
             ),
             actions: [
-              TextButton(
+              OutlinedButton(
+                style: dialogSecondaryStyle(),
                 onPressed:
                     applying ? null : () => Navigator.pop(dialogContext, false),
                 child: Text(l.cancel),
               ),
-              FilledButton(
+              ElevatedButton(
+                style: dialogPrimaryStyle(),
                 key: const Key('backup-restore-confirm'),
                 onPressed: applying
                     ? null
@@ -372,7 +374,8 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                     ],
                   ),
                   actions: [
-                    TextButton(
+                    OutlinedButton(
+                      style: dialogSecondaryStyle(),
                       onPressed: () => Navigator.pop(dialogContext),
                       child: Text(l.close),
                     ),
@@ -431,11 +434,13 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
           title: Text(l.settingsResetTitle),
           content: Text(l.settingsResetConfirmation),
           actions: [
-            TextButton(
+            OutlinedButton(
+              style: dialogSecondaryStyle(),
               onPressed: () => Navigator.pop(context, false),
               child: Text(l.cancel),
             ),
-            FilledButton(
+            OutlinedButton(
+              style: dialogSecondaryStyle(destructive: true),
               key: const Key('settings-reset-confirm'),
               onPressed: () => Navigator.pop(context, true),
               child: Text(l.settingsReset),

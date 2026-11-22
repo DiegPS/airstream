@@ -174,15 +174,15 @@ class QueueCard extends ConsumerWidget {
                                 title: Text(l.queueClearConfirm),
                                 actions: [
                                   OutlinedButton(
-                                    style: secondarySettingsStyle(),
+                                    style: dialogSecondaryStyle(),
                                     onPressed: () =>
                                         Navigator.pop(dialog, false),
                                     child: Text(l.cancel),
                                   ),
                                   OutlinedButton(
                                     key: const Key('queue-clear-confirm'),
-                                    style: secondarySettingsStyle(
-                                        destructive: true),
+                                    style:
+                                        dialogSecondaryStyle(destructive: true),
                                     onPressed: () =>
                                         Navigator.pop(dialog, true),
                                     child: Text(l.queueClear),

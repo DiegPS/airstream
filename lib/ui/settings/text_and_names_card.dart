@@ -301,11 +301,13 @@ class _NameColorDialogState extends State<_NameColorDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        OutlinedButton(
+          style: dialogSecondaryStyle(),
           onPressed: () => Navigator.pop(context),
           child: Text(l.cancel),
         ),
-        FilledButton(
+        ElevatedButton(
+          style: dialogPrimaryStyle(),
           onPressed: color.isEmpty ? null : () => Navigator.pop(context, color),
           child: Text(l.nameColorUse),
         ),
