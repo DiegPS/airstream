@@ -88,6 +88,11 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         children: [
           const Divider(height: 28),
           settingsLabel(l.templatesGallery),
+          // Said once for the whole gallery, not under every item.
+          if (url == null)
+            Text(l.galleryPreviewUnavailable,
+                key: const Key('gallery-preview-unavailable'),
+                style: settingsHintStyle),
           for (final item in galleryCatalog.values)
             Container(
               key: Key('gallery-item-${item.id}'),
@@ -129,12 +134,6 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       ),
                     ],
                   ),
-                  if (url == null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(l.galleryPreviewUnavailable,
-                          style: settingsHintStyle),
-                    ),
                 ],
               ),
             ),
