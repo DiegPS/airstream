@@ -21,7 +21,7 @@ enum ChatProviderEventKind {
   unknown,
 }
 
-/// Lossless, provider-neutral event available to AirStream features.
+/// Lossless, provider-neutral event available to Airstream features.
 class ChatProviderEvent {
   const ChatProviderEvent({
     required this.platform,

@@ -207,7 +207,7 @@
   "downloading": "Downloading",
   "loading": "Loading",
   "error": "Error",
-  "chatConnectionsFailed": "AirStream could not connect to any configured chat. Review the red platform errors and try again.",
+  "chatConnectionsFailed": "Airstream could not connect to any configured chat. Review the red platform errors and try again.",
   "retry": "Retry",
   "obsPasswordNotSaved": "OBS password not saved",
   "youtubeBroadcastEnded": "YouTube broadcast ended",

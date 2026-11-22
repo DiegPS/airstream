@@ -1229,7 +1229,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatConnectionsFailed.
   ///
   /// In en, this message translates to:
-  /// **'AirStream could not connect to any configured chat. Review the red platform errors and try again.'**
+  /// **'Airstream could not connect to any configured chat. Review the red platform errors and try again.'**
   String get chatConnectionsFailed;
 
   /// No description provided for @retry.

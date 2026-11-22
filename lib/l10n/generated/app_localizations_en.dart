@@ -604,7 +604,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatConnectionsFailed =>
-      'AirStream could not connect to any configured chat. Review the red platform errors and try again.';
+      'Airstream could not connect to any configured chat. Review the red platform errors and try again.';
 
   @override
   String get retry => 'Retry';

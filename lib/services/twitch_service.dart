@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 export 'package:dart_twitch_chat/dart_twitch_chat.dart'
     show TwitchIrcEvent, TwitchIrcEventType, TwitchIrcParser, TwitchUserRoles;
 
-/// Thin AirStream adapter over the standalone anonymous Twitch library.
+/// Thin Airstream adapter over the standalone anonymous Twitch library.
 class TwitchService {
   TwitchService({
     twitch.TwitchSocketFactory? socketFactory,

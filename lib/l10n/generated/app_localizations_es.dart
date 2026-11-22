@@ -343,7 +343,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get obsDescription =>
-      'Conecta con OBS mediante WebSocket para mostrar el estado de la transmisión, la grabación y la escena dentro de AirStream.';
+      'Conecta con OBS mediante WebSocket para mostrar el estado de la transmisión, la grabación y la escena dentro de Airstream.';
 
   @override
   String get webSocketHost => 'Servidor WebSocket';
@@ -411,7 +411,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get overlayServerDescription =>
-      'Activa una fuente local de navegador para OBS. Cuando está habilitada, AirStream genera una URL de superposición que puedes pegar en OBS.';
+      'Activa una fuente local de navegador para OBS. Cuando está habilitada, Airstream genera una URL de superposición que puedes pegar en OBS.';
 
   @override
   String get port => 'Puerto';
@@ -608,7 +608,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatConnectionsFailed =>
-      'AirStream no pudo conectarse a ningún chat configurado. Revisa los errores rojos de cada plataforma e inténtalo de nuevo.';
+      'Airstream no pudo conectarse a ningún chat configurado. Revisa los errores rojos de cada plataforma e inténtalo de nuevo.';
 
   @override
   String get retry => 'Reintentar';

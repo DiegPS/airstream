@@ -14,7 +14,7 @@ import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 bool isYoutubeNotLiveError(Object error) =>
     error.toString().contains('Live stream was not found');
 
-/// Adapts a dart_youtube_chat live session to AirStream models.
+/// Adapts a dart_youtube_chat live session to Airstream models.
 class YouTubeService {
   YouTubeService({
     this.streamOrientation,
