@@ -1183,6 +1183,20 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('chat search opens on an empty chat too', (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        settingsProvider.overrideWith((ref) => _WidgetTestSettings()),
+        chatSearchOpenProvider.overrideWith((ref) => true),
+      ],
+      child: const AirstreamApp(),
+    ));
+    await tester.pump();
+    expect(find.byKey(const Key('chat-search-field')), findsOneWidget);
+    expect(find.textContaining('No channels configured'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('hides the app name while the sidebar is hidden',
       (WidgetTester tester) async {
     await tester.pumpWidget(

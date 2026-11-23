@@ -544,6 +544,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           if (searchOpen) const _ChatSearchField(),
           if (viewFilter.isActive) _ChatFilterBar(filter: viewFilter),
         ];
+        // Search and filter bars stay available while the chat is empty,
+        // so Ctrl+F always shows its field.
+        Widget withHeaders(Widget content) => headers.isEmpty
+            ? content
+            : Column(children: [...headers, Expanded(child: content)]);
         if (liveMessages.isEmpty && allMessages.isNotEmpty) {
           return buildPane(
             Column(
@@ -569,7 +574,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           final sidebarShown = _sidebarVisible &&
               !_usesSidebarDrawer(MediaQuery.sizeOf(context).width);
           if (!hasChannels && !sidebarShown) {
-            return buildPane(
+            return buildPane(withHeaders(
               Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -590,7 +595,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ],
                 ),
               ),
-            );
+            ));
           }
           final statuses = ref.watch(connectionStatusProvider).valueOrNull;
           // Single YouTube, or dual YouTube where the streams wait for live.
@@ -614,7 +619,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ChatSessionPhase.idle => l.channelsSavedStartPrompt,
                 }
               : l.noChannelsConfigured;
-          return buildPane(
+          return buildPane(withHeaders(
             Center(
               child: Text(
                 text,
@@ -622,7 +627,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 style: const TextStyle(color: Colors.white38, fontSize: 14),
               ),
             ),
-          );
+          ));
         }
 
         final list = Stack(
