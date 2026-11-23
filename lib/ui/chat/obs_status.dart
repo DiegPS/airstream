@@ -204,48 +204,81 @@ class _ObsCompactPill extends StatelessWidget {
         borderRadius: radius,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          // Every "Panel elements" switch applies here too; badges wrap to a
+          // second line (inside the space the chat reserves) when needed.
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  state.connected &&
-                          !state.reconnecting &&
-                          _showObsScene(displaySettings, state)
-                      ? state.currentScene
-                      : title,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      state.connected &&
+                              !state.reconnecting &&
+                              _showObsScene(displaySettings, state)
+                          ? state.currentScene
+                          : title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              if (state.connected && _showObsFps(displaySettings)) ...[
-                const SizedBox(width: 6),
+              if (state.connected && _showObsFps(displaySettings))
                 _ObsPillBadge(
                   label: '${state.fps.toStringAsFixed(0)} FPS',
                   foreground: const Color(0xFFE7E7E7),
                   background: const Color(0xFF242424),
                   fontSize: 10,
                 ),
-              ],
-              if (state.connected && _showObsBitrate(displaySettings)) ...[
-                const SizedBox(width: 4),
+              if (state.connected && _showObsBitrate(displaySettings))
                 _ObsPillBadge(
                   label: '${state.bitrateKbps.toStringAsFixed(0)}k',
                   foreground: const Color(0xFFE7E7E7),
                   background: const Color(0xFF242424),
                   fontSize: 10,
                 ),
-              ],
+              if (state.connected &&
+                  state.outputActive &&
+                  _showObsDroppedFrames(displaySettings))
+                _ObsPillBadge(
+                  label: '${state.dropPercentage.toStringAsFixed(1)}%',
+                  foreground: _obsDropBadgeForeground(state.dropTrend),
+                  background: _obsDropBadgeBackground(state.dropTrend),
+                  fontSize: 10,
+                ),
+              if (state.connected &&
+                  state.recordingActive &&
+                  _showObsRecordingDuration(displaySettings))
+                _ObsPillBadge(
+                  label: 'REC ${_formatObsDuration(state.recordingDurationMs)}',
+                  foreground: const Color(0xFFFFB4AB),
+                  background: const Color(0x33FF6B6B),
+                  fontSize: 10,
+                ),
+              if (state.connected &&
+                  state.recordingActive &&
+                  _showObsRecordingSize(displaySettings))
+                _ObsPillBadge(
+                  label: _formatObsBytes(state.recordingBytes),
+                  foreground: const Color(0xFFE7E7E7),
+                  background: const Color(0xFF242424),
+                  fontSize: 10,
+                ),
             ],
           ),
         ),
