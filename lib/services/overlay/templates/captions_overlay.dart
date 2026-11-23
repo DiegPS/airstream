@@ -13,6 +13,8 @@ String captionsOverlayHtml() => '''<!DOCTYPE html>
   body { display: flex; align-items: flex-end; justify-content: center; padding: 4vh 4vw; }
   #caption {
     max-width: 92vw;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
     padding: .35em .65em;
     border-radius: .35em;
     color: white;
