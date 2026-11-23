@@ -34,6 +34,8 @@ function pollInstructions(poll, labels) {
 
 function pollResultNodes(poll, language) {
   const labels = pollLabels[language] || pollLabels.en;
+  // Counts use the page language's grouping, like the vote totals.
+  const formatCount = new Intl.NumberFormat(language);
   const mode = pollMode(poll);
   const options = poll.options || [];
   if (poll.hidden && !poll.closed) {
@@ -59,7 +61,7 @@ function pollResultNodes(poll, language) {
       fill.className = 'fill';
       fill.style.height = Math.min(100, Math.max(0, votes / peak * 100)) + '%';
       bar.appendChild(fill);
-      bucket.append(textElement('span', 'bucket-count', votes), bar,
+      bucket.append(textElement('span', 'bucket-count', formatCount.format(votes)), bar,
         textElement('span', 'bucket-label', index + 1));
       distribution.appendChild(bucket);
     });
@@ -75,7 +77,7 @@ function pollResultNodes(poll, language) {
       const row = document.createElement('li');
       row.className = poll.closed && leaders.has(index) ? 'answer winner' : 'answer';
       row.append(textElement('bdi', 'label', answer.text),
-        textElement('span', 'count', answer.votes));
+        textElement('span', 'count', formatCount.format(answer.votes)));
       list.appendChild(row);
     });
     return list.children.length ? [
@@ -102,7 +104,7 @@ function pollOption(option, mode, index, showResults, leading, winner) {
   head.appendChild(label);
   row.appendChild(head);
   if (showResults) {
-    head.appendChild(textElement('span', 'count', option.percent + '% · ' + option.votes));
+    head.appendChild(textElement('span', 'count', option.percent + '% · ' + new Intl.NumberFormat(document.documentElement.lang || 'en').format(option.votes || 0)));
     const bar = document.createElement('div');
     bar.className = 'bar';
     const fill = document.createElement('div');

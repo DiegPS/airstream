@@ -73,7 +73,8 @@ ${overlayPageLocaleScript((l) => l.obsPagePollTitle)}
   }
 
   function footerText(strings) {
-    const total = strings.votes(poll.total || 0);
+    const n = poll.total || 0;
+    const total = strings.votes(n).replace(String(n), new Intl.NumberFormat(language).format(n));
     if (poll.closed) return strings.closed + ' · ' + total;
     if (poll.endsAt) {
       const seconds = Math.max(0, Math.ceil((poll.endsAt - Date.now()) / 1000));
