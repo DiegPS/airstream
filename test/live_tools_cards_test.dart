@@ -123,8 +123,8 @@ void main() {
       expect(find.byKey(const Key('giveaway-winner-0')), findsOneWidget);
       expect(find.byKey(const Key('giveaway-winner-1')), findsOneWidget);
       await click(find.text(l.giveawayHistory));
-      expect(find.textContaining('Ana (kick)'), findsOneWidget);
-      expect(find.textContaining('Beto (twitch)'), findsOneWidget);
+      expect(find.textContaining('Ana (Kick)'), findsOneWidget);
+      expect(find.textContaining('Beto (Twitch)'), findsOneWidget);
       await click(find.text(l.giveawayClearHistory));
       expect(find.text(l.giveawayHistoryEmpty), findsOneWidget);
       expect(tester.takeException(), isNull);

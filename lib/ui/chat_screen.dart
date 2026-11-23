@@ -30,7 +30,12 @@ import 'package:airstream/models/chat_provider_event.dart';
 import 'package:airstream/models/chat_view_filter.dart';
 import 'package:airstream/models/youtube_live_metadata.dart';
 import 'package:airstream/models/chat_message.dart'
-    show ChatAuthor, ChatMessage, Platform, YoutubeStreamOrientation;
+    show
+        ChatAuthor,
+        ChatMessage,
+        Platform,
+        PlatformDisplayName,
+        YoutubeStreamOrientation;
 import 'package:airstream/services/app_logger.dart';
 import 'package:airstream/services/kick_service.dart' show ServiceStatus;
 import 'package:airstream/services/obs_service.dart';
@@ -730,11 +735,7 @@ class _ChatFilterBar extends ConsumerWidget {
   }
 }
 
-String chatFilterPlatformName(Platform platform) => switch (platform) {
-      Platform.youtube => 'YouTube',
-      Platform.twitch => 'Twitch',
-      Platform.kick => 'Kick',
-    };
+String chatFilterPlatformName(Platform platform) => platform.displayName;
 
 String chatFilterRoleName(AppLocalizations l, ChatViewRole role) =>
     switch (role) {

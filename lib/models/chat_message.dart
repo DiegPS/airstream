@@ -3,6 +3,15 @@ library;
 
 enum Platform { youtube, twitch, kick }
 
+/// The brand name people see (never the lowercase enum name).
+extension PlatformDisplayName on Platform {
+  String get displayName => switch (this) {
+        Platform.youtube => 'YouTube',
+        Platform.twitch => 'Twitch',
+        Platform.kick => 'Kick',
+      };
+}
+
 enum YoutubeStreamOrientation { horizontal, vertical }
 
 enum MembershipEventKind { subscription, resubscription, gift }

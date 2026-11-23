@@ -33,7 +33,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
           l.giveawayParticipants(round.entrantCount),
           if (round.winners.isEmpty) l.giveawayNoWinners,
           for (final winner in round.winners)
-            '${winner.name} (${winner.platform.name})',
+            '${winner.name} (${winner.platform.displayName})',
         ].join('\n');
     return Material(
       type: MaterialType.transparency,
@@ -171,7 +171,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                             fontSize: 18,
                             fontWeight: FontWeight.w700))),
                 const SizedBox(width: 8),
-                Text(winner.platform.name,
+                Text(winner.platform.displayName,
                     style:
                         const TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
@@ -184,7 +184,7 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                         const TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 4),
                 for (final (i, each) in state.winners.indexed)
-                  Text('${i + 1}. ${each.name} · ${each.platform.name}',
+                  Text('${i + 1}. ${each.name} · ${each.platform.displayName}',
                       key: Key('giveaway-winner-$i'),
                       style:
                           const TextStyle(color: Colors.white, fontSize: 13)),
