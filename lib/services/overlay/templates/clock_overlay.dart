@@ -36,7 +36,9 @@ body { margin: 0; padding: 20px; background: transparent; color: #fff; overflow:
   width: min(100%, 210px); aspect-ratio: 1; align-content: center; border: 6px solid transparent;
   border-radius: 50%; background: linear-gradient(#131815,#131815) padding-box,
     conic-gradient(#53fc18 var(--progress, 100%), #334034 0) border-box; }
+#clock[data-style=ring][data-mode=countdown] { grid-template-columns: minmax(0, 1fr); }
 #clock[data-style=ring][data-mode=countdown] #value { font-size: clamp(20px, 10vw, 41px); }
+#clock[data-style=ring][data-mode=countdown][data-hours=true] #value { font-size: clamp(16px, 7vw, 30px); }
 #clock[data-style=ring][data-mode=countdown] #label {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   overflow: hidden; font-size: 15px; }
@@ -76,6 +78,8 @@ $overlayFontScript
     value.textContent = state.mode === 'clock'
       ? [time.getHours(), time.getMinutes(), time.getSeconds()].map(pad).join(':')
       : duration(ms, countdown);
+    // h:mm:ss needs smaller digits to stay inside the ring.
+    root.dataset.hours = String(value.textContent.split(':').length > 2);
     status.textContent = (strings[language] || strings.en)[phase] || '';
     status.hidden = !status.textContent;
   }
