@@ -836,6 +836,7 @@
   "backupTemplateTrust": "Estas plantillas contienen código que se ejecuta en OBS. Restaura solo plantillas de personas en las que confíes.",
   "templatesCopy": "Copiar URL",
   "templatesCopied": "URL copiada",
+  "templatesPreviewNeedsSave": "Guarda los cambios para verlos en la vista previa.",
   "templatesPreview": "Vista previa",
   "templatesEdit": "Editar código",
   "templatesDelete": "Eliminar",

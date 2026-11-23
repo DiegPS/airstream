@@ -2566,6 +2566,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get templatesCopied => 'URL copiada';
 
   @override
+  String get templatesPreviewNeedsSave =>
+      'Guarda los cambios para verlos en la vista previa.';
+
+  @override
   String get templatesPreview => 'Vista previa';
 
   @override

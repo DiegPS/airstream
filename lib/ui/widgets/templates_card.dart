@@ -758,7 +758,13 @@ class _TemplateEditorState extends State<_TemplateEditor> {
               ),
           ]),
         ),
-        if (_notice != null)
+        // Preview opens the saved files, not the text being edited.
+        if (_dirty)
+          Text(l.templatesPreviewNeedsSave,
+              key: const Key('template-editor-unsaved'),
+              style: settingsHintStyle),
+        // A stale "Saved" would be wrong once there are new edits.
+        if (_notice != null && (!_dirty || _notice == l.templatesFailed))
           Text(_notice!,
               style: TextStyle(
                   fontSize: 12,

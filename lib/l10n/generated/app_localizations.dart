@@ -4461,6 +4461,12 @@ abstract class AppLocalizations {
   /// **'URL copied'**
   String get templatesCopied;
 
+  /// No description provided for @templatesPreviewNeedsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your changes to see them in the preview.'**
+  String get templatesPreviewNeedsSave;
+
   /// No description provided for @templatesPreview.
   ///
   /// In en, this message translates to:

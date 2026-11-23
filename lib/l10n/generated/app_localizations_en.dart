@@ -2545,6 +2545,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get templatesCopied => 'URL copied';
 
   @override
+  String get templatesPreviewNeedsSave =>
+      'Save your changes to see them in the preview.';
+
+  @override
   String get templatesPreview => 'Preview';
 
   @override

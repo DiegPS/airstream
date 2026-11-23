@@ -1049,6 +1049,7 @@
   "backupTemplateTrust": "These templates contain code that runs in OBS. Restore only templates from people you trust.",
   "templatesCopy": "Copy URL",
   "templatesCopied": "URL copied",
+  "templatesPreviewNeedsSave": "Save your changes to see them in the preview.",
   "templatesPreview": "Preview",
   "templatesEdit": "Edit code",
   "templatesDelete": "Delete",
