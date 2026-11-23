@@ -116,6 +116,24 @@ void main() {
     ]);
   });
 
+  test('the shield turns off again when Windows refuses capture exclusion',
+      () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return false;
+    });
+
+    final notifier = WindowStateNotifier();
+    addTearDown(notifier.dispose);
+    await notifier.setExcludeFromCapture(true);
+    expect(notifier.state.excludeFromCapture, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    expect(calls, hasLength(2));
+    expect(notifier.state.excludeFromCapture, isFalse);
+  });
+
   test('serializes rapid toggles instead of applying the same state twice',
       () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

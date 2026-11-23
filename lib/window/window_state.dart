@@ -164,8 +164,14 @@ class WindowStateNotifier extends StateNotifier<WindowState>
     if (!mounted || revision != _captureRevision) return;
     final applied = await airWindow.setExcludeFromCapture(value);
     if (!applied && value && mounted && revision == _captureRevision) {
-      _captureRetry = Timer(const Duration(milliseconds: 300), () {
-        unawaited(airWindow.setExcludeFromCapture(true));
+      _captureRetry = Timer(const Duration(milliseconds: 300), () async {
+        final retried = await airWindow.setExcludeFromCapture(true);
+        // If Windows refused twice the shield must not claim the window is
+        // hidden from captures while it is not.
+        if (!retried && mounted && revision == _captureRevision) {
+          AppLogger.warning('Capture exclusion was refused by Windows');
+          state = state.copyWith(excludeFromCapture: false);
+        }
       });
     }
   }
