@@ -447,6 +447,21 @@ void main() {
     expect(text, contains('1. Ana (Twitch) — 2 messages'));
     expect(text, isNot(contains('Support')));
   });
+
+  test('Kicks read as Kicks with their count, not as a generic gift', () {
+    final l = AppLocalizationsEn();
+    SessionSupporter kicks(int? count) => SessionSupporter(
+          platform: Platform.kick,
+          name: 'Patrocinador',
+          kind: SupportKind.support,
+          id: 'k',
+          at: DateTime.utc(2026, 11, 22),
+          type: 'kicks',
+          count: count,
+        );
+    expect(sessionSupporterText(l, kicks(50)), 'Patrocinador sent 50 Kicks');
+    expect(sessionSupporterText(l, kicks(null)), 'Patrocinador sent a gift');
+  });
 }
 
 ChatProviderEvent _provider(

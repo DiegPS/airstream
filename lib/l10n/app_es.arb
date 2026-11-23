@@ -522,6 +522,8 @@
   "sessionSupportGift": "{count, plural, =1{{name} regaló una suscripción} other{{name} regaló {count} suscripciones}}",
   "sessionSupportGiftMembership": "{count, plural, =1{{name} regaló una membresía} other{{name} regaló {count} membresías}}",
   "sessionSupportRaid": "{name} hizo una raid con {count} espectadores",
+  "sessionSupportKicks": "{name} envió {count} Kicks",
+  "@sessionSupportKicks": { "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } } },
   "sessionSupportOther": "{name} envió un regalo",
   "sessionSummaryCopy": "Copiar resumen",
   "sessionSummaryCopied": "Resumen copiado",

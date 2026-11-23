@@ -1792,6 +1792,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String sessionSupportKicks(String name, int count) {
+    return '$name envió $count Kicks';
+  }
+
+  @override
   String sessionSupportOther(String name) {
     return '$name envió un regalo';
   }

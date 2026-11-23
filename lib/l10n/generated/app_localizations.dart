@@ -3195,6 +3195,12 @@ abstract class AppLocalizations {
   /// **'{name} raided with {count} viewers'**
   String sessionSupportRaid(String name, int count);
 
+  /// No description provided for @sessionSupportKicks.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} sent {count} Kicks'**
+  String sessionSupportKicks(String name, int count);
+
   /// No description provided for @sessionSupportOther.
   ///
   /// In en, this message translates to:

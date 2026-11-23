@@ -726,6 +726,8 @@
   "@sessionSupportRaid": {
     "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } }
   },
+  "sessionSupportKicks": "{name} sent {count} Kicks",
+  "@sessionSupportKicks": { "placeholders": { "name": { "type": "String" }, "count": { "type": "int" } } },
   "sessionSupportOther": "{name} sent a gift",
   "@sessionSupportOther": {
     "placeholders": { "name": { "type": "String" } }

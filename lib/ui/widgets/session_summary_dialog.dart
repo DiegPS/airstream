@@ -12,11 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-String _platformName(Platform platform) => switch (platform) {
-      Platform.youtube => 'YouTube',
-      Platform.twitch => 'Twitch',
-      Platform.kick => 'Kick',
-    };
+String _platformName(Platform platform) => platform.displayName;
 
 String sessionDurationText(AppLocalizations l, Duration duration) {
   final hours = duration.inHours;
@@ -41,6 +37,10 @@ String sessionSupporterText(AppLocalizations l, SessionSupporter supporter) {
       l.sessionSupportGiftMembership(name, supporter.count ?? 1),
     SupportKind.gift => l.sessionSupportGift(name, supporter.count ?? 1),
     SupportKind.raid => l.sessionSupportRaid(name, supporter.count ?? 0),
+    // Kick's Kicks keep their count instead of reading as a generic gift.
+    SupportKind.support
+        when supporter.type == 'kicks' && supporter.count != null =>
+      l.sessionSupportKicks(name, supporter.count!.toInt()),
     SupportKind.support => l.sessionSupportOther(name),
   };
 }
@@ -127,6 +127,10 @@ class SessionSummaryDialog extends StatefulWidget {
 class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
   bool _saving = false;
 
+  // The counts are a snapshot taken when the dialog opened; the duration is
+  // measured at the same moment so the numbers always belong together.
+  final DateTime _openedAt = DateTime.now();
+
   Future<void> _export(
       String name, Uint8List Function(String separator) buildCsv) async {
     if (_saving) return;
@@ -137,7 +141,10 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.sessionExportFailed)),
+          SnackBar(
+              content: Text(l.sessionExportFailed,
+                  style:
+                      const TextStyle(color: Color(0xFFFF6B6B), fontSize: 13))),
         );
       }
     } finally {
@@ -149,7 +156,7 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
   Widget build(BuildContext context) {
     final summary = widget.summary;
     final l = AppLocalizations.of(context)!;
-    final now = DateTime.now();
+    final now = _openedAt;
     const muted = TextStyle(color: Colors.white54, fontSize: 12);
     const heading = TextStyle(
       color: Color(0xFF53FC18),
@@ -174,7 +181,8 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
                 Wrap(
                   spacing: 8,
                   children: [
-                    TextButton(
+                    OutlinedButton(
+                      style: dialogSecondaryStyle(),
                       key: const Key('session-export-chat'),
                       onPressed: _saving || widget.chat.isEmpty
                           ? null
@@ -184,7 +192,8 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
                                   separator: separator)),
                       child: Text(l.sessionExportChat),
                     ),
-                    TextButton(
+                    OutlinedButton(
+                      style: dialogSecondaryStyle(),
                       key: const Key('session-export-participants'),
                       onPressed: _saving || summary.participants.isEmpty
                           ? null
