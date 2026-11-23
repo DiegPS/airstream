@@ -887,6 +887,7 @@
   },
   "templatesAi": "Crear con IA",
   "templatesAiSteps": "1. Abre esta carpeta en tu herramienta de IA, por ejemplo OpenCode, Claude Code o Codex.\n2. Pega la instrucción.\n3. La plantilla aparece en esta lista: copia su URL en OBS.",
+  "templatesAiDescriptionRequired": "Describe qué debe mostrar tu plantilla.",
   "templatesAiDescription": "¿Qué debe mostrar tu plantilla?",
   "templatesAiCopy": "Copiar instrucción",
   "templatesAiCopied": "Instrucción copiada",

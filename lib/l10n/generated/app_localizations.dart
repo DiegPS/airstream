@@ -4611,6 +4611,12 @@ abstract class AppLocalizations {
   /// **'1. Open this folder in your AI tool, for example OpenCode, Claude Code or Codex.\n2. Paste the instruction.\n3. The template appears in this list: copy its URL into OBS.'**
   String get templatesAiSteps;
 
+  /// No description provided for @templatesAiDescriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what your template should show.'**
+  String get templatesAiDescriptionRequired;
+
   /// No description provided for @templatesAiDescription.
   ///
   /// In en, this message translates to:

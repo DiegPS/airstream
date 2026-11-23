@@ -2643,6 +2643,10 @@ class AppLocalizationsEs extends AppLocalizations {
       '1. Abre esta carpeta en tu herramienta de IA, por ejemplo OpenCode, Claude Code o Codex.\n2. Pega la instrucción.\n3. La plantilla aparece en esta lista: copia su URL en OBS.';
 
   @override
+  String get templatesAiDescriptionRequired =>
+      'Describe qué debe mostrar tu plantilla.';
+
+  @override
   String get templatesAiDescription => '¿Qué debe mostrar tu plantilla?';
 
   @override

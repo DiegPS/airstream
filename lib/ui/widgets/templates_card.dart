@@ -540,6 +540,12 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
                       controller: _name,
                       autofocus: true,
                       maxLength: 60,
+                      // The "write a name" error goes as soon as one is typed.
+                      onChanged: (value) {
+                        if (_invalid && value.trim().isNotEmpty) {
+                          setState(() => _invalid = false);
+                        }
+                      },
                       decoration: settingsInput(
                           error: _invalid ? l.templatesRequired : null)),
                   for (final starter in TemplateStarter.values)
@@ -547,9 +553,13 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
                         key: Key('template-starter-${starter.name}'),
                         title: Text(labels[starter.index]),
                         subtitle: Text(descriptions[starter.index]),
-                        leading: Icon(_starter == starter
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked),
+                        leading: Icon(
+                            _starter == starter
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                            color: _starter == starter
+                                ? const Color(0xFF53FC18)
+                                : Colors.white38),
                         onTap: () => setState(() => _starter = starter)),
                 ]))),
         actions: [
@@ -864,7 +874,9 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
                       minLines: 3,
                       maxLines: 6,
                       decoration: settingsInput(
-                          error: _invalid ? l.templatesRequired : null),
+                          error: _invalid
+                              ? l.templatesAiDescriptionRequired
+                              : null),
                       onChanged: (_) {
                         if (_invalid) setState(() => _invalid = false);
                       }),

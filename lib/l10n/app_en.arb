@@ -1100,6 +1100,7 @@
   },
   "templatesAi": "Create with AI",
   "templatesAiSteps": "1. Open this folder in your AI tool, for example OpenCode, Claude Code or Codex.\n2. Paste the instruction.\n3. The template appears in this list: copy its URL into OBS.",
+  "templatesAiDescriptionRequired": "Describe what your template should show.",
   "templatesAiDescription": "What should your template show?",
   "templatesAiCopy": "Copy instruction",
   "templatesAiCopied": "Instruction copied",

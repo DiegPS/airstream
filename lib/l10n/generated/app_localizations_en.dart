@@ -2622,6 +2622,10 @@ class AppLocalizationsEn extends AppLocalizations {
       '1. Open this folder in your AI tool, for example OpenCode, Claude Code or Codex.\n2. Paste the instruction.\n3. The template appears in this list: copy its URL into OBS.';
 
   @override
+  String get templatesAiDescriptionRequired =>
+      'Describe what your template should show.';
+
+  @override
   String get templatesAiDescription => 'What should your template show?';
 
   @override
