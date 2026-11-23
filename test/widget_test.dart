@@ -1,3 +1,4 @@
+import 'package:airstream/services/templates/gallery/gallery_catalog.dart';
 import 'package:airstream/models/app_notice.dart';
 import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
@@ -2924,7 +2925,8 @@ void main() {
       expect(find.byKey(Key('template-$installed')), findsOneWidget);
       await tester.runAsync(() async {
         final info = (await library.get(installed))!;
-        expect(info.manifest.gallery, (id: id, version: 5));
+        expect(info.manifest.gallery,
+            (id: id, version: galleryCatalog[id]!.version));
         expect((await library.resolvedValues(installed))['language'], language);
         expect(await library.list(), hasLength(spanish ? 2 : 1));
         if (spanish) {
