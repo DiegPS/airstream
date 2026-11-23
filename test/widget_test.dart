@@ -785,7 +785,7 @@ void main() {
             find.descendant(of: obs, matching: find.byType(Container)))
         .where((w) => w.decoration is BoxDecoration)
         .first;
-    expect((dot.decoration! as BoxDecoration).color, const Color(0xFFFF4E45));
+    expect((dot.decoration! as BoxDecoration).color, const Color(0xFFFF6B6B));
     await tester.ensureVisible(find.byKey(const Key('diagnostics-copy')));
     await tester.tap(find.byKey(const Key('diagnostics-copy')));
     await tester.pumpAndSettle();
