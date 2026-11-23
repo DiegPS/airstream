@@ -26,7 +26,12 @@ body { margin: 0; background: transparent; color: #fff;
 .featured-card { --accent: #bad8ff; width: min(100%, 26em); max-height: 100%;
   overflow: hidden; background: #161922; border-top: 3px solid var(--accent);
   border-radius: 16px; padding: .65em .85em; box-shadow: 0 8px 24px #0007;
-  animation: appear .2s ease-out; overflow-wrap: anywhere; }
+  animation: appear .2s ease-out; overflow-wrap: anywhere;
+  display: flex; flex-direction: column; }
+header { flex: none; }
+.author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.message { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.message.clamped { display: -webkit-box; -webkit-box-orient: vertical; }
 @keyframes appear { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .featured-card { animation: none; } }
 header { display: flex; align-items: center; gap: .45em; }
@@ -101,6 +106,17 @@ function picture(url, className, alt) {
   return image;
 }
 
+// A message taller than the space left under the header ends on a whole
+// line with an ellipsis instead of being sliced mid-line by the card.
+function clampMessage(message) {
+  if (typeof window.getComputedStyle !== 'function' || !message.isConnected ||
+      !(message.scrollHeight > message.clientHeight + 1)) return;
+  const lineHeight = parseFloat(window.getComputedStyle(message).lineHeight) || 1;
+  const lines = Math.max(1, Math.floor(message.clientHeight / lineHeight));
+  message.classList.add('clamped');
+  message.style.webkitLineClamp = String(lines);
+}
+
 function renderFeatured(data, connection) {
   const [platform, accent] = platforms[data.platform] || ['', '#bad8ff'];
   const card = element('article', 'featured-card');
@@ -122,6 +138,7 @@ function renderFeatured(data, connection) {
   }
   if (message.hasChildNodes()) card.append(message);
   stage.replaceChildren(card);
+  clampMessage(message);
   displayed = data;
   acknowledged = false;
   shownAt = Date.now();
