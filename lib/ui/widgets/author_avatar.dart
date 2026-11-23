@@ -74,7 +74,12 @@ class AuthorAvatar extends StatelessWidget {
         .where((part) => part.isNotEmpty);
     final initials = nameParts.isEmpty
         ? '?'
-        : nameParts.take(2).map((part) => part[0].toUpperCase()).join();
+        // First visible character, not the first UTF-16 unit: `part[0]`
+        // split emoji and other surrogate pairs into a broken glyph.
+        : nameParts
+            .take(2)
+            .map((part) => part.characters.first.toUpperCase())
+            .join();
 
     return ColoredBox(
       color: backgroundColor,
