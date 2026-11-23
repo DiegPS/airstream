@@ -215,7 +215,9 @@ class _ObsCompactPill extends StatelessWidget {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  state.connected && _showObsScene(displaySettings, state)
+                  state.connected &&
+                          !state.reconnecting &&
+                          _showObsScene(displaySettings, state)
                       ? state.currentScene
                       : title,
                   style: TextStyle(
@@ -292,6 +294,11 @@ class _ObsPillBadge extends StatelessWidget {
   }
   if (!state.connected) {
     return (l.obsStatusDisconnected, Colors.white38);
+  }
+  // OBS keeps outputActive while the stream output reconnects; showing
+  // the green live state then would hide a dropped stream.
+  if (state.reconnecting) {
+    return (l.obsStatusReconnecting, const Color(0xFFFFB15C));
   }
   if (state.outputActive && state.recordingActive) {
     return (l.obsStatusLiveAndRec, const Color(0xFF53FC18));

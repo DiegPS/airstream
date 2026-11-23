@@ -277,6 +277,7 @@
   "obsStatusConnecting": "OBS: Conectando...",
   "obsStatusDisconnected": "OBS: Desconectado",
   "obsStatusLiveAndRec": "OBS: En vivo + Grabando",
+  "obsStatusReconnecting": "OBS: Reconectando la transmisión…",
   "obsStatusLive": "OBS: En vivo",
   "obsStatusRecording": "OBS: Grabando",
   "obsStatusConnected": "OBS: Conectado",

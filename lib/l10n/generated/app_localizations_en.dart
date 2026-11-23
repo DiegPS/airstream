@@ -898,6 +898,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get obsStatusLiveAndRec => 'OBS: Live + Rec';
 
   @override
+  String get obsStatusReconnecting => 'OBS: Stream reconnecting…';
+
+  @override
   String get obsStatusLive => 'OBS: Live';
 
   @override

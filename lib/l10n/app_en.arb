@@ -363,6 +363,7 @@
   "obsStatusConnecting": "OBS: Connecting...",
   "obsStatusDisconnected": "OBS: Disconnected",
   "obsStatusLiveAndRec": "OBS: Live + Rec",
+  "obsStatusReconnecting": "OBS: Stream reconnecting…",
   "obsStatusLive": "OBS: Live",
   "obsStatusRecording": "OBS: Recording",
   "obsStatusConnected": "OBS: Connected",

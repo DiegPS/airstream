@@ -910,6 +910,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get obsStatusLiveAndRec => 'OBS: En vivo + Grabando';
 
   @override
+  String get obsStatusReconnecting => 'OBS: Reconectando la transmisión…';
+
+  @override
   String get obsStatusLive => 'OBS: En vivo';
 
   @override

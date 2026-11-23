@@ -1736,6 +1736,12 @@ abstract class AppLocalizations {
   /// **'OBS: Live + Rec'**
   String get obsStatusLiveAndRec;
 
+  /// No description provided for @obsStatusReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'OBS: Stream reconnecting…'**
+  String get obsStatusReconnecting;
+
   /// No description provided for @obsStatusLive.
   ///
   /// In en, this message translates to:
