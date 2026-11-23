@@ -533,7 +533,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
         final paused = _pausedSnapshot == null
             ? null
-            : pausedChatView(_pausedSnapshot!, liveMessages);
+            : pausedChatView(
+                viewFilter.apply(
+                  _pausedSnapshot!,
+                  ref.watch(chatHighlighterProvider),
+                ),
+                liveMessages,
+                retained: chatMessages,
+                bufferFull: settings.maxMessages > 0 &&
+                    chatMessages.length >= settings.maxMessages,
+              );
         final messages = paused?.messages ?? liveMessages;
         _forgetRemovedBubbles(messages);
         final positions = <String, int>{
