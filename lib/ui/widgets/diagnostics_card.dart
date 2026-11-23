@@ -9,6 +9,7 @@ import 'package:airstream/services/obs_service.dart';
 import 'package:airstream/services/speech/live_captions_service.dart';
 import 'package:airstream/services/tts_service.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,11 +68,15 @@ class DiagnosticsCard extends ConsumerWidget {
                     Text(
                         l.diagnosticsArea(
                             item.area == 'overlay' ? 'server' : item.area),
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12)),
+                        style: settingsItemTitleStyle),
+                    // Problems stand out from the "all fine" rows.
                     Text(item.summary,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 11)),
+                        style: settingsHintStyle.copyWith(
+                            color: switch (item.status) {
+                          DiagnosticStatus.warning => const Color(0xFFFFB15C),
+                          DiagnosticStatus.error => const Color(0xFFFF6B6B),
+                          _ => Colors.white54,
+                        })),
                   ])),
             ]),
           ),
@@ -102,8 +107,10 @@ class DiagnosticsCard extends ConsumerWidget {
                 await io.Process.start('explorer', [directory.path]);
               } catch (_) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l.diagnosticsLogsFailed)));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(l.diagnosticsLogsFailed,
+                          style: const TextStyle(
+                              color: Color(0xFFFF6B6B), fontSize: 13))));
                 }
               }
             },
