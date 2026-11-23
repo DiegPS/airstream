@@ -135,10 +135,16 @@ class RecentAlertsCard extends ConsumerWidget {
                         final shown = ref
                             .read(appControllerProvider)
                             .replayRecentAlert(id);
+                        // Not delivered (no alerts page) reads as a failure.
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(shown
-                              ? l.recentAlertsReplayed
-                              : l.openAlertsOverlayFirst),
+                          content: Text(
+                              shown
+                                  ? l.recentAlertsReplayed
+                                  : l.openAlertsOverlayFirst,
+                              style: shown
+                                  ? null
+                                  : const TextStyle(
+                                      color: Color(0xFFFF6B6B), fontSize: 13)),
                         ));
                       },
                     ),
