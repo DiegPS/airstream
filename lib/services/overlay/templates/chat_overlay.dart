@@ -110,14 +110,12 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     opacity: 0.6;
     font-size: 0.85em;
   }
+  /* Normal inline flow: emotes sit in the sentence like words, so RTL text
+     keeps its reading order and punctuation stays next to an emote. */
   .message-text {
     color: #fff;
     min-width: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .message-text .emoji {
     width: 1.25em;
@@ -610,6 +608,7 @@ function createMessageBubble(message, animate) {
 
   const messageText = document.createElement('div');
   messageText.className = 'message-text';
+  messageText.dir = 'auto';
   messageText.style.webkitTextStroke = settings.textStroke + 'px ' + settings.textStrokeColor;
   messageText.style.textShadow = settings.textShadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none';
   messageText.style.fontWeight = String(settings.fontWeight);
