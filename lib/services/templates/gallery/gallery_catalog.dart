@@ -169,7 +169,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'scoreboard': GalleryItem(
     id: 'scoreboard',
-    version: 3,
+    version: 4,
     kind: GalleryKind.widget,
     width: scoreboardWidth,
     height: scoreboardHeight,

@@ -72,6 +72,7 @@ void main() {
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
           'stream-ending' => 5,
+          'scoreboard' => 4,
           'word-cloud' => 2,
           _ => 3,
         };
@@ -225,7 +226,7 @@ const _galleryFingerprints = {
   'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '3:95c8911b8bbe729b',
   'poll': '3:d1b0ae71aab06a6a',
-  'scoreboard': '3:d98acaa703303379',
+  'scoreboard': '4:b2151490a0d3e157',
   'word-cloud': '2:be2e12ffcdecce94',
   'emote-wall': '3:baa6ac8f84c04035',
 };
@@ -1595,7 +1596,7 @@ async function checkLiveWidgets() {
   const scoreboard = page('scoreboard');
   scoreboard.fields({counters: 'deaths,missing', labels: literal});
   scoreboard.send('counters', {deaths: -4});
-  assert.equal(scoreboard.nodes.scores.textContent, literal + '-4missing0');
+  assert.equal(scoreboard.nodes.scores.textContent, literal + '-4Missing0');
   const wall = page('emote-wall');
   wall.fields({lifetime: 1});
   wall.send('message', {items: [

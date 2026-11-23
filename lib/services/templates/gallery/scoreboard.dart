@@ -69,7 +69,11 @@ function render() {
   scores.dataset.layout = fields.layout === 'column' ? 'column' : 'row';
   scores.replaceChildren(...[...keys].slice(0, 8).map((key, index) => {
     const score = textElement('div', 'widget-panel score', '');
-    const label = demo ? demoLabels[index] : labels[counters.indexOf(key)] || key;
+    // Without a label, show the key readably (team_a_wins → Team a wins),
+    // never the raw rule key.
+    const readable = key.replace(/_+/g, ' ').trim();
+    const fallback = readable.charAt(0).toUpperCase() + readable.slice(1);
+    const label = demo ? demoLabels[index] : labels[counters.indexOf(key)] || fallback;
     const value = Object.prototype.hasOwnProperty.call(values, key) ? values[key] : 0;
     score.appendChild(textElement('span', 'score-label', label));
     score.appendChild(textElement('strong', 'score-value', number(value)));
