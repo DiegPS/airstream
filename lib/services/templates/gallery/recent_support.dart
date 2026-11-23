@@ -47,6 +47,7 @@ const _html = r'''
   <main class="support" aria-labelledby="heading" hidden>
     <header><span class="gallery-logo" hidden></span><h1 id="heading"></h1></header>
     <ul id="entries"></ul>
+    <p id="more" hidden></p>
     <p id="empty" hidden></p>
   </main>
 </body>
@@ -76,9 +77,10 @@ header::after {
 }
 :root[data-theme="neon"] header::after { box-shadow: 0 0 14px var(--glow); }
 #entries {
-  display: grid; gap: 6px; margin: 0; padding: 0; overflow: auto;
-  list-style: none; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  display: grid; gap: 6px; margin: 0; padding: 0; overflow: hidden; min-height: 0;
+  list-style: none;
 }
+#more { margin: 6px 0 0; text-align: end; font-size: .8125rem; color: var(--muted); }
 .support-row {
   display: grid; grid-template-columns: 10px minmax(0, 1fr); align-items: center; gap: 11px;
   padding: 7px 11px; min-height: 54px;
@@ -102,12 +104,22 @@ header::after {
 #empty { margin: 0; padding: 18px 0 12px; border-top: 1px solid var(--line); }
 .enter { animation: enter .24s cubic-bezier(.2,.7,.3,1) both; }
 @keyframes enter { from { transform: translateY(-6px); opacity: .15; } }
+/* Short sources: compact rows so more supporters fit before "+N more". */
+@media (max-height: 420px) {
+  .support { margin: 8px auto; padding: 10px 12px; max-height: calc(100dvh - 16px); }
+  header { min-height: 0; margin-bottom: 6px; }
+  #entries { gap: 2px; }
+  .support-row { padding-block: 2px; min-height: 23px; line-height: 1.15; }
+  .support-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; }
+  .name { font-size: .875rem; }
+  .description { text-align: end; font-size: .8125rem; }
+}
 ''';
 
 const _script = r'''
 const copy = {
-  en: {heading: 'Recent support', empty: 'No support yet'},
-  es: {heading: 'Apoyos recientes', empty: 'Todavía no hay apoyos'}
+  en: {heading: 'Recent support', empty: 'No support yet', more: '+{count} more'},
+  es: {heading: 'Apoyos recientes', empty: 'Todavía no hay apoyos', more: '+{count} más'}
 };
 const panel = document.querySelector('.support');
 const heading = document.querySelector('#heading');
@@ -173,6 +185,20 @@ function render(animate) {
     const position = entries.children[index];
     if (position !== row.element) entries.insertBefore(row.element, position || null);
   }
+  // Viewers cannot scroll a browser source: drop the oldest rows until the
+  // panel fits and say how many were left out.
+  const more = document.querySelector('#more');
+  let fitted = supporters.length;
+  more.hidden = true;
+  while (fitted > 1 && (panel.scrollHeight > panel.clientHeight + 1 ||
+      entries.scrollHeight > entries.clientHeight + 1)) {
+    fitted--;
+    const dropped = supporters[fitted];
+    rows.get(dropped.id)?.element.remove();
+    rows.delete(dropped.id);
+    more.textContent = text.more.replace('{count}', n(supporters.length - fitted));
+    more.hidden = false;
+  }
 }
 
 Airstream.on('fields', next => {
@@ -191,4 +217,6 @@ Airstream.on('disconnected', () => {
   session = null;
   render(false);
 });
+// Re-fit when OBS resizes the browser source.
+window.addEventListener('resize', () => render(false));
 ''';

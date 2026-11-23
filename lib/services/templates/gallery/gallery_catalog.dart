@@ -67,7 +67,7 @@ class GalleryItem {
 final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   'recent-support': GalleryItem(
     id: 'recent-support',
-    version: 5,
+    version: 6,
     kind: GalleryKind.widget,
     width: 480,
     height: 640,

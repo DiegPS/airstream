@@ -64,12 +64,8 @@ void main() {
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
         final version = switch (item.id) {
-          'recent-support' ||
-          'ticker' ||
-          'top-supporters' ||
-          'queue-list' =>
-            item.id == 'recent-support' ? 5 : 4,
-          'stream-ending' || 'starting-soon' => 6,
+          'ticker' || 'top-supporters' || 'queue-list' => 4,
+          'recent-support' || 'stream-ending' || 'starting-soon' => 6,
           'be-right-back' || 'credits' || 'scoreboard' || 'poll' => 5,
           'word-cloud' => 2,
           _ => 3,
@@ -214,7 +210,7 @@ void main() {
 
 /// Version and file digest of each gallery item (see the version test).
 const _galleryFingerprints = {
-  'recent-support': '5:2601b810dc4598a7',
+  'recent-support': '6:77e0f7eacb157982',
   'starting-soon': '6:c85a6d3316fc81f9',
   'be-right-back': '5:b029cb1834aec1bb',
   'stream-ending': '6:149968e8a8588d27',
