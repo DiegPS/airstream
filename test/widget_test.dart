@@ -695,6 +695,8 @@ void main() {
     // OBS would read a running-to-running jump as support-added time.
     await tester.tap(start);
     await tester.pump();
+    await tester.tap(find.byKey(const Key('subathon-confirm-ok')));
+    await tester.pump();
     expect(phases, ['idle', 'running']);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -730,6 +732,9 @@ void main() {
     await press('subathon-pause');
     expect(settings.state.subathonPhase, 'paused');
     await press('subathon-reset');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('subathon-confirm-ok')));
+    await tester.pumpAndSettle();
     expect(settings.state.subathonPhase, 'idle');
     expect(
         tester.widget<Text>(find.byKey(const Key('subathon-remaining'))).data,

@@ -2416,6 +2416,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get subathonStart => 'Iniciar';
 
   @override
+  String get subathonStartOver => 'Empezar de nuevo';
+
+  @override
+  String get subathonStartOverConfirm =>
+      '¿Empezar el subatón de nuevo? Se pierde el tiempo restante.';
+
+  @override
+  String get subathonResetConfirm =>
+      '¿Reiniciar el subatón? Se pierde el tiempo restante.';
+
+  @override
   String get subathonPause => 'Pausar';
 
   @override

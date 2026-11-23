@@ -50,6 +50,29 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
         notifier.update(SubathonTimer.start(ref.read(settingsProvider), now)));
   }
 
+  /// Starting over or resetting a running/paused subathon throws away the
+  /// time left (and what support added): ask first.
+  Future<bool> _confirmLoss(String title, String action) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          key: const Key('subathon-confirm'),
+          title: Text(title),
+          actions: [
+            OutlinedButton(
+                style: dialogSecondaryStyle(),
+                onPressed: () => Navigator.pop(dialog, false),
+                child: Text(AppLocalizations.of(dialog)!.cancel)),
+            OutlinedButton(
+                key: const Key('subathon-confirm-ok'),
+                style: dialogSecondaryStyle(destructive: true),
+                onPressed: () => Navigator.pop(dialog, true),
+                child: Text(action)),
+          ],
+        ),
+      ) ==
+      true;
+
   void change(SettingsModel Function(SettingsModel, int) action) {
     final now = DateTime.now().millisecondsSinceEpoch;
     unawaited(ref.read(settingsProvider.notifier).update(
@@ -62,6 +85,7 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
     final s = ref.watch(settingsProvider);
     final now = DateTime.now().millisecondsSinceEpoch;
     final phase = SubathonTimer.normalize(s, now).subathonPhase;
+    final active = phase == 'running' || phase == 'paused';
     _syncRefresh(phase == 'running' && TickerMode.valuesOf(context).enabled);
     final url = ref.watch(overlayUrlProvider);
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
@@ -138,9 +162,19 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                 child: Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: button(
-                        'subathon-start', l.subathonStart, SubathonTimer.start,
-                        onPressed: restart,
-                        primary: phase != 'running' && phase != 'paused'))),
+                        'subathon-start',
+                        active ? l.subathonStartOver : l.subathonStart,
+                        SubathonTimer.start,
+                        onPressed: active
+                            ? () async {
+                                if (await _confirmLoss(
+                                    l.subathonStartOverConfirm,
+                                    l.subathonStartOver)) {
+                                  restart();
+                                }
+                              }
+                            : restart,
+                        primary: !active))),
           ]),
           if (phase == 'running')
             button('subathon-pause', l.subathonPause, SubathonTimer.pause,
@@ -151,8 +185,16 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
           const SizedBox(height: 8),
           SizedBox(
               width: double.infinity,
-              child: button(
-                  'subathon-reset', l.subathonReset, SubathonTimer.reset)),
+              child:
+                  button('subathon-reset', l.subathonReset, SubathonTimer.reset,
+                      onPressed: active
+                          ? () async {
+                              if (await _confirmLoss(
+                                  l.subathonResetConfirm, l.subathonReset)) {
+                                change(SubathonTimer.reset);
+                              }
+                            }
+                          : null)),
           const SizedBox(height: 8),
           Row(spacing: 8, children: [
             for (final (key, label, seconds) in [

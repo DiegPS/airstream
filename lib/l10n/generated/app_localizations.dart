@@ -4191,6 +4191,24 @@ abstract class AppLocalizations {
   /// **'Start'**
   String get subathonStart;
 
+  /// No description provided for @subathonStartOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over'**
+  String get subathonStartOver;
+
+  /// No description provided for @subathonStartOverConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the subathon over? The remaining time is lost.'**
+  String get subathonStartOverConfirm;
+
+  /// No description provided for @subathonResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the subathon? The remaining time is lost.'**
+  String get subathonResetConfirm;
+
   /// No description provided for @subathonPause.
   ///
   /// In en, this message translates to:
