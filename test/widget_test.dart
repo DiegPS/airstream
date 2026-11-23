@@ -2044,7 +2044,24 @@ void main() {
     expect(container.read(settingsProvider).goals[id]!['current'], 10);
     final delete = find.byKey(Key('goal-$id-delete'));
     await tester.ensureVisible(delete);
+    // Deleting asks first; cancelling keeps the goal and its progress.
     await tester.tap(delete);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('goal-confirm')), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(container.read(settingsProvider).goals[id]!['current'], 10);
+    final reset = find.byKey(Key('goal-$id-reset'));
+    await tester.ensureVisible(reset);
+    await tester.tap(reset);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('goal-confirm-ok')));
+    await tester.pumpAndSettle();
+    expect(container.read(settingsProvider).goals[id]!['current'], 0);
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('goal-confirm-ok')));
     await tester.pumpAndSettle();
     expect(container.read(settingsProvider).goals, isEmpty);
     expect(find.text('Community'), findsNothing);

@@ -2331,6 +2331,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goalsDelete => 'Delete';
 
   @override
+  String goalsResetConfirm(String name) {
+    return 'Reset “$name” to 0?';
+  }
+
+  @override
+  String goalsDeleteConfirm(String name) {
+    return 'Delete the goal “$name”?';
+  }
+
+  @override
   String get goalsReset => 'Reset to 0';
 
   @override

@@ -95,17 +95,31 @@ class GoalsCard extends ConsumerWidget {
               ],
             ]),
             const SizedBox(height: 8),
+            // Reset and delete lose stream progress: both ask first.
             Row(children: [
               Expanded(
-                  child: button('goal-${e.key}-reset', l.goalsReset,
-                      () => _change(ref, e.key, null))),
+                  child: button('goal-${e.key}-reset', l.goalsReset, () async {
+                if (await _confirm(
+                    context,
+                    l.goalsResetConfirm(e.value['title'] as String),
+                    l.goalsReset)) {
+                  _change(ref, e.key, null);
+                }
+              })),
               const SizedBox(width: 8),
               Expanded(
                   child: button('goal-${e.key}-edit', l.goalsEdit,
                       () => _edit(context, ref, e.key))),
               const SizedBox(width: 8),
               Expanded(
-                  child: button('goal-${e.key}-delete', l.goalsDelete, () {
+                  child:
+                      button('goal-${e.key}-delete', l.goalsDelete, () async {
+                if (!await _confirm(
+                    context,
+                    l.goalsDeleteConfirm(e.value['title'] as String),
+                    l.goalsDelete)) {
+                  return;
+                }
                 final s = ref.read(settingsProvider);
                 unawaited(ref
                     .read(settingsProvider.notifier)
@@ -129,6 +143,28 @@ class GoalsCard extends ConsumerWidget {
                 }),
         ]);
   }
+
+  Future<bool> _confirm(
+          BuildContext context, String title, String action) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          key: const Key('goal-confirm'),
+          title: Text(title),
+          actions: [
+            OutlinedButton(
+                style: dialogSecondaryStyle(),
+                onPressed: () => Navigator.pop(dialog, false),
+                child: Text(AppLocalizations.of(dialog)!.cancel)),
+            OutlinedButton(
+                key: const Key('goal-confirm-ok'),
+                style: dialogSecondaryStyle(destructive: true),
+                onPressed: () => Navigator.pop(dialog, true),
+                child: Text(action)),
+          ],
+        ),
+      ) ==
+      true;
 
   Future<void> _edit(BuildContext context, WidgetRef ref, String? id) async {
     final l = AppLocalizations.of(context)!;

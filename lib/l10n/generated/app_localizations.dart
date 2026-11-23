@@ -4071,6 +4071,18 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get goalsDelete;
 
+  /// No description provided for @goalsResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset “{name}” to 0?'**
+  String goalsResetConfirm(String name);
+
+  /// No description provided for @goalsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the goal “{name}”?'**
+  String goalsDeleteConfirm(String name);
+
   /// No description provided for @goalsReset.
   ///
   /// In en, this message translates to:

@@ -2348,6 +2348,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get goalsDelete => 'Eliminar';
 
   @override
+  String goalsResetConfirm(String name) {
+    return '¿Reiniciar «$name» a 0?';
+  }
+
+  @override
+  String goalsDeleteConfirm(String name) {
+    return '¿Eliminar la meta «$name»?';
+  }
+
+  @override
   String get goalsReset => 'Reiniciar a 0';
 
   @override
