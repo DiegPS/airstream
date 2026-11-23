@@ -427,20 +427,28 @@ class _QueueRows extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Rows stay one line each; hovering shows the whole name and
+                // join note when they are cut.
                 Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(entry.name,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      if (entry.note.isNotEmpty)
-                        Text(entry.note,
+                  child: Tooltip(
+                    message: entry.note.isEmpty
+                        ? entry.name
+                        : '${entry.name}\n${entry.note}',
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(entry.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 11)),
-                    ],
+                            style: settingsItemTitleStyle),
+                        if (entry.note.isNotEmpty)
+                          Text(entry.note,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: settingsHintStyle),
+                      ],
+                    ),
                   ),
                 ),
                 if (playing)
