@@ -51,6 +51,12 @@ String chatOverlayHtml() => '''<!DOCTYPE html>
     width: fit-content;
     max-width: 85%;
     word-break: break-word;
+    /* A bubble never outgrows the source: a very long message is cut at the
+       bottom, so the author and opening lines stay on screen instead of
+       scrolling away above the top edge. */
+    max-height: calc(100vh - 6rem);
+    overflow: hidden;
+    flex-shrink: 0;
   }
   .chat-content {
     display: flex;
