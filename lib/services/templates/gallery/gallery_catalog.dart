@@ -147,7 +147,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'queue-list': GalleryItem(
     id: 'queue-list',
-    version: 3,
+    version: 4,
     kind: GalleryKind.widget,
     width: 480,
     height: 720,

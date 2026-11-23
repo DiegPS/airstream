@@ -66,7 +66,8 @@ void main() {
         final version = switch (item.id) {
           'recent-support' ||
           'ticker' ||
-          'top-supporters' =>
+          'top-supporters' ||
+          'queue-list' =>
             item.id == 'recent-support' ? 5 : 4,
           'stream-ending' || 'starting-soon' => 6,
           'be-right-back' || 'credits' || 'scoreboard' || 'poll' => 5,
@@ -221,7 +222,7 @@ const _galleryFingerprints = {
   'ticker': '4:93d445bf82fb29a8',
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '4:f6cd26578de56cd2',
-  'queue-list': '3:95c8911b8bbe729b',
+  'queue-list': '4:c8d43780e0403c7e',
   'poll': '5:da22a1881a6174ca',
   'scoreboard': '5:26196b8b08147f91',
   'word-cloud': '2:be2e12ffcdecce94',

@@ -111,6 +111,12 @@ ul, ol { display: grid; gap: 3px 5px; margin: 0; padding: 0; list-style: none; }
 .name { font-weight: 650; }
 .note { flex: 0 1 42%; margin-inline-start: auto; color: var(--muted); font-size: .75rem; }
 #more { text-align: end; }
+/* Short sources: two columns of waiting players, so more names fit. */
+@media (max-height: 420px) {
+  #queue { margin: 8px auto; padding: 10px 12px; max-height: calc(100dvh - 16px); }
+  #waiting { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  section { margin-top: 6px; padding-top: 5px; }
+}
 .enter { animation: queue-in .22s ease-out both; }
 .leave { z-index: 1; pointer-events: none; animation: queue-out .18s ease-in both; }
 @keyframes queue-in { from { opacity: .15; transform: translateY(-5px); } }
@@ -215,6 +221,16 @@ function render(animate) {
   const moving = animate && !panel.hidden && !motion.matches;
   updateRows(waiting, waitingRows, shown, true, moving, waitingIds);
   updateRows(playing, playingRows, queue.playing, false, moving, playingIds);
+  // Viewers cannot scroll a browser source: drop waiting rows until the panel
+  // fits and count every hidden person in "+N more".
+  let fitted = shown.length;
+  while (fitted > 1 && panel.scrollHeight > panel.clientHeight + 1) {
+    fitted--;
+    updateRows(waiting, waitingRows, shown.slice(0, fitted), true, false, waitingIds);
+    const hidden = queue.entries.length - fitted;
+    byId('more').textContent = text.more.replace('{count}', String(hidden));
+    byId('more').hidden = false;
+  }
   known = new Set([...waitingIds, ...playingIds]);
 }
 
