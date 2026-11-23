@@ -57,7 +57,7 @@ $overlayFontScript
     if (state.phase === 'drawn' && state.winner) {
       card.replaceChildren(text('h1', state.winner.name), platformLine(strings.winner, state.winner.platform));
     } else {
-      card.replaceChildren(text('h1', state.keyword), text('p', state.phase === 'closed' ? strings.closed : strings.participants(state.entrantCount || 0)));
+      card.replaceChildren(text('h1', state.keyword), text('p', state.phase !== 'open' ? strings.closed : strings.participants(state.entrantCount || 0)));
     }
   }
   function animate() {
