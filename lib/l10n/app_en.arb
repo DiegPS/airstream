@@ -561,6 +561,7 @@
     "placeholders": { "platform": { "type": "String" } }
   },
   "clickThroughEnabledNotice": "Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.",
+  "chatResumeLive": "Back to live chat",
   "newChatMessages": "{count, plural, =1{1 new message} other{{count} new messages}}",
   "@newChatMessages": {
     "placeholders": { "count": { "type": "int" } }

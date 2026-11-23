@@ -653,9 +653,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 return position == null ? null : messages.length - 1 - position;
               },
             ),
+            // Above the space the OBS HUD reserves, so it is never under it.
             if (!_autoScroll)
               Positioned(
-                bottom: 12,
+                bottom: showObsCard ? obsReservedSpace + 4 : 12,
                 right: 12,
                 child: (paused?.newCount ?? 0) > 0
                     ? FloatingActionButton.extended(
@@ -668,6 +669,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       )
                     : FloatingActionButton.small(
                         key: const Key('chat-resume-button'),
+                        tooltip: l.chatResumeLive,
                         backgroundColor: const Color(0xFF53FC18),
                         foregroundColor: Colors.black,
                         onPressed: _resumeChat,

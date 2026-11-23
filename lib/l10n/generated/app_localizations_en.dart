@@ -1350,6 +1350,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.';
 
   @override
+  String get chatResumeLive => 'Back to live chat';
+
+  @override
   String newChatMessages(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

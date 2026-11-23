@@ -2541,6 +2541,12 @@ abstract class AppLocalizations {
   /// **'Click-Through is on: clicks go to the window behind. Press Ctrl+Shift+C to turn it off.'**
   String get clickThroughEnabledNotice;
 
+  /// No description provided for @chatResumeLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to live chat'**
+  String get chatResumeLive;
+
   /// No description provided for @newChatMessages.
   ///
   /// In en, this message translates to:

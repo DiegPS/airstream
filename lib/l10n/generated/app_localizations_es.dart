@@ -1363,6 +1363,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ignorar clics activado: los clics llegan a la ventana de detrás. Pulsa Ctrl+Shift+C para desactivarlo.';
 
   @override
+  String get chatResumeLive => 'Volver al chat en vivo';
+
+  @override
   String newChatMessages(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
