@@ -593,6 +593,9 @@ function createMessageBubble(message, animate) {
     authorRow.appendChild(timestamp);
   }
   content.appendChild(authorRow);
+  // The text-shadow setting covers the whole bubble (name, time, reply), not
+  // only the message, so every line stays readable over bright footage.
+  content.style.textShadow = settings.textShadow ? '2px 2px 4px rgba(0,0,0,0.8)' : 'none';
 
   if (message.reply) {
     const reply = document.createElement('div');
