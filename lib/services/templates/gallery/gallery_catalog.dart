@@ -78,7 +78,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'starting-soon': GalleryItem(
     id: 'starting-soon',
-    version: 4,
+    version: 5,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStartingSoon,
     description: (l) => l.galleryStartingSoonDescription,

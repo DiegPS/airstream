@@ -66,12 +66,11 @@ void main() {
         final version = switch (item.id) {
           'recent-support' ||
           'ticker' ||
-          'starting-soon' ||
           'be-right-back' ||
           'credits' ||
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
-          'stream-ending' => 5,
+          'stream-ending' || 'starting-soon' => 5,
           'scoreboard' => 4,
           'word-cloud' => 2,
           _ => 3,
@@ -217,7 +216,7 @@ void main() {
 /// Version and file digest of each gallery item (see the version test).
 const _galleryFingerprints = {
   'recent-support': '5:2601b810dc4598a7',
-  'starting-soon': '4:8f8561127904bdd3',
+  'starting-soon': '5:f6b56a72f9829fbf',
   'be-right-back': '4:c376379a412d2376',
   'stream-ending': '5:3431f5155b27b656',
   'credits': '4:cd38061b7d679e09',
@@ -1622,8 +1621,13 @@ async function main() {
   assert.equal(starting.nodes.countdown.textContent, '0:59');
   starting.advance(59000);
   assert.equal(starting.nodes.countdown.textContent, 'Starting now');
+  // Showing the scene again 45 minutes later keeps "Starting now": the
+  // deadline is not re-resolved to tomorrow.
+  starting.advance(45 * 60000);
+  starting.win.dispatchEvent(new CustomEvent('obsSourceActiveChanged', {detail: {active: true}}));
+  assert.equal(starting.nodes.countdown.textContent, 'Starting now');
   starting.fields({startTime: '11:20'});
-  assert.equal(starting.nodes.countdown.textContent, '23:19:00');
+  assert.equal(starting.nodes.countdown.textContent, '22:34:00');
   starting.fields({startTime: ''});
   assert.equal(starting.nodes.countdown.hidden, true);
   console.log('PASS: stage letterboxes; Starting soon counts down, rolls time to tomorrow, completes and hides');

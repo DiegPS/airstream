@@ -30,9 +30,20 @@ const startingCopy = {
   en: {title: 'Starting soon', now: 'Starting now'},
   es: {title: 'Empezamos pronto', now: 'Empezamos ahora'}
 };
+// The deadline is resolved once per start time: re-showing the scene at
+// 18:45 for an 18:00 start must keep "Starting now", not roll over to a
+// 23-hour countdown for tomorrow.
+let resolvedFor;
+let resolvedAt;
 function startingTime() {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(fields.startTime || '');
   if (!match) return galleryDemo && !fields.startTime ? Date.now() + 5 * 60000 : null;
+  if (resolvedFor === fields.startTime) return resolvedAt;
+  resolvedFor = fields.startTime;
+  resolvedAt = nextStart(match);
+  return resolvedAt;
+}
+function nextStart(match) {
   const now = Date.now();
   const target = new Date(now);
   target.setHours(Number(match[1]), Number(match[2]), 0, 0);
