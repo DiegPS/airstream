@@ -623,17 +623,18 @@ class _PollCardState extends ConsumerState<PollCard> {
     ];
   }
 
+  // Labels wrap (two options starting with the same words must stay
+  // distinguishable); the count lines up with the first line.
   Widget _resultRow(String prefix, String label, String count, {Key? key}) =>
       Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (prefix.isNotEmpty)
             Text('$prefix ',
                 style: const TextStyle(
                     color: _accent, fontWeight: FontWeight.w800)),
           Expanded(
-            child: Text(label,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            child: Text(label, style: settingsBodyStyle),
           ),
           const SizedBox(width: 6),
           Text(count,
