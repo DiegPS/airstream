@@ -2605,7 +2605,7 @@ void main() {
           await tester.ensureVisible(options);
           await tester.tap(options);
           await tester.pumpAndSettle();
-          expect(find.text(l.alertTiers.toUpperCase()), findsOneWidget);
+          expect(find.text(l.alertTiers), findsOneWidget);
           expect(find.text(l.alertTierCurrency), findsOneWidget);
           final add = find.byKey(const Key('add-alert-tier-superchat'));
           await tester.ensureVisible(add);

@@ -622,6 +622,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     children: [
                       _section(l.overlayStylePresetsTitle),
                       const OverlayStylePresetsCard(),
+                      const SizedBox(height: 12),
                     ],
                   )),
               _searchSection('overlayStyle', _section(l.styleSettings)),
@@ -971,137 +972,153 @@ class _AlertTypeRowState extends State<_AlertTypeRow> {
             icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
             onPressed: () => setState(() => _expanded = !_expanded)),
       ]),
-      if (_expanded) ...[
-        KeyedSubtree(
-            key: Key('alert-type-duration-switch-$id'),
-            child: _switchRow(
-                l.alertTypeOwnDuration,
-                option.seconds != 0,
-                (enabled) => widget.onChanged(AlertTypeOptions.withOption(s, id,
-                    seconds:
-                        enabled ? s.alertDisplaySeconds.clamp(3, 20) : 0)))),
-        if (option.seconds != 0)
-          StyledSliderRow(
-              wrapLabel: true,
-              key: Key('alert-type-duration-$id'),
-              label: l.alertDuration,
-              value: option.seconds.toDouble(),
-              min: 3,
-              max: 20,
-              divisions: 17,
-              unit: 's',
-              onChanged: (v) => widget.onChanged(
-                  AlertTypeOptions.withOption(s, id, seconds: v.round()))),
-        KeyedSubtree(
-            key: Key('alert-type-animation-$id'),
-            child: _dropdownRow(
-                l.alertEntrance,
-                option.animation,
-                const ['', 'pop', 'slide-up', 'slide-down', 'fade', 'zoom'],
-                (v) => widget.onChanged(
-                    AlertTypeOptions.withOption(s, id, animation: v)),
-                optionLabel: (v) => {
-                      '': l.alertTypeUseGeneral,
-                      'pop': l.alertAnimationPop,
-                      'slide-up': l.alertAnimationSlideUp,
-                      'slide-down': l.alertAnimationSlideDown,
-                      'fade': l.alertAnimationFade,
-                      'zoom': l.alertAnimationZoom
-                    }[v]!)),
-        KeyedSubtree(
-            key: Key('alert-type-media-$id'),
-            child: _dropdownRow(
-                l.alertMedia,
-                option.media,
-                ['', ...visuals.map((e) => e.key)],
-                (v) => widget.onChanged(AlertTypeOptions.withOption(s, id,
-                    media: v, mediaAudio: false)),
-                optionLabel: (v) =>
-                    v.isEmpty ? l.mediaNone : library[v]!['name'] as String)),
-        if (library[option.media]?['kind'] == 'video')
-          KeyedSubtree(
-              key: Key('alert-type-media-audio-$id'),
-              child: _switchRow(
-                  l.alertMediaAudio,
-                  option.mediaAudio,
-                  (v) => widget.onChanged(
-                      AlertTypeOptions.withOption(s, id, mediaAudio: v)))),
-        KeyedSubtree(
-          key: Key('alert-type-sound-$id'),
-          child: _dropdownRow(
-            l.alertSound,
-            option.sound == 'library' ? option.soundMediaId : option.sound,
-            [
-              '',
-              'chime',
-              'coin',
-              'fanfare',
-              'custom',
-              ...audio.map((e) => e.key)
-            ],
-            (v) {
-              setState(() => _invalidSound = false);
-              widget.onChanged(AlertTypeOptions.withOption(s, id,
-                  sound: library[v]?['kind'] == 'audio' ? 'library' : v,
-                  soundMediaId: library[v]?['kind'] == 'audio' ? v : ''));
-            },
-            optionLabel: (v) => library.containsKey(v)
-                ? l.mediaLibraryName(library[v]!['name'] as String)
-                : {
-                    '': l.alertSoundNone,
-                    'chime': l.alertSoundChime,
-                    'coin': l.alertSoundCoin,
-                    'fanfare': l.alertSoundFanfare,
-                    'custom': l.alertSoundCustom,
-                  }[v]!,
+      // Indented under its type with a rule on the left, so the options do
+      // not read as more alert types.
+      if (_expanded)
+        Container(
+          margin: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 12),
+          decoration: const BoxDecoration(
+            border:
+                Border(left: BorderSide(color: Color(0xFF2E2E2E), width: 2)),
           ),
-        ),
-        if (option.sound == 'custom') ...[
-          Row(children: [
-            Expanded(
-                child: Text(
-                    option.soundPath.isEmpty
-                        ? l.alertSoundNoFile
-                        : p.basename(option.soundPath),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 11))),
-            TextButton(
-              key: Key('alert-type-sound-file-$id'),
-              onPressed: () async {
-                final picked = await openFile(acceptedTypeGroups: [
-                  const XTypeGroup(
-                      label: 'Audio', extensions: ['wav', 'mp3', 'ogg']),
-                ]);
-                if (!mounted || picked == null) return;
-                final valid = picked.path.length <= 1024 &&
-                    AlertSounds.customFile(picked.path) != null;
-                setState(() => _invalidSound = !valid);
-                if (valid) {
-                  widget.onChanged(AlertTypeOptions.withOption(
-                      widget.settings, id,
-                      soundPath: picked.path));
-                }
-              },
-              child: Text(l.alertSoundChoose),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            KeyedSubtree(
+                key: Key('alert-type-duration-switch-$id'),
+                child: _switchRow(
+                    l.alertTypeOwnDuration,
+                    option.seconds != 0,
+                    (enabled) => widget.onChanged(AlertTypeOptions.withOption(
+                        s, id,
+                        seconds: enabled
+                            ? s.alertDisplaySeconds.clamp(3, 20)
+                            : 0)))),
+            if (option.seconds != 0)
+              StyledSliderRow(
+                  wrapLabel: true,
+                  key: Key('alert-type-duration-$id'),
+                  label: l.alertDuration,
+                  value: option.seconds.toDouble(),
+                  min: 3,
+                  max: 20,
+                  divisions: 17,
+                  unit: 's',
+                  onChanged: (v) => widget.onChanged(
+                      AlertTypeOptions.withOption(s, id, seconds: v.round()))),
+            KeyedSubtree(
+                key: Key('alert-type-animation-$id'),
+                child: _dropdownRow(
+                    l.alertEntrance,
+                    option.animation,
+                    const ['', 'pop', 'slide-up', 'slide-down', 'fade', 'zoom'],
+                    (v) => widget.onChanged(
+                        AlertTypeOptions.withOption(s, id, animation: v)),
+                    optionLabel: (v) => {
+                          '': l.alertTypeUseGeneral,
+                          'pop': l.alertAnimationPop,
+                          'slide-up': l.alertAnimationSlideUp,
+                          'slide-down': l.alertAnimationSlideDown,
+                          'fade': l.alertAnimationFade,
+                          'zoom': l.alertAnimationZoom
+                        }[v]!)),
+            KeyedSubtree(
+                key: Key('alert-type-media-$id'),
+                child: _dropdownRow(
+                    l.alertMedia,
+                    option.media,
+                    ['', ...visuals.map((e) => e.key)],
+                    (v) => widget.onChanged(AlertTypeOptions.withOption(s, id,
+                        media: v, mediaAudio: false)),
+                    optionLabel: (v) => v.isEmpty
+                        ? l.mediaNone
+                        : library[v]!['name'] as String)),
+            if (library[option.media]?['kind'] == 'video')
+              KeyedSubtree(
+                  key: Key('alert-type-media-audio-$id'),
+                  child: _switchRow(
+                      l.alertMediaAudio,
+                      option.mediaAudio,
+                      (v) => widget.onChanged(
+                          AlertTypeOptions.withOption(s, id, mediaAudio: v)))),
+            KeyedSubtree(
+              key: Key('alert-type-sound-$id'),
+              child: _dropdownRow(
+                l.alertSound,
+                option.sound == 'library' ? option.soundMediaId : option.sound,
+                [
+                  '',
+                  'chime',
+                  'coin',
+                  'fanfare',
+                  'custom',
+                  ...audio.map((e) => e.key)
+                ],
+                (v) {
+                  setState(() => _invalidSound = false);
+                  widget.onChanged(AlertTypeOptions.withOption(s, id,
+                      sound: library[v]?['kind'] == 'audio' ? 'library' : v,
+                      soundMediaId: library[v]?['kind'] == 'audio' ? v : ''));
+                },
+                optionLabel: (v) => library.containsKey(v)
+                    ? l.mediaLibraryName(library[v]!['name'] as String)
+                    : {
+                        '': l.alertSoundNone,
+                        'chime': l.alertSoundChime,
+                        'coin': l.alertSoundCoin,
+                        'fanfare': l.alertSoundFanfare,
+                        'custom': l.alertSoundCustom,
+                      }[v]!,
+              ),
             ),
+            if (option.sound == 'custom') ...[
+              Row(children: [
+                Expanded(
+                    child: Text(
+                        option.soundPath.isEmpty
+                            ? l.alertSoundNoFile
+                            : p.basename(option.soundPath),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 11))),
+                TextButton(
+                  key: Key('alert-type-sound-file-$id'),
+                  onPressed: () async {
+                    final picked = await openFile(acceptedTypeGroups: [
+                      const XTypeGroup(
+                          label: 'Audio', extensions: ['wav', 'mp3', 'ogg']),
+                    ]);
+                    if (!mounted || picked == null) return;
+                    final valid = picked.path.length <= 1024 &&
+                        AlertSounds.customFile(picked.path) != null;
+                    setState(() => _invalidSound = !valid);
+                    if (valid) {
+                      widget.onChanged(AlertTypeOptions.withOption(
+                          widget.settings, id,
+                          soundPath: picked.path));
+                    }
+                  },
+                  child: Text(l.alertSoundChoose),
+                ),
+              ]),
+              if (_invalidSound)
+                Text(l.alertSoundInvalid,
+                    style: const TextStyle(
+                        color: Color(0xFFFFB15C), fontSize: 11)),
+            ],
+            if (amountAlertTypeIds.contains(id))
+              _AlertTierSettings(
+                  type: id, settings: s, onChanged: widget.onChanged),
+            Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: Key('alert-type-test-$id'),
+                  onPressed: widget.onTest,
+                  child: Text(l.alertTypeTest),
+                )),
           ]),
-          if (_invalidSound)
-            Text(l.alertSoundInvalid,
-                style: const TextStyle(color: Color(0xFFFFB15C), fontSize: 11)),
-        ],
-        if (amountAlertTypeIds.contains(id))
-          _AlertTierSettings(
-              type: id, settings: s, onChanged: widget.onChanged),
-        Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              key: Key('alert-type-test-$id'),
-              onPressed: widget.onTest,
-              child: Text(l.alertTypeTest),
-            )),
-      ],
+        ),
     ]);
   }
 }

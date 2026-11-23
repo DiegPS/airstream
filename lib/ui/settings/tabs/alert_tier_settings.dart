@@ -47,8 +47,10 @@ class _AlertTierSettingsState extends State<_AlertTierSettings> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 10),
-        _section(l.alertTiers),
-        if (widget.type == 'superchat') Text(l.alertTierCurrency),
+        // A sub-heading inside one alert type, not a section of the card.
+        Text(l.alertTiers, style: settingsItemTitleStyle),
+        if (widget.type == 'superchat')
+          Text(l.alertTierCurrency, style: settingsHintStyle),
         for (final (index, tier) in tiers.indexed) ...[
           const Divider(),
           _AlertTierRow(
