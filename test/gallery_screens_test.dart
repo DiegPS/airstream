@@ -220,7 +220,7 @@ const _galleryFingerprints = {
   'be-right-back': '5:b029cb1834aec1bb',
   'stream-ending': '6:149968e8a8588d27',
   'credits': '5:242f984cc965a6da',
-  'ticker': '5:d422dc53200c1cb2',
+  'ticker': '5:b26d3629c7732e32',
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '4:c8d43780e0403c7e',

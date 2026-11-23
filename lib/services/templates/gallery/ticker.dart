@@ -96,6 +96,7 @@ let fontRevision = 0;
 let timeNodes = [];
 let clock;
 let fadeTimer;
+let pendingTimer;
 let fadeIndex = 0;
 let stillKey;
 // Block-list revision on screen: a block change cannot wait for the loop end.
@@ -157,6 +158,8 @@ function appendGroup(items, widths) {
 }
 
 function applyLoop() {
+  clearTimeout(pendingTimer);
+  pendingTimer = null;
   if (requested.key === applied?.key && requested.speed === applied.speed) return;
   const rebuild = requested.key !== applied?.key;
   applied = requested;
@@ -239,6 +242,13 @@ function refresh() {
   } else if (removeTimer || blockChanged || stage.hidden ||
       !track.classList.contains('rolling')) {
     applyLoop();
+  } else if (!pendingTimer && (requested.key !== applied?.key || requested.speed !== applied?.speed)) {
+    // Changes normally wait for the loop end, but a long, slow loop can take
+    // a minute: never keep news off screen for more than 15 s.
+    pendingTimer = setTimeout(() => {
+      pendingTimer = null;
+      if (!reducedMotion.matches) applyLoop();
+    }, 15000);
   }
   const showClock = running && (fields.showTimer !== false || timeNodes.length > 0);
   if (showClock && !clock) clock = setInterval(updateClock, 1000);
@@ -254,6 +264,8 @@ function resetMotion() {
   still.replaceChildren();
   clearInterval(fadeTimer);
   fadeTimer = null;
+  clearTimeout(pendingTimer);
+  pendingTimer = null;
   fadeIndex = 0;
   stillKey = undefined;
   stage.hidden = true;
