@@ -48,6 +48,8 @@
   "youtubeHorizontal": "Horizontal",
   "youtubeVertical": "Vertical",
   "youtubeViewers": "{count} espectadores",
+  "youtubeTotalViewersPartial": "{count} con datos disponibles",
+  "@youtubeTotalViewersPartial": { "placeholders": { "count": { "type": "String" } } },
   "youtubeTotalViewers": "{count} en total",
   "youtubeAudienceUnavailable": "Audiencia no disponible",
   "twitchChannel": "Canal de Twitch",

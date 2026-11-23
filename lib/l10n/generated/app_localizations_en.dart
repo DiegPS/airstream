@@ -162,6 +162,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String youtubeTotalViewersPartial(String count) {
+    return '$count with data available';
+  }
+
+  @override
   String youtubeTotalViewers(String count) {
     return '$count total';
   }

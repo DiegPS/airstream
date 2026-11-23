@@ -78,7 +78,7 @@ class YoutubeLiveStats extends StatelessWidget {
                 ),
               ),
               Text(
-                l.youtubeTotalViewers(_formatNumber(context, total)),
+                _totalText(l, context, total),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
@@ -156,9 +156,17 @@ class YoutubeLiveStats extends StatelessWidget {
     }).toList(growable: true);
     final total = summary.totalViewerCount;
     if (lines.length > 1 && total != null) {
-      lines.add(l.youtubeTotalViewers(_formatNumber(context, total)));
+      lines.add(_totalText(l, context, total));
     }
     return lines.join('\n');
+  }
+
+  /// A sum that misses a stream without data is not the total audience.
+  String _totalText(AppLocalizations l, BuildContext context, int total) {
+    final count = _formatNumber(context, total);
+    return summary.streams.any((metadata) => metadata.viewerCount == null)
+        ? l.youtubeTotalViewersPartial(count)
+        : l.youtubeTotalViewers(count);
   }
 
   static String _formatNumber(BuildContext context, int value) {

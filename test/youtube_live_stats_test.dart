@@ -47,6 +47,27 @@ void main() {
     expect(find.text('1.750 en total'), findsOneWidget);
   });
 
+  testWidgets('a sum missing one stream is not called the total',
+      (tester) async {
+    await tester.pumpWidget(_app(
+      locale: const Locale('es'),
+      child: const YoutubeLiveStats(
+        summary: YoutubeLiveMetadataSummary(
+          horizontal: YoutubeLiveMetadata(
+              liveId: 'horizontal',
+              streamOrientation: YoutubeStreamOrientation.horizontal,
+              viewerCount: 42),
+          vertical: YoutubeLiveMetadata(
+              liveId: 'vertical',
+              streamOrientation: YoutubeStreamOrientation.vertical),
+        ),
+      ),
+    ));
+
+    expect(find.text('42 con datos disponibles'), findsOneWidget);
+    expect(find.textContaining('en total'), findsNothing);
+  });
+
   testWidgets('shows a compact combined audience in the title bar',
       (tester) async {
     await tester.pumpWidget(_app(

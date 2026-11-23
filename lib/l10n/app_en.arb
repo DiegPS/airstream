@@ -51,6 +51,8 @@
   "@youtubeViewers": {
     "placeholders": { "count": { "type": "String" } }
   },
+  "youtubeTotalViewersPartial": "{count} with data available",
+  "@youtubeTotalViewersPartial": { "placeholders": { "count": { "type": "String" } } },
   "youtubeTotalViewers": "{count} total",
   "@youtubeTotalViewers": {
     "placeholders": { "count": { "type": "String" } }

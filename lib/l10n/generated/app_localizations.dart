@@ -386,6 +386,12 @@ abstract class AppLocalizations {
   /// **'{count} viewers'**
   String youtubeViewers(String count);
 
+  /// No description provided for @youtubeTotalViewersPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} with data available'**
+  String youtubeTotalViewersPartial(String count);
+
   /// No description provided for @youtubeTotalViewers.
   ///
   /// In en, this message translates to:
