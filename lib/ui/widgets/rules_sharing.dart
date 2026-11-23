@@ -74,11 +74,22 @@ Future<RuleImportReview> readRulesImportFile(
   return RuleSharing.import(source, existing: input.$2, mediaIds: input.$3);
 }
 
-class RulesImportDialog extends ConsumerWidget {
+class RulesImportDialog extends ConsumerStatefulWidget {
   const RulesImportDialog({super.key, required this.review});
   final RuleImportReview review;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RulesImportDialog> createState() => _RulesImportDialogState();
+}
+
+class _RulesImportDialogState extends ConsumerState<RulesImportDialog> {
+  // Saving blocks a second click; a failed save stays in the dialog in red
+  // instead of escaping the button with no feedback.
+  bool _saving = false;
+  bool _failed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final review = widget.review;
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
         key: const Key('rules-import-dialog'),
@@ -103,7 +114,16 @@ class RulesImportDialog extends ConsumerWidget {
                               for (final w in review.warnings[r['id']] ??
                                   <(String, String)>[])
                                 '${ruleText(l, w.$1)} ${w.$2}'
-                            ].join('\n')))
+                            ].join('\n'))),
+                      if (_saving) const LinearProgressIndicator(),
+                      if (_failed)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(ruleText(l, 'saveFailed'),
+                              key: const Key('rules-import-failed'),
+                              style: const TextStyle(
+                                  color: Color(0xFFFF6B6B), fontSize: 12)),
+                        ),
                     ]))),
         actions: [
           OutlinedButton(
@@ -113,7 +133,7 @@ class RulesImportDialog extends ConsumerWidget {
           ElevatedButton(
               style: dialogPrimaryStyle(),
               key: const Key('rules-import-confirm'),
-              onPressed: review.rules.isEmpty
+              onPressed: review.rules.isEmpty || _saving
                   ? null
                   : () async {
                       // Recheck collisions/capacity if settings changed while reviewing.
@@ -131,8 +151,22 @@ class RulesImportDialog extends ConsumerWidget {
                             builder: (_) => RulesImportDialog(review: checked));
                         return;
                       }
-                      await ref.read(settingsProvider.notifier).update(
-                          s.copyWith(rules: [...s.rules, ...checked.rules]));
+                      setState(() {
+                        _saving = true;
+                        _failed = false;
+                      });
+                      try {
+                        await ref.read(settingsProvider.notifier).update(
+                            s.copyWith(rules: [...s.rules, ...checked.rules]));
+                      } catch (_) {
+                        if (mounted) {
+                          setState(() {
+                            _saving = false;
+                            _failed = true;
+                          });
+                        }
+                        return;
+                      }
                       if (context.mounted) Navigator.pop(context);
                     },
               child: Text(ruleText(l, 'importRules')))
