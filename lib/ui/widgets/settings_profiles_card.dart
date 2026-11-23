@@ -416,7 +416,6 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF181818),
           title: Text(l.settingsResetTitle),
           content: Text(l.settingsResetConfirmation),
           actions: [

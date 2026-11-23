@@ -158,7 +158,6 @@ class _SessionSummaryDialogState extends State<SessionSummaryDialog> {
     );
 
     return AlertDialog(
-      backgroundColor: const Color(0xFF181818),
       title: Text(l.sessionSummary),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),

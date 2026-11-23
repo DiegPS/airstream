@@ -57,7 +57,7 @@ class DiagnosticsCard extends ConsumerWidget {
                           color: switch (item.status) {
                             DiagnosticStatus.ok => const Color(0xFF53FC18),
                             DiagnosticStatus.warning => const Color(0xFFFFB15C),
-                            DiagnosticStatus.error => const Color(0xFFFF4E45),
+                            DiagnosticStatus.error => const Color(0xFFFF6B6B),
                             DiagnosticStatus.off => Colors.white24,
                           }))),
               Expanded(
