@@ -805,7 +805,8 @@ function checkMixedGiveawayDraws() {
   const winner = () => view.nodes.giveaway.children[0].textContent;
   view.advance(2500);
   assert.equal(winner(), 'Ana');
-  view.advance(4100);
+  // Beto belongs to Ana's batch: no second spin. Carla, a single draw, spins.
+  view.advance(1600);
   assert.equal(winner(), 'Beto');
   view.advance(4100);
   assert.equal(winner(), 'Carla');
@@ -1563,9 +1564,10 @@ function checkLivePages() {
   giveaway.send('giveaway', draw(3, 'Carla'));
   giveaway.advance(2500);
   assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Ana');
-  giveaway.advance(4100);
+  // A batch spins once; later winners appear after the usual hold.
+  giveaway.advance(1600);
   assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Beto');
-  giveaway.advance(4100);
+  giveaway.advance(1600);
   assert.equal(giveaway.nodes.giveaway.children[0].textContent, 'Carla');
   console.log('PASS: /clock renders all three modes and /giveaway reveals each batch winner');
 }

@@ -34,11 +34,20 @@ $overlayFontScript
   let socket = null, retry = 0, spin = 0, reveal = 0, advance = 0, closing = false, spinning = false;
   const pending = [];
   function resetDraws() {
-    cancelSpin(); window.clearTimeout(advance); advance = 0; pending.length = 0;
+    cancelSpin(); window.clearTimeout(advance); advance = 0; pending.length = 0; batchSpun = false;
+  }
+  // A batch spins once; the other winners of the same batch are revealed
+  // directly (ten winners took ~39 s when every name spun 2.5 s).
+  let batchSpun = false;
+  function queueNext() {
+    if (pending.length) advance = window.setTimeout(() => { advance = 0; nextDraw(); }, 1600);
+    else batchSpun = false;
   }
   function nextDraw() {
     if (!pending.length || spinning || advance) return;
     state = pending.shift();
+    if (state.batchDraw && batchSpun) { render(); queueNext(); return; }
+    batchSpun = !!state.batchDraw;
     animate();
   }
   function cancelSpin() {
@@ -70,7 +79,7 @@ $overlayFontScript
     tick(); spin = window.setInterval(tick, 80);
     reveal = window.setTimeout(() => {
       cancelSpin(); render();
-      if (pending.length) advance = window.setTimeout(() => { advance = 0; nextDraw(); }, 1600);
+      queueNext();
     }, 2500);
   }
   function connect() {
