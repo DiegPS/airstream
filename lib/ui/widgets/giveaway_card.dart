@@ -86,6 +86,10 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
         ref.watch(settingsProvider.select((s) => s.giveawayHistory));
     final controller = ref.read(appControllerProvider);
     final winner = state?.winner;
+    // Never offer (or promise in the button) more winners than there are
+    // eligible people: the draw would silently pick fewer.
+    final maxDraw = (state?.eligibleEntrants.length ?? 1).clamp(1, 10);
+    final drawCount = _drawCount.clamp(1, maxDraw);
     final url = ref.watch(overlayUrlProvider);
     final ready = ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
         OverlayServerPhase.ready;
@@ -203,9 +207,9 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                     settingsDropdown<int>(
                       key: const Key('giveaway-draw-count'),
                       expanded: false,
-                      value: _drawCount,
+                      value: drawCount,
                       items: [
-                        for (var count = 1; count <= 10; count++)
+                        for (var count = 1; count <= maxDraw; count++)
                           DropdownMenuItem(value: count, child: Text('$count')),
                       ],
                       onChanged: (count) {
@@ -215,17 +219,17 @@ class _GiveawayCardState extends ConsumerState<GiveawayCard> {
                   ]),
                   button(
                       winner == null ? 'giveaway-draw' : 'giveaway-redraw',
-                      _drawCount > 1
-                          ? l.giveawayDrawMany(_drawCount)
+                      drawCount > 1
+                          ? l.giveawayDrawMany(drawCount)
                           : winner == null
                               ? l.giveawayDraw
                               : l.giveawayRedraw,
                       state.eligibleEntrants.isNotEmpty
                           ? () {
-                              if (_drawCount == 1) {
+                              if (drawCount == 1) {
                                 controller.drawGiveaway();
                               } else {
-                                controller.drawGiveaways(_drawCount);
+                                controller.drawGiveaways(drawCount);
                               }
                             }
                           : null),
