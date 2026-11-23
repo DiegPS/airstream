@@ -286,7 +286,7 @@
   "ttsCardTitle": "Lector de voz (TTS)",
   "voiceStatusBadge": "Voz: {status}",
   "voiceStatusNotDownloaded": "Sin descargar",
-  "ttsSelectedModel": "TTS",
+  "ttsSelectedModel": "Modelo de voz",
   "ttsModelStatusBadge": "{model} · {status}",
   "ttsModelTechnicalDetails": "Descarga {download} · Instalado {installed} · {license} · Versión {version}",
   "ttsModelStorageDetails": "Descarga {download} · Espacio en disco {installed}",

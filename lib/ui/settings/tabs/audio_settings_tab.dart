@@ -175,7 +175,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                       child: Text(
                         _ttsModelDescription(l, model.id),
                         style: const TextStyle(
-                          color: Colors.white60,
+                          color: Colors.white54,
                           fontSize: 11,
                         ),
                       ),
@@ -199,7 +199,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                         child: Text(
                           model.licenseNotice!,
                           style: const TextStyle(
-                            color: Colors.amberAccent,
+                            color: Color(0xFFFFB15C),
                             fontSize: 10,
                           ),
                         ),

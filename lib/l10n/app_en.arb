@@ -386,7 +386,7 @@
     }
   },
   "voiceStatusNotDownloaded": "Not downloaded",
-  "ttsSelectedModel": "TTS",
+  "ttsSelectedModel": "Voice model",
   "ttsModelStatusBadge": "{model} · {status}",
   "@ttsModelStatusBadge": {
     "placeholders": {

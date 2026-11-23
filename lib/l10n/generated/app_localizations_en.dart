@@ -930,7 +930,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceStatusNotDownloaded => 'Not downloaded';
 
   @override
-  String get ttsSelectedModel => 'TTS';
+  String get ttsSelectedModel => 'Voice model';
 
   @override
   String ttsModelStatusBadge(String model, String status) {

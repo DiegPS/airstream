@@ -1799,7 +1799,7 @@ abstract class AppLocalizations {
   /// No description provided for @ttsSelectedModel.
   ///
   /// In en, this message translates to:
-  /// **'TTS'**
+  /// **'Voice model'**
   String get ttsSelectedModel;
 
   /// No description provided for @ttsModelStatusBadge.

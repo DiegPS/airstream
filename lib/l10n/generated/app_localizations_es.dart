@@ -942,7 +942,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get voiceStatusNotDownloaded => 'Sin descargar';
 
   @override
-  String get ttsSelectedModel => 'TTS';
+  String get ttsSelectedModel => 'Modelo de voz';
 
   @override
   String ttsModelStatusBadge(String model, String status) {
