@@ -13,7 +13,6 @@ import 'rules_card.dart';
 const _rulesJson = XTypeGroup(label: 'JSON', extensions: ['json']);
 Future<void> exportRules(
     BuildContext context, List<Map<String, dynamic>> rules) async {
-  final l = AppLocalizations.of(context)!;
   try {
     final location = await getSaveLocation(
         suggestedName: 'airstream-rules.json',
@@ -21,18 +20,14 @@ Future<void> exportRules(
     if (location == null) return;
     await File(location.path).writeAsString(RuleSharing.export(rules));
   } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(ruleText(l, 'sharingFailed'))));
-    }
+    if (context.mounted) ruleFeedback(context, 'exportFailed');
   }
 }
 
 Future<void> importRules(BuildContext context, WidgetRef ref) async {
-  final l = AppLocalizations.of(context)!;
   try {
     final file = await openFile(acceptedTypeGroups: const [_rulesJson]);
-    if (file == null) return;
+    if (file == null || !context.mounted) return;
     final existing = ref.read(settingsProvider);
     final review = await compute(readRulesImportFile,
         (file.path, existing.rules, existing.mediaLibrary.keys.toSet()));
@@ -40,15 +35,9 @@ Future<void> importRules(BuildContext context, WidgetRef ref) async {
     await showDialog<void>(
         context: context, builder: (_) => RulesImportDialog(review: review));
   } on FormatException catch (error) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(ruleText(l, error.message))));
-    }
+    if (context.mounted) ruleFeedback(context, error.message);
   } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(ruleText(l, 'sharingFailed'))));
-    }
+    if (context.mounted) ruleFeedback(context, 'importReadFailed');
   }
 }
 
@@ -86,12 +75,64 @@ class _RulesImportDialogState extends ConsumerState<RulesImportDialog> {
   // instead of escaping the button with no feedback.
   bool _saving = false;
   bool _failed = false;
+  bool _published = false;
+  late RuleImportReview _review = widget.review;
+
+  Future<void> _confirm() async {
+    setState(() {
+      _saving = true;
+      _failed = false;
+    });
+    final notifier = ref.read(settingsProvider.notifier);
+    final addedIds = <Object?>{};
+    RuleImportReview? revised;
+    try {
+      await notifier.updateLatest((current) {
+        // A failed disk write can leave the new rules published in memory.
+        if (_published) return current.copyWith();
+        final checked = RuleSharing.import(RuleSharing.export(_review.rules),
+            existing: current.rules,
+            mediaIds: current.mediaLibrary.keys.toSet());
+        if (checked.skipped > 0 ||
+            checked.warnings.values
+                .any((ww) => ww.any((w) => w.$1 == 'webhookCollision'))) {
+          revised = RuleImportReview(checked.rules, checked.warnings,
+              _review.skipped + checked.skipped);
+          return current;
+        }
+        addedIds.addAll(checked.rules.map((rule) => rule['id']));
+        return current.copyWith(rules: [...current.rules, ...checked.rules]);
+      });
+      if (!mounted) return;
+      if (revised case final review?) {
+        setState(() {
+          _review = review;
+          _saving = false;
+        });
+        return;
+      }
+      Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      _published = _published ||
+          ref
+              .read(settingsProvider)
+              .rules
+              .any((rule) => addedIds.contains(rule['id']));
+      setState(() {
+        _saving = false;
+        _failed = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final review = widget.review;
+    final review = _review;
     final l = AppLocalizations.of(context)!;
-    return AlertDialog(
+    final dialog = AlertDialog(
+        insetPadding: const EdgeInsets.all(16),
+        contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         key: const Key('rules-import-dialog'),
         title: Text(ruleText(l, 'importReview')),
         content: SizedBox(
@@ -115,61 +156,35 @@ class _RulesImportDialogState extends ConsumerState<RulesImportDialog> {
                                   <(String, String)>[])
                                 '${ruleText(l, w.$1)} ${w.$2}'
                             ].join('\n'))),
-                      if (_saving) const LinearProgressIndicator(),
-                      if (_failed)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(ruleText(l, 'saveFailed'),
-                              key: const Key('rules-import-failed'),
-                              style: const TextStyle(
-                                  color: Color(0xFFFF6B6B), fontSize: 12)),
-                        ),
                     ]))),
         actions: [
+          if (_saving || _failed || review.rules.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                ruleText(
+                    l,
+                    _saving
+                        ? 'saving'
+                        : _failed
+                            ? 'importSaveFailed'
+                            : 'nothingToImport'),
+                key: _failed ? const Key('rules-import-failed') : null,
+                style: _failed
+                    ? settingsBodyStyle.copyWith(color: const Color(0xFFFF6B6B))
+                    : settingsHintStyle,
+              ),
+            ),
           OutlinedButton(
               style: dialogSecondaryStyle(),
-              onPressed: () => Navigator.pop(context),
+              onPressed: _saving ? null : () => Navigator.pop(context),
               child: Text(ruleText(l, 'cancel'))),
           ElevatedButton(
               style: dialogPrimaryStyle(),
               key: const Key('rules-import-confirm'),
-              onPressed: review.rules.isEmpty || _saving
-                  ? null
-                  : () async {
-                      // Recheck collisions/capacity if settings changed while reviewing.
-                      final s = ref.read(settingsProvider);
-                      final checked = RuleSharing.import(
-                          RuleSharing.export(review.rules),
-                          existing: s.rules,
-                          mediaIds: s.mediaLibrary.keys.toSet());
-                      if (checked.skipped > 0 ||
-                          checked.warnings.values.any((ww) =>
-                              ww.any((w) => w.$1 == 'webhookCollision'))) {
-                        Navigator.pop(context);
-                        await showDialog<void>(
-                            context: context,
-                            builder: (_) => RulesImportDialog(review: checked));
-                        return;
-                      }
-                      setState(() {
-                        _saving = true;
-                        _failed = false;
-                      });
-                      try {
-                        await ref.read(settingsProvider.notifier).update(
-                            s.copyWith(rules: [...s.rules, ...checked.rules]));
-                      } catch (_) {
-                        if (mounted) {
-                          setState(() {
-                            _saving = false;
-                            _failed = true;
-                          });
-                        }
-                        return;
-                      }
-                      if (context.mounted) Navigator.pop(context);
-                    },
+              onPressed: review.rules.isEmpty || _saving ? null : _confirm,
               child: Text(ruleText(l, 'importRules')))
         ]);
+    return PopScope(canPop: !_saving, child: dialog);
   }
 }

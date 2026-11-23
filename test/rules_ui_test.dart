@@ -2,7 +2,6 @@ import 'package:airstream/ui/widgets/rules_webhook_card.dart';
 import 'package:airstream/ui/widgets/rules_sharing.dart';
 import 'package:airstream/application/rules/rule_sharing.dart';
 import 'package:airstream/ui/widgets/rule_buttons_card.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,13 +12,15 @@ import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/settings_repository.dart';
 import 'package:airstream/ui/widgets/rules_card.dart';
 import 'package:airstream/ui/widgets/rule_editor_dialog.dart';
 import 'package:airstream/ui/widgets/sidebar_tab_bar.dart';
 import 'rules_test_target.dart';
 
 class MemoryRulesSettings extends SettingsNotifier {
-  MemoryRulesSettings(SettingsModel model) {
+  MemoryRulesSettings(SettingsModel model)
+      : super(settingsRepository: _EmptySettingsRepository()) {
     state = model;
   }
   bool failNextWrite = false;
@@ -32,6 +33,14 @@ class MemoryRulesSettings extends SettingsNotifier {
       throw StateError('Write failed');
     }
   }
+}
+
+class _EmptySettingsRepository implements SettingsRepository {
+  @override
+  Future<String?> read() async => null;
+
+  @override
+  Future<void> write(String json) async {}
 }
 
 Future<void> visible(WidgetTester t, Finder f) async {
@@ -50,18 +59,20 @@ void main() {
   late RuleEngine engine;
   late MemoryRulesSettings settings;
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-            const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
-            (_) async => null);
     target = RulesTestTarget();
     engine = RuleEngine(target: target);
-    settings = MemoryRulesSettings(const SettingsModel(overlayEnabled: false));
   });
   tearDown(() async {
     await engine.dispose();
   });
+  void rulesTest(String description, WidgetTesterCallback test) {
+    testWidgets(description, (tester) async {
+      settings =
+          MemoryRulesSettings(const SettingsModel(overlayEnabled: false));
+      await test(tester);
+    });
+  }
+
   Future<void> mount(WidgetTester t,
       {String language = 'en', Widget? child}) async {
     await t.pumpWidget(ProviderScope(
@@ -81,7 +92,7 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  testWidgets(
+  rulesTest(
       'webhook URLs are opt in and limited to enabled named manual rules; regeneration confirms',
       (t) async {
     Map<String, dynamic> manual(String id, bool enabled, String webhook) => {
@@ -117,8 +128,13 @@ void main() {
     expect(settings.state.rulesWebhookToken, isNot('a' * 64));
   });
 
-  testWidgets('import review shows external warnings and saves disabled rules',
+  rulesTest(
+      'import review shows warnings and retries without duplicating rules',
       (t) async {
+    t.view.physicalSize = const Size(360, 600);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
     final rule = {
       ...RuleSchema.newRule('manual', id: 'incoming'),
       'enabled': true,
@@ -159,14 +175,23 @@ void main() {
     expect(
         find.textContaining('Set the URL again in: New rule'), findsOneWidget);
     expect(settings.state.rules, isEmpty);
-    await t.tap(find.byKey(const Key('rules-import-confirm')));
+    settings.failNextWrite = true;
+    final confirm = find.byKey(const Key('rules-import-confirm'));
+    await t.tap(confirm);
     await t.pumpAndSettle();
+    expect(find.byKey(const Key('rules-import-failed')).hitTestable(),
+        findsOneWidget);
+    final publishedId = settings.state.rules.single['id'];
+    await t.tap(confirm);
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('rules-import-dialog')), findsNothing);
+    expect(settings.state.rules.single['id'], publishedId);
     expect(settings.state.rules.single['enabled'], false);
     expect(settings.state.rules.single['id'], isNot('incoming'));
     expect(settings.state.rules.single['actions'].last['url'], '');
   });
 
-  testWidgets('manual buttons include enabled rules only and explain cooldown',
+  rulesTest('manual buttons include enabled rules only and explain cooldown',
       (t) async {
     final rules = [
       {
@@ -199,7 +224,7 @@ void main() {
     expect(find.text('Rule buttons'), findsNothing);
   });
 
-  testWidgets(
+  rulesTest(
       'empty state, recipe edit save enable, duplicate and confirmed delete',
       (t) async {
     await mount(t);
@@ -252,8 +277,7 @@ void main() {
     ('en', 'Could not save the rule. Try again.'),
     ('es', 'No se pudo guardar la regla. Inténtalo de nuevo.'),
   ]) {
-    testWidgets(
-        'failed rule save shows feedback and can be retried ($language)',
+    rulesTest('failed rule save shows feedback and can be retried ($language)',
         (t) async {
       await mount(t, language: language);
       await t.tap(find.byKey(const Key('rules-recipes')));
@@ -284,7 +308,7 @@ void main() {
     });
   }
 
-  testWidgets(
+  rulesTest(
       'chat OBS warning and invalid command disables save; simulation has no effects',
       (t) async {
     final r = {
@@ -324,7 +348,7 @@ void main() {
     expect(target.calls, isEmpty);
     expect(engine.history, isEmpty);
   });
-  testWidgets('changing triggers clears hidden filters from the draft',
+  rulesTest('changing triggers clears hidden filters from the draft',
       (t) async {
     final rule = {
       ...RuleSchema.newRule('chat.message', id: 'r'),
@@ -371,13 +395,13 @@ void main() {
         isFalse);
   });
 
-  testWidgets('closing an edited rule asks before discarding', (t) async {
+  rulesTest('closing an edited rule asks before discarding', (t) async {
     await mount(t);
     await t.tap(find.byKey(const Key('rules-new')));
     await t.pumpAndSettle();
     await t.enterText(find.byKey(const Key('rule-name')), 'Changed');
     await t.pump();
-    await t.tap(find.byTooltip('Close'));
+    await t.sendKeyEvent(LogicalKeyboardKey.escape);
     await t.pumpAndSettle();
     expect(find.text('Discard changes?'), findsOneWidget);
     await t.tap(find.text('Cancel'));
@@ -390,8 +414,32 @@ void main() {
     expect(find.byKey(const Key('rule-editor')), findsNothing);
     expect(settings.state.rules, isEmpty);
   });
+  rulesTest('Spanish editor keeps invalid numeric feedback and Save in view',
+      (t) async {
+    t.view.physicalSize = const Size(360, 600);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
+    await mount(t, language: 'es');
+    await t.tap(find.byKey(const Key('rules-new')));
+    await t.pumpAndSettle();
+
+    final cooldown = find.byKey(const Key('rule-cooldownSeconds'));
+    await visible(t, cooldown);
+    await t.enterText(cooldown, 'NaN');
+    await t.pump();
+    final save = find.byKey(const Key('rule-save'));
+    expect(t.widget<ElevatedButton>(save).onPressed, isNull);
+    expect(save.hitTestable(), findsOneWidget);
+    expect(find.byKey(const Key('rule-notice')).hitTestable(), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await t.sendKeyEvent(LogicalKeyboardKey.escape);
+    await t.pumpAndSettle();
+    expect(find.widgetWithText(OutlinedButton, 'Descartar'), findsOneWidget);
+  });
+
   for (final language in ['en', 'es']) {
-    testWidgets('eight tabs and editor fit 360 panel and 900x700 in $language',
+    rulesTest('eight tabs and editor fit 360 panel and 900x700 in $language',
         (t) async {
       t.view.physicalSize = const Size(900, 700);
       t.view.devicePixelRatio = 1;
@@ -414,14 +462,14 @@ void main() {
       await t.pumpAndSettle();
       expect(find.byType(RuleEditorDialog), findsOneWidget);
       expect(t.takeException(), isNull);
-      t.view.physicalSize = const Size(360, 700);
+      t.view.physicalSize = const Size(360, 600);
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('OBS fields and live chat warning fit 360 px in $language',
+    rulesTest('OBS fields and live chat warning fit 360 px in $language',
         (t) async {
-      t.view.physicalSize = const Size(360, 700);
+      t.view.physicalSize = const Size(360, 600);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.resetPhysicalSize);
       addTearDown(t.view.resetDevicePixelRatio);
@@ -494,9 +542,9 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('phase 11 actions fit 360 px and validate in $language',
+    rulesTest('phase 11 actions fit 360 px and validate in $language',
         (t) async {
-      t.view.physicalSize = const Size(360, 700);
+      t.view.physicalSize = const Size(360, 600);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.resetPhysicalSize);
       addTearDown(t.view.resetDevicePixelRatio);
@@ -559,9 +607,9 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('Discord recipe opens with the URL field error in $language',
+    rulesTest('Discord recipe opens with the URL field error in $language',
         (t) async {
-      t.view.physicalSize = const Size(360, 700);
+      t.view.physicalSize = const Size(360, 600);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.resetPhysicalSize);
       addTearDown(t.view.resetDevicePixelRatio);
@@ -581,7 +629,7 @@ void main() {
       expect(t.takeException(), isNull);
     });
   }
-  testWidgets('breaker resumes and history displays every action status',
+  rulesTest('breaker resumes and history displays every action status',
       (t) async {
     final r = {...RuleSchema.newRule('manual', id: 'r'), 'enabled': true};
     engine.updateSettings(enabled: true, rules: [r]);

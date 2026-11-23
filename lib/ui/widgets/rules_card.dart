@@ -1,8 +1,8 @@
 import 'rules_sharing.dart';
 import 'rules_webhook_card.dart';
-import 'dart:async';
-import 'package:airstream/settings/settings_notifier.dart';
 import 'dart:convert';
+import 'package:airstream/settings/settings_notifier.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:airstream/application/app_providers.dart';
@@ -17,6 +17,13 @@ import 'rule_editor_dialog.dart';
 
 String ruleText(AppLocalizations l, String code) => l.ruleLabel(
     'k${code == 'tripped' ? 'trippedReason' : code.replaceAll('.', '_')}');
+
+void ruleFeedback(BuildContext context, String code) {
+  final l = AppLocalizations.of(context)!;
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(ruleText(l, code))));
+}
+
 String freshRuleId() => 'r_${DateTime.now().microsecondsSinceEpoch}';
 String ruleSummary(AppLocalizations l, Map<String, dynamic> rule) {
   final t = rule['trigger'] as Map;
@@ -32,7 +39,8 @@ Future<bool> ruleConfirm(BuildContext context, String title,
   final l = AppLocalizations.of(context)!;
   return await showDialog<bool>(
           context: context,
-          builder: (c) => AlertDialog(title: Text(title), actions: [
+          builder: (c) =>
+              AlertDialog(scrollable: true, title: Text(title), actions: [
                 OutlinedButton(
                     style: dialogSecondaryStyle(),
                     onPressed: () => Navigator.pop(c, false),
@@ -45,18 +53,71 @@ Future<bool> ruleConfirm(BuildContext context, String title,
       false;
 }
 
-class RulesCard extends ConsumerWidget {
+class RulesCard extends ConsumerStatefulWidget {
   const RulesCard({super.key, this.engine});
   final RuleEngine? engine;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context)!;
+  ConsumerState<RulesCard> createState() => _RulesCardState();
+}
+
+class _RulesCardState extends ConsumerState<RulesCard> {
+  bool _importing = false;
+
+  @override
+  Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider);
-    final e = engine ?? ref.read(appControllerProvider).rules;
-    Future<void> write(List<Map<String, dynamic>> rules) =>
-        ref.read(settingsProvider.notifier).update(ref
-            .read(settingsProvider)
-            .copyWith(rules: RuleSchema.sanitize(rules)));
+    final ready = ref.watch(settingsProvider.notifier).ready;
+    final baseUrl =
+        widget.engine == null ? ref.watch(overlayUrlProvider) : null;
+    return FutureBuilder<void>(
+      future: ready,
+      builder: (context, snapshot) {
+        final l = AppLocalizations.of(context)!;
+        if (snapshot.hasError) {
+          return Text(ruleText(l, 'loadFailed'),
+              style:
+                  settingsBodyStyle.copyWith(color: const Color(0xFFFF6B6B)));
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Text(ruleText(l, 'loading'), style: settingsBodyStyle);
+        }
+        return _buildSettings(context, s, baseUrl);
+      },
+    );
+  }
+
+  Widget _buildSettings(
+      BuildContext context, SettingsModel s, String? baseUrl) {
+    final l = AppLocalizations.of(context)!;
+    final e = widget.engine ?? ref.read(appControllerProvider).rules;
+    final atLimit = s.rules.length >= RuleSchema.maxRules;
+    final notifier = ref.read(settingsProvider.notifier);
+
+    Future<bool> write(
+        List<Map<String, dynamic>> Function(List<Map<String, dynamic>>)
+            change) async {
+      var changed = false;
+      try {
+        await notifier.updateLatest((current) {
+          final rules = change(current.rules);
+          changed = !identical(rules, current.rules);
+          return changed
+              ? current.copyWith(rules: RuleSchema.sanitize(rules))
+              : current;
+        });
+        return changed;
+      } catch (_) {
+        if (context.mounted) ruleFeedback(context, 'saveFailed');
+        return false;
+      }
+    }
+
+    Future<bool> addRule(Map<String, dynamic> rule) => write((rules) {
+          if (rules.length < RuleSchema.maxRules) return [...rules, rule];
+          if (context.mounted) ruleFeedback(context, 'rulesLimit');
+          return rules;
+        });
+
     Future<void> edit(Map<String, dynamic> rule, {bool saved = true}) =>
         showDialog<void>(
             context: context,
@@ -77,9 +138,16 @@ class RulesCard extends ConsumerWidget {
                     title: Text(ruleText(l, 'automation'),
                         style: settingsBodyStyle),
                     value: s.rulesEnabled,
-                    onChanged: (v) => ref
-                        .read(settingsProvider.notifier)
-                        .update(s.copyWith(rulesEnabled: v)))),
+                    onChanged: (v) async {
+                      try {
+                        await notifier.updateLatest(
+                            (current) => current.copyWith(rulesEnabled: v));
+                      } catch (_) {
+                        if (context.mounted) {
+                          ruleFeedback(context, 'saveSettingsFailed');
+                        }
+                      }
+                    })),
             StreamBuilder<String?>(
                 stream: e.trippedStream,
                 builder: (context, _) => e.tripped == null
@@ -89,7 +157,8 @@ class RulesCard extends ConsumerWidget {
                         padding: const EdgeInsets.all(10),
                         child: Column(children: [
                           Text(l.ruleLabel('ktripped'),
-                              style: const TextStyle(color: Color(0xFFFFB15C))),
+                              style: settingsBodyStyle.copyWith(
+                                  color: const Color(0xFFFFB15C))),
                           OutlinedButton(
                               key: const Key('rules-resume'),
                               style: secondarySettingsStyle(),
@@ -99,7 +168,7 @@ class RulesCard extends ConsumerWidget {
             ElevatedButton(
                 key: const Key('rules-new'),
                 style: primarySettingsStyle(),
-                onPressed: s.rules.length >= RuleSchema.maxRules
+                onPressed: atLimit
                     ? null
                     : () => edit({
                           ...e.newRule('chat.command', id: freshRuleId()),
@@ -112,7 +181,7 @@ class RulesCard extends ConsumerWidget {
                   child: OutlinedButton(
                 key: const Key('rules-recipes'),
                 style: secondarySettingsStyle(),
-                onPressed: s.rules.length >= RuleSchema.maxRules
+                onPressed: atLimit
                     ? null
                     : () async {
                         final recipes = RuleRecipes.all;
@@ -120,6 +189,8 @@ class RulesCard extends ConsumerWidget {
                             context: context,
                             builder: (c) => AlertDialog(
                                     key: const Key('rules-recipes-dialog'),
+                                    insetPadding: const EdgeInsets.all(16),
+                                    contentPadding: const EdgeInsets.all(16),
                                     title: Text(ruleText(l, 'recipes')),
                                     content: SizedBox(
                                         width: 580,
@@ -157,17 +228,15 @@ class RulesCard extends ConsumerWidget {
                                           onPressed: () => Navigator.pop(c),
                                           child: Text(ruleText(l, 'close')))
                                     ]));
-                        if (recipe == null) return;
+                        if (recipe == null || !context.mounted) return;
                         final rule = {
                           ...recipes[recipe - 1],
                           'id': freshRuleId(),
                           'name': ruleText(l, 'recipe$recipe')
                         };
-                        // The settings state updates at once; the editor
-                        // must not wait for (or depend on) the disk write.
-                        unawaited(
-                            write([...ref.read(settingsProvider).rules, rule]));
-                        if (context.mounted) await edit(rule);
+                        if (await addRule(rule) && context.mounted) {
+                          await edit(rule);
+                        }
                       },
                 child: Text(ruleText(l, 'recipes')),
               )),
@@ -175,14 +244,26 @@ class RulesCard extends ConsumerWidget {
               Expanded(
                   child: OutlinedButton(
                       style: secondarySettingsStyle(),
-                      onPressed: () => importRules(context, ref),
-                      child: Text(ruleText(l, 'importRules')))),
+                      onPressed: _importing
+                          ? null
+                          : () async {
+                              setState(() => _importing = true);
+                              try {
+                                await importRules(context, ref);
+                              } finally {
+                                if (mounted) setState(() => _importing = false);
+                              }
+                            },
+                      child: Text(ruleText(
+                          l, _importing ? 'importing' : 'importRules')))),
             ]),
             Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: TextButton(
                     onPressed: () => exportRules(context, s.rules),
                     child: Text(ruleText(l, 'exportRules')))),
+            if (atLimit)
+              Text(ruleText(l, 'rulesLimit'), style: settingsHintStyle),
             if (s.rules.isEmpty) ...[
               const SizedBox(height: 4),
               Text(ruleText(l, 'empty'), style: settingsHintStyle),
@@ -206,8 +287,8 @@ class RulesCard extends ConsumerWidget {
                                 value: r['enabled'] == true,
                                 onChanged: r['invalid'] == true
                                     ? null
-                                    : (v) => write([
-                                          for (final old in s.rules)
+                                    : (v) => write((rules) => [
+                                          for (final old in rules)
                                             if (old['id'] == id)
                                               {...old, 'enabled': v}
                                             else
@@ -221,7 +302,9 @@ class RulesCard extends ConsumerWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                   Text(r['name'] as String,
-                                      style: settingsItemTitleStyle),
+                                      style: settingsItemTitleStyle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis),
                                   Text(ruleSummary(l, r),
                                       style: settingsHintStyle,
                                       maxLines: 1,
@@ -237,28 +320,27 @@ class RulesCard extends ConsumerWidget {
                                     await edit(r);
                                   }
                                   if (v == 'duplicate') {
-                                    await write([
-                                      ...s.rules,
-                                      {
-                                        ...jsonDecode(jsonEncode(r))
-                                            as Map<String, dynamic>,
-                                        'id': freshRuleId(),
-                                        'name':
-                                            '${r['name']} (${ruleText(l, 'copy')})',
-                                        'enabled': false,
-                                        'trigger': {
-                                          ...r['trigger'] as Map,
-                                          if (r['trigger']['type'] == 'manual')
-                                            'webhook': ''
-                                        }
+                                    // Deep copy: the duplicate must not share
+                                    // its actions or trigger maps with r.
+                                    await addRule({
+                                      ...jsonDecode(jsonEncode(r))
+                                          as Map<String, dynamic>,
+                                      'id': freshRuleId(),
+                                      'name':
+                                          '${r['name']} (${ruleText(l, 'copy')})',
+                                      'enabled': false,
+                                      'trigger': {
+                                        ...r['trigger'] as Map,
+                                        if (r['trigger']['type'] == 'manual')
+                                          'webhook': ''
                                       }
-                                    ]);
+                                    });
                                   }
                                   if (v == 'delete' &&
                                       context.mounted &&
                                       await ruleConfirm(context,
                                           ruleText(l, 'confirmDelete'))) {
-                                    await write(s.rules
+                                    await write((rules) => rules
                                         .where((x) => x['id'] != id)
                                         .toList());
                                   }
@@ -275,7 +357,12 @@ class RulesCard extends ConsumerWidget {
                                             enabled: v != 'duplicate' ||
                                                 s.rules.length <
                                                     RuleSchema.maxRules,
-                                            child: Text(ruleText(l, v)))
+                                            child: Text(ruleText(l, v),
+                                                style: v == 'delete'
+                                                    ? const TextStyle(
+                                                        color:
+                                                            Color(0xFFFF6B6B))
+                                                    : null))
                                     ])
                           ]),
                           for (final warning in [
@@ -288,15 +375,12 @@ class RulesCard extends ConsumerWidget {
                             if (chat && r['cooldownSeconds'] == 0) 'noCooldown'
                           ])
                             Text(ruleText(l, warning),
-                                style: const TextStyle(
-                                    color: Color(0xFFFFB15C),
-                                    fontSize: 11,
-                                    height: 1.3)),
+                                style: settingsHintStyle.copyWith(
+                                    color: const Color(0xFFFFB15C))),
                         ]));
               }),
           ]),
-      RulesWebhookCard(
-          baseUrl: engine == null ? ref.watch(overlayUrlProvider) : null),
+      RulesWebhookCard(baseUrl: baseUrl),
       RuleHistoryCard(engine: e),
     ]);
   }
@@ -318,17 +402,18 @@ class _RuleHistoryCardState extends State<RuleHistoryCard> {
         stream: widget.engine.historyStream,
         initialData: widget.engine.history,
         builder: (context, snapshot) {
-          final runs = (snapshot.data ?? [])
-              .where((r) => !hidden.contains(r.id))
-              .take(50)
-              .toList();
+          final history = snapshot.data ?? const <RuleRun>[];
+          if (hidden.isNotEmpty) hidden.retainAll(history.map((run) => run.id));
+          final runs = history.where((r) => !hidden.contains(r.id));
           return UiCard(
               key: const Key('rules-history'),
               title: ruleText(l, 'history'),
               icon: Icons.history_rounded,
               trailing: TextButton(
-                  onPressed: () => setState(() =>
-                      hidden.addAll(widget.engine.history.map((r) => r.id))),
+                  onPressed: runs.isEmpty
+                      ? null
+                      : () => setState(() => hidden
+                          .addAll(widget.engine.history.map((r) => r.id))),
                   child: Text(ruleText(l, 'clear'))),
               children: [
                 if (runs.isEmpty)

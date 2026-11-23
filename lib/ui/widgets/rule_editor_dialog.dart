@@ -4,6 +4,7 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -51,6 +52,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   RuleSimulation? simulation;
 
   bool saving = false;
+  bool _confirmingClose = false;
 
   @override
   void initState() {
@@ -117,22 +119,32 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
       final clean = RuleSchema.sanitize([
         {...draft, 'invalid': false}
       ]).single;
-      final current = ref.read(settingsProvider);
+      final submitted = jsonEncode(draft);
       final id = clean['id'];
-      final rules = [
-        for (final rule in current.rules) rule['id'] == id ? clean : rule,
-        if (!current.rules.any((rule) => rule['id'] == id)) clean,
-      ];
-      await ref
-          .read(settingsProvider.notifier)
-          .update(current.copyWith(rules: RuleSchema.sanitize(rules)));
-      if (mounted) {
-        setState(() {
+      var atLimit = false;
+      await ref.read(settingsProvider.notifier).updateLatest((current) {
+        final exists = current.rules.any((rule) => rule['id'] == id);
+        atLimit = !exists && current.rules.length >= RuleSchema.maxRules;
+        if (atLimit) return current;
+        return current.copyWith(
+            rules: RuleSchema.sanitize([
+          for (final rule in current.rules) rule['id'] == id ? clean : rule,
+          if (!exists) clean,
+        ]));
+      });
+      if (!mounted) return;
+      setState(() {
+        if (atLimit) {
+          notice = 'rulesLimit';
+          return;
+        }
+        if (jsonEncode(draft) == submitted) {
           draft = clean;
-          baseline = jsonEncode(clean);
-          saved = true;
-        });
-      }
+          notice = 'saved';
+        }
+        baseline = jsonEncode(clean);
+        saved = true;
+      });
     } catch (_) {
       if (mounted) setState(() => notice = 'saveFailed');
     } finally {
@@ -141,11 +153,17 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
   }
 
   Future<void> close() async {
-    if (dirty || !saved) {
+    if (saving || _confirmingClose) return;
+    if (dirty) {
       final l = AppLocalizations.of(context)!;
-      if (!await ruleConfirm(context, ruleText(l, 'discard'),
-          action: 'discardAction')) {
-        return;
+      _confirmingClose = true;
+      try {
+        if (!await ruleConfirm(context, ruleText(l, 'discard'),
+            action: 'discardAction')) {
+          return;
+        }
+      } finally {
+        _confirmingClose = false;
       }
     }
 
@@ -270,16 +288,22 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         TextField(
             key: Key('rule-$path'),
             controller: c,
+            autofocus: path == 'name',
             decoration: decoration,
             maxLines: multiline ? 3 : 1,
+            textInputAction:
+                multiline ? TextInputAction.newline : TextInputAction.next,
             keyboardType: field?.numeric == true
                 ? const TextInputType.numberWithOptions(
                     signed: true, decimal: true)
                 : multiline
                     ? TextInputType.multiline
                     : TextInputType.text,
-            onChanged: (v) => change(() =>
-                update(field?.numeric == true ? num.tryParse(v) ?? v : v))),
+            onChanged: (v) {
+              final number = field?.numeric == true ? num.tryParse(v) : null;
+              change(
+                  () => update(number != null && number.isFinite ? number : v));
+            }),
         if (placeholders.isNotEmpty) ...[
           const SizedBox(height: 6),
           Wrap(spacing: 4, runSpacing: 4, children: [
@@ -472,8 +496,16 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
         ];
 
     final valid = problems.isEmpty;
+    final runHint = !saved || dirty ? 'saveBeforeRun' : null;
+    final status = saving ? 'saving' : notice ?? (!valid ? 'invalid' : null);
+    final statusColor = switch (status) {
+      'saved' || 'accepted' => const Color(0xFF53FC18),
+      'saveFailed' || 'invalid' => const Color(0xFFFF6B6B),
+      'saving' => Colors.white70,
+      _ => const Color(0xFFFFB15C),
+    };
 
-    return PopScope(
+    final dialog = PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) close();
@@ -508,7 +540,7 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                             fontWeight: FontWeight.w700))),
                                 IconButton(
                                     tooltip: ruleText(l, 'close'),
-                                    onPressed: close,
+                                    onPressed: saving ? null : close,
                                     color: Colors.white70,
                                     icon: const Icon(Icons.close_rounded,
                                         size: 20))
@@ -876,6 +908,10 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                                                       FontWeight
                                                                           .w600)),
                                                         ]))),
+                                            if (actions.length >=
+                                                RuleSchema.maxActions)
+                                              Text(ruleText(l, 'actionsLimit'),
+                                                  style: settingsHintStyle),
                                             section('limits'),
                                             for (final k in [
                                               'cooldownSeconds',
@@ -978,26 +1014,19 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                                                     v
                                                               ].map((v) => ' · $v').join()}\n${ruleText(l, simulation!.results[i].status == 'skipped' ? 'wouldSkip' : simulation!.results[i].status)}${simulation!.results[i].reason == null ? '' : ': ${ruleText(l, simulation!.results[i].reason!)}'}')
                                                           ]))),
-                                            // Accepted in green, any reason
-                                            // it did not run in orange.
-                                            if (notice != null)
-                                              Text(ruleText(l, notice!),
-                                                  key: const Key('rule-notice'),
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      color:
-                                                          notice == 'accepted'
-                                                              ? const Color(
-                                                                  0xFF53FC18)
-                                                              : const Color(
-                                                                  0xFFFFB15C))),
-                                            if (!valid)
-                                              Text(ruleText(l, 'invalid'),
-                                                  style: const TextStyle(
-                                                      color:
-                                                          Color(0xFFFFB15C))),
                                           ])))),
                               const SizedBox(height: 12),
+                              if (status != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Semantics(
+                                    liveRegion: true,
+                                    child: Text(ruleText(l, status),
+                                        key: const Key('rule-notice'),
+                                        style: settingsBodyStyle.copyWith(
+                                            color: statusColor)),
+                                  ),
+                                ),
                               Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
@@ -1036,31 +1065,36 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
                                               }
                                             : null,
                                         child: Text(ruleText(l, 'test'))),
-                                    OutlinedButton(
-                                        key: const Key('rule-run'),
-                                        style: secondarySettingsStyle().copyWith(
-                                            minimumSize:
-                                                const WidgetStatePropertyAll(
-                                                    Size(100, 40))),
-                                        onPressed: saved && !dirty && valid
-                                            ? () => setState(() => notice =
-                                                widget.engine.runNow(
-                                                        draft['id'] as String,
-                                                        event()) ??
-                                                    'accepted')
-                                            : null,
-                                        child: Text(ruleText(l, 'run'))),
+                                    Tooltip(
+                                      message: runHint == null
+                                          ? ''
+                                          : ruleText(l, runHint),
+                                      child: OutlinedButton(
+                                          key: const Key('rule-run'),
+                                          style: secondarySettingsStyle(),
+                                          onPressed: runHint == null &&
+                                                  valid &&
+                                                  !saving
+                                              ? () => setState(() => notice =
+                                                  widget.engine.runNow(
+                                                          draft['id'] as String,
+                                                          event()) ??
+                                                      'accepted')
+                                              : null,
+                                          child: Text(ruleText(l, 'run'))),
+                                    ),
                                     ElevatedButton(
                                         key: const Key('rule-save'),
-                                        style: primarySettingsStyle().copyWith(
-                                            minimumSize:
-                                                const WidgetStatePropertyAll(
-                                                    Size(100, 40))),
+                                        style: dialogPrimaryStyle(),
                                         onPressed:
                                             valid && !saving ? _save : null,
                                         child: Text(ruleText(l, 'save')))
                                   ]),
                             ]))))));
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): close},
+      child: dialog,
+    );
   }
 }
 

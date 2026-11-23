@@ -37,7 +37,11 @@ class RuleButtonsCard extends ConsumerWidget {
                           SnackBar(content: Text(ruleText(l, reason))));
                     }
                   },
-                  child: Text(rule['name'] as String))
+                  child: Tooltip(
+                      message: rule['name'] as String,
+                      excludeFromSemantics: true,
+                      child: Text(rule['name'] as String,
+                          maxLines: 2, overflow: TextOverflow.ellipsis)))
           ])
         ]);
   }

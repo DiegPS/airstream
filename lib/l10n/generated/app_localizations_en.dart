@@ -2779,6 +2779,24 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(
       code,
       {
+        'kloadFailed': 'Could not load rules. Reopen Airstream to retry.',
+        'kloading': 'Loading rules…',
+        'kimporting': 'Import in progress…',
+        'krulesLimit': '50-rule limit reached. Delete a rule to make room.',
+        'kactionsLimit':
+            '20-action limit reached. Remove an action to add another.',
+        'knothingToImport': 'There are no rules to import.',
+        'kimportSaveFailed': 'Could not save imported rules. Try again.',
+        'ksaveSettingsFailed': 'Could not save rule settings. Try again.',
+        'ksaving': 'Saving…',
+        'ksaved': 'Rule saved.',
+        'ksaveBeforeRun': 'Save your changes to run this rule.',
+        'kcopied': 'Copied to clipboard.',
+        'kcopyFailed': 'Could not copy to the clipboard. Try again.',
+        'kexportFailed':
+            'Could not export the rules file. Check the destination and try again.',
+        'kimportReadFailed':
+            'Could not open the rules file. Check the file and try again.',
         'krules': 'Rules',
         'kdescription':
             'When something happens in your stream, Airstream can do things for you.',

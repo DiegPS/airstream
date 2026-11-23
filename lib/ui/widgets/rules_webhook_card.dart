@@ -17,6 +17,17 @@ class RulesWebhookCard extends ConsumerStatefulWidget {
 
 class _RulesWebhookCardState extends ConsumerState<RulesWebhookCard> {
   bool reveal = false;
+  bool _regenerating = false;
+
+  Future<void> _copy(String text) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted) ruleFeedback(context, 'copied');
+    } catch (_) {
+      if (mounted) ruleFeedback(context, 'copyFailed');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(settingsProvider), l = AppLocalizations.of(context)!;
@@ -33,13 +44,22 @@ class _RulesWebhookCardState extends ConsumerState<RulesWebhookCard> {
                   title: Text(ruleText(l, 'webhookEnable'),
                       style: settingsBodyStyle),
                   value: s.rulesWebhookEnabled,
-                  onChanged: (v) => notifier.update(
-                      enableRulesWebhook(ref.read(settingsProvider), v)))),
+                  onChanged: (v) async {
+                    if (!v) setState(() => reveal = false);
+                    try {
+                      await notifier.updateLatest(
+                          (current) => enableRulesWebhook(current, v));
+                    } catch (_) {
+                      if (context.mounted) {
+                        ruleFeedback(context, 'saveSettingsFailed');
+                      }
+                    }
+                  })),
           Text(ruleText(l, 'webhookHelp'), style: settingsHintStyle),
           const SizedBox(height: 4),
           Text(ruleText(l, 'webhookSecretWarning'),
-              style: const TextStyle(
-                  color: Color(0xFFFFB15C), fontSize: 11, height: 1.3)),
+              style:
+                  settingsHintStyle.copyWith(color: const Color(0xFFFFB15C))),
           if (s.rulesWebhookEnabled) ...[
             const SizedBox(height: 8),
             Text(ruleText(l, 'webhookServerHelp'), style: settingsHintStyle),
@@ -57,22 +77,37 @@ class _RulesWebhookCardState extends ConsumerState<RulesWebhookCard> {
                   child:
                       Text(ruleText(l, reveal ? 'hideToken' : 'revealToken'))),
               TextButton(
-                  onPressed: () => Clipboard.setData(
-                      ClipboardData(text: s.rulesWebhookToken)),
+                  onPressed: () => _copy(s.rulesWebhookToken),
                   child: Text(ruleText(l, 'copyToken'))),
               TextButton(
                   key: const Key('rules-webhook-regenerate'),
-                  onPressed: () async {
-                    if (await ruleConfirm(
-                        context, ruleText(l, 'regenerateConfirm'),
-                        action: 'regenerate')) {
-                      reveal = false;
-                      await notifier.update(ref
-                          .read(settingsProvider)
-                          .copyWith(rulesWebhookToken: newRulesWebhookToken()));
-                    }
-                  },
-                  child: Text(ruleText(l, 'regenerate')))
+                  onPressed: _regenerating
+                      ? null
+                      : () async {
+                          if (!await ruleConfirm(
+                                  context, ruleText(l, 'regenerateConfirm'),
+                                  action: 'regenerate') ||
+                              !mounted) {
+                            return;
+                          }
+                          setState(() {
+                            reveal = false;
+                            _regenerating = true;
+                          });
+                          try {
+                            await notifier.updateLatest((current) =>
+                                current.copyWith(
+                                    rulesWebhookToken: newRulesWebhookToken()));
+                          } catch (_) {
+                            if (context.mounted) {
+                              ruleFeedback(context, 'saveSettingsFailed');
+                            }
+                          } finally {
+                            if (mounted) setState(() => _regenerating = false);
+                          }
+                        },
+                  child: Text(
+                      ruleText(l, _regenerating ? 'saving' : 'regenerate')))
             ]),
             for (final r in s.rules)
               if (r['enabled'] == true &&
@@ -82,17 +117,20 @@ class _RulesWebhookCardState extends ConsumerState<RulesWebhookCard> {
                     color: Colors.transparent,
                     child: ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(r['name'] as String),
+                        title: Text(r['name'] as String,
+                            style: settingsItemTitleStyle,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2),
                         subtitle: Text(
                             '$baseUrl/api/rules/${r['trigger']['webhook']}?token=••••••••',
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis),
                         trailing: IconButton(
                             key: Key('rule-webhook-copy-${r['id']}'),
-                            tooltip: ruleText(l, 'copy'),
+                            tooltip: l.copyUrl,
                             icon: const Icon(Icons.copy_rounded, size: 16),
-                            onPressed: () => Clipboard.setData(ClipboardData(
-                                text:
-                                    '$baseUrl/api/rules/${r['trigger']['webhook']}?token=${s.rulesWebhookToken}')))))
+                            onPressed: () => _copy(
+                                '$baseUrl/api/rules/${r['trigger']['webhook']}?token=${s.rulesWebhookToken}'))))
           ]
         ]);
   }

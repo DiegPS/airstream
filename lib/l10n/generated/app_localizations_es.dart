@@ -2802,6 +2802,28 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(
       code,
       {
+        'kloadFailed':
+            'No se pudieron cargar las reglas. Vuelve a abrir Airstream para reintentar.',
+        'kloading': 'Cargando reglas…',
+        'kimporting': 'Importación en curso…',
+        'krulesLimit':
+            'Llegaste al límite de 50 reglas. Elimina una para liberar espacio.',
+        'kactionsLimit':
+            'Llegaste al límite de 20 acciones. Elimina una para agregar otra.',
+        'knothingToImport': 'No hay reglas para importar.',
+        'kimportSaveFailed':
+            'No se pudieron guardar las reglas importadas. Inténtalo de nuevo.',
+        'ksaveSettingsFailed':
+            'No se pudo guardar la configuración de reglas. Inténtalo de nuevo.',
+        'ksaving': 'Guardando…',
+        'ksaved': 'Regla guardada.',
+        'ksaveBeforeRun': 'Guarda los cambios para ejecutar esta regla.',
+        'kcopied': 'Copiado al portapapeles.',
+        'kcopyFailed': 'No se pudo copiar al portapapeles. Inténtalo de nuevo.',
+        'kexportFailed':
+            'No se pudo exportar el archivo de reglas. Revisa el destino e inténtalo de nuevo.',
+        'kimportReadFailed':
+            'No se pudo abrir el archivo de reglas. Revisa el archivo e inténtalo de nuevo.',
         'krules': 'Reglas',
         'kdescription':
             'Cuando algo ocurre en tu directo, Airstream puede hacer cosas por ti.',
