@@ -10,6 +10,7 @@ import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/giveaway_card.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -21,6 +22,9 @@ import 'chat_giveaway_test.dart' show message;
 void main() {
   testWidgets('Redraw stays enabled after blocking a winner until none remain',
       (tester) async {
+    tester.view.physicalSize = const Size(360, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     final twitch = FakeChannelChatClient();
     final app = AppController(
@@ -56,6 +60,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
+    expect(find.text('Entries open'), findsOneWidget);
+    expect(find.text('Type go in chat to enter.'), findsOneWidget);
     final first = app.drawGiveaway()!;
     await tester.pump();
     app.applySettings(
@@ -66,13 +72,32 @@ void main() {
 
     final redraw = find.byKey(const Key('giveaway-redraw'));
     try {
-      expect(tester.widget<ElevatedButton>(redraw).onPressed, isNotNull);
+      expect(tester.widget<OutlinedButton>(redraw).onPressed, isNotNull);
       await tester.ensureVisible(redraw);
       await tester.tap(redraw);
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text(first.name), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('giveaway-redraw-confirm')), findsNothing);
+      expect(find.text(first.name), findsOneWidget);
+      await tester.tap(redraw);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('giveaway-redraw-confirm')));
+      await tester.pumpAndSettle();
       expect(tester.widget<Text>(find.byKey(const Key('giveaway-winner'))).data,
           first.name == 'Ana' ? 'Beto' : 'Ana');
-      expect(tester.widget<ElevatedButton>(redraw).onPressed, isNull);
+      expect(tester.widget<OutlinedButton>(redraw).onPressed, isNull);
+      expect(
+          find.text('No eligible participants to draw from.'), findsOneWidget);
+      final clear = find.byKey(const Key('giveaway-clear'));
+      await tester.ensureVisible(clear);
+      await tester.tap(clear);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('giveaway-winner')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('giveaway-clear-confirm')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('giveaway-keyword')), findsOneWidget);
     } finally {
       await tester.pumpWidget(const SizedBox.shrink());
       unawaited(app.dispose());

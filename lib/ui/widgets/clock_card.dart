@@ -30,6 +30,12 @@ class _ClockCardState extends ConsumerState<ClockCard> {
   Timer? _ticker;
 
   @override
+  void initState() {
+    super.initState();
+    _durationFocus.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _ticker?.cancel();
     _label.dispose();
@@ -41,24 +47,29 @@ class _ClockCardState extends ConsumerState<ClockCard> {
 
   void _configure(LiveClock Function(LiveClock) update) {
     final settings = ref.read(settingsProvider);
-    unawaited(ref
-        .read(settingsProvider.notifier)
-        .update(settings.copyWith(clock: update(settings.clock))));
+    unawaited(saveLiveSettings(
+      context,
+      ref
+          .read(settingsProvider.notifier)
+          .update(settings.copyWith(clock: update(settings.clock))),
+    ));
   }
 
   void _operate(String op, [int seconds = 0]) {
-    unawaited(
-        ref.read(appControllerProvider).operateClock(op, seconds: seconds));
+    unawaited(saveLiveSettings(
+      context,
+      ref.read(appControllerProvider).operateClock(op, seconds: seconds),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final settings = ref.watch(settingsProvider);
-    final clock = settings.clock;
-    if (clock.needsTick) {
+    final clock = ref.watch(settingsProvider.select((s) => s.clock));
+    final media = ref.watch(settingsProvider.select((s) => s.mediaLibrary));
+    if (clock.needsTick && TickerMode.valuesOf(context).enabled) {
       _ticker ??= Timer.periodic(
-          const Duration(milliseconds: 250), (_) => setState(() {}));
+          const Duration(milliseconds: 500), (_) => setState(() {}));
     } else {
       _ticker?.cancel();
       _ticker = null;
@@ -70,6 +81,9 @@ class _ClockCardState extends ConsumerState<ClockCard> {
     if (!_durationFocus.hasFocus && _duration.text != seconds) {
       _duration.text = seconds;
     }
+    final input = int.tryParse(_duration.text.trim());
+    final validDuration =
+        input != null && input >= 1 && input <= LiveClock.maxSeconds;
     final now = DateTime.now();
     final current = clock.expire(now.millisecondsSinceEpoch);
     final value = current.shownAt(now.millisecondsSinceEpoch);
@@ -80,14 +94,14 @@ class _ClockCardState extends ConsumerState<ClockCard> {
     };
     final isCountdown = clock.mode == ClockMode.countdown;
     final running = current.phase == ClockPhase.running;
-    final adjustable =
-        isCountdown && (running || current.phase == ClockPhase.paused);
+    final active = running || current.phase == ClockPhase.paused;
+    final adjustable = isCountdown && active;
     final audio = {
       HighlightSounds.none: l.clockSoundNone,
       'chime': l.alertSoundChime,
       'coin': l.alertSoundCoin,
       'fanfare': l.alertSoundFanfare,
-      for (final entry in settings.mediaLibrary.entries)
+      for (final entry in media.entries)
         if (entry.value['kind'] == 'audio')
           entry.key: entry.value['name'] as String? ?? entry.key,
     };
@@ -126,18 +140,24 @@ class _ClockCardState extends ConsumerState<ClockCard> {
             controller: _duration,
             focusNode: _durationFocus,
             keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(5)
-            ],
-            decoration: settingsInput(),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: settingsInput(
+                    error: validDuration
+                        ? null
+                        : l.liveNumberRange(1, LiveClock.maxSeconds))
+                .copyWith(errorMaxLines: 2),
             onChanged: (input) {
-              final value = int.tryParse(input);
-              if (value != null) {
+              setState(() {});
+              final value = int.tryParse(input.trim());
+              if (value != null &&
+                  value >= 1 &&
+                  value <= LiveClock.maxSeconds) {
                 _configure((clock) => clock.configure(durationSeconds: value));
               }
             },
-            onEditingComplete: () => setState(() => _durationFocus.unfocus()),
+            onEditingComplete: () {
+              if (validDuration) _durationFocus.unfocus();
+            },
           ),
           // Editing it mid-run looked like it did nothing.
           if (adjustable)
@@ -168,8 +188,21 @@ class _ClockCardState extends ConsumerState<ClockCard> {
         Text(display,
             key: const Key('clock-value'),
             style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700)),
-        if (current.phase == ClockPhase.ended) Text(l.clockEnded),
         if (clock.mode != ClockMode.clock) ...[
+          settingsStatus(
+            switch (current.phase) {
+              ClockPhase.idle => l.clockReady,
+              ClockPhase.running => l.subathonRunning,
+              ClockPhase.paused => l.clockPaused,
+              ClockPhase.ended => l.clockEnded,
+            },
+            switch (current.phase) {
+              ClockPhase.running => const Color(0xFF53FC18),
+              ClockPhase.paused || ClockPhase.ended => const Color(0xFFFFB15C),
+              ClockPhase.idle => Colors.white70,
+            },
+            key: const Key('clock-status'),
+          ),
           const SizedBox(height: 8),
           // Main action at full width, adjustments in equal columns: the
           // same layout as the subathon timer.
@@ -179,7 +212,11 @@ class _ClockCardState extends ConsumerState<ClockCard> {
               key: const Key('clock-toggle'),
               style: primarySettingsStyle(),
               onPressed: () => _operate(running ? 'pause' : 'start'),
-              child: Text(running ? l.clockPause : l.start),
+              child: Text(running
+                  ? l.clockPause
+                  : current.phase == ClockPhase.paused
+                      ? l.subathonResume
+                      : l.start),
             ),
           ),
           const SizedBox(height: 8),
@@ -187,12 +224,21 @@ class _ClockCardState extends ConsumerState<ClockCard> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  style: secondarySettingsStyle(),
+                  style: secondarySettingsStyle(destructive: true),
                   onPressed: current.phase == ClockPhase.idle
                       ? null
-                      : () => _operate('reset'),
-                  child: Text(l.clockReset,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                      : () async {
+                          if (active &&
+                              !await confirmLiveAction(context,
+                                  title: l.clockResetConfirm,
+                                  action: l.clockReset,
+                                  actionKey:
+                                      const Key('clock-reset-confirm'))) {
+                            return;
+                          }
+                          if (mounted) _operate('reset');
+                        },
+                  child: Text(l.clockReset, textAlign: TextAlign.center),
                 ),
               ),
               if (isCountdown)
@@ -206,18 +252,23 @@ class _ClockCardState extends ConsumerState<ClockCard> {
                       style: secondarySettingsStyle(),
                       onPressed:
                           adjustable ? () => _operate('add', delta) : null,
-                      child: Text(label,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(label, textAlign: TextAlign.center),
                     ),
                   ),
                 ],
             ],
           ),
         ],
+        if (isCountdown && !adjustable)
+          Text(l.clockAdjustHint, style: settingsHintStyle),
         if (url != null &&
             ref.watch(overlayServerStateProvider).valueOrNull?.phase ==
                 OverlayServerPhase.ready)
-          PageUrlRow(url: '$url/clock'),
+          PageUrlRow(
+            url: '$url/clock',
+            onCopy: () =>
+                copyLiveText(context, '$url/clock', success: l.liveCopied),
+          ),
       ],
     );
   }

@@ -2,6 +2,7 @@ import 'package:airstream/application/app_providers.dart';
 import 'package:airstream/application/chat_queue.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
+import 'package:airstream/settings/settings_model.dart';
 import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/ui/widgets/queue_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final l = lookupAppLocalizations(Locale(language));
       final queue = ChatQueueController();
-      final command = language == 'es' ? '!unirme' : '!join';
+      final command = language == 'es' ? '!quierojugarconelstreamer' : '!join';
       queue.configure(QueueOptions(command: command), language);
       queue.setStatus(QueueStatus.open);
       for (var i = 0; i < 50; i++) {
@@ -31,7 +32,7 @@ void main() {
         overrides: [
           chatQueueProvider.overrideWithValue(queue),
           settingsProvider.overrideWith(
-            (_) => SettingsNotifier(systemLanguageCode: () => language),
+            (_) => _FailingSettings(language, command),
           ),
         ],
         child: MaterialApp(
@@ -52,7 +53,9 @@ void main() {
       ));
       await t.pumpAndSettle(const Duration(milliseconds: 250));
       expect(find.byKey(const Key('queue-card')), findsOneWidget);
-      expect(find.text(l.queueJoinHint(command)), findsOneWidget);
+      final hint = find.text(l.queueJoinHint(command));
+      expect(hint, findsOneWidget);
+      expect(t.widget<Text>(hint).maxLines, isNull);
       expect(find.text('50 / 50'), findsOneWidget);
       expect(find.byKey(Key('queue-remove-${first.id}')), findsOneWidget);
       expect(t.takeException(), isNull);
@@ -88,6 +91,13 @@ void main() {
 
       await click(find.text(l.queueSettings));
       expect(find.text(l.queueCommand), findsOneWidget);
+      final commandField = find.byType(TextFormField);
+      await t.ensureVisible(commandField);
+      await t.enterText(commandField, '!play');
+      await t.pump();
+      await t.testTextInput.receiveAction(TextInputAction.done);
+      await t.pumpAndSettle();
+      expect(find.text(l.liveSaveFailed), findsOneWidget);
       expect(t.takeException(), isNull);
 
       await click(find.byKey(const Key('queue-clear')));
@@ -103,5 +113,20 @@ void main() {
       await t.pumpWidget(const SizedBox());
       await queue.dispose();
     });
+  }
+}
+
+class _FailingSettings extends SettingsNotifier {
+  _FailingSettings(String language, String command)
+      : super(systemLanguageCode: () => '') {
+    state = SettingsModel(
+      appLanguageCode: language,
+      queueOptions: QueueOptions(command: command),
+    );
+  }
+
+  @override
+  Future<void> update(SettingsModel settings) async {
+    throw StateError('Disk unavailable');
   }
 }

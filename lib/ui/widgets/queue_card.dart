@@ -24,9 +24,11 @@ class QueueCard extends ConsumerWidget {
     final command = options.commandFor(language);
     void save(QueueOptions Function(QueueOptions) change) {
       final settings = ref.read(settingsProvider);
-      unawaited(ref.read(settingsProvider.notifier).update(
-            settings.copyWith(queueOptions: change(settings.queueOptions)),
-          ));
+      unawaited(saveLiveSettings(
+        context,
+        ref.read(settingsProvider.notifier).update(
+            settings.copyWith(queueOptions: change(settings.queueOptions))),
+      ));
     }
 
     return StreamBuilder<QueueState>(
@@ -95,13 +97,7 @@ class QueueCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Tooltip(
-              message: hint,
-              child: Text(hint,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ),
+            Text(hint, style: settingsBodyStyle),
             const SizedBox(height: 8),
             if (state.entries.isEmpty)
               settingsLabel(l.queueEmpty)
@@ -174,29 +170,12 @@ class QueueCard extends ConsumerWidget {
                               state.played.isEmpty
                           ? null
                           : () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (dialog) => AlertDialog(
-                                  title: Text(l.queueClearConfirm),
-                                  actions: [
-                                    OutlinedButton(
-                                      style: dialogSecondaryStyle(),
-                                      onPressed: () =>
-                                          Navigator.pop(dialog, false),
-                                      child: Text(l.cancel),
-                                    ),
-                                    OutlinedButton(
-                                      key: const Key('queue-clear-confirm'),
-                                      style: dialogSecondaryStyle(
-                                          destructive: true),
-                                      onPressed: () =>
-                                          Navigator.pop(dialog, true),
-                                      child: Text(l.queueClear),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed == true && context.mounted) {
+                              if (await confirmLiveAction(context,
+                                      title: l.queueClearConfirm,
+                                      action: l.queueClear,
+                                      actionKey:
+                                          const Key('queue-clear-confirm')) &&
+                                  context.mounted) {
                                 queue.clear();
                               }
                             },

@@ -6,7 +6,6 @@ import 'package:airstream/settings/settings_notifier.dart';
 import 'package:airstream/settings/goals.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/ui/widgets/ui_card.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -18,7 +17,7 @@ class GoalsCard extends ConsumerWidget {
         'kicks' => l.goalsKicks,
         _ => l.goalsManual,
       };
-  void _change(WidgetRef ref, String id, int? delta) {
+  void _change(BuildContext context, WidgetRef ref, String id, int? delta) {
     final s = ref.read(settingsProvider);
     final goals = Goals.sanitize(s.goals);
     final goal = goals[id];
@@ -29,8 +28,10 @@ class GoalsCard extends ConsumerWidget {
           ? 0
           : ((goal['current'] as int) + delta).clamp(0, 10000000)
     };
-    unawaited(
-        ref.read(settingsProvider.notifier).update(s.copyWith(goals: goals)));
+    unawaited(saveLiveSettings(
+      context,
+      ref.read(settingsProvider.notifier).update(s.copyWith(goals: goals)),
+    ));
   }
 
   @override
@@ -52,7 +53,8 @@ class GoalsCard extends ConsumerWidget {
                 child: Text(label)))
         : OutlinedButton(
             key: Key(key),
-            style: secondarySettingsStyle(destructive: key.endsWith('-delete')),
+            style: secondarySettingsStyle(
+                destructive: key.endsWith('-delete') || key.endsWith('-reset')),
             onPressed: action,
             child: Text(label));
     return UiCard(
@@ -60,6 +62,7 @@ class GoalsCard extends ConsumerWidget {
         description: l.goalsDescription,
         icon: Icons.flag_rounded,
         children: [
+          if (goals.isEmpty) Text(l.goalsEmpty, style: settingsBodyStyle),
           for (final e in goals.entries) ...[
             Text(e.value['title'] as String,
                 style: const TextStyle(
@@ -91,7 +94,7 @@ class GoalsCard extends ConsumerWidget {
                 if (key != 'minus') const SizedBox(width: 8),
                 Expanded(
                     child: button('goal-${e.key}-$key', label,
-                        () => _change(ref, e.key, delta))),
+                        () => _change(context, ref, e.key, delta))),
               ],
             ]),
             const SizedBox(height: 8),
@@ -100,10 +103,11 @@ class GoalsCard extends ConsumerWidget {
               Expanded(
                   child: button('goal-${e.key}-reset', l.goalsReset, () async {
                 if (await _confirm(
-                    context,
-                    l.goalsResetConfirm(e.value['title'] as String),
-                    l.goalsReset)) {
-                  _change(ref, e.key, null);
+                        context,
+                        l.goalsResetConfirm(e.value['title'] as String),
+                        l.goalsReset) &&
+                    context.mounted) {
+                  _change(context, ref, e.key, null);
                 }
               })),
               const SizedBox(width: 8),
@@ -115,15 +119,19 @@ class GoalsCard extends ConsumerWidget {
                   child:
                       button('goal-${e.key}-delete', l.goalsDelete, () async {
                 if (!await _confirm(
-                    context,
-                    l.goalsDeleteConfirm(e.value['title'] as String),
-                    l.goalsDelete)) {
+                        context,
+                        l.goalsDeleteConfirm(e.value['title'] as String),
+                        l.goalsDelete) ||
+                    !context.mounted) {
                   return;
                 }
                 final s = ref.read(settingsProvider);
-                unawaited(ref
-                    .read(settingsProvider.notifier)
-                    .update(s.copyWith(goals: {...s.goals}..remove(e.key))));
+                unawaited(saveLiveSettings(
+                  context,
+                  ref
+                      .read(settingsProvider.notifier)
+                      .update(s.copyWith(goals: {...s.goals}..remove(e.key))),
+                ));
               })),
             ]),
             const SizedBox(height: 12),
@@ -134,37 +142,17 @@ class GoalsCard extends ConsumerWidget {
           if (page != null)
             PageUrlRow(
                 url: page,
-                onCopy: () async {
-                  await Clipboard.setData(ClipboardData(text: page));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.goalsUrlCopied)));
-                  }
-                }),
+                onCopy: () =>
+                    copyLiveText(context, page, success: l.goalsUrlCopied)),
         ]);
   }
 
-  Future<bool> _confirm(
-          BuildContext context, String title, String action) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (dialog) => AlertDialog(
-          key: const Key('goal-confirm'),
-          title: Text(title),
-          actions: [
-            OutlinedButton(
-                style: dialogSecondaryStyle(),
-                onPressed: () => Navigator.pop(dialog, false),
-                child: Text(AppLocalizations.of(dialog)!.cancel)),
-            OutlinedButton(
-                key: const Key('goal-confirm-ok'),
-                style: dialogSecondaryStyle(destructive: true),
-                onPressed: () => Navigator.pop(dialog, true),
-                child: Text(action)),
-          ],
-        ),
-      ) ==
-      true;
+  Future<bool> _confirm(BuildContext context, String title, String action) =>
+      confirmLiveAction(context,
+          title: title,
+          action: action,
+          dialogKey: const Key('goal-confirm'),
+          actionKey: const Key('goal-confirm-ok'));
 
   Future<void> _edit(BuildContext context, WidgetRef ref, String? id) async {
     final l = AppLocalizations.of(context)!;
@@ -173,10 +161,12 @@ class GoalsCard extends ConsumerWidget {
     final target = TextEditingController(text: '${old?['target'] ?? 100}');
     var type = old?['type'] as String? ?? 'manual';
     var invalid = false;
-    await showDialog<void>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<void>(
         context: context,
-        builder: (context) => StatefulBuilder(
-            builder: (context, setState) => AlertDialog(
+        themes: InheritedTheme.capture(from: context, to: navigator.context),
+        builder: (dialogContext) => StatefulBuilder(
+            builder: (dialogContext, setState) => AlertDialog(
                   title: Text(id == null ? l.goalsAdd : l.goalsEdit),
                   content: SizedBox(
                       width: 280,
@@ -192,6 +182,8 @@ class GoalsCard extends ConsumerWidget {
                                         color: Colors.white, fontSize: 13),
                                     key: const Key('goal-title'),
                                     controller: title,
+                                    autofocus: true,
+                                    textInputAction: TextInputAction.next,
                                     maxLength: 60,
                                     decoration: settingsInput()),
                                 settingsLabel(l.goalsType),
@@ -211,13 +203,15 @@ class GoalsCard extends ConsumerWidget {
                                     key: const Key('goal-target'),
                                     controller: target,
                                     keyboardType: TextInputType.number,
-                                    decoration: settingsInput()),
-                                if (invalid) Text(l.goalsInvalid),
+                                    decoration: settingsInput(
+                                            error:
+                                                invalid ? l.goalsInvalid : null)
+                                        .copyWith(errorMaxLines: 3)),
                               ]))),
                   actions: [
                     OutlinedButton(
                         style: dialogSecondaryStyle(),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         child: Text(l.cancel)),
                     ElevatedButton(
                         key: const Key('goal-save'),
@@ -232,34 +226,38 @@ class GoalsCard extends ConsumerWidget {
                             setState(() => invalid = true);
                             return;
                           }
+                          if (!context.mounted) return;
                           final s = ref.read(settingsProvider);
-                          if (id == null && s.goals.length >= 3) return;
-                          if (id != null && !s.goals.containsKey(id)) {
-                            Navigator.pop(context);
+                          if ((id == null && s.goals.length >= 3) ||
+                              (id != null && !s.goals.containsKey(id))) {
+                            Navigator.pop(dialogContext);
+                            showLiveMessage(context, l.liveSaveFailed);
                             return;
                           }
                           final key = id ??
                               DateTime.now()
                                   .microsecondsSinceEpoch
                                   .toRadixString(36);
-                          unawaited(ref
-                              .read(settingsProvider.notifier)
-                              .update(s.copyWith(
-                                  goals: Goals.sanitize({
-                                ...s.goals,
-                                key: {
-                                  'title': title.text,
-                                  'type': type,
-                                  'target': n,
-                                  'current': s.goals[id]?['current'] ?? 0
-                                }
-                              }))));
-                          Navigator.pop(context);
+                          unawaited(saveLiveSettings(
+                              context,
+                              ref
+                                  .read(settingsProvider.notifier)
+                                  .update(s.copyWith(
+                                      goals: Goals.sanitize({
+                                    ...s.goals,
+                                    key: {
+                                      'title': title.text,
+                                      'type': type,
+                                      'target': n,
+                                      'current': s.goals[id]?['current'] ?? 0
+                                    }
+                                  })))));
+                          Navigator.pop(dialogContext);
                         })
                   ],
                 )));
-    // Dialog route keeps its fields alive through the closing animation.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await navigator.push(route);
+    await route.completed;
     title.dispose();
     target.dispose();
   }

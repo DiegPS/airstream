@@ -5304,7 +5304,7 @@ abstract class AppLocalizations {
   /// No description provided for @queueClearConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Clear the queue and everyone playing?'**
+  /// **'Clear the queue, current players, and play history?'**
   String get queueClearConfirm;
 
   /// No description provided for @queuePlaying.
@@ -6309,6 +6309,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save the new name.'**
   String get mediaRenameFailed;
+
+  /// No description provided for @liveSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save changes to disk. Try again.'**
+  String get liveSaveFailed;
+
+  /// No description provided for @liveLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load this tool. Reopen Airstream to try again.'**
+  String get liveLoadFailed;
+
+  /// No description provided for @liveCopyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not copy to the clipboard. Try again.'**
+  String get liveCopyFailed;
+
+  /// No description provided for @liveCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard.'**
+  String get liveCopied;
+
+  /// No description provided for @liveNumberRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number from {minimum} to {maximum}.'**
+  String liveNumberRange(int minimum, int maximum);
+
+  /// No description provided for @pollEndConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'End the poll and stop accepting votes?'**
+  String get pollEndConfirm;
+
+  /// No description provided for @pollEndBeforeStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'End the current poll before starting a saved poll.'**
+  String get pollEndBeforeStarting;
+
+  /// No description provided for @pollNoSavedSetups.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved polls yet.'**
+  String get pollNoSavedSetups;
+
+  /// No description provided for @giveawayOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries open'**
+  String get giveawayOpen;
+
+  /// No description provided for @giveawayJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type {keyword} in chat to enter.'**
+  String giveawayJoinHint(String keyword);
+
+  /// No description provided for @giveawayKeywordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a keyword to start the giveaway.'**
+  String get giveawayKeywordRequired;
+
+  /// No description provided for @giveawayNoEligibleEntrants.
+  ///
+  /// In en, this message translates to:
+  /// **'No eligible participants to draw from.'**
+  String get giveawayNoEligibleEntrants;
+
+  /// No description provided for @giveawayRedrawConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw again and announce the new result?'**
+  String get giveawayRedrawConfirm;
+
+  /// No description provided for @giveawayRedrawMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw {count} more winners'**
+  String giveawayRedrawMany(int count);
+
+  /// No description provided for @giveawayClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear this giveaway from the live tools and OBS?'**
+  String get giveawayClearConfirm;
+
+  /// No description provided for @goalsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No goals yet.'**
+  String get goalsEmpty;
+
+  /// No description provided for @clockReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get clockReady;
+
+  /// No description provided for @clockAdjustHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the countdown to adjust the time remaining.'**
+  String get clockAdjustHint;
+
+  /// No description provided for @clockResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the timer and discard its current time?'**
+  String get clockResetConfirm;
+
+  /// No description provided for @subathonAdjustHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the subathon to adjust the time remaining.'**
+  String get subathonAdjustHint;
 }
 
 class _AppLocalizationsDelegate

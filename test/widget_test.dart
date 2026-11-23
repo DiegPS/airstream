@@ -2109,7 +2109,7 @@ void main() {
     ], child: const AirstreamApp()));
     await tester.pump();
     await tester.tap(find.byTooltip('Live'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     final start = find.byKey(const Key('giveaway-start'));
     await tester.enterText(
         find.byKey(const Key('giveaway-keyword')), '!sorteo');
@@ -2156,7 +2156,7 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.byTooltip('Live'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final start = find.byKey(const Key('poll-start'));
     await tester.ensureVisible(start);
@@ -2179,6 +2179,8 @@ void main() {
     expect(find.text('¿Qué juego?'), findsOneWidget);
     expect(find.textContaining('0 votes'), findsOneWidget);
     await tapPollControl(find.byKey(const Key('poll-end')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('poll-end-confirm')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Final results'), findsOneWidget);

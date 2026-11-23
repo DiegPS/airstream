@@ -3325,7 +3325,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get queueClear => 'Clear';
 
   @override
-  String get queueClearConfirm => 'Clear the queue and everyone playing?';
+  String get queueClearConfirm =>
+      'Clear the queue, current players, and play history?';
 
   @override
   String get queuePlaying => 'Playing now';
@@ -3884,4 +3885,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mediaRenameFailed => 'Could not save the new name.';
+
+  @override
+  String get liveSaveFailed => 'Could not save changes to disk. Try again.';
+
+  @override
+  String get liveLoadFailed =>
+      'Could not load this tool. Reopen Airstream to try again.';
+
+  @override
+  String get liveCopyFailed => 'Could not copy to the clipboard. Try again.';
+
+  @override
+  String get liveCopied => 'Copied to clipboard.';
+
+  @override
+  String liveNumberRange(int minimum, int maximum) {
+    return 'Enter a number from $minimum to $maximum.';
+  }
+
+  @override
+  String get pollEndConfirm => 'End the poll and stop accepting votes?';
+
+  @override
+  String get pollEndBeforeStarting =>
+      'End the current poll before starting a saved poll.';
+
+  @override
+  String get pollNoSavedSetups => 'No saved polls yet.';
+
+  @override
+  String get giveawayOpen => 'Entries open';
+
+  @override
+  String giveawayJoinHint(String keyword) {
+    return 'Type $keyword in chat to enter.';
+  }
+
+  @override
+  String get giveawayKeywordRequired =>
+      'Enter a keyword to start the giveaway.';
+
+  @override
+  String get giveawayNoEligibleEntrants =>
+      'No eligible participants to draw from.';
+
+  @override
+  String get giveawayRedrawConfirm => 'Draw again and announce the new result?';
+
+  @override
+  String giveawayRedrawMany(int count) {
+    return 'Draw $count more winners';
+  }
+
+  @override
+  String get giveawayClearConfirm =>
+      'Clear this giveaway from the live tools and OBS?';
+
+  @override
+  String get goalsEmpty => 'No goals yet.';
+
+  @override
+  String get clockReady => 'Ready';
+
+  @override
+  String get clockAdjustHint =>
+      'Start the countdown to adjust the time remaining.';
+
+  @override
+  String get clockResetConfirm =>
+      'Reset the timer and discard its current time?';
+
+  @override
+  String get subathonAdjustHint =>
+      'Start the subathon to adjust the time remaining.';
 }

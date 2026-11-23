@@ -44,39 +44,32 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
     // A new run passes through idle, so OBS does not show the difference
     // between the old and new end as support-added time.
     if (s.subathonPhase == 'running' || s.subathonPhase == 'paused') {
-      unawaited(notifier.update(SubathonTimer.reset(s, now)));
+      unawaited(saveLiveSettings(
+          context, notifier.update(SubathonTimer.reset(s, now))));
     }
-    unawaited(
-        notifier.update(SubathonTimer.start(ref.read(settingsProvider), now)));
+    unawaited(saveLiveSettings(
+      context,
+      notifier.update(SubathonTimer.start(ref.read(settingsProvider), now)),
+    ));
   }
 
   /// Starting over or resetting a running/paused subathon throws away the
   /// time left (and what support added): ask first.
   Future<bool> _confirmLoss(String title, String action) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (dialog) => AlertDialog(
-          key: const Key('subathon-confirm'),
-          title: Text(title),
-          actions: [
-            OutlinedButton(
-                style: dialogSecondaryStyle(),
-                onPressed: () => Navigator.pop(dialog, false),
-                child: Text(AppLocalizations.of(dialog)!.cancel)),
-            OutlinedButton(
-                key: const Key('subathon-confirm-ok'),
-                style: dialogSecondaryStyle(destructive: true),
-                onPressed: () => Navigator.pop(dialog, true),
-                child: Text(action)),
-          ],
-        ),
-      ) ==
-      true;
+      await confirmLiveAction(context,
+          title: title,
+          action: action,
+          dialogKey: const Key('subathon-confirm'),
+          actionKey: const Key('subathon-confirm-ok')) &&
+      mounted;
 
   void change(SettingsModel Function(SettingsModel, int) action) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    unawaited(ref.read(settingsProvider.notifier).update(
-        action(SubathonTimer.normalize(ref.read(settingsProvider), now), now)));
+    unawaited(saveLiveSettings(
+      context,
+      ref.read(settingsProvider.notifier).update(action(
+          SubathonTimer.normalize(ref.read(settingsProvider), now), now)),
+    ));
   }
 
   @override
@@ -93,7 +86,10 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
     final page = ready && url != null ? '$url/timer' : null;
     Widget button(String key, String label,
             SettingsModel Function(SettingsModel, int) action,
-            {bool primary = false, VoidCallback? onPressed}) =>
+            {bool primary = false,
+            bool destructive = false,
+            bool enabled = true,
+            VoidCallback? onPressed}) =>
         primary
             ? SizedBox(
                 width: double.infinity,
@@ -104,8 +100,8 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                     child: Text(label)))
             : OutlinedButton(
                 key: Key(key),
-                style: secondarySettingsStyle(),
-                onPressed: onPressed ?? () => change(action),
+                style: secondarySettingsStyle(destructive: destructive),
+                onPressed: enabled ? onPressed ?? () => change(action) : null,
                 child: Text(label));
     Widget field(String key, String label, int value, int min, int max,
             SettingsModel Function(SettingsModel, int) update) =>
@@ -174,7 +170,8 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                                 }
                               }
                             : restart,
-                        primary: !active))),
+                        primary: !active,
+                        destructive: active))),
           ]),
           if (phase == 'running')
             button('subathon-pause', l.subathonPause, SubathonTimer.pause,
@@ -187,6 +184,8 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
               width: double.infinity,
               child:
                   button('subathon-reset', l.subathonReset, SubathonTimer.reset,
+                      destructive: true,
+                      enabled: phase != 'idle',
                       onPressed: active
                           ? () async {
                               if (await _confirmLoss(
@@ -205,8 +204,10 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
             ])
               Expanded(
                   child: button('subathon-$key', label,
-                      (s, now) => SubathonTimer.addSeconds(s, now, seconds))),
+                      (s, now) => SubathonTimer.addSeconds(s, now, seconds),
+                      enabled: active)),
           ]),
+          if (!active) Text(l.subathonAdjustHint, style: settingsHintStyle),
           Material(
               color: Colors.transparent,
               child: ExpansionTile(
@@ -244,7 +245,11 @@ class _SubathonCardState extends ConsumerState<SubathonCard> {
                         10080,
                         (s, n) => s.copyWith(subathonMaxRemainingMinutes: n)),
                   ])),
-          if (page != null) PageUrlRow(url: page),
+          if (page != null)
+            PageUrlRow(
+                url: page,
+                onCopy: () =>
+                    copyLiveText(context, page, success: l.subathonUrlCopied)),
         ]);
   }
 }
@@ -268,6 +273,19 @@ class _TimerNumberFieldState extends State<_TimerNumberField> {
   late final TextEditingController controller =
       TextEditingController(text: '${widget.value}');
   final focus = FocusNode();
+  bool _invalid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    focus.addListener(() {
+      if (!focus.hasFocus) {
+        controller.text = '${widget.value}';
+        if (_invalid) setState(() => _invalid = false);
+      }
+    });
+  }
+
   @override
   void didUpdateWidget(covariant _TimerNumberField oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -295,21 +313,23 @@ class _TimerNumberFieldState extends State<_TimerNumberField> {
             focusNode: focus,
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white, fontSize: 13),
-            decoration:
-                settingsInput(hint: '${widget.minimum}–${widget.maximum}'),
+            decoration: settingsInput(
+                    error: _invalid
+                        ? AppLocalizations.of(context)!
+                            .liveNumberRange(widget.minimum, widget.maximum)
+                        : null)
+                .copyWith(errorMaxLines: 3),
             onChanged: (text) {
               final n = int.tryParse(text);
-              if (n != null) {
-                widget.onChanged(n.clamp(widget.minimum, widget.maximum));
-              }
+              final valid =
+                  n != null && n >= widget.minimum && n <= widget.maximum;
+              if (_invalid == valid) setState(() => _invalid = !valid);
+              if (valid) widget.onChanged(n);
             },
             onEditingComplete: () {
-              controller.text = '${widget.value}';
+              if (_invalid) return;
               focus.unfocus();
             },
-            onTapOutside: (_) {
-              controller.text = '${widget.value}';
-              focus.unfocus();
-            })
+            onTapOutside: (_) => focus.unfocus())
       ]);
 }

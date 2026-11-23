@@ -862,7 +862,11 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                         children: [
                           for (var index = 0; index < _tabCount; index++)
                             _visitedTabs.contains(index)
-                                ? _tabPage(index)
+                                ? TickerMode(
+                                    enabled:
+                                        !searching && index == _selectedTab,
+                                    child: _tabPage(index),
+                                  )
                                 : const SizedBox.shrink(),
                         ],
                       ),

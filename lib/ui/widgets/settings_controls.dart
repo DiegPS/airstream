@@ -202,6 +202,66 @@ ButtonStyle dialogSecondaryStyle({bool destructive = false}) =>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
 
+Future<bool> confirmLiveAction(
+  BuildContext context, {
+  required String title,
+  required String action,
+  Key? dialogKey,
+  Key? actionKey,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        key: dialogKey,
+        scrollable: true,
+        title: Text(title),
+        actions: [
+          OutlinedButton(
+            autofocus: true,
+            style: dialogSecondaryStyle(),
+            onPressed: () => Navigator.pop(dialog),
+            child: Text(AppLocalizations.of(dialog)!.cancel),
+          ),
+          OutlinedButton(
+            key: actionKey,
+            style: dialogSecondaryStyle(destructive: true),
+            onPressed: () => Navigator.pop(dialog, true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    ) ==
+    true;
+
+void showLiveMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..removeCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+Future<void> saveLiveSettings(BuildContext context, Future<void> write) async {
+  try {
+    await write;
+  } catch (_) {
+    if (context.mounted) {
+      showLiveMessage(context, AppLocalizations.of(context)!.liveSaveFailed);
+    }
+  }
+}
+
+Future<void> copyLiveText(BuildContext context, String text,
+    {required String success}) async {
+  try {
+    await Clipboard.setData(ClipboardData(text: text));
+  } catch (_) {
+    if (context.mounted) {
+      showLiveMessage(context, AppLocalizations.of(context)!.liveCopyFailed);
+    }
+    return;
+  }
+  if (context.mounted) showLiveMessage(context, success);
+}
+
 class PageUrlRow extends StatelessWidget {
   const PageUrlRow(
       {super.key,

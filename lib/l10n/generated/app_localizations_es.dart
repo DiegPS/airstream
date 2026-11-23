@@ -3364,7 +3364,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get queueClearConfirm =>
-      '¿Vaciar la lista y quitar a quienes están jugando?';
+      '¿Vaciar la lista de espera, quitar a quienes juegan y borrar el historial?';
 
   @override
   String get queuePlaying => 'Jugando ahora';
@@ -3930,4 +3930,81 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get mediaRenameFailed => 'No se pudo guardar el nombre nuevo.';
+
+  @override
+  String get liveSaveFailed =>
+      'No se pudieron guardar los cambios en el disco. Inténtalo de nuevo.';
+
+  @override
+  String get liveLoadFailed =>
+      'No se pudo cargar esta herramienta. Vuelve a abrir Airstream para intentarlo de nuevo.';
+
+  @override
+  String get liveCopyFailed =>
+      'No se pudo copiar al portapapeles. Inténtalo de nuevo.';
+
+  @override
+  String get liveCopied => 'Copiado al portapapeles.';
+
+  @override
+  String liveNumberRange(int minimum, int maximum) {
+    return 'Escribe un número entre $minimum y $maximum.';
+  }
+
+  @override
+  String get pollEndConfirm => '¿Finalizar la encuesta y cerrar la votación?';
+
+  @override
+  String get pollEndBeforeStarting =>
+      'Finaliza la encuesta actual antes de iniciar una guardada.';
+
+  @override
+  String get pollNoSavedSetups => 'Aún no hay encuestas guardadas.';
+
+  @override
+  String get giveawayOpen => 'Inscripciones abiertas';
+
+  @override
+  String giveawayJoinHint(String keyword) {
+    return 'Escribe $keyword en el chat para participar.';
+  }
+
+  @override
+  String get giveawayKeywordRequired =>
+      'Escribe una palabra clave para iniciar el sorteo.';
+
+  @override
+  String get giveawayNoEligibleEntrants =>
+      'No hay participantes elegibles para el sorteo.';
+
+  @override
+  String get giveawayRedrawConfirm =>
+      '¿Volver a sortear y anunciar el nuevo resultado?';
+
+  @override
+  String giveawayRedrawMany(int count) {
+    return 'Sortear $count ganadores más';
+  }
+
+  @override
+  String get giveawayClearConfirm =>
+      '¿Borrar este sorteo de las herramientas en vivo y de OBS?';
+
+  @override
+  String get goalsEmpty => 'Aún no hay metas.';
+
+  @override
+  String get clockReady => 'Listo';
+
+  @override
+  String get clockAdjustHint =>
+      'Inicia la cuenta regresiva para ajustar el tiempo restante.';
+
+  @override
+  String get clockResetConfirm =>
+      '¿Reiniciar el temporizador y descartar el tiempo actual?';
+
+  @override
+  String get subathonAdjustHint =>
+      'Inicia el subatón para ajustar el tiempo restante.';
 }

@@ -108,7 +108,13 @@ class _PollCardState extends ConsumerState<PollCard> {
         builder: (context, setDialogState) {
           final clean = SavedPoll.cleanName(input);
           final duplicate = taken(saved, clean);
+          final canSave = !duplicate && clean.isNotEmpty;
+          void submit() {
+            if (canSave) Navigator.pop(context, clean);
+          }
+
           return AlertDialog(
+            scrollable: true,
             title: Text(existing == null ? l.pollSaveSetup : l.pollRenameSetup),
             content: TextFormField(
               key: const Key('poll-setup-name'),
@@ -121,6 +127,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                 error: duplicate ? l.pollSetupDuplicate : null,
               ),
               onChanged: (value) => setDialogState(() => input = value),
+              onFieldSubmitted: (_) => submit(),
             ),
             actions: [
               OutlinedButton(
@@ -129,9 +136,7 @@ class _PollCardState extends ConsumerState<PollCard> {
                   child: Text(l.cancel)),
               ElevatedButton(
                 style: dialogPrimaryStyle(),
-                onPressed: duplicate || clean.isEmpty
-                    ? null
-                    : () => Navigator.pop(context, clean),
+                onPressed: canSave ? submit : null,
                 child: Text(l.ruleLabel('ksave')),
               ),
             ],
@@ -148,6 +153,12 @@ class _PollCardState extends ConsumerState<PollCard> {
     final latest = ref.read(settingsProvider).savedPolls;
     if (taken(latest, name) ||
         (existing == null && latest.length >= SavedPoll.limit)) {
+      showLiveMessage(context,
+          taken(latest, name) ? l.pollSetupDuplicate : l.pollSetupLimit);
+      return;
+    }
+    if (existing != null && !latest.any((poll) => identical(poll, existing))) {
+      showLiveMessage(context, l.liveSaveFailed);
       return;
     }
     await _writeSaved([
@@ -158,9 +169,12 @@ class _PollCardState extends ConsumerState<PollCard> {
 
   Future<void> _writeSaved(List<SavedPoll> polls) {
     final settings = ref.read(settingsProvider);
-    return ref
-        .read(settingsProvider.notifier)
-        .update(settings.copyWith(savedPolls: List.unmodifiable(polls)));
+    return saveLiveSettings(
+      context,
+      ref
+          .read(settingsProvider.notifier)
+          .update(settings.copyWith(savedPolls: List.unmodifiable(polls))),
+    );
   }
 
   void _launch(SavedPoll setup, AppLocalizations l) {
@@ -206,7 +220,14 @@ class _PollCardState extends ConsumerState<PollCard> {
               icon: const Icon(Icons.bookmark_add_outlined),
               label: Text(l.pollSaveSetup),
             ),
-            if (saved.length >= SavedPoll.limit) Text(l.pollSetupLimit),
+            if (saved.length >= SavedPoll.limit)
+              Text(l.pollSetupLimit, style: settingsHintStyle)
+            else if (!_canStart)
+              Text(l.pollInvalidInput, style: settingsHintStyle),
+            if (pollOpen)
+              Text(l.pollEndBeforeStarting, style: settingsHintStyle),
+            if (saved.isEmpty)
+              Text(l.pollNoSavedSetups, style: settingsBodyStyle),
             for (final poll in saved)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -275,9 +296,13 @@ class _PollCardState extends ConsumerState<PollCard> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final poll = ref.watch(chatPollProvider).valueOrNull;
+    final snapshot = ref.watch(chatPollProvider);
+    final poll = snapshot.valueOrNull;
     final saved = ref.watch(settingsProvider.select((s) => s.savedPolls));
-    final running = poll != null && !poll.closed && poll.endsAt != null;
+    final running = poll != null &&
+        !poll.closed &&
+        poll.endsAt != null &&
+        TickerMode.valuesOf(context).enabled;
     if (running && _ticker == null) {
       _ticker = Timer.periodic(
         const Duration(seconds: 1),
@@ -294,10 +319,15 @@ class _PollCardState extends ConsumerState<PollCard> {
       icon: Icons.poll_outlined,
       description: l.pollDescription,
       children: [
-        if (poll == null) ..._editor(l) else ..._results(l, poll),
-        // Launching a saved poll would silently replace an open one and its
-        // votes; end the current poll first.
-        _savedPolls(l, saved, pollOpen: poll != null && !poll.closed),
+        if (snapshot.hasError)
+          Text(l.liveLoadFailed,
+              style: settingsBodyStyle.copyWith(color: const Color(0xFFFF6B6B)))
+        else if (snapshot.isLoading && !snapshot.hasValue)
+          Text(l.loading, style: settingsBodyStyle)
+        else ...[
+          if (poll == null) ..._editor(l) else ..._results(l, poll),
+          _savedPolls(l, saved, pollOpen: poll != null && !poll.closed),
+        ],
         const SizedBox(height: 10),
         _overlayHint(l),
       ],
@@ -437,8 +467,11 @@ class _PollCardState extends ConsumerState<PollCard> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(_errorLabel(l, error),
                 key: const Key('poll-error'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                style:
+                    settingsBodyStyle.copyWith(color: const Color(0xFFFF6B6B))),
           ),
+        if (!_canStart && _error == null)
+          Text(l.pollInvalidInput, style: settingsHintStyle),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
@@ -483,13 +516,13 @@ class _PollCardState extends ConsumerState<PollCard> {
   List<Widget> _results(AppLocalizations l, ChatPoll poll) {
     final total = poll.total;
     final endsAt = poll.endsAt;
-    final status = poll.closed
-        ? l.pollClosed
-        : endsAt == null
-            ? l.pollOpen
-            : l.pollSecondsLeft(
-                endsAt.difference(DateTime.now()).inSeconds.clamp(0, 9999),
-              );
+    final voteExample = switch (poll.mode) {
+      PollMode.numbered =>
+        [for (var i = 1; i <= poll.options.length; i++) '!$i'].join(' / '),
+      PollMode.word || PollMode.yesNo => poll.options.join(' / '),
+      PollMode.rating => '1–10',
+      PollMode.freeAnswer => '${poll.command} ${l.pollAnswerExample}',
+    };
     return [
       Text(
         poll.question,
@@ -500,6 +533,29 @@ class _PollCardState extends ConsumerState<PollCard> {
         ),
       ),
       const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        key: const Key('poll-status'),
+        children: [
+          settingsStatus(poll.closed ? l.pollClosed : l.pollOpen,
+              poll.closed ? const Color(0xFFFFB15C) : _accent),
+          if (!poll.closed && endsAt != null)
+            Text(
+              l.pollSecondsLeft(
+                (endsAt.difference(DateTime.now()).inMilliseconds / 1000)
+                    .ceil()
+                    .clamp(0, 9999),
+              ),
+              style: settingsBodyStyle,
+            ),
+          Text(l.pollVotes(total), style: settingsBodyStyle),
+        ],
+      ),
+      if (!poll.closed)
+        Text('${l.pollHowToVote} · $voteExample', style: settingsBodyStyle),
+      const SizedBox(height: 8),
       ..._tally(l, poll),
       if (!poll.closed && poll.hideResults)
         Padding(
@@ -507,11 +563,6 @@ class _PollCardState extends ConsumerState<PollCard> {
           child: Text(l.pollResultsHiddenOnPages,
               style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ),
-      Text(
-        '${l.pollVotes(total)} · $status',
-        key: const Key('poll-status'),
-        style: const TextStyle(color: Colors.white38, fontSize: 11),
-      ),
       const SizedBox(height: 10),
       Row(
         children: [
@@ -519,10 +570,24 @@ class _PollCardState extends ConsumerState<PollCard> {
             Expanded(
               child: OutlinedButton.icon(
                 key: const Key('poll-end'),
-                onPressed: () => ref.read(appControllerProvider).endPoll(),
+                onPressed: () async {
+                  if (await confirmLiveAction(context,
+                          title: l.pollEndConfirm,
+                          action: l.pollEnd,
+                          actionKey: const Key('poll-end-confirm')) &&
+                      mounted) {
+                    final current = ref.read(chatPollProvider).valueOrNull;
+                    // A vote can update the snapshot while the dialog is open.
+                    if (current != null &&
+                        !current.closed &&
+                        identical(current.options, poll.options)) {
+                      ref.read(appControllerProvider).endPoll();
+                    }
+                  }
+                },
                 icon: const Icon(Icons.stop_rounded, size: 16),
                 label: Text(l.pollEnd),
-                style: secondarySettingsStyle(),
+                style: secondarySettingsStyle(destructive: true),
               ),
             ),
           if (poll.closed)
@@ -653,16 +718,8 @@ class _PollCardState extends ConsumerState<PollCard> {
     final pollUrl = '$url/poll';
     return PageUrlRow(
         url: pollUrl,
-        onCopy: () async {
-          await Clipboard.setData(ClipboardData(text: pollUrl));
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l.pollOverlayUrlCopied),
-              duration: const Duration(milliseconds: 1400),
-            ),
-          );
-        });
+        onCopy: () =>
+            copyLiveText(context, pollUrl, success: l.pollOverlayUrlCopied));
   }
 
   Widget _input(TextEditingController controller, String hint, {Key? key}) =>
@@ -671,22 +728,6 @@ class _PollCardState extends ConsumerState<PollCard> {
         controller: controller,
         onChanged: (_) => setState(() => _error = null),
         style: const TextStyle(color: Colors.white, fontSize: 13),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: hint.isEmpty ? null : hint,
-          hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
-          filled: true,
-          fillColor: const Color(0xFF1E1E1E),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF2E2E2E)),
-          ),
-        ),
+        decoration: settingsInput(hint: hint.isEmpty ? null : hint),
       );
 }

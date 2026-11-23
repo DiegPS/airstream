@@ -1260,7 +1260,7 @@
   "queueNextCount": "Players per turn",
   "queueRandom": "Random",
   "queueClear": "Clear",
-  "queueClearConfirm": "Clear the queue and everyone playing?",
+  "queueClearConfirm": "Clear the queue, current players, and play history?",
   "queuePlaying": "Playing now",
   "queueNobodyPlaying": "Nobody is playing",
   "queueSettings": "Queue settings",
@@ -1506,5 +1506,28 @@
         "type": "String"
       }
     }
-  }
+  },
+  "liveSaveFailed": "Could not save changes to disk. Try again.",
+  "liveLoadFailed": "Could not load this tool. Reopen Airstream to try again.",
+  "liveCopyFailed": "Could not copy to the clipboard. Try again.",
+  "liveCopied": "Copied to clipboard.",
+  "liveNumberRange": "Enter a number from {minimum} to {maximum}.",
+  "@liveNumberRange": {"placeholders": {"minimum": {"type": "int"}, "maximum": {"type": "int"}}},
+  "pollEndConfirm": "End the poll and stop accepting votes?",
+  "pollEndBeforeStarting": "End the current poll before starting a saved poll.",
+  "pollNoSavedSetups": "No saved polls yet.",
+  "giveawayOpen": "Entries open",
+  "giveawayJoinHint": "Type {keyword} in chat to enter.",
+  "@giveawayJoinHint": {"placeholders": {"keyword": {"type": "String"}}},
+  "giveawayKeywordRequired": "Enter a keyword to start the giveaway.",
+  "giveawayNoEligibleEntrants": "No eligible participants to draw from.",
+  "giveawayRedrawConfirm": "Draw again and announce the new result?",
+  "giveawayRedrawMany": "Draw {count} more winners",
+  "@giveawayRedrawMany": {"placeholders": {"count": {"type": "int"}}},
+  "giveawayClearConfirm": "Clear this giveaway from the live tools and OBS?",
+  "goalsEmpty": "No goals yet.",
+  "clockReady": "Ready",
+  "clockAdjustHint": "Start the countdown to adjust the time remaining.",
+  "clockResetConfirm": "Reset the timer and discard its current time?",
+  "subathonAdjustHint": "Start the subathon to adjust the time remaining."
 }

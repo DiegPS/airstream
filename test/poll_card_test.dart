@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airstream/l10n/app_localization_delegates.dart';
 import 'package:airstream/l10n/generated/app_localizations.dart';
 import 'package:airstream/ui/widgets/poll_card.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -74,6 +75,9 @@ class _PollApp implements AppController {
 void main() {
   for (final language in ['en', 'es']) {
     testWidgets('all poll modes fit 360 px in $language', (tester) async {
+      tester.view.physicalSize = const Size(360, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       SharedPreferences.setMockInitialValues({});
       final l = lookupAppLocalizations(Locale(language));
       final app = _PollApp();
@@ -103,6 +107,7 @@ void main() {
             ),
           ),
         ));
+        await tester.pumpAndSettle();
         Future<void> click(Finder finder) async {
           await tester.ensureVisible(finder);
           await tester.tap(finder);
@@ -195,7 +200,20 @@ void main() {
             }
           }
           expect(tester.takeException(), isNull);
-          await click(find.byKey(const Key('poll-end')));
+          expect(find.textContaining(l.pollHowToVote), findsOneWidget);
+          if (mode == PollMode.freeAnswer) {
+            expect(find.textContaining('!r ${l.pollAnswerExample}'),
+                findsOneWidget);
+          }
+          final end = find.byKey(const Key('poll-end'));
+          await click(end);
+          expect(app.polls.current?.closed, isFalse);
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
+          expect(find.text(l.pollEndConfirm), findsNothing);
+          expect(app.polls.current?.closed, isFalse);
+          await click(end);
+          await click(find.byKey(const Key('poll-end-confirm')));
           expect(find.text(l.pollResultsHiddenOnPages), findsNothing);
           await click(find.byKey(const Key('poll-new')));
         }
@@ -205,7 +223,8 @@ void main() {
         await tester.enterText(
             find.byKey(const Key('poll-setup-name')), 'Saved setup');
         await tester.pumpAndSettle();
-        await click(find.widgetWithText(ElevatedButton, l.ruleLabel('ksave')));
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
         expect(find.text('Saved setup'), findsOneWidget);
         await click(find.byTooltip(l.pollRenameSetup));
         await tester.enterText(
