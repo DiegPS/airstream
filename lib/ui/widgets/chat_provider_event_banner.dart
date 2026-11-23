@@ -312,7 +312,9 @@ class ChatProviderEventBanner extends StatelessWidget {
                     ],
                   ),
                   key: Key('chat-provider-event-${event.platform.name}'),
-                  maxLines: 2,
+                  // A poll lists every option with its votes; two lines cut
+                  // the last tallies and the banner cannot be opened.
+                  maxLines: event.kind == ChatProviderEventKind.poll ? 6 : 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
