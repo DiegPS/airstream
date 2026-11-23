@@ -64,9 +64,14 @@ void main() {
         expect(manifest.description, isNotEmpty);
         expect(manifest.sdk, 1);
         final version = switch (item.id) {
-          'ticker' || 'top-supporters' || 'queue-list' => 4,
+          'top-supporters' || 'queue-list' => 4,
           'recent-support' || 'stream-ending' || 'starting-soon' => 6,
-          'be-right-back' || 'credits' || 'scoreboard' || 'poll' => 5,
+          'be-right-back' ||
+          'credits' ||
+          'scoreboard' ||
+          'poll' ||
+          'ticker' =>
+            5,
           'word-cloud' => 2,
           _ => 3,
         };
@@ -215,7 +220,7 @@ const _galleryFingerprints = {
   'be-right-back': '5:b029cb1834aec1bb',
   'stream-ending': '6:149968e8a8588d27',
   'credits': '5:242f984cc965a6da',
-  'ticker': '4:93d445bf82fb29a8',
+  'ticker': '5:d422dc53200c1cb2',
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '4:c8d43780e0403c7e',

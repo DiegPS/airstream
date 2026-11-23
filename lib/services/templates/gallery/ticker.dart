@@ -264,6 +264,22 @@ function resetMotion() {
   refresh();
 }
 
+// A ticker is a strip: size the text from the source height and stretch the
+// stage across the source width, instead of shrinking the whole 1920 px bar
+// into a narrow source (which left the text a few pixels tall).
+function fitTicker() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  const scale = Math.min(h / 64, w / 640, Math.max(1, w / 1920));
+  stage.style.setProperty('--stage-scale', scale);
+  const width = Math.round(w / scale) + 'px';
+  if (stage.style.width === width) return;
+  stage.style.width = width;
+  if (configured) resetMotion();
+}
+fitTicker();
+window.addEventListener('resize', fitTicker);
+
 track.addEventListener('animationiteration', event => {
   if (event.animationName === 'ticker-scroll' && !reducedMotion.matches) applyLoop();
 });
