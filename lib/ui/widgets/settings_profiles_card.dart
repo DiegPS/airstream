@@ -251,8 +251,9 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
                     applying ? null : () => Navigator.pop(dialogContext, false),
                 child: Text(l.cancel),
               ),
-              ElevatedButton(
-                style: dialogPrimaryStyle(),
+              // Replaces settings, templates and media: a destructive action.
+              OutlinedButton(
+                style: dialogSecondaryStyle(destructive: true),
                 key: const Key('backup-restore-confirm'),
                 onPressed: applying
                     ? null
@@ -279,12 +280,17 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final notifier = ref.read(settingsProvider.notifier);
-    void notify(String text) => ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(text),
-        duration: const Duration(milliseconds: 1800),
-      ));
+    // Failures read in red so they never look like the success notice.
+    void notify(String text, {bool error = false}) =>
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(text,
+                style: error
+                    ? const TextStyle(color: Color(0xFFFF6B6B), fontSize: 13)
+                    : null),
+            duration: Duration(milliseconds: error ? 4000 : 1800),
+          ));
 
     Future<void> export() async {
       final location = await getSaveLocation(
@@ -300,7 +306,7 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
       } catch (error, stack) {
         AppLogger.warning('Settings export failed',
             error: error, stackTrace: stack);
-        if (context.mounted) notify(l.settingsExportFailed);
+        if (context.mounted) notify(l.settingsExportFailed, error: true);
       }
     }
 
@@ -316,11 +322,11 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
             ));
         if (context.mounted) notify(l.settingsImported);
       } on FormatException {
-        if (context.mounted) notify(l.settingsImportFailed);
+        if (context.mounted) notify(l.settingsImportFailed, error: true);
       } catch (error, stack) {
         AppLogger.warning('Settings import failed',
             error: error, stackTrace: stack);
-        if (context.mounted) notify(l.settingsImportFailed);
+        if (context.mounted) notify(l.settingsImportFailed, error: true);
       }
     }
 
@@ -372,7 +378,7 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
           } catch (error, stack) {
             AppLogger.warning('Full backup export failed', stackTrace: stack);
             if (context.mounted) {
-              notify(_errorMessage(l, error, l.backupExportError));
+              notify(_errorMessage(l, error, l.backupExportError), error: true);
             }
           }
         });
@@ -398,14 +404,17 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
             });
             if (!context.mounted || applied != true) return;
             final error = failure;
-            notify(error == null
-                ? l.backupRestoreDone
-                : _errorMessage(l, error, l.backupRestoreError));
+            notify(
+                error == null
+                    ? l.backupRestoreDone
+                    : _errorMessage(l, error, l.backupRestoreError),
+                error: error != null);
           } catch (error, stack) {
             AppLogger.warning('Full backup validation failed',
                 stackTrace: stack);
             if (context.mounted) {
-              notify(_errorMessage(l, error, l.backupRestoreError));
+              notify(_errorMessage(l, error, l.backupRestoreError),
+                  error: true);
             }
           } finally {
             await backup?.dispose();
