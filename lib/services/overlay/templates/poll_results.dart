@@ -109,12 +109,25 @@ function pollOption(option, mode, index, showResults, leading, winner) {
     bar.className = 'bar';
     const fill = document.createElement('div');
     fill.className = 'fill';
-    fill.style.width = Math.min(100, Math.max(0, option.percent)) + '%';
+    // Each update rebuilds the row: start the new bar at the old width and
+    // move it on the next frame, so the 300 ms transition shows the change
+    // instead of snapping.
+    const target = Math.min(100, Math.max(0, option.percent)) + '%';
+    const key = mode + ':' + index + ':' + option.label;
+    const previous = pollBarWidths.get(key);
+    pollBarWidths.set(key, target);
+    fill.style.width = previous || target;
+    if (previous && previous !== target && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = target; }));
+    } else {
+      fill.style.width = target;
+    }
     bar.appendChild(fill);
     row.appendChild(bar);
   }
   return row;
 }
+const pollBarWidths = new Map();
 ''';
 
 const pollResultsCss = r'''

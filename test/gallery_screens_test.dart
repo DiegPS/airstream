@@ -69,8 +69,7 @@ void main() {
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
           'stream-ending' || 'starting-soon' => 6,
-          'be-right-back' || 'credits' || 'scoreboard' => 5,
-          'poll' => 4,
+          'be-right-back' || 'credits' || 'scoreboard' || 'poll' => 5,
           'word-cloud' => 2,
           _ => 3,
         };
@@ -223,7 +222,7 @@ const _galleryFingerprints = {
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '4:f6cd26578de56cd2',
   'queue-list': '3:95c8911b8bbe729b',
-  'poll': '4:25a67e72762bbf1f',
+  'poll': '5:da22a1881a6174ca',
   'scoreboard': '5:26196b8b08147f91',
   'word-cloud': '2:be2e12ffcdecce94',
   'emote-wall': '3:baa6ac8f84c04035',
