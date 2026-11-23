@@ -44,11 +44,15 @@ const _css = r"""
 #scores[data-layout=column] { flex-direction: column; align-items: center; flex-wrap: nowrap; }
 .score { display: grid; min-width: 100px; max-width: 210px; padding: 10px;
   gap: 5px; text-align: center; border-block-end: 3px solid var(--accent); }
-#scores[data-layout=column] .score { display: flex; width: min(100%, 580px);
+#scores[data-layout=column] .score { display: flex; width: min(100%, 580px); max-width: none;
   align-items: baseline; justify-content: space-between; column-gap: 24px; padding-block: 4px; }
 .score-label, .score-value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.score-label { font-size: 20px; color: var(--muted); }
-.score-value { font-size: 33px; font-weight: 760; font-variant-numeric: tabular-nums; }
+.score-label { font-size: 20px; color: var(--muted); min-width: 0; }
+/* A score is never cut: the label gives way, and row cards use a size that
+   fits a signed ten-digit value in their 210 px. */
+.score-value { font-size: 33px; font-weight: 760; font-variant-numeric: tabular-nums;
+  flex: none; overflow: visible; text-overflow: clip; }
+#scores:not([data-layout=column]) .score-value { font-size: 24px; }
 """;
 
 const _script = r"""
