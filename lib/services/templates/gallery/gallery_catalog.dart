@@ -78,7 +78,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'starting-soon': GalleryItem(
     id: 'starting-soon',
-    version: 5,
+    version: 6,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStartingSoon,
     description: (l) => l.galleryStartingSoonDescription,
@@ -87,7 +87,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'be-right-back': GalleryItem(
     id: 'be-right-back',
-    version: 4,
+    version: 5,
     kind: GalleryKind.screen,
     name: (l) => l.galleryBeRightBack,
     description: (l) => l.galleryBeRightBackDescription,
@@ -96,7 +96,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'stream-ending': GalleryItem(
     id: 'stream-ending',
-    version: 5,
+    version: 6,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStreamEnding,
     description: (l) => l.galleryStreamEndingDescription,
@@ -105,7 +105,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'credits': GalleryItem(
     id: 'credits',
-    version: 4,
+    version: 5,
     kind: GalleryKind.screen,
     name: (l) => l.galleryCredits,
     description: (l) => l.galleryCreditsDescription,

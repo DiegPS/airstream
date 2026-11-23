@@ -285,7 +285,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 .screen-chat h2 { margin: 0 0 12px; font-size: 26px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 #chat-messages { display: grid; gap: 6px; list-style: none; padding: 0; margin: 0; }
 .screen-chat li {
-  height: 75px; padding: 8px 11px 8px 16px; min-width: 0; overflow: hidden;
+  height: 90px; padding: 5px 11px 5px 16px; min-width: 0; overflow: hidden;
   background: var(--row); border-radius: 8px;
   font-size: 21px; line-height: 1.2;
 }
@@ -528,7 +528,7 @@ if (chat) {
     body.className = 'chat-text';
     body.appendChild(Airstream.renderMessage(message));
     row.append(author, body);
-    if (chatRows.length === 6) chatRows.shift().node.remove();
+    if (chatRows.length === 5) chatRows.shift().node.remove();
     chatRows.push({message, node: row});
     row.classList.add('chat-enter');
     chatMessages.appendChild(row);

@@ -66,11 +66,10 @@ void main() {
         final version = switch (item.id) {
           'recent-support' ||
           'ticker' ||
-          'be-right-back' ||
-          'credits' ||
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
-          'stream-ending' || 'starting-soon' => 5,
+          'stream-ending' || 'starting-soon' => 6,
+          'be-right-back' || 'credits' => 5,
           'scoreboard' || 'poll' => 4,
           'word-cloud' => 2,
           _ => 3,
@@ -216,10 +215,10 @@ void main() {
 /// Version and file digest of each gallery item (see the version test).
 const _galleryFingerprints = {
   'recent-support': '5:2601b810dc4598a7',
-  'starting-soon': '5:f6b56a72f9829fbf',
-  'be-right-back': '4:c376379a412d2376',
-  'stream-ending': '5:3431f5155b27b656',
-  'credits': '4:cd38061b7d679e09',
+  'starting-soon': '6:c85a6d3316fc81f9',
+  'be-right-back': '5:b029cb1834aec1bb',
+  'stream-ending': '6:149968e8a8588d27',
+  'credits': '5:242f984cc965a6da',
   'ticker': '4:93d445bf82fb29a8',
   'latest-support': '3:23bb43270c94fae1',
   'top-supporters': '4:f6cd26578de56cd2',
@@ -1652,22 +1651,22 @@ async function main() {
       items: [{kind: 'text', text: literal}, {kind: 'emoji', url: 'https://example.invalid/emote.png', alt: '🌙'}]});
   }
   const chat = starting.nodes['chat-messages'];
-  const last = chat.children[5];
-  assert.equal(chat.children.length, 6);
-  assert.equal(chat.children[0].children[0].textContent, 'Viewer 1');
+  const last = chat.children[4];
+  assert.equal(chat.children.length, 5);
+  assert.equal(chat.children[0].children[0].textContent, 'Viewer 2');
   assert.equal(last.children[0].children[1].textContent, literal);
   assert.match(last.children[0].children[1].style['--author'], /#aa77cc/);
   assert.equal(last.children[1].textContent, literal);
   assert.equal(last.children[1].children[0].children[1].tagName, 'IMG');
   assert.ok(last.classList.contains('chat-enter'));
   starting.send('moderation', {scope: 'message', platform: 'twitch', messageId: '6'});
-  assert.equal(chat.children.length, 5);
+  assert.equal(chat.children.length, 4);
   assert.ok(!chat.children.includes(last));
   starting.send('moderation', {scope: 'author', platform: 'twitch', authorChannelId: '3'});
-  assert.equal(chat.children.length, 4);
+  assert.equal(chat.children.length, 3);
   starting.send('moderation', {scope: 'platform', platform: 'twitch'});
   assert.equal(chat.children.length, 0);
-  console.log('PASS: chat renders literal names, text and emotes; six-row cap and all delete scopes work');
+  console.log('PASS: chat renders literal names, text and emotes; five-row cap and all delete scopes work');
 
   const brb = page('be-right-back');
   brb.fields({minutes: 1});
