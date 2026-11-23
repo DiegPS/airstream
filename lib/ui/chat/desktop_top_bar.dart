@@ -220,42 +220,48 @@ class _TitleBarCenterStatus extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            // Clips quietly when the window is too narrow for every status.
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: _ConnectionDots(),
-            ),
-          ),
-          if (overlayUrl != null) ...[
-            const SizedBox(width: 8),
-            const Text(
-              '•',
-              style: TextStyle(
-                color: Color(0xFF555555),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+      child: LayoutBuilder(
+        // Platform status comes first: the overlay URL (also shown and
+        // copied in the OBS tab) only appears when there is room left, so
+        // a narrow window no longer clips the Twitch and Kick dots.
+        builder: (context, constraints) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              flex: 3,
+              // Clips quietly only when even the statuses do not fit.
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: _ConnectionDots(),
               ),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                overlayUrl!,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF888888),
+            if (overlayUrl != null && constraints.maxWidth >= 300) ...[
+              const SizedBox(width: 8),
+              const Text(
+                '•',
+                style: TextStyle(
+                  color: Color(0xFF555555),
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  overlayUrl!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
