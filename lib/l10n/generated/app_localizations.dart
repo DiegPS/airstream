@@ -5751,6 +5751,12 @@ abstract class AppLocalizations {
   /// **'Label'**
   String get clockLabel;
 
+  /// No description provided for @clockDurationNextRun.
+  ///
+  /// In en, this message translates to:
+  /// **'The new duration applies after a reset or on the next countdown.'**
+  String get clockDurationNextRun;
+
   /// No description provided for @clockDuration.
   ///
   /// In en, this message translates to:

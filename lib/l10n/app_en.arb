@@ -1368,6 +1368,7 @@
   "clockStopwatch": "Stopwatch",
   "clockLocalTime": "Local time",
   "clockLabel": "Label",
+  "clockDurationNextRun": "The new duration applies after a reset or on the next countdown.",
   "clockDuration": "Duration in seconds (1–86,400)",
   "clockSound": "Sound at the end",
   "clockSoundNone": "No sound",

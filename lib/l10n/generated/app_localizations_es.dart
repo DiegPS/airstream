@@ -3588,6 +3588,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get clockLabel => 'Etiqueta';
 
   @override
+  String get clockDurationNextRun =>
+      'La nueva duración se aplica al reiniciar o en la próxima cuenta atrás.';
+
+  @override
   String get clockDuration => 'Duración en segundos (1–86 400)';
 
   @override

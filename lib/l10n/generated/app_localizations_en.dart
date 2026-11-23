@@ -3550,6 +3550,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clockLabel => 'Label';
 
   @override
+  String get clockDurationNextRun =>
+      'The new duration applies after a reset or on the next countdown.';
+
+  @override
   String get clockDuration => 'Duration in seconds (1–86,400)';
 
   @override

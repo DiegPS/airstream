@@ -139,6 +139,14 @@ class _ClockCardState extends ConsumerState<ClockCard> {
             },
             onEditingComplete: () => setState(() => _durationFocus.unfocus()),
           ),
+          // Editing it mid-run looked like it did nothing.
+          if (adjustable)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(l.clockDurationNextRun,
+                  key: const Key('clock-duration-next-run'),
+                  style: settingsHintStyle),
+            ),
           const SizedBox(height: 8),
           _picker(
             l.clockSound,

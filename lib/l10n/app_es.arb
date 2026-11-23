@@ -1148,6 +1148,7 @@
   "clockStopwatch": "Cronómetro",
   "clockLocalTime": "Hora local",
   "clockLabel": "Etiqueta",
+  "clockDurationNextRun": "La nueva duración se aplica al reiniciar o en la próxima cuenta atrás.",
   "clockDuration": "Duración en segundos (1–86 400)",
   "clockSound": "Sonido al terminar",
   "clockSoundNone": "Sin sonido",
