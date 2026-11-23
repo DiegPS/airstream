@@ -38,6 +38,20 @@ String pollOverlayHtml() => '''<!DOCTYPE html>
   .fill { height: 100%; border-radius: 6px; background: #53FC18; transition: width 300ms ease; }
   .option.leader .fill { background: #FFC83D; }
   .footer { margin-top: 14px; color: rgba(255, 255, 255, .7); font-size: 14px; font-weight: 600; }
+  /* Short browser sources (e.g. 400x300) still show every choice and the
+     countdown/final-results footer. */
+  @media (max-height: 420px) {
+    body { padding: 8px; }
+    #poll { padding: 10px 12px; border-bottom-width: 3px; }
+    .kicker { font-size: 11px; }
+    .question { margin: 2px 0 6px; font-size: 17px; line-height: 1.2;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+    .option { margin: 4px 0; }
+    .row { font-size: 13px; gap: 8px; }
+    .row .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .bar { height: 5px; margin-top: 3px; }
+    .footer { margin-top: 6px; font-size: 12px; }
+  }
 $pollResultsCss
   .instructions { margin: 8px 0 0; color: var(--poll-muted); overflow-wrap: anywhere; }
   .answer.winner, .average.winner { color: #FFC83D; }
