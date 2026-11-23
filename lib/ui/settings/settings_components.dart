@@ -234,10 +234,12 @@ Widget _ttsStatusCard(
   final model = TtsModelCatalog.byId(state.modelId);
   final (label, color) = switch (state.phase) {
     TtsLoadPhase.ready => (l.ready, const Color(0xFF53FC18)),
-    TtsLoadPhase.checking => (l.checking, Colors.lightBlueAccent),
-    TtsLoadPhase.downloading => (l.downloading, Colors.orangeAccent),
+    // In progress is amber like "connecting" everywhere else; errors use the
+    // app's red.
+    TtsLoadPhase.checking => (l.checking, Colors.amber),
+    TtsLoadPhase.downloading => (l.downloading, Colors.amber),
     TtsLoadPhase.loading => (l.loading, Colors.amber),
-    TtsLoadPhase.error => (l.error, Colors.redAccent),
+    TtsLoadPhase.error => (l.error, const Color(0xFFFF6B6B)),
     TtsLoadPhase.idle => (l.voiceStatusNotDownloaded, Colors.white38),
   };
 

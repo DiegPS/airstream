@@ -55,10 +55,10 @@ class _ConnectionDots extends ConsumerWidget {
               serviceStatus == ServiceStatus.connected &&
               s?.$2 != null;
           final color = switch (serviceStatus) {
-            ServiceStatus.connected when partial => Colors.orange,
+            ServiceStatus.connected when partial => Colors.amber,
             ServiceStatus.connected => const Color(0xFF53FC18),
             ServiceStatus.connecting => Colors.amber,
-            ServiceStatus.error => Colors.red,
+            ServiceStatus.error => const Color(0xFFFF6B6B),
             ServiceStatus.idle || ServiceStatus.ended => Colors.white24,
           };
           return Tooltip(

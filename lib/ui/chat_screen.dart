@@ -512,7 +512,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Center(
           child: Text(
             l.chatError,
-            style: const TextStyle(color: Colors.redAccent),
+            style: const TextStyle(color: Color(0xFFFF6B6B)),
           ),
         ),
       ),
