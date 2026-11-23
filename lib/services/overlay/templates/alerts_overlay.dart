@@ -112,6 +112,20 @@ String alertsOverlayHtml() => '''<!DOCTYPE html>
     max-height: 118px;
     border-radius: 8px;
   }
+  /* Short or narrow sources (e.g. 400x300): the whole card stays inside the
+     source; a long name takes at most two lines and the message three. */
+  @media (max-height: 420px), (max-width: 480px) {
+    .alert-stage { padding: 8px; }
+    .alert-card { min-width: 0; max-width: 100%; max-height: 100%; overflow: hidden;
+      gap: 10px; padding: 10px 14px; border-radius: 12px; }
+    .has-pinned-featured .alert-card { min-width: 0; overflow: hidden; }
+    .alert-avatar { width: 44px; height: 44px; border-width: 2px; }
+    .alert-media, .has-pinned-featured .alert-media { max-height: 32vh; }
+    .alert-sticker { max-width: 64px; max-height: 64px; }
+    .alert-copy { min-height: 0; gap: 3px; }
+    .alert-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+    .alert-message { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  }
   @keyframes alert-in {
     from { opacity: 0; transform: translateY(24px) scale(0.94); }
     to { opacity: 1; transform: translateY(0) scale(1); }
