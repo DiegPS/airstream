@@ -220,7 +220,9 @@ class _RuleEditorDialogState extends ConsumerState<RuleEditorDialog> {
     // The label sits above the field, as everywhere else in the app.
     final decoration = settingsInput(
             hint: hint, error: problem == null ? null : ruleText(l, problem))
-        .copyWith(errorMaxLines: problem == 'publicStreamControl' ? 3 : null);
+        // The stream-control message says how to make the rule valid; it
+        // must not be cut at a narrow dialog width.
+        .copyWith(errorMaxLines: problem == 'publicStreamControl' ? 8 : 2);
 
     Widget child;
 
