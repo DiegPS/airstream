@@ -558,7 +558,7 @@ Widget _inlineErrorMessage(
           child: Text(
             l.platformConnectionFailed(platform),
             style: const TextStyle(
-              color: Color(0xFFFFB4AB),
+              color: Color(0xFFFF6B6B),
               fontSize: 11,
               height: 1.3,
             ),
@@ -568,7 +568,7 @@ Widget _inlineErrorMessage(
         TextButton(
           onPressed: onRetry,
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFFFB4AB),
+            foregroundColor: const Color(0xFFFF6B6B),
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.symmetric(horizontal: 6),
             minimumSize: const Size(0, 28),

@@ -153,7 +153,7 @@ class _ObsStatusCard extends StatelessWidget {
             Text(
               l.obsConnectionProblem,
               style: const TextStyle(
-                color: Color(0xFFFFB4AB),
+                color: Color(0xFFFF6B6B),
                 fontSize: 11,
                 height: 1.35,
               ),
