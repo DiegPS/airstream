@@ -1656,8 +1656,18 @@ async function main() {
   assert.equal(last.children[0].children[1].textContent, literal);
   assert.match(last.children[0].children[1].style['--author'], /#aa77cc/);
   assert.equal(last.children[1].textContent, literal);
-  assert.equal(last.children[1].children[0].children[1].tagName, 'IMG');
+  // Emotes sit in a stack so zero-width modifiers can overlay them.
+  assert.equal(last.children[1].children[0].children[1].tagName, 'SPAN');
+  assert.equal(last.children[1].children[0].children[1].children[0].tagName, 'IMG');
   assert.ok(last.classList.contains('chat-enter'));
+  starting.send('message', {id: 'zw', platform: 'twitch', author: 'Hat', text: '',
+    authorChannelId: 'zw', items: [
+      {kind: 'emoji', url: 'https://example.invalid/base.png', alt: 'base'},
+      {kind: 'text', text: ' '},
+      {kind: 'emoji', url: 'https://example.invalid/hat.png', alt: 'hat', isZeroWidth: true}]});
+  const hatRow = chat.children[chat.children.length - 1].children[1].children[0];
+  assert.equal(hatRow.children.length, 1);
+  assert.deepEqual(hatRow.children[0].children.map(node => node.alt), ['base', 'hat']);
   starting.send('moderation', {scope: 'message', platform: 'twitch', messageId: '6'});
   assert.equal(chat.children.length, 4);
   assert.ok(!chat.children.includes(last));

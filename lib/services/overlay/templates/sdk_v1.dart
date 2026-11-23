@@ -51,14 +51,31 @@ String sdkV1() => r"""
     renderMessage(message,options={}) {
       const fragment=document.createDocumentFragment();
       if (!Array.isArray(message.items) || !message.items.length) { fragment.appendChild(document.createTextNode(String(message.text || ''))); return fragment; }
+      // Zero-width emotes (hats, overlays) stack on the emote before them, as
+      // on /featured; spaces between them are held until that is known.
+      let stack=null, pending='';
+      const flush=() => { if (pending) fragment.appendChild(document.createTextNode(pending)); pending=''; };
       for (const item of message.items) {
         if (item.kind === 'emoji') {
           const src=String(item.url || '');
           if (/^(https?:|data:image\/)/i.test(src)) {
-            const img=document.createElement('img'); img.className=options.emoteClass || 'airstream-emote'; img.alt=String(item.alt || ''); img.src=src; fragment.appendChild(img);
-          } else fragment.appendChild(document.createTextNode(String(item.alt || '')));
-        } else fragment.appendChild(document.createTextNode(String(item.text || '')));
+            const img=document.createElement('img'); img.className=options.emoteClass || 'airstream-emote'; img.alt=String(item.alt || ''); img.src=src;
+            if (item.isZeroWidth && stack) { pending=''; }
+            else {
+              flush();
+              stack=document.createElement('span'); stack.className='airstream-emote-stack';
+              stack.style.display='inline-grid'; stack.style.verticalAlign='middle';
+              fragment.appendChild(stack);
+            }
+            img.style.gridArea='1 / 1'; stack.appendChild(img);
+          } else { flush(); stack=null; fragment.appendChild(document.createTextNode(String(item.alt || ''))); }
+        } else {
+          const value=String(item.text || '');
+          if (stack && value.trim() === '') { pending+=value; continue; }
+          flush(); stack=null; fragment.appendChild(document.createTextNode(value));
+        }
       }
+      flush();
       return fragment;
     },
     mediaUrl(id) { return typeof id === 'string' && /^[0-9a-f]{16}$/.test(id) ? '/media/'+id : ''; },
