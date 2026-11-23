@@ -4,6 +4,9 @@ String goalsOverlayHtml() => '''<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Airstream Goals</title><style>
 *{box-sizing:border-box}html,body{margin:0;background:transparent;overflow:hidden;font-family:var(--overlay-font-family,system-ui,sans-serif)}body{padding:24px;color:white}#goals{width:min(560px,100%)}#goals[hidden]{display:none}.goal{padding:18px 20px;margin-bottom:12px;border-radius:14px;background:rgba(20,20,20,.9);overflow-wrap:anywhere}.heading{display:flex;justify-content:space-between;gap:16px;font-size:22px;margin-bottom:12px}.title{min-width:0}.count{flex-shrink:0;font-variant-numeric:tabular-nums}.track{height:14px;background:#444;border-radius:20px;overflow:hidden}.fill{height:100%;background:#53FC18;border-radius:20px;transition:width .5s ease}.reached .fill{background:#ffd166}.celebrate{animation:glow 2s ease}.notice{color:#ffd166;margin-top:8px;font-weight:700}.notice:empty{display:none}.percent{margin-top:6px;color:#ccc;font-variant-numeric:tabular-nums}@keyframes glow{0%,100%{box-shadow:0 0 0 transparent}35%,65%{box-shadow:0 0 24px #ffd166}}@media(prefers-reduced-motion:reduce){.fill{transition:none}.celebrate{animation:none}}
+/* Short sources (e.g. 400x300) fit all three goals; the reached notice sits
+   on its own card instead of pushing the next goal down. */
+@media(max-height:420px){body{padding:8px}.goal{position:relative;padding:6px 10px;margin-bottom:4px;border-radius:10px}.heading{font-size:15px;margin-bottom:4px;gap:8px}.title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.track{height:8px}.percent{margin-top:2px;font-size:12px}.notice{position:absolute;right:10px;bottom:4px;margin:0;font-size:12px}}
 </style></head><body><div id="goals" hidden aria-live="polite"></div><script>
 $overlayFontScript
 (() => {
