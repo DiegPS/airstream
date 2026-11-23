@@ -76,6 +76,20 @@ function updateDuration() {
 }
 
 function renderEnding() {
+  // Without session data (app disconnected) the stats are unknown, not zero:
+  // hide them instead of telling viewers the stream had no activity.
+  if (!session) {
+    if (durationTimer != null) clearInterval(durationTimer);
+    durationTimer = null;
+    durationNode = null;
+    statKey = null;
+    rankKey = null;
+    stats.replaceChildren();
+    rankings.replaceChildren();
+    stats.hidden = true;
+    rankings.hidden = true;
+    return;
+  }
   const values = [
     ['duration', fields.showDuration, null],
     ['messages', fields.showMessages, session?.messages ?? 0],

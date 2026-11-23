@@ -96,7 +96,7 @@ final galleryCatalog = Map<String, GalleryItem>.unmodifiable({
   ),
   'stream-ending': GalleryItem(
     id: 'stream-ending',
-    version: 4,
+    version: 5,
     kind: GalleryKind.screen,
     name: (l) => l.galleryStreamEnding,
     description: (l) => l.galleryStreamEndingDescription,

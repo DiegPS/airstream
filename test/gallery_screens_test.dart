@@ -68,10 +68,10 @@ void main() {
           'ticker' ||
           'starting-soon' ||
           'be-right-back' ||
-          'stream-ending' ||
           'credits' ||
           'top-supporters' =>
             item.id == 'recent-support' ? 5 : 4,
+          'stream-ending' => 5,
           'word-cloud' => 2,
           _ => 3,
         };
@@ -218,7 +218,7 @@ const _galleryFingerprints = {
   'recent-support': '5:2601b810dc4598a7',
   'starting-soon': '4:8f8561127904bdd3',
   'be-right-back': '4:c376379a412d2376',
-  'stream-ending': '4:f86969c0c4012d02',
+  'stream-ending': '5:3431f5155b27b656',
   'credits': '4:cd38061b7d679e09',
   'ticker': '4:93d445bf82fb29a8',
   'latest-support': '3:23bb43270c94fae1',
@@ -1689,6 +1689,11 @@ async function main() {
   assert.equal(ending.nodes.rankings.children.length, 1);
   ending.advance(1000);
   assert.match(ending.nodes.stats.textContent, /Duration1:11:00/);
+  // A lost connection is not a zero-activity stream: the stats go away.
+  ending.close();
+  assert.equal(ending.nodes.stats.hidden, true);
+  assert.ok(!/Messages0/.test(ending.nodes.stats.textContent));
+  assert.equal(ending.nodes.rankings.hidden, true);
   console.log('PASS: ending stats respect visibility and endedAt; ranking names remain text');
 
   const credits = page('credits');
