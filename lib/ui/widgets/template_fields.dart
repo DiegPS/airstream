@@ -25,6 +25,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
   Timer? _timer;
   Future<void> _writing = Future.value();
   bool _failed = false;
+  bool _resetting = false;
   @override
   void initState() {
     super.initState();
@@ -52,14 +53,26 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     unawaited(_load());
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool reset = false}) async {
     final info = widget.info;
-    final values = await widget.library.editorValues(info);
-    if (!mounted || !identical(info, widget.info)) return;
+    final writing = _writing;
+    late final Map<String, Object?> values;
+    try {
+      await writing;
+      if (!mounted) return;
+      values = await widget.library.editorValues(info);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+      return;
+    }
+    if (!mounted || !identical(info, widget.info) || writing != _writing) {
+      return;
+    }
     setState(() {
       for (final entry in values.entries) {
         final key = entry.key;
-        if ((_focus[key]?.hasFocus ?? false) || _pending.containsKey(key)) {
+        if (!reset && (_focus[key]?.hasFocus ?? false) ||
+            _pending.containsKey(key)) {
           continue;
         }
         final value = entry.value;
@@ -72,6 +85,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
 
   void _change(TemplateField field, Object? value) {
     setState(() {
+      _invalid.remove(field.key);
       _values[field.key] = field.resolveValue(value);
       _pending[field.key] = _values[field.key];
     });
@@ -80,31 +94,57 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
   }
 
   void _save() {
+    if (_pending.isEmpty) return;
     final patch = Map<String, Object?>.from(_pending);
     _pending.clear();
+    final library = widget.library;
+    final id = widget.info.id;
     _writing = _writing.then((_) async {
       try {
-        final latest = await widget.library.resolvedValues(widget.info.id);
-        await widget.library.writeValues(widget.info.id, {...latest, ...patch});
+        final latest = await library.resolvedValues(id);
+        await library.writeValues(id, {...latest, ...patch});
         if (mounted) setState(() => _failed = false);
       } catch (_) {
-        if (mounted) setState(() => _failed = true);
+        if (mounted) {
+          setState(() => _failed = true);
+          showLiveMessage(
+              context, AppLocalizations.of(context)!.liveSaveFailed);
+        }
       }
     });
   }
 
   Future<void> _reset() async {
-    _timer?.cancel();
-    _pending.clear();
-    await _writing;
+    if (_resetting) return;
+    final l = AppLocalizations.of(context)!;
+    _resetting = true;
     try {
-      await widget.library.writeValues(widget.info.id, {});
-      for (final node in _focus.values) {
-        node.unfocus();
+      if (!await confirmLiveAction(context,
+              title: l.templateResetConfirm, action: l.templateReset) ||
+          !mounted) {
+        return;
       }
-      await _load();
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      _timer?.cancel();
+      _save();
+      final library = widget.library;
+      final id = widget.info.id;
+      var didReset = false;
+      _writing = _writing.then((_) async {
+        try {
+          await library.writeValues(id, {});
+          didReset = true;
+          if (mounted) _failed = false;
+        } catch (_) {
+          if (mounted) {
+            setState(() => _failed = true);
+            showLiveMessage(context, l.liveSaveFailed);
+          }
+        }
+      });
+      await _writing;
+      if (didReset && mounted) await _load(reset: true);
+    } finally {
+      _resetting = false;
     }
   }
 
@@ -148,7 +188,9 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
       } else {
         entries[''] = l.templateFieldNone;
         final kind = f.options['kind'];
-        for (final e in ref.watch(settingsProvider).mediaLibrary.entries) {
+        for (final e in ref
+            .watch(settingsProvider.select((s) => s.mediaLibrary))
+            .entries) {
           final entryKind = e.value['kind'];
           if (kind == 'any' ||
               kind == entryKind ||
@@ -158,6 +200,8 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
           }
         }
       }
+      final emptyMedia = f.type == 'media' && entries.length == 1;
+      final missingMedia = f.type == 'media' && !entries.containsKey(value);
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         settingsLabel(f.label),
         settingsDropdown<String>(
@@ -171,7 +215,12 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
                     value: e.key,
                     child: Text(e.value, overflow: TextOverflow.ellipsis))
             ],
-            onChanged: (v) => _change(f, v))
+            onChanged:
+                emptyMedia && !missingMedia ? null : (v) => _change(f, v)),
+        if (missingMedia)
+          settingsStatus(l.templateFieldMediaMissing, const Color(0xFFFFB15C)),
+        if (emptyMedia)
+          Text(l.templateFieldMediaEmpty, style: settingsHintStyle),
       ]);
     }
     final min = (f.options['min'] as num?)?.toDouble();
@@ -183,7 +232,7 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
         max > min &&
         (max - min) / step <= 200) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${f.label}: $value'),
+        settingsLabel('${f.label}: $value'),
         Slider(
             key: key,
             min: min,
@@ -202,6 +251,21 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
             if (!(_focus[f.key]?.hasFocus ?? true)) unawaited(_load());
           }));
     final color = f.type == 'color';
+    final number = f.type == 'number';
+    final spanish = l.localeName == 'es';
+    String bound(String key) =>
+        (f.options[key]?.toString() ?? '').replaceAll('.', spanish ? ',' : '.');
+    final range = switch ((min, max)) {
+      (null, null) => 'any',
+      (null, _) => 'max',
+      (_, null) => 'min',
+      _ => 'both',
+    };
+    final error = !_invalid.contains(f.key)
+        ? null
+        : color
+            ? l.templateFieldColorInvalid
+            : l.templateFieldNumberInvalid(range, bound('min'), bound('max'));
     final hex = value.toString().replaceFirst('#', '');
     final preview = color
         ? Color(int.parse(
@@ -213,46 +277,52 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       settingsLabel(f.label),
       TextField(
-          style: const TextStyle(color: Colors.white, fontSize: 13),
           key: key,
           controller: controller,
           focusNode: focus,
           maxLength: f.type == 'text' ? f.options['maxLength'] as int : null,
-          keyboardType: f.type == 'number'
+          keyboardType: number
               ? const TextInputType.numberWithOptions(
                   decimal: true, signed: true)
               : TextInputType.text,
-          decoration: settingsInput().copyWith(
+          decoration: settingsInput(error: error).copyWith(
+              errorMaxLines: 4,
               suffixIcon: preview == null
                   ? null
                   : Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Container(width: 20, height: 20, color: preview)),
-              helperText:
-                  _invalid.contains(f.key) ? l.templateFieldColorInvalid : null,
-              helperStyle: const TextStyle(color: Color(0xFFFFB15C))),
+                      child: Container(width: 20, height: 20, color: preview))),
+          onEditingComplete: () {
+            if (_invalid.contains(f.key)) return;
+            _timer?.cancel();
+            _save();
+            focus.unfocus();
+          },
           onChanged: (v) {
+            if (number) {
+              final n = num.tryParse(spanish ? v.replaceAll(',', '.') : v);
+              final valid = n != null && n.isFinite && f.resolveValue(n) == n;
+              if (valid) {
+                _change(f, n);
+              } else {
+                setState(() => _invalid.add(f.key));
+              }
+              return;
+            }
             if (color) {
               final text = v.trim();
               final valid =
                   RegExp(r'^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$').hasMatch(text);
-              setState(() {
-                if (valid) {
-                  _invalid.remove(f.key);
-                } else {
-                  _invalid.add(f.key);
-                }
-              });
-              if (!valid) return;
+              if (!valid) {
+                setState(() => _invalid.add(f.key));
+                return;
+              }
               _change(
                   f,
                   text.length == 7
                       ? SettingsInputNormalizer.hexColor(text,
                           fallback: '#ffffff')
                       : text.toLowerCase());
-            } else if (f.type == 'number') {
-              final n = num.tryParse(v);
-              if (n != null && n.isFinite) _change(f, n);
             } else {
               _change(f, v);
             }
@@ -279,10 +349,10 @@ class _TemplateFieldsState extends ConsumerState<TemplateFields> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _field(f)),
                   if (_failed)
-                    Text(l.templatesFailed,
-                        style: const TextStyle(color: Color(0xFFFFB15C))),
-                  TextButton(
+                    settingsStatus(l.templatesFailed, const Color(0xFFFF6B6B)),
+                  OutlinedButton(
                       key: Key('template-fields-reset-${widget.info.id}'),
+                      style: secondarySettingsStyle(destructive: true),
                       onPressed: _reset,
                       child: Text(l.templateReset))
                 ])));

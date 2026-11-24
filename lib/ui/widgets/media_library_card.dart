@@ -27,7 +27,13 @@ class MediaLibraryCard extends ConsumerStatefulWidget {
 
 class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
   bool _busy = false;
-  String _query = '';
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   /// Thumbnail lookups, kept across rebuilds (each search keystroke rebuilds
   /// the list). Keyed by id and extension, which identify the stored file.
@@ -43,6 +49,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
         _ => l.mediaRejectType,
       };
   Future<void> _add() async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _errors.clear();
@@ -57,41 +64,60 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
         XTypeGroup(
             label: l.mediaAudio, extensions: const ['wav', 'mp3', 'ogg']),
       ]);
+      if (files.isEmpty || !mounted) return;
+      final container = ProviderScope.containerOf(context, listen: false);
       final library = await ref.read(mediaLibraryProvider.future);
       for (final file in files) {
+        if (!mounted) break;
         try {
           await library.import(file.path, onImported: (entry) {
-            final s = ref.read(settingsProvider);
-            return ref.read(settingsProvider.notifier).update(s.copyWith(
+            final s = container.read(settingsProvider);
+            return container.read(settingsProvider.notifier).update(s.copyWith(
                 mediaLibrary: {...s.mediaLibrary, entry.key: entry.value}));
           });
         } on FormatException catch (e) {
           _errors.add('${file.name}: ${_reason(l, e.message)}');
-        } on FileSystemException {
-          _errors.add('${file.name}: ${l.mediaRejectType}');
+        } catch (_) {
+          _errors.add('${file.name}: ${l.mediaImportFailed}');
         }
       }
     } catch (_) {
-      _errors.add(l.mediaRejectType);
+      _errors.add(l.mediaImportFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _delete(String id) async {
+  Future<void> _delete(MapEntry<String, Map<String, dynamic>> entry) async {
+    if (_busy) return;
+    final l = AppLocalizations.of(context)!;
     setState(() => _busy = true);
     try {
+      if (!await confirmLiveAction(context,
+              title: l.mediaDeleteConfirm(entry.value['name'] as String),
+              action: l.mediaDelete,
+              actionKey: const Key('media-delete-confirm')) ||
+          !mounted) {
+        return;
+      }
+      final id = entry.key;
+      final container = ProviderScope.containerOf(context, listen: false);
       final library = await ref.read(mediaLibraryProvider.future);
-      await library.delete(id, onDeleted: () => _removeReferences(id));
+      await library.delete(id,
+          onDeleted: () => _removeReferences(container, id));
+      _thumbnails.remove('$id.${entry.value['ext']}');
+      if (mounted && container.read(settingsProvider).mediaLibrary.isEmpty) {
+        _search.clear();
+      }
     } catch (_) {
-      if (mounted) _errors.add(AppLocalizations.of(context)!.mediaRejectType);
+      if (mounted) showLiveMessage(context, l.mediaDeleteFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _removeReferences(String id) async {
-    final s = ref.read(settingsProvider);
+  Future<void> _removeReferences(ProviderContainer container, String id) async {
+    final s = container.read(settingsProvider);
     final options = AlertTypeOptions.sanitize(s.alertTypeOptions);
     void detach(Map<String, dynamic> v) {
       if (v['media'] == id) {
@@ -110,7 +136,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
         detach(tier);
       }
     }
-    await ref.read(settingsProvider.notifier).update(s.copyWith(
+    await container.read(settingsProvider.notifier).update(s.copyWith(
         mediaLibrary: {...s.mediaLibrary}..remove(id),
         highlightSounds: {...s.highlightSounds}
           ..removeWhere((_, source) => source == id),
@@ -118,6 +144,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
   }
 
   Future<void> _rename(MapEntry<String, Map<String, dynamic>> entry) async {
+    if (_busy) return;
     final l = AppLocalizations.of(context)!;
     final form = GlobalKey<FormState>();
     var name = entry.value['name'] as String;
@@ -129,6 +156,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
         }
 
         return AlertDialog(
+          scrollable: true,
           title: Text(l.mediaRename),
           content: SizedBox(
             width: 300,
@@ -145,7 +173,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                     autofocus: true,
                     maxLength: 80,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: settingsInput(),
+                    decoration: settingsInput().copyWith(errorMaxLines: 3),
                     onChanged: (value) => name = value,
                     onFieldSubmitted: (_) => submit(),
                     validator: (value) =>
@@ -175,25 +203,23 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
     );
     if (!mounted || renamed == null) return;
     setState(() => _busy = true);
-    try {
-      await ref.read(settingsProvider.notifier).renameMedia(entry.key, renamed);
-    } catch (_) {
-      _errors.add(l.mediaRenameFailed);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    await saveLiveSettings(context,
+        ref.read(settingsProvider.notifier).renameMedia(entry.key, renamed));
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _preview(
     MediaLibrary library,
     MapEntry<String, Map<String, dynamic>> entry,
   ) async {
-    final kind = entry.value['kind'];
-    final player =
-        kind == 'audio' ? ref.read(mediaPreviewAudioProvider)() : null;
-    final volume = ref.read(settingsProvider).alertSoundVolume / 100;
-    final file = library.fileFor(entry);
+    final l = AppLocalizations.of(context)!;
+    NativeAudioPlaybackService? playback;
     try {
+      final kind = entry.value['kind'];
+      final player = playback =
+          kind == 'audio' ? ref.read(mediaPreviewAudioProvider)() : null;
+      final volume = ref.read(settingsProvider).alertSoundVolume / 100;
+      final file = library.fileFor(entry);
       await showDialog<void>(
         context: context,
         builder: (context) {
@@ -238,9 +264,11 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
           );
         },
       );
+    } catch (_) {
+      if (mounted) showLiveMessage(context, l.mediaPreviewUnavailable);
     } finally {
       try {
-        await player?.dispose();
+        await playback?.dispose();
       } catch (_) {
         AppLogger.warning('Could not close the media audio preview');
       }
@@ -252,8 +280,9 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
     final l = AppLocalizations.of(context)!;
     final entries =
         MediaLibraryEntries.sanitize(ref.watch(settingsProvider).mediaLibrary);
-    final service = ref.watch(mediaLibraryProvider).valueOrNull;
-    final matches = MediaLibraryEntries.search(entries, _query).toList();
+    final library = ref.watch(mediaLibraryProvider);
+    final service = library.valueOrNull;
+    final matches = MediaLibraryEntries.search(entries, _search.text).toList();
     final used = entries.values.fold<int>(0, (n, e) => n + (e['bytes'] as int));
     return UiCard(
         title: l.mediaLibraryTitle,
@@ -268,11 +297,17 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
               child: ElevatedButton.icon(
                   style: primarySettingsStyle(),
                   key: const Key('media-add'),
-                  onPressed: _busy ? null : _add,
+                  onPressed: _busy || service == null ? null : _add,
                   icon: const Icon(Icons.add),
-                  label: Text(l.mediaAdd))),
+                  label: Text(_busy ? l.mediaWorking : l.mediaAdd))),
+          if (library.hasError)
+            settingsStatus(l.mediaLoadFailed, const Color(0xFFFF6B6B))
+          else if (library.isLoading)
+            Text(l.loading, style: settingsHintStyle)
+          else if (entries.isEmpty)
+            Text(l.mediaEmpty, style: settingsBodyStyle),
           for (final error in _errors)
-            Text(error, style: const TextStyle(color: Color(0xFFFFB15C))),
+            settingsStatus(error, const Color(0xFFFF6B6B)),
           // Searching an empty library is pointless; the box appears with
           // the first file. Same height as every other settings field.
           if (entries.isNotEmpty) ...[
@@ -280,7 +315,8 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
             TextField(
               key: const Key('media-search'),
               style: const TextStyle(color: Colors.white, fontSize: 13),
-              onChanged: (value) => setState(() => _query = value),
+              controller: _search,
+              onChanged: (_) => setState(() {}),
               decoration: settingsInput(hint: l.mediaSearch).copyWith(
                 prefixIcon: const Icon(Icons.search_rounded,
                     size: 16, color: Colors.white38),
@@ -289,7 +325,7 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
               ),
             ),
           ],
-          if (_query.trim().isNotEmpty && matches.isEmpty)
+          if (entries.isNotEmpty && matches.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(l.mediaNoMatches),
@@ -329,19 +365,26 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                         Text(e.value['name'] as String,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white)),
+                            style: settingsItemTitleStyle),
                         Text(
                             '${(e.value['bytes'] / 1048576).toStringAsFixed(1)} MB · ${switch (e.value['kind']) {
                               'image' => l.mediaImage,
                               'video' => l.mediaVideo,
                               _ => l.mediaAudio
                             }}',
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 11)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: settingsHintStyle),
                       ])),
                   IconButton(
                     key: Key('media-preview-${e.key}'),
-                    tooltip: l.mediaPreview,
+                    tooltip: _busy
+                        ? l.mediaWorking
+                        : service != null
+                            ? l.mediaPreview
+                            : library.hasError
+                                ? l.mediaLoadFailed
+                                : l.loading,
                     visualDensity: VisualDensity.compact,
                     onPressed: _busy || service == null
                         ? null
@@ -365,7 +408,8 @@ class _MediaLibraryCardState extends ConsumerState<MediaLibraryCard> {
                     tooltip: l.mediaDelete,
                     visualDensity: VisualDensity.compact,
                     color: const Color(0xFFFF6B6B),
-                    onPressed: _busy ? null : () => _delete(e.key),
+                    onPressed:
+                        _busy || service == null ? null : () => _delete(e),
                     icon: const Icon(Icons.delete_outline, size: 18),
                   ),
                 ])),

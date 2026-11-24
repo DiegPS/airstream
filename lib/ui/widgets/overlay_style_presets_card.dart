@@ -5,13 +5,75 @@ import 'package:airstream/ui/widgets/settings_controls.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-class OverlayStylePresetsCard extends ConsumerWidget {
+class OverlayStylePresetsCard extends ConsumerStatefulWidget {
   const OverlayStylePresetsCard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OverlayStylePresetsCard> createState() =>
+      _OverlayStylePresetsCardState();
+}
+
+class _OverlayStylePresetsCardState
+    extends ConsumerState<OverlayStylePresetsCard> {
+  bool _busy = false;
+
+  Future<void> _apply(OverlayStylePreset preset, String name) async {
+    if (_busy ||
+        OverlayStylePresets.matching(ref.read(settingsProvider)) == preset) {
+      return;
+    }
     final l = AppLocalizations.of(context)!;
-    final selected = OverlayStylePresets.matching(ref.watch(settingsProvider));
+    setState(() => _busy = true);
+    try {
+      if (!await confirmLiveAction(context,
+              title: l.overlayStyleReplaceConfirm(name),
+              action: l.overlayStyleReplace,
+              actionKey: const Key('overlay-style-replace-confirm')) ||
+          !mounted) {
+        return;
+      }
+      final container = ProviderScope.containerOf(context, listen: false);
+      final previous = ref.read(settingsProvider);
+      final notifier = ref.read(settingsProvider.notifier);
+      final messenger = ScaffoldMessenger.of(context)..removeCurrentSnackBar();
+      var message = l.overlayStyleApplied(name);
+      try {
+        await notifier.update(OverlayStylePresets.apply(previous, preset));
+      } catch (_) {
+        message = l.liveSaveFailed;
+      }
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(message),
+        action:
+            OverlayStylePresets.matching(container.read(settingsProvider)) !=
+                    preset
+                ? null
+                : SnackBarAction(
+                    label: l.overlayStyleUndo,
+                    onPressed: () async {
+                      try {
+                        await notifier.update(OverlayStylePresets.restoreVisual(
+                            container.read(settingsProvider), previous));
+                      } catch (_) {
+                        if (messenger.mounted) {
+                          messenger.showSnackBar(
+                              SnackBar(content: Text(l.liveSaveFailed)));
+                        }
+                      }
+                    },
+                  ),
+      ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final selected =
+        ref.watch(settingsProvider.select(OverlayStylePresets.matching));
     final labels = {
       OverlayStylePreset.classic: (
         l.overlayStyleClassic,
@@ -56,26 +118,10 @@ class OverlayStylePresetsCard extends ConsumerWidget {
               trailing: selected == preset
                   ? const Icon(Icons.check, size: 18, color: Color(0xFF53FC18))
                   : null,
-              onTap: () {
-                final previous = ref.read(settingsProvider);
-                if (OverlayStylePresets.matching(previous) == preset) return;
-                ref
-                    .read(settingsProvider.notifier)
-                    .update(OverlayStylePresets.apply(previous, preset));
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(SnackBar(
-                    content: Text(l.overlayStyleApplied(labels[preset]!.$1)),
-                    action: SnackBarAction(
-                      label: l.overlayStyleUndo,
-                      onPressed: () =>
-                          ref.read(settingsProvider.notifier).update(
-                                OverlayStylePresets.restoreVisual(
-                                    ref.read(settingsProvider), previous),
-                              ),
-                    ),
-                  ));
-              },
+              selected: selected == preset,
+              onTap: _busy || selected == preset
+                  ? null
+                  : () => _apply(preset, labels[preset]!.$1),
             ),
           ),
         const SizedBox(height: 4),

@@ -1996,7 +1996,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get overlayStylePresetsDescription =>
-      'Un toque cambia cómo se ven el chat y las alertas en OBS. Tus conexiones y demás ajustes no cambian.';
+      'Elige un estilo para el chat y las alertas en OBS.';
 
   @override
   String get overlayStyleCustom => 'Estilo personalizado';
@@ -4007,4 +4007,91 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get subathonAdjustHint =>
       'Inicia el subatón para ajustar el tiempo restante.';
+
+  @override
+  String get galleryInstalling => 'Instalando…';
+
+  @override
+  String get galleryInstalled =>
+      'Plantilla añadida. Está debajo de la galería.';
+
+  @override
+  String get galleryInstallFailed =>
+      'No se pudo instalar la plantilla. Revisa la carpeta de plantillas y vuelve a intentarlo.';
+
+  @override
+  String get templateImporting => 'Importando…';
+
+  @override
+  String get templateImportFailed =>
+      'No se pudo importar la plantilla. Revisa el ZIP y la carpeta de plantillas.';
+
+  @override
+  String get templateExporting => 'Exportando…';
+
+  @override
+  String get templateExportFailed =>
+      'No se pudo exportar la plantilla. Revisa la carpeta de destino y vuelve a intentarlo.';
+
+  @override
+  String get templateResetConfirm =>
+      '¿Restaurar los valores originales de todos los campos de esta plantilla?';
+
+  @override
+  String get templateFieldMediaEmpty =>
+      'Añade un archivo compatible en OBS y superposición → Biblioteca de medios.';
+
+  @override
+  String get templateFieldMediaMissing =>
+      'El archivo seleccionado no está disponible. Elige otro archivo o selecciona Ninguno.';
+
+  @override
+  String templateFieldNumberInvalid(String range, String min, String max) {
+    String _temp0 = intl.Intl.selectLogic(
+      range,
+      {
+        'both': 'Introduce un número entre $min y $max.',
+        'min': 'Introduce un número mayor o igual a $min.',
+        'max': 'Introduce un número menor o igual a $max.',
+        'other': 'Introduce un número válido.',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mediaDeleteConfirm(String name) {
+    return '¿Borrar «$name» de la biblioteca de medios? Dejará de estar disponible en las superposiciones y sonidos que lo usan.';
+  }
+
+  @override
+  String get mediaDeleteFailed =>
+      'No se pudo borrar el archivo. Revisa la biblioteca de medios y vuelve a intentarlo.';
+
+  @override
+  String get mediaImportFailed =>
+      'No se pudo añadir el archivo. Comprueba el acceso al archivo y el espacio libre.';
+
+  @override
+  String get mediaPreviewCloseFailed =>
+      'No se pudo cerrar la vista previa de audio.';
+
+  @override
+  String get mediaLoadFailed =>
+      'No se pudo cargar la biblioteca de medios. Vuelve a abrir Airstream para reintentar.';
+
+  @override
+  String get mediaWorking => 'Procesando…';
+
+  @override
+  String get mediaEmpty =>
+      'Usa Añadir archivos para importar imágenes, videos o sonidos.';
+
+  @override
+  String overlayStyleReplaceConfirm(String name) {
+    return '¿Reemplazar el estilo actual del chat y las alertas por «$name»?';
+  }
+
+  @override
+  String get overlayStyleReplace => 'Reemplazar estilo';
 }

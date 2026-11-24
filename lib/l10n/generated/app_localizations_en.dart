@@ -1983,7 +1983,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get overlayStylePresetsDescription =>
-      'One tap sets how the chat and alerts look in OBS. Your connections and other settings stay as they are.';
+      'Choose a style for your chat and alerts in OBS.';
 
   @override
   String get overlayStyleCustom => 'Custom style';
@@ -3959,4 +3959,88 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get subathonAdjustHint =>
       'Start the subathon to adjust the time remaining.';
+
+  @override
+  String get galleryInstalling => 'Installing…';
+
+  @override
+  String get galleryInstalled => 'Template added. Find it under the gallery.';
+
+  @override
+  String get galleryInstallFailed =>
+      'Could not install the gallery template. Check the Templates folder and try again.';
+
+  @override
+  String get templateImporting => 'Importing…';
+
+  @override
+  String get templateImportFailed =>
+      'Could not import the template. Check the ZIP and the Templates folder.';
+
+  @override
+  String get templateExporting => 'Exporting…';
+
+  @override
+  String get templateExportFailed =>
+      'Could not export the template. Check the destination folder and try again.';
+
+  @override
+  String get templateResetConfirm =>
+      'Restore the original values for all fields in this template?';
+
+  @override
+  String get templateFieldMediaEmpty =>
+      'Add a compatible file in OBS & Overlay → Media library.';
+
+  @override
+  String get templateFieldMediaMissing =>
+      'The selected media is unavailable. Choose another file or select None.';
+
+  @override
+  String templateFieldNumberInvalid(String range, String min, String max) {
+    String _temp0 = intl.Intl.selectLogic(
+      range,
+      {
+        'both': 'Enter a number from $min to $max.',
+        'min': 'Enter a number of at least $min.',
+        'max': 'Enter a number of at most $max.',
+        'other': 'Enter a valid number.',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mediaDeleteConfirm(String name) {
+    return 'Delete “$name” from the media library? It will also be unavailable in overlays and sounds that use it.';
+  }
+
+  @override
+  String get mediaDeleteFailed =>
+      'Could not delete the media file. Check the media library and try again.';
+
+  @override
+  String get mediaImportFailed =>
+      'Could not add the file. Check file access and available disk space.';
+
+  @override
+  String get mediaPreviewCloseFailed => 'Could not close the audio preview.';
+
+  @override
+  String get mediaLoadFailed =>
+      'Could not load the media library. Reopen Airstream to try again.';
+
+  @override
+  String get mediaWorking => 'Working…';
+
+  @override
+  String get mediaEmpty => 'Use Add files to import images, videos, or sounds.';
+
+  @override
+  String overlayStyleReplaceConfirm(String name) {
+    return 'Replace the current look of chat and alerts with “$name”?';
+  }
+
+  @override
+  String get overlayStyleReplace => 'Replace style';
 }

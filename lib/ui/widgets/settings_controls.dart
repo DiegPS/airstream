@@ -171,9 +171,11 @@ Widget settingsStatus(String text, Color color, {Key? key}) => Row(
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(text,
-            style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        Flexible(
+          child: Text(text,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
       ],
     );
 

@@ -3564,7 +3564,7 @@ abstract class AppLocalizations {
   /// No description provided for @overlayStylePresetsDescription.
   ///
   /// In en, this message translates to:
-  /// **'One tap sets how the chat and alerts look in OBS. Your connections and other settings stay as they are.'**
+  /// **'Choose a style for your chat and alerts in OBS.'**
   String get overlayStylePresetsDescription;
 
   /// No description provided for @overlayStyleCustom.
@@ -6429,6 +6429,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start the subathon to adjust the time remaining.'**
   String get subathonAdjustHint;
+
+  /// No description provided for @galleryInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get galleryInstalling;
+
+  /// No description provided for @galleryInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Template added. Find it under the gallery.'**
+  String get galleryInstalled;
+
+  /// No description provided for @galleryInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not install the gallery template. Check the Templates folder and try again.'**
+  String get galleryInstallFailed;
+
+  /// No description provided for @templateImporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get templateImporting;
+
+  /// No description provided for @templateImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not import the template. Check the ZIP and the Templates folder.'**
+  String get templateImportFailed;
+
+  /// No description provided for @templateExporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting…'**
+  String get templateExporting;
+
+  /// No description provided for @templateExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not export the template. Check the destination folder and try again.'**
+  String get templateExportFailed;
+
+  /// No description provided for @templateResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore the original values for all fields in this template?'**
+  String get templateResetConfirm;
+
+  /// No description provided for @templateFieldMediaEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a compatible file in OBS & Overlay → Media library.'**
+  String get templateFieldMediaEmpty;
+
+  /// No description provided for @templateFieldMediaMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected media is unavailable. Choose another file or select None.'**
+  String get templateFieldMediaMissing;
+
+  /// No description provided for @templateFieldNumberInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'{range, select, both{Enter a number from {min} to {max}.} min{Enter a number of at least {min}.} max{Enter a number of at most {max}.} other{Enter a valid number.}}'**
+  String templateFieldNumberInvalid(String range, String min, String max);
+
+  /// No description provided for @mediaDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}” from the media library? It will also be unavailable in overlays and sounds that use it.'**
+  String mediaDeleteConfirm(String name);
+
+  /// No description provided for @mediaDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete the media file. Check the media library and try again.'**
+  String get mediaDeleteFailed;
+
+  /// No description provided for @mediaImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add the file. Check file access and available disk space.'**
+  String get mediaImportFailed;
+
+  /// No description provided for @mediaPreviewCloseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not close the audio preview.'**
+  String get mediaPreviewCloseFailed;
+
+  /// No description provided for @mediaLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the media library. Reopen Airstream to try again.'**
+  String get mediaLoadFailed;
+
+  /// No description provided for @mediaWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working…'**
+  String get mediaWorking;
+
+  /// No description provided for @mediaEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Add files to import images, videos, or sounds.'**
+  String get mediaEmpty;
+
+  /// No description provided for @overlayStyleReplaceConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the current look of chat and alerts with “{name}”?'**
+  String overlayStyleReplaceConfirm(String name);
+
+  /// No description provided for @overlayStyleReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace style'**
+  String get overlayStyleReplace;
 }
 
 class _AppLocalizationsDelegate

@@ -305,6 +305,9 @@ void main() {
     await _flushTemplateIO(tester);
     expect(tester.widget<TextField>(color).controller!.text, '#445566');
     await tester.tap(find.byKey(const Key('template-fields-reset-chat')));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.widgetWithText(OutlinedButton, 'Reset to defaults').last);
     await _flushTemplateIO(tester);
     await tester.pump();
     expect(
@@ -549,7 +552,7 @@ void main() {
     ], child: const AirstreamApp()));
     await tester.pump();
     await tester.tap(find.byTooltip('Templates'));
-    await tester.pumpAndSettle();
+    await _flushTemplateIO(tester);
     expect(
         find.text(
             'Start from an example\nAsk an AI agent\nImport a template someone shared'),
@@ -2397,6 +2400,8 @@ void main() {
     await tester.ensureVisible(row);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Big bubbles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('overlay-style-replace-confirm')));
     await tester.pumpAndSettle();
     expect(settings.state.overlayFontSize, 20);
     expect(find.descendant(of: row, matching: find.byIcon(Icons.check)),

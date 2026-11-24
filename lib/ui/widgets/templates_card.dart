@@ -30,33 +30,54 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
   StreamSubscription<TemplateChange>? _subscription;
   List<TemplateInfo> _items = [];
   bool _busy = false;
+  bool _loadingList = true, _listFailed = false;
+  String? _workingOn;
   String? _notice;
   int _generation = 0;
   Future<void> _refresh() async {
     final generation = ++_generation;
     try {
       final items = await _library!.list();
-      if (mounted && generation == _generation) setState(() => _items = items);
+      if (mounted && generation == _generation) {
+        setState(() {
+          _items = items;
+          _loadingList = _listFailed = false;
+        });
+      }
     } catch (_) {
       if (mounted && generation == _generation) {
-        setState(() => _notice = AppLocalizations.of(context)!.templatesFailed);
+        setState(() {
+          _loadingList = false;
+          _listFailed = true;
+        });
       }
     }
   }
 
-  Future<void> _action(Future<void> Function() run) async {
+  Future<void> _action(Future<void> Function() run,
+      {String? target, String? failure}) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    final l = AppLocalizations.of(context)!;
+    setState(() {
+      _busy = true;
+      _workingOn = target;
+      _notice = null;
+    });
     try {
       await run();
     } on FormatException catch (error) {
-      if (mounted) setState(() => _notice = _reason(error.message));
+      if (mounted) showLiveMessage(context, _reason(error.message));
     } catch (_) {
       if (mounted) {
-        setState(() => _notice = AppLocalizations.of(context)!.templatesFailed);
+        showLiveMessage(context, failure ?? l.templatesFailed);
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _workingOn = null;
+        });
+      }
     }
   }
 
@@ -71,15 +92,17 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
   Future<void> _new() async {
     final choice = await showDialog<(String, TemplateStarter)>(
         context: context, builder: (_) => const _NewTemplateDialog());
-    if (choice == null) return;
+    if (choice == null || !mounted) return;
     await _library!
         .createTemplate(choice.$1, templateStarterFiles(choice.$2, choice.$1));
     await _refresh();
   }
 
   Future<void> _addGallery(GalleryItem item, String language) async {
+    final l = AppLocalizations.of(context)!;
     await const TemplateArchive().installGallery(_library!, item, language);
     await _refresh();
+    if (mounted) showLiveMessage(context, l.galleryInstalled);
   }
 
   Widget _gallery(AppLocalizations l, String? url, bool enabled) => Column(
@@ -127,10 +150,14 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       TextButton(
                         key: Key('gallery-add-${item.id}'),
                         onPressed: enabled
-                            ? () =>
-                                _action(() => _addGallery(item, l.localeName))
+                            ? () => _action(
+                                () => _addGallery(item, l.localeName),
+                                target: 'gallery-add-${item.id}',
+                                failure: l.galleryInstallFailed)
                             : null,
-                        child: Text(l.galleryAdd),
+                        child: Text(_workingOn == 'gallery-add-${item.id}'
+                            ? l.galleryInstalling
+                            : l.galleryAdd),
                       ),
                     ],
                   ),
@@ -153,9 +180,13 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         TextButton(
           key: Key('gallery-add-again-${info.id}'),
           onPressed: enabled
-              ? () => _action(() => _addGallery(item, l.localeName))
+              ? () => _action(() => _addGallery(item, l.localeName),
+                  target: 'gallery-add-again-${info.id}',
+                  failure: l.galleryInstallFailed)
               : null,
-          child: Text(l.galleryAddAgain),
+          child: Text(_workingOn == 'gallery-add-again-${info.id}'
+              ? l.galleryInstalling
+              : l.galleryAddAgain),
         ),
       ],
     );
@@ -175,7 +206,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
       'layout' => l.templateRejectLayout,
       'index' => l.templateRejectIndex,
       'indexSize' => l.templateRejectIndexSize,
-      _ => l.templateRejectSize,
+      'size' => l.templateRejectSize,
+      _ => l.templatesFailed,
     };
   }
 
@@ -190,6 +222,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         context: context,
         builder: (context) => AlertDialog(
                 key: const Key('template-import-dialog'),
+                scrollable: true,
                 title: Text(archive.name),
                 content: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -216,10 +249,10 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       onPressed: () => Navigator.pop(context, true),
                       child: Text(l.templateImport))
                 ]));
-    if (yes != true) return;
+    if (yes != true || !mounted) return;
     await const TemplateArchive().import(_library!, archive);
     await _refresh();
-    if (mounted) setState(() => _notice = l.templateArchiveDone);
+    if (mounted) showLiveMessage(context, l.templateArchiveDone);
   }
 
   Future<void> _menu(String action, TemplateInfo info) async {
@@ -228,9 +261,9 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         final l = AppLocalizations.of(context)!;
         final target = await getSaveLocation(
             suggestedName: '${info.id}.zip', acceptedTypeGroups: [_zipGroup]);
-        if (target == null) return;
+        if (target == null || !mounted) return;
         await const TemplateArchive().export(_library!, info.id, target.path);
-        if (mounted) setState(() => _notice = l.templateArchiveDone);
+        if (mounted) showLiveMessage(context, l.templateArchiveDone);
       case 'duplicate':
         final l = AppLocalizations.of(context)!;
         await const TemplateArchive()
@@ -241,7 +274,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
         await _explore('${_url(info.id)}?demo=1');
       case 'folder':
         final safe = await _library!.get(info.id);
-        if (safe != null) await _explore(safe.folderPath);
+        if (safe == null) throw StateError('Template unavailable');
+        await _explore(safe.folderPath);
       case 'edit':
         if (!mounted) return;
         await showDialog<void>(
@@ -252,22 +286,10 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
       case 'delete':
         if (!mounted) return;
         final l = AppLocalizations.of(context)!;
-        final yes = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-                    title: Text(l.templatesDelete),
-                    content: Text(l.templatesDeleteConfirm(info.manifest.name)),
-                    actions: [
-                      OutlinedButton(
-                          style: dialogSecondaryStyle(),
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text(l.templatesCancel)),
-                      OutlinedButton(
-                          style: dialogSecondaryStyle(destructive: true),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: Text(l.templatesDelete))
-                    ]));
-        if (yes == true) {
+        if (await confirmLiveAction(context,
+                title: l.templatesDeleteConfirm(info.manifest.name),
+                action: l.templatesDelete) &&
+            mounted) {
           await _library!.deleteTemplate(info.id);
           await _refresh();
         }
@@ -299,7 +321,7 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
     }
     final counts = ref.watch(templateCountsProvider).valueOrNull ?? {};
     final errors = ref.watch(templateErrorsProvider).valueOrNull ?? {};
-    final enabled = _library != null && !_busy;
+    final enabled = _library != null && !library.hasError && !_busy;
     final overlayUrl = ref.watch(overlayUrlProvider);
     return UiCard(
         title: l.templatesTitle,
@@ -332,8 +354,13 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                 child: OutlinedButton(
                     style: secondarySettingsStyle(),
                     key: const Key('templates-import'),
-                    onPressed: enabled ? () => _action(_import) : null,
-                    child: Text(l.templateImport)))
+                    onPressed: enabled
+                        ? () => _action(_import,
+                            target: 'import', failure: l.templateImportFailed)
+                        : null,
+                    child: Text(_workingOn == 'import'
+                        ? l.templateImporting
+                        : l.templateImport)))
           ]),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -363,32 +390,26 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       : null,
                   child: Text(l.templatesTest))
           ]),
-          if (library.isLoading)
-            const LinearProgressIndicator(
-                color: Color(0xFF53FC18), backgroundColor: Color(0xFF262626)),
-          if (library.hasError) Text(l.templatesFailed),
-          // Done / sent / copied in green; failures and "nothing to send"
-          // stay orange, so success no longer reads as a warning.
+          if (!library.hasError && (library.isLoading || _loadingList))
+            Text(l.loading, style: settingsHintStyle),
+          if (library.hasError || _listFailed)
+            settingsStatus(l.templatesFailed, const Color(0xFFFF6B6B)),
           if (_notice != null)
             Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(_notice!,
-                    key: const Key('templates-notice'),
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: {
-                          l.templateArchiveDone,
-                          l.templatesTestSent,
-                          l.templatesCopied,
-                        }.contains(_notice)
-                            ? const Color(0xFF53FC18)
-                            : const Color(0xFFFFB15C)))),
-          if (_items.isEmpty && !library.isLoading)
+                child: settingsStatus(
+                    _notice!,
+                    _notice == l.templatesTestSent
+                        ? const Color(0xFF53FC18)
+                        : const Color(0xFFFFB15C),
+                    key: const Key('templates-notice'))),
+          if (_items.isEmpty &&
+              !_loadingList &&
+              !_listFailed &&
+              !library.hasError)
             Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(l.templatesEmptyGuide,
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 12, height: 1.6))),
+                child: Text(l.templatesEmptyGuide, style: settingsBodyStyle)),
           _gallery(l, overlayUrl, enabled),
           for (final info in _items)
             Padding(
@@ -401,12 +422,20 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       Row(children: [
                         Expanded(
                             child: Text(info.manifest.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: settingsItemTitleStyle)),
                         PopupMenuButton<String>(
                             key: Key('template-menu-${info.id}'),
                             enabled: enabled,
-                            onSelected: (value) =>
-                                _action(() => _menu(value, info)),
+                            onSelected: (value) => _action(
+                                () => _menu(value, info),
+                                target: value == 'export'
+                                    ? 'export-${info.id}'
+                                    : null,
+                                failure: value == 'export'
+                                    ? l.templateExportFailed
+                                    : null),
                             itemBuilder: (_) => [
                                   for (final e in {
                                     'preview': l.templatesPreview,
@@ -427,6 +456,8 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                                                 : null))
                                 ])
                       ]),
+                      if (_workingOn == 'export-${info.id}')
+                        Text(l.templateExporting, style: settingsHintStyle),
                       Text(
                           '${info.id} · ${info.manifest.width}×${info.manifest.height}',
                           style: settingsHintStyle),
@@ -478,14 +509,9 @@ class _TemplatesCardState extends ConsumerState<TemplatesCard> {
                       TextButton.icon(
                           key: Key('template-copy-${info.id}'),
                           onPressed: enabled
-                              ? () => _action(() async {
-                                    await Clipboard.setData(
-                                        ClipboardData(text: _url(info.id)));
-                                    if (mounted) {
-                                      setState(
-                                          () => _notice = l.templatesCopied);
-                                    }
-                                  })
+                              ? () => _action(() => copyLiveText(
+                                  context, _url(info.id),
+                                  success: l.templatesCopied))
                               : null,
                           icon: const Icon(Icons.copy, size: 16),
                           label: Text(l.templatesCopy)),
@@ -504,6 +530,16 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
   final _name = TextEditingController();
   TemplateStarter _starter = TemplateStarter.blank;
   bool _invalid = false;
+
+  void _submit() {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      setState(() => _invalid = true);
+      return;
+    }
+    Navigator.pop(context, (name, _starter));
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -540,6 +576,7 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
                       controller: _name,
                       autofocus: true,
                       maxLength: 60,
+                      onSubmitted: (_) => _submit(),
                       // The "write a name" error goes as soon as one is typed.
                       onChanged: (value) {
                         if (_invalid && value.trim().isNotEmpty) {
@@ -570,13 +607,7 @@ class _NewTemplateDialogState extends State<_NewTemplateDialog> {
           ElevatedButton(
               style: dialogPrimaryStyle(),
               key: const Key('template-new-create'),
-              onPressed: () {
-                if (_name.text.trim().isEmpty) {
-                  setState(() => _invalid = true);
-                  return;
-                }
-                Navigator.pop(context, (_name.text.trim(), _starter));
-              },
+              onPressed: _submit,
               child: Text(l.templatesCreate))
         ]);
   }
@@ -600,6 +631,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
   final _blocked = List<bool>.filled(3, false);
   final _oversized = List<bool>.filled(3, false);
   bool _loading = true, _saving = false;
+  bool _confirmingDiscard = false;
   String? _notice;
   bool get _dirty => List.generate(3,
           (i) => !_blocked[i] && _controllers[i].text != (_original[i] ?? ''))
@@ -648,23 +680,14 @@ class _TemplateEditorState extends State<_TemplateEditor> {
   }
 
   Future<void> _close() async {
-    if (_saving) return;
+    if (_saving || _confirmingDiscard) return;
     final l = AppLocalizations.of(context)!;
     if (_dirty) {
-      final discard = await showDialog<bool>(
-          context: context,
-          builder: (context) =>
-              AlertDialog(title: Text(l.templatesUnsaved), actions: [
-                OutlinedButton(
-                    style: dialogSecondaryStyle(),
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(l.templatesCancel)),
-                OutlinedButton(
-                    style: dialogSecondaryStyle(destructive: true),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text(l.templatesDiscard))
-              ]));
-      if (discard != true) return;
+      _confirmingDiscard = true;
+      final discard = await confirmLiveAction(context,
+          title: l.templatesUnsaved, action: l.templatesDiscard);
+      _confirmingDiscard = false;
+      if (!discard) return;
     }
     if (mounted) Navigator.pop(context);
   }
@@ -690,6 +713,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
           )
         : style;
     final close = OutlinedButton(
+      autofocus: true,
       style: editorButtonStyle(secondarySettingsStyle()),
       onPressed: _saving ? null : _close,
       child: Text(l.templatesClose),
@@ -707,8 +731,8 @@ class _TemplateEditorState extends State<_TemplateEditor> {
           Expanded(
             child: Text(
               '${l.templatesEdit}: ${widget.info.manifest.name}',
-              maxLines: compact ? 1 : null,
-              overflow: compact ? TextOverflow.ellipsis : null,
+              maxLines: compact ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           OutlinedButton(
@@ -765,12 +789,11 @@ class _TemplateEditorState extends State<_TemplateEditor> {
               style: settingsHintStyle),
         // A stale "Saved" would be wrong once there are new edits.
         if (_notice != null && (!_dirty || _notice == l.templatesFailed))
-          Text(_notice!,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: _notice == l.templatesFailed
-                      ? const Color(0xFFFFB15C)
-                      : const Color(0xFF53FC18))),
+          settingsStatus(
+              _notice!,
+              _notice == l.templatesFailed
+                  ? const Color(0xFFFF6B6B)
+                  : const Color(0xFF53FC18)),
         if (compact)
           Row(children: [
             Expanded(child: close),
@@ -792,6 +815,8 @@ class _TemplateEditorState extends State<_TemplateEditor> {
         },
         child: CallbackShortcuts(
             bindings: {
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  unawaited(_close()),
               const SingleActivator(LogicalKeyboardKey.keyS, control: true):
                   () => unawaited(_save())
             },
@@ -893,12 +918,11 @@ class _AiTemplateDialogState extends State<_AiTemplateDialog> {
                   if (_notice != null)
                     Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: Text(_notice!,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: _notice == l.templatesFailed
-                                    ? const Color(0xFFFFB15C)
-                                    : const Color(0xFF53FC18)))),
+                        child: settingsStatus(
+                            _notice!,
+                            _notice == l.templatesFailed
+                                ? const Color(0xFFFF6B6B)
+                                : const Color(0xFF53FC18))),
                 ],
               ))),
       actions: [
