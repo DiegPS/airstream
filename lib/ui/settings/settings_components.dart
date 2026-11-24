@@ -490,12 +490,7 @@ Widget _dropdownRow(
             flex: 3,
             child: Text(
               label,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+              style: settingsBodyStyle,
             ),
           ),
           const SizedBox(width: 8),
@@ -506,7 +501,8 @@ Widget _dropdownRow(
               items: options
                   .map((e) => DropdownMenuItem(
                         value: e,
-                        child: Text(optionLabel?.call(e) ?? e),
+                        child: Text(optionLabel?.call(e) ?? e,
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
                       ))
                   .toList(),
               selectedItemBuilder: (context) => options
@@ -647,34 +643,37 @@ Widget _alertTestButtons({
           ),
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-            builder: (context, constraints) =>
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final button in <Widget>[
-                    _alertTestButton(
-                      l.superChat,
-                      () => onTest('superchat'),
-                    ),
-                    _alertTestButton(
-                      l.noMessage,
-                      () => onTest('superchat-empty'),
-                    ),
-                    _alertTestButton(
-                      l.member,
-                      () => onTest('membership'),
-                    ),
-                    _alertTestButton(l.testAlertBits, () => onTest('bits')),
-                    _alertTestButton(
-                        l.testAlertSubscription, () => onTest('subscription')),
-                    _alertTestButton(l.testAlertGift, () => onTest('gift')),
-                    _alertTestButton(l.testAlertRaid, () => onTest('raid')),
-                    _alertTestButton(l.testAlertKicks, () => onTest('kicks')),
-                  ])
-                    SizedBox(
-                        width: (constraints.maxWidth - 24) / 4,
-                        height: 64,
-                        child: button),
-                ])),
+        LayoutBuilder(builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 520
+              ? 4
+              : constraints.maxWidth >= 220
+                  ? 2
+                  : 1;
+          final width = (constraints.maxWidth - 8 * (columns - 1)) / columns;
+          return Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final button in <Widget>[
+              _alertTestButton(
+                l.superChat,
+                () => onTest('superchat'),
+              ),
+              _alertTestButton(
+                l.noMessage,
+                () => onTest('superchat-empty'),
+              ),
+              _alertTestButton(
+                l.member,
+                () => onTest('membership'),
+              ),
+              _alertTestButton(l.testAlertBits, () => onTest('bits')),
+              _alertTestButton(
+                  l.testAlertSubscription, () => onTest('subscription')),
+              _alertTestButton(l.testAlertGift, () => onTest('gift')),
+              _alertTestButton(l.testAlertRaid, () => onTest('raid')),
+              _alertTestButton(l.testAlertKicks, () => onTest('kicks')),
+            ])
+              SizedBox(width: width, child: button),
+          ]);
+        }),
       ],
     ),
   );

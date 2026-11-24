@@ -139,7 +139,9 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
     }
 
     final youtube = takeEdit(_form.ytHandle);
-    final port = takeEdit(_form.port);
+    final port = SettingsInputNormalizer.isValidOverlayPort(_form.port.text)
+        ? takeEdit(_form.port)
+        : null;
     final next = current.copyWith(
       youtubeHandle: youtube?.trim(),
       youtubeLiveId: youtube == null ? null : '',
@@ -203,7 +205,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
 
     final persisted = notifier.update(next);
     _syncControllers(ref.read(settingsProvider));
-    await persisted;
+    await saveLiveSettings(context, persisted);
   }
 
   Future<void> _startChat() async {
@@ -367,11 +369,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                 errorText: errorText,
                 onChanged: (_) => _mutate(() {}),
                 onSubmitted: (_) => _saveTextSettings(onlyChannel: controller),
-                onClear: () {
-                  controller.clear();
-                  _mutate(() {});
-                  _saveTextSettings(onlyChannel: controller);
-                },
+                onClear: () => _clearChannel(controller, label),
               ),
             ],
           ),
@@ -609,31 +607,6 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
                     : _form.ytHandle.text.trim().isNotEmpty)) ||
             (s.twitchEnabled && _form.twitch.text.trim().isNotEmpty) ||
             (s.kickEnabled && _form.kick.text.trim().isNotEmpty);
-        final youtubeState = connectionStatus['youtube'];
-        final twitchState = connectionStatus['twitch'];
-        final kickState = connectionStatus['kick'];
-        final youtubeError = s.youtubeEnabled &&
-                !s.youtubeDualStreamEnabled &&
-                youtubeState?.$1 == ServiceStatus.error
-            ? youtubeState?.$2
-            : null;
-        final youtubeHorizontalError = s.youtubeEnabled &&
-                s.youtubeDualStreamEnabled &&
-                connectionStatus['youtubeHorizontal']?.$1 == ServiceStatus.error
-            ? connectionStatus['youtubeHorizontal']?.$2
-            : null;
-        final youtubeVerticalError = s.youtubeEnabled &&
-                s.youtubeDualStreamEnabled &&
-                connectionStatus['youtubeVertical']?.$1 == ServiceStatus.error
-            ? connectionStatus['youtubeVertical']?.$2
-            : null;
-        final twitchError =
-            s.twitchEnabled && twitchState?.$1 == ServiceStatus.error
-                ? twitchState?.$2
-                : null;
-        final kickError = s.kickEnabled && kickState?.$1 == ServiceStatus.error
-            ? kickState?.$2
-            : null;
         return _buildChannelsTab(
           ref,
           context,
@@ -643,12 +616,8 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
           isRunning,
           sessionPhase,
           hasChannels,
-          youtubeError,
-          youtubeHorizontalError,
-          youtubeVerticalError,
+          connectionStatus,
           youtubeMetadata,
-          twitchError,
-          kickError,
         );
       case 1:
         final overlayUrl = ref.watch(overlayUrlProvider);
@@ -913,6 +882,7 @@ class _SettingsSidebarState extends ConsumerState<_SettingsSidebar> {
               : null,
           hintText: hint,
           errorText: errorText,
+          errorMaxLines: 3,
           hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
           filled: true,
           fillColor: const Color(0xFF1E1E1E),

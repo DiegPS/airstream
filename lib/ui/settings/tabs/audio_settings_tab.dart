@@ -129,8 +129,9 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                     try {
                       await appController.downloadTtsModel();
                     } catch (_) {
-                      // TtsService logs the failure and publishes an error
-                      // load state for this card to render.
+                      if (context.mounted) {
+                        showLiveMessage(context, l.ttsStatusErrorDescription);
+                      }
                     }
                   },
                 ),
@@ -222,7 +223,7 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                     icon: const Icon(Icons.delete_outline_rounded, size: 14),
                     label: Text(l.removeTtsModel),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white38,
+                      foregroundColor: const Color(0xFFFF6B6B),
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -293,40 +294,40 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                           ),
                           TextButton.icon(
                             onPressed: () async {
-                              final selected = await openFile(
-                                acceptedTypeGroups: const [
-                                  XTypeGroup(
-                                    label: 'WAV',
-                                    extensions: ['wav'],
-                                  ),
-                                ],
-                              );
-                              if (selected == null || !context.mounted) return;
-                              final limit = const TemplateArchiveLimits().file;
-                              String? error;
                               try {
-                                if (await selected.length() > limit) {
-                                  error = l.voiceReferenceTooLarge(
-                                      limit ~/ (1024 * 1024));
+                                final selected = await openFile(
+                                  acceptedTypeGroups: const [
+                                    XTypeGroup(
+                                        label: 'WAV', extensions: ['wav']),
+                                  ],
+                                );
+                                if (selected == null || !context.mounted) {
+                                  return;
                                 }
-                              } on io.FileSystemException {
-                                error = l.voiceReferenceUnreadable;
+                                final limit =
+                                    const TemplateArchiveLimits().file;
+                                if (await selected.length() > limit) {
+                                  if (context.mounted) {
+                                    showLiveMessage(
+                                        context,
+                                        l.voiceReferenceTooLarge(
+                                            limit ~/ (1024 * 1024)));
+                                  }
+                                  return;
+                                }
+                                if (!context.mounted) return;
+                                await saveLiveSettings(
+                                    context,
+                                    notifier.updateLatest(
+                                      (latest) => latest.copyWith(
+                                          ttsReferenceAudioPath: selected.path),
+                                    ));
+                              } catch (_) {
+                                if (context.mounted) {
+                                  showLiveMessage(
+                                      context, l.voiceReferenceUnreadable);
+                                }
                               }
-                              if (!context.mounted) return;
-                              if (error != null) {
-                                ScaffoldMessenger.of(context)
-                                  ..hideCurrentSnackBar()
-                                  ..showSnackBar(
-                                    SnackBar(content: Text(error)),
-                                  );
-                                return;
-                              }
-                              // The picker can stay open while goals, timers
-                              // or counters change: apply only the path to the
-                              // latest settings, not the snapshot from before.
-                              await notifier.updateLatest((latest) =>
-                                  latest.copyWith(
-                                      ttsReferenceAudioPath: selected.path));
                             },
                             icon:
                                 const Icon(Icons.audio_file_rounded, size: 15),
@@ -639,20 +640,15 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: captionsState.phase ==
-                            LiveCaptionsPhase.downloading
-                        ? null
-                        : () async {
-                            try {
-                              await appController.downloadLiveCaptionsModel();
-                            } catch (error, stack) {
-                              AppLogger.error(
-                                'Caption model download failed',
-                                error: error,
-                                stackTrace: stack,
-                              );
-                            }
-                          },
+                    onPressed: () async {
+                      try {
+                        await appController.downloadLiveCaptionsModel();
+                      } catch (_) {
+                        if (context.mounted) {
+                          showLiveMessage(context, l.captionStatusError);
+                        }
+                      }
+                    },
                     icon: const Icon(Icons.download_rounded, size: 16),
                     label: Text(
                       '${l.downloadCaptionModel} (${_formatByteSize(SpeechModelCatalog.canary.package.downloadBytes)})',
@@ -671,9 +667,8 @@ extension _AudioSettingsTabBuilder on _SettingsSidebarState {
                   title: l.obsCaptions,
                   overlayUrl: captionsCopyUrl,
                   description: l.obsCaptionsDescription,
-                  onCopy: () => Clipboard.setData(
-                    ClipboardData(text: captionsCopyUrl),
-                  ),
+                  onCopy: () => copyLiveText(context, captionsCopyUrl,
+                      success: l.liveCopied),
                 ),
               ],
             ],

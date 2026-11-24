@@ -24,8 +24,21 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
           description: l.obsDescription,
           trailing: Switch(
             value: s.obsEnabled,
-            onChanged: (v) =>
-                unawaited(notifier.update(s.copyWith(obsEnabled: v))),
+            onChanged: (v) async {
+              if (!v &&
+                  (obsState.connected || obsState.connecting) &&
+                  !await confirmLiveAction(context,
+                      title: l.settingsDisconnectObs,
+                      action: l.disconnectObs)) {
+                return;
+              }
+              if (!context.mounted) return;
+              await saveLiveSettings(
+                  context,
+                  notifier.updateLatest(
+                    (latest) => latest.copyWith(obsEnabled: v),
+                  ));
+            },
             activeThumbColor: const Color(0xFF53FC18),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -61,9 +74,9 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                       Expanded(
                         child: Text(
                           l.obsPasswordNotSaved,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.amber),
+                          style: settingsHintStyle.copyWith(
+                            color: const Color(0xFFFFB15C),
+                          ),
                         ),
                       ),
                       TextButton(
@@ -81,12 +94,27 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   onPressed: obsState.connecting
                       ? null
                       : () async {
-                          if (obsState.connected) {
-                            await appController.disconnectObs();
+                          if (obsState.connected &&
+                              !await confirmLiveAction(context,
+                                  title: l.settingsDisconnectObs,
+                                  action: l.disconnectObs)) {
                             return;
                           }
-                          await _saveTextSettings();
-                          await appController.connectObs();
+                          if (!context.mounted) return;
+                          try {
+                            if (obsState.connected) {
+                              await appController.disconnectObs();
+                            } else {
+                              await _saveTextSettings();
+                              if (context.mounted) {
+                                await appController.connectObs();
+                              }
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              showLiveMessage(context, l.obsConnectionProblem);
+                            }
+                          }
                         },
                   icon: Icon(
                     obsState.connected
@@ -108,7 +136,7 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   // shape and height of every other main button.
                   style: ElevatedButton.styleFrom(
                     backgroundColor: obsState.connected
-                        ? const Color(0xFFFF5252)
+                        ? const Color(0xFFFF6B6B)
                         : const Color(0xFF5B9CFF),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: const Color(0xFF262626),
@@ -221,10 +249,11 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
               ),
               const SizedBox(height: 10),
               _previewSwitch(ref, l),
-              if (overlayState.phase == OverlayServerPhase.starting)
+              if (overlayState.phase == OverlayServerPhase.starting ||
+                  overlayState.phase == OverlayServerPhase.disabled)
                 _statusMessage(
                   l.overlayStarting,
-                  color: Colors.amber,
+                  color: const Color(0xFFFFB15C),
                   icon: Icons.hourglass_top_rounded,
                 ),
               if (overlayState.phase == OverlayServerPhase.error)
@@ -242,28 +271,21 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                     overlayState.requestedPort!,
                     overlayState.port ?? s.overlayPort,
                   ),
-                  color: Colors.amber,
+                  color: const Color(0xFFFFB15C),
                   icon: Icons.info_outline_rounded,
                 ),
                 const SizedBox(height: 8),
               ],
               if (overlayState.phase == OverlayServerPhase.ready) ...[
+                settingsStatus(l.settingsOverlayReady, const Color(0xFF53FC18)),
+                const SizedBox(height: 8),
                 _overlayUrlCard(
                   l: l,
                   title: l.chatObsUrl,
                   overlayUrl: overlayCopyUrl,
                   description: l.chatObsUrlDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: overlayCopyUrl));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.chatOverlayUrlCopied),
-                        duration: const Duration(milliseconds: 1400),
-                      ),
-                    );
-                  },
+                  onCopy: () => copyLiveText(context, overlayCopyUrl,
+                      success: l.chatOverlayUrlCopied),
                 ),
                 const SizedBox(height: 8),
                 _overlayUrlCard(
@@ -271,16 +293,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   title: l.alertsObsUrl,
                   overlayUrl: alertsCopyUrl,
                   description: l.alertsObsUrlDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(ClipboardData(text: alertsCopyUrl));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.alertsOverlayUrlCopied),
-                        duration: const Duration(milliseconds: 1400),
-                      ),
-                    );
-                  },
+                  onCopy: () => copyLiveText(context, alertsCopyUrl,
+                      success: l.alertsOverlayUrlCopied),
                 ),
                 const SizedBox(height: 8),
                 _overlayUrlCard(
@@ -288,60 +302,42 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   title: l.featuredTitle,
                   overlayUrl: '$overlayCopyUrl/featured',
                   description: l.featuredDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: '$overlayCopyUrl/featured'));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.featuredUrlCopied)));
-                  },
+                  onCopy: () => copyLiveText(
+                      context, '$overlayCopyUrl/featured',
+                      success: l.featuredUrlCopied),
                 ),
                 _overlayUrlCard(
                   l: l,
                   title: l.giveawayTitle,
                   overlayUrl: '$overlayCopyUrl/giveaway',
                   description: l.giveawayDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: '$overlayCopyUrl/giveaway'));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.giveawayUrlCopied)));
-                  },
+                  onCopy: () => copyLiveText(
+                      context, '$overlayCopyUrl/giveaway',
+                      success: l.giveawayUrlCopied),
                 ),
                 _overlayUrlCard(
                   l: l,
                   title: l.goalsTitle,
                   overlayUrl: '$overlayCopyUrl/goals',
                   description: l.goalsDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: '$overlayCopyUrl/goals'));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.goalsUrlCopied)));
-                  },
+                  onCopy: () => copyLiveText(context, '$overlayCopyUrl/goals',
+                      success: l.goalsUrlCopied),
                 ),
                 _overlayUrlCard(
                   l: l,
                   title: l.subathonTitle,
                   overlayUrl: '$overlayCopyUrl/timer',
                   description: l.subathonDescription,
-                  onCopy: () async {
-                    await Clipboard.setData(
-                        ClipboardData(text: '$overlayCopyUrl/timer'));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l.subathonUrlCopied)));
-                  },
+                  onCopy: () => copyLiveText(context, '$overlayCopyUrl/timer',
+                      success: l.subathonUrlCopied),
                 ),
                 _overlayUrlCard(
                   l: l,
                   title: l.clockTitle,
                   overlayUrl: '$overlayCopyUrl/clock',
                   description: l.clockDescription,
-                  onCopy: () => Clipboard.setData(
-                      ClipboardData(text: '$overlayCopyUrl/clock')),
+                  onCopy: () => copyLiveText(context, '$overlayCopyUrl/clock',
+                      success: l.liveCopied),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -496,7 +492,8 @@ extension _ObsSettingsTabBuilder on _SettingsSidebarState {
                   id: id,
                   label: label,
                   settings: s,
-                  onChanged: (next) => notifier.update(next),
+                  onChanged: (next) =>
+                      saveLiveSettings(context, notifier.update(next)),
                   onTest: () {
                     final sent = appController.testOverlayAlert(id);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

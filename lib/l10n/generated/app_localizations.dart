@@ -1289,7 +1289,7 @@ abstract class AppLocalizations {
   /// No description provided for @overlayStartFailed.
   ///
   /// In en, this message translates to:
-  /// **'The overlay server could not start on port {port}. The port may already be in use or blocked.'**
+  /// **'The overlay server could not start on port {port}. Try another port and press Enter.'**
   String overlayStartFailed(int port);
 
   /// No description provided for @invalidOverlayPort.
@@ -2022,7 +2022,7 @@ abstract class AppLocalizations {
   /// No description provided for @obsConnectionProblem.
   ///
   /// In en, this message translates to:
-  /// **'OBS could not complete the requested action. Check the connection settings.'**
+  /// **'OBS could not complete the requested action. Check that OBS is open, WebSocket is enabled, and the host and password match OBS.'**
   String get obsConnectionProblem;
 
   /// No description provided for @defaultVoice.
@@ -6549,6 +6549,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Replace style'**
   String get overlayStyleReplace;
+
+  /// No description provided for @settingsRemoveChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the saved channel or stream for {channel}?'**
+  String settingsRemoveChannel(String channel);
+
+  /// No description provided for @settingsStartChatHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter and enable at least one channel to start chat.'**
+  String get settingsStartChatHelp;
+
+  /// No description provided for @settingsDualYoutubeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter two different YouTube video or live URLs to enable YouTube.'**
+  String get settingsDualYoutubeHelp;
+
+  /// No description provided for @settingsDisconnectObs.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from OBS?'**
+  String get settingsDisconnectObs;
+
+  /// No description provided for @settingsOverlayReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay server is running'**
+  String get settingsOverlayReady;
+
+  /// No description provided for @settingsChatLogOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the chat log folder. Check access to your Documents folder.'**
+  String get settingsChatLogOpenFailed;
+
+  /// No description provided for @settingsRemoveAlertTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this alert tier?'**
+  String get settingsRemoveAlertTier;
+
+  /// No description provided for @settingsAlertTierLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached ({count} tiers). Remove a tier to add another.'**
+  String settingsAlertTierLimit(int count);
+
+  /// No description provided for @settingsImportCouldNotApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not import settings. Check that the file is readable and try again.'**
+  String get settingsImportCouldNotApply;
 }
 
 class _AppLocalizationsDelegate

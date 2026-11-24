@@ -113,10 +113,17 @@ extension _SystemSettingsTabBuilder on _SettingsSidebarState {
               child: TextButton.icon(
                 key: const Key('chat-log-open-folder'),
                 onPressed: () async {
-                  final directory =
-                      await ref.read(appControllerProvider).chatLogDirectory();
-                  await directory.create(recursive: true);
-                  await io.Process.start('explorer', [directory.path]);
+                  try {
+                    final directory = await ref
+                        .read(appControllerProvider)
+                        .chatLogDirectory();
+                    await directory.create(recursive: true);
+                    await io.Process.start('explorer', [directory.path]);
+                  } catch (_) {
+                    if (context.mounted) {
+                      showLiveMessage(context, l.settingsChatLogOpenFailed);
+                    }
+                  }
                 },
                 icon: const Icon(Icons.folder_open_rounded, size: 16),
                 label: Text(l.chatLogOpenFolder),

@@ -641,7 +641,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String overlayStartFailed(int port) {
-    return 'The overlay server could not start on port $port. The port may already be in use or blocked.';
+    return 'The overlay server could not start on port $port. Try another port and press Enter.';
   }
 
   @override
@@ -1071,7 +1071,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get obsConnectionProblem =>
-      'OBS could not complete the requested action. Check the connection settings.';
+      'OBS could not complete the requested action. Check that OBS is open, WebSocket is enabled, and the host and password match OBS.';
 
   @override
   String get defaultVoice => 'Default';
@@ -4043,4 +4043,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get overlayStyleReplace => 'Replace style';
+
+  @override
+  String settingsRemoveChannel(String channel) {
+    return 'Remove the saved channel or stream for $channel?';
+  }
+
+  @override
+  String get settingsStartChatHelp =>
+      'Enter and enable at least one channel to start chat.';
+
+  @override
+  String get settingsDualYoutubeHelp =>
+      'Enter two different YouTube video or live URLs to enable YouTube.';
+
+  @override
+  String get settingsDisconnectObs => 'Disconnect from OBS?';
+
+  @override
+  String get settingsOverlayReady => 'Overlay server is running';
+
+  @override
+  String get settingsChatLogOpenFailed =>
+      'Could not open the chat log folder. Check access to your Documents folder.';
+
+  @override
+  String get settingsRemoveAlertTier => 'Remove this alert tier?';
+
+  @override
+  String settingsAlertTierLimit(int count) {
+    return 'Limit reached ($count tiers). Remove a tier to add another.';
+  }
+
+  @override
+  String get settingsImportCouldNotApply =>
+      'Could not import settings. Check that the file is readable and try again.';
 }

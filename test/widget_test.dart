@@ -979,7 +979,18 @@ void main() {
     expect(find.byTooltip('Clear'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Clear'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    final remove = find.widgetWithText(OutlinedButton, 'Remove');
+    expect(remove, findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(remove, findsNothing);
+    expect(find.text('@channel'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear'));
+    await tester.pumpAndSettle();
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(find.text('@channel'), findsNothing);
     expect(paintedHeight(), emptyHeight);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -1283,7 +1294,7 @@ void main() {
           connectionStatusProvider.overrideWith(
             (ref) => Stream.value(
               const {
-                'youtube': (ServiceStatus.error, 'channel not found'),
+                'youtube': (ServiceStatus.error, null),
               },
             ),
           ),
@@ -1567,7 +1578,7 @@ void main() {
     ));
     await tester.pump();
     expect(find.byTooltip('YouTube broadcast ended'), findsOneWidget);
-    expect(find.text('YouTube broadcast ended'), findsOneWidget);
+    expect(find.text('YouTube broadcast ended'), findsNWidgets(2));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -1629,6 +1640,11 @@ void main() {
     await tester.enterText(port, '8081');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
+    expect(settings.state.overlayPort, 8081);
+    await tester.enterText(port, '65536');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(find.text('Enter a port from 1 to 65535.'), findsOneWidget);
     expect(settings.state.overlayPort, 8081);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -2638,6 +2654,16 @@ void main() {
           await tester.pump();
           expect(copyValue, 'http://localhost:9456/featured');
           tester.binding.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData') {
+              throw PlatformException(code: 'clipboard-unavailable');
+            }
+            return null;
+          });
+          await tester.tap(featuredCopy);
+          await tester.pump();
+          expect(find.text(l.liveCopyFailed), findsOneWidget);
+          tester.binding.defaultBinaryMessenger
               .setMockMethodCallHandler(SystemChannels.platform, null);
           final platform = find.byKey(const Key('alert-platform-youtube'));
           await tester.ensureVisible(platform);
@@ -2665,6 +2691,16 @@ void main() {
           final remove = find.byTooltip(l.alertTierRemove);
           await tester.ensureVisible(remove);
           await tester.tap(remove);
+          tester.view.physicalSize = const Size(360, 600);
+          await tester.pumpAndSettle();
+          expect(settings.state.alertTypeOptions['superchat']!['tiers'], [
+            {'from': 12.5}
+          ]);
+          final confirm = find.widgetWithText(OutlinedButton, l.remove);
+          expect(confirm.hitTestable(), findsOneWidget);
+          await tester.tap(confirm);
+          await tester.pumpAndSettle();
+          tester.view.physicalSize = const Size(1000, 1000);
           await tester.pumpAndSettle();
           expect(settings.state.alertTypeOptions['superchat'], isNull);
           expect(tester.takeException(), isNull);

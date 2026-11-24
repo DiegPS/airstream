@@ -9,26 +9,13 @@ Future<void> _removeSelectedTtsModel({
   required AppController appController,
 }) async {
   final model = TtsModelCatalog.byId(settings.ttsModelId);
-  final remove = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(l.removeTtsModelTitle(model.name)),
-      content: Text(l.removeTtsModelConfirmationNamed(model.name)),
-      actions: [
-        OutlinedButton(
-          style: dialogSecondaryStyle(),
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text(l.cancel),
-        ),
-        OutlinedButton(
-          style: dialogSecondaryStyle(destructive: true),
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: Text(l.remove),
-        ),
-      ],
-    ),
+  final remove = await confirmLiveAction(
+    context,
+    title: l.removeTtsModelTitle(model.name),
+    content: l.removeTtsModelConfirmationNamed(model.name),
+    action: l.remove,
   );
-  if (remove != true || !context.mounted) return;
+  if (!remove || !context.mounted) return;
   try {
     // Settings may have changed while the dialog was open.
     await notifier.update(currentSettings().copyWith(ttsEnabled: false));

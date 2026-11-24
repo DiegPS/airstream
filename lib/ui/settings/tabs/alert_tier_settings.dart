@@ -49,6 +49,9 @@ class _AlertTierSettingsState extends State<_AlertTierSettings> {
         const SizedBox(height: 10),
         // A sub-heading inside one alert type, not a section of the card.
         Text(l.alertTiers, style: settingsItemTitleStyle),
+        if (tiers.length == AlertTypeOptions.maxTiers)
+          Text(l.settingsAlertTierLimit(AlertTypeOptions.maxTiers),
+              style: settingsHintStyle),
         if (widget.type == 'superchat')
           Text(l.alertTierCurrency, style: settingsHintStyle),
         for (final (index, tier) in tiers.indexed) ...[
@@ -62,9 +65,16 @@ class _AlertTierSettingsState extends State<_AlertTierSettings> {
             inheritedMedia:
                 AlertTypeOptions.of(widget.settings, widget.type).media,
             onChanged: (changes) => _update(index, changes),
-            onRemove: () {
+            onRemove: () async {
+              final confirmed = await confirmLiveAction(context,
+                  title: l.settingsRemoveAlertTier, action: l.remove);
+              if (!mounted || !confirmed) return;
+              final latest = _tiers.toList();
+              if (index >= latest.length || !mapEquals(latest[index], tier)) {
+                return;
+              }
               setState(() => _revision++);
-              _save(tiers.toList()..removeAt(index));
+              _save(latest..removeAt(index));
             },
           ),
         ],

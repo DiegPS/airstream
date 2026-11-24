@@ -221,7 +221,7 @@
   },
   "chatPartiallyConnected": "Some chats are connected. Review the platforms marked in red.",
   "overlayStarting": "Starting the local overlay server…",
-  "overlayStartFailed": "The overlay server could not start on port {port}. The port may already be in use or blocked.",
+  "overlayStartFailed": "The overlay server could not start on port {port}. Try another port and press Enter.",
   "invalidOverlayPort": "Enter a port from 1 to 65535.",
   "@overlayStartFailed": {
     "placeholders": {
@@ -453,7 +453,7 @@
   "@platformConnectionFailed": {
     "placeholders": { "platform": { "type": "String" } }
   },
-  "obsConnectionProblem": "OBS could not complete the requested action. Check the connection settings.",
+  "obsConnectionProblem": "OBS could not complete the requested action. Check that OBS is open, WebSocket is enabled, and the host and password match OBS.",
   "defaultVoice": "Default",
   "newsVoice": "News voice",
   "newsVoiceNumber": "News voice {number}",
@@ -1554,5 +1554,16 @@
   "mediaEmpty": "Use Add files to import images, videos, or sounds.",
   "overlayStyleReplaceConfirm": "Replace the current look of chat and alerts with “{name}”?",
   "@overlayStyleReplaceConfirm": {"placeholders": {"name": {"type": "String"}}},
-  "overlayStyleReplace": "Replace style"
+  "overlayStyleReplace": "Replace style",
+  "settingsRemoveChannel": "Remove the saved channel or stream for {channel}?",
+  "@settingsRemoveChannel": { "placeholders": { "channel": { "type": "String" } } },
+  "settingsStartChatHelp": "Enter and enable at least one channel to start chat.",
+  "settingsDualYoutubeHelp": "Enter two different YouTube video or live URLs to enable YouTube.",
+  "settingsDisconnectObs": "Disconnect from OBS?",
+  "settingsOverlayReady": "Overlay server is running",
+  "settingsChatLogOpenFailed": "Could not open the chat log folder. Check access to your Documents folder.",
+  "settingsRemoveAlertTier": "Remove this alert tier?",
+  "settingsAlertTierLimit": "Limit reached ({count} tiers). Remove a tier to add another.",
+  "@settingsAlertTierLimit": { "placeholders": { "count": { "type": "int" } } },
+  "settingsImportCouldNotApply": "Could not import settings. Check that the file is readable and try again."
 }

@@ -208,6 +208,7 @@ Future<bool> confirmLiveAction(
   BuildContext context, {
   required String title,
   required String action,
+  String? content,
   Key? dialogKey,
   Key? actionKey,
 }) async =>
@@ -217,6 +218,7 @@ Future<bool> confirmLiveAction(
         key: dialogKey,
         scrollable: true,
         title: Text(title),
+        content: content == null ? null : Text(content),
         actions: [
           OutlinedButton(
             autofocus: true,

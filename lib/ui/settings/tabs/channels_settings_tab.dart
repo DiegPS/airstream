@@ -1,6 +1,22 @@
 part of 'package:airstream/ui/chat_screen.dart';
 
 extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
+  Future<void> _clearChannel(
+    TextEditingController controller,
+    String label,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    final original = controller.text;
+    final confirmed = await confirmLiveAction(
+      context,
+      title: l.settingsRemoveChannel(label),
+      action: l.remove,
+    );
+    if (!mounted || !confirmed || controller.text != original) return;
+    _mutate(controller.clear);
+    await _saveTextSettings(onlyChannel: controller);
+  }
+
   Widget _buildHighlightSounds(
     AppLocalizations l,
     SettingsModel s,
@@ -57,14 +73,38 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
     bool isRunning,
     ChatSessionPhase sessionPhase,
     bool hasChannels,
-    String? youtubeError,
-    String? youtubeHorizontalError,
-    String? youtubeVerticalError,
+    Map<String, (ServiceStatus, String?)> statuses,
     YoutubeLiveMetadataSummary youtubeMetadata,
-    String? twitchError,
-    String? kickError,
   ) {
     final dualYoutube = s.youtubeDualStreamEnabled;
+    final chatRequested = sessionPhase != ChatSessionPhase.idle;
+
+    Widget status(String id, String label, bool configured) {
+      if (!configured) return const SizedBox.shrink();
+      if (!chatRequested) {
+        return settingsStatus(l.platformStatusIdle(label), Colors.white54);
+      }
+      final (phase, detail) = statuses[id] ?? (ServiceStatus.connecting, null);
+      return switch (phase) {
+        ServiceStatus.error => _inlineErrorMessage(
+            l,
+            label,
+            onRetry: () =>
+                ref.read(appControllerProvider).retryChatPlatform(id),
+          ),
+        ServiceStatus.connected => settingsStatus(
+            l.platformStatusConnected(label), const Color(0xFF53FC18)),
+        ServiceStatus.ended =>
+          settingsStatus(l.youtubeBroadcastEnded, Colors.white54),
+        ServiceStatus.connecting || ServiceStatus.idle => settingsStatus(
+            detail == youtubeWaitingForLiveStatus
+                ? l.youtubeWaitingForLiveDetail
+                : l.platformStatusConnecting(label),
+            const Color(0xFFFFB15C),
+          ),
+      };
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -85,11 +125,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                       onChanged: (_) => _channelEdited(),
                       onSubmitted: (_) =>
                           _saveTextSettings(onlyChannel: _form.ytHandle),
-                      onClear: () {
-                        _form.ytHandle.clear();
-                        _mutate(() {});
-                        _saveTextSettings(onlyChannel: _form.ytHandle);
-                      },
+                      onClear: () => _clearChannel(_form.ytHandle, 'YouTube'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -105,28 +141,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ],
               ),
-              if (ref
-                      .watch(connectionStatusProvider)
-                      .valueOrNull?['youtube']
-                      ?.$2 ==
-                  youtubeWaitingForLiveStatus) ...[
-                const SizedBox(height: 8),
-                _statusMessage(
-                  l.youtubeWaitingForLiveDetail,
-                  color: Colors.amber,
-                  icon: Icons.schedule_rounded,
-                ),
-              ],
-              if (youtubeError != null && youtubeError.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _inlineErrorMessage(
-                  l,
-                  'YouTube',
-                  onRetry: () => ref
-                      .read(appControllerProvider)
-                      .retryChatPlatform('youtube'),
-                ),
-              ],
+              status('youtube', 'YouTube', hasSingleYoutubeChat(s)),
               const SizedBox(height: 12),
             ],
             _label(l.twitchChannel),
@@ -140,11 +155,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     onChanged: (_) => _channelEdited(),
                     onSubmitted: (_) =>
                         _saveTextSettings(onlyChannel: _form.twitch),
-                    onClear: () {
-                      _form.twitch.clear();
-                      _mutate(() {});
-                      _saveTextSettings(onlyChannel: _form.twitch);
-                    },
+                    onClear: () => _clearChannel(_form.twitch, 'Twitch'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -159,15 +170,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
             ),
-            if (twitchError != null && twitchError.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _inlineErrorMessage(
-                l,
-                'Twitch',
-                onRetry: () =>
-                    ref.read(appControllerProvider).retryChatPlatform('twitch'),
-              ),
-            ],
+            status('twitch', 'Twitch',
+                s.twitchEnabled && s.twitchChannel.trim().isNotEmpty),
             const SizedBox(height: 12),
             _label(l.kickSlug),
             Row(
@@ -180,11 +184,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                     onChanged: (_) => _channelEdited(),
                     onSubmitted: (_) =>
                         _saveTextSettings(onlyChannel: _form.kick),
-                    onClear: () {
-                      _form.kick.clear();
-                      _mutate(() {});
-                      _saveTextSettings(onlyChannel: _form.kick);
-                    },
+                    onClear: () => _clearChannel(_form.kick, 'Kick'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -199,15 +199,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                 ),
               ],
             ),
-            if (kickError != null && kickError.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              _inlineErrorMessage(
-                l,
-                'Kick',
-                onRetry: () =>
-                    ref.read(appControllerProvider).retryChatPlatform('kick'),
-              ),
-            ],
+            status(
+                'kick', 'Kick', s.kickEnabled && s.kickSlug.trim().isNotEmpty),
             const SizedBox(height: 14),
             if (sessionPhase == ChatSessionPhase.failed)
               Row(
@@ -231,10 +224,7 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                         onPressed: _stopChat,
                         icon: const Icon(Icons.stop_rounded, size: 20),
                         label: Text(l.stop),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFFF8A80),
-                          side: const BorderSide(color: Color(0xFF7A3636)),
-                        ),
+                        style: secondarySettingsStyle(destructive: true),
                       ),
                     ),
                   ),
@@ -276,6 +266,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ),
               ),
+            if (!hasChannels && !isRunning)
+              Text(l.settingsStartChatHelp, style: settingsHintStyle),
             _switchRow(
               l.connectChatOnLaunch,
               s.connectChatOnLaunch,
@@ -312,17 +304,11 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   _form.ytHorizontalUrl.text,
                 ),
               ),
-              if (youtubeHorizontalError != null &&
-                  youtubeHorizontalError.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _inlineErrorMessage(
-                  l,
-                  l.youtubeHorizontalUrl,
-                  onRetry: () => ref
-                      .read(appControllerProvider)
-                      .retryChatPlatform('youtubeHorizontal'),
-                ),
-              ],
+              status(
+                'youtubeHorizontal',
+                l.youtubeHorizontalUrl,
+                s.youtubeEnabled && configuredDualYoutubeVideoIds(s) != null,
+              ),
               const SizedBox(height: 10),
               _youtubeStreamField(
                 label: l.youtubeVerticalUrl,
@@ -335,17 +321,11 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   otherUrl: _form.ytHorizontalUrl.text,
                 ),
               ),
-              if (youtubeVerticalError != null &&
-                  youtubeVerticalError.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _inlineErrorMessage(
-                  l,
-                  l.youtubeVerticalUrl,
-                  onRetry: () => ref
-                      .read(appControllerProvider)
-                      .retryChatPlatform('youtubeVertical'),
-                ),
-              ],
+              status(
+                'youtubeVertical',
+                l.youtubeVerticalUrl,
+                s.youtubeEnabled && configuredDualYoutubeVideoIds(s) != null,
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -367,6 +347,8 @@ extension _ChannelsSettingsTabBuilder on _SettingsSidebarState {
                   ),
                 ],
               ),
+              if (!s.youtubeEnabled && !_dualYoutubeUrlsAreValid)
+                Text(l.settingsDualYoutubeHelp, style: settingsHintStyle),
             ],
             if (youtubeMetadata.totalViewerCount != null) ...[
               const SizedBox(height: 12),

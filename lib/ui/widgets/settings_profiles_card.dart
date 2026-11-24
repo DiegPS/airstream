@@ -293,12 +293,12 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
           ));
 
     Future<void> export() async {
-      final location = await getSaveLocation(
-        suggestedName: 'airstream-settings.json',
-        acceptedTypeGroups: const [_jsonType],
-      );
-      if (location == null) return;
       try {
+        final location = await getSaveLocation(
+          suggestedName: 'airstream-settings.json',
+          acceptedTypeGroups: const [_jsonType],
+        );
+        if (location == null || !context.mounted) return;
         await File(location.path).writeAsString(
           SettingsProfiles.export(ref.read(settingsProvider)),
         );
@@ -311,9 +311,9 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
     }
 
     Future<void> import() async {
-      final file = await openFile(acceptedTypeGroups: const [_jsonType]);
-      if (file == null) return;
       try {
+        final file = await openFile(acceptedTypeGroups: const [_jsonType]);
+        if (file == null || !context.mounted) return;
         final source = await file.readAsString();
         final media = await ref.read(mediaLibraryProvider.future);
         await media.withStableFiles(() => notifier.importSettings(
@@ -326,7 +326,7 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
       } catch (error, stack) {
         AppLogger.warning('Settings import failed',
             error: error, stackTrace: stack);
-        if (context.mounted) notify(l.settingsImportFailed, error: true);
+        if (context.mounted) notify(l.settingsImportCouldNotApply, error: true);
       }
     }
 
@@ -422,30 +422,20 @@ class _SettingsBackupCardState extends ConsumerState<SettingsBackupCard> {
         });
 
     Future<void> reset() async {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(l.settingsResetTitle),
-          content: Text(l.settingsResetConfirmation),
-          actions: [
-            OutlinedButton(
-              style: dialogSecondaryStyle(),
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(l.cancel),
-            ),
-            OutlinedButton(
-              style: dialogSecondaryStyle(destructive: true),
-              key: const Key('settings-reset-confirm'),
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l.settingsReset),
-            ),
-          ],
-        ),
+      final confirmed = await confirmLiveAction(
+        context,
+        title: l.settingsResetTitle,
+        content: l.settingsResetConfirmation,
+        action: l.settingsReset,
+        actionKey: const Key('settings-reset-confirm'),
       );
-      if (confirmed != true) return;
-      await notifier.update(
-        SettingsProfiles.resetToDefaults(ref.read(settingsProvider)),
-      );
+      if (!confirmed || !context.mounted) return;
+      try {
+        await notifier.updateLatest(SettingsProfiles.resetToDefaults);
+      } catch (_) {
+        if (context.mounted) notify(l.liveSaveFailed, error: true);
+        return;
+      }
       if (context.mounted) notify(l.settingsResetDone);
     }
 

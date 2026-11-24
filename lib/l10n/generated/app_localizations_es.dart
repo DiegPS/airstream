@@ -645,7 +645,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String overlayStartFailed(int port) {
-    return 'No se pudo iniciar el servidor de superposición en el puerto $port. Es posible que el puerto esté ocupado o bloqueado.';
+    return 'No se pudo iniciar el servidor de superposición en el puerto $port. Prueba otro puerto y pulsa Intro.';
   }
 
   @override
@@ -1083,7 +1083,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get obsConnectionProblem =>
-      'OBS no pudo completar la acción solicitada. Revisa la configuración de conexión.';
+      'OBS no pudo completar la acción. Comprueba que OBS esté abierto, que WebSocket esté activado y que el servidor y la contraseña coincidan con los de OBS.';
 
   @override
   String get defaultVoice => 'Predeterminada';
@@ -4094,4 +4094,40 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get overlayStyleReplace => 'Reemplazar estilo';
+
+  @override
+  String settingsRemoveChannel(String channel) {
+    return '¿Quitar el canal o la emisión guardada de $channel?';
+  }
+
+  @override
+  String get settingsStartChatHelp =>
+      'Escribe y activa al menos un canal para iniciar el chat.';
+
+  @override
+  String get settingsDualYoutubeHelp =>
+      'Escribe dos URL de videos o directos distintos de YouTube para activarlo.';
+
+  @override
+  String get settingsDisconnectObs => '¿Desconectar de OBS?';
+
+  @override
+  String get settingsOverlayReady =>
+      'El servidor de superposiciones está activo';
+
+  @override
+  String get settingsChatLogOpenFailed =>
+      'No se pudo abrir la carpeta del historial del chat. Revisa los permisos de la carpeta Documentos.';
+
+  @override
+  String get settingsRemoveAlertTier => '¿Quitar este nivel de alerta?';
+
+  @override
+  String settingsAlertTierLimit(int count) {
+    return 'Límite de $count niveles alcanzado. Quita uno para añadir otro.';
+  }
+
+  @override
+  String get settingsImportCouldNotApply =>
+      'No se pudo importar la configuración. Comprueba que el archivo se pueda leer e inténtalo de nuevo.';
 }

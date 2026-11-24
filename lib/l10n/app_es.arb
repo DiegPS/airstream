@@ -202,7 +202,7 @@
   },
   "chatPartiallyConnected": "Algunos chats están conectados. Revisa las plataformas marcadas en rojo.",
   "overlayStarting": "Iniciando el servidor local de superposición…",
-  "overlayStartFailed": "No se pudo iniciar el servidor de superposición en el puerto {port}. Es posible que el puerto esté ocupado o bloqueado.",
+  "overlayStartFailed": "No se pudo iniciar el servidor de superposición en el puerto {port}. Prueba otro puerto y pulsa Intro.",
   "invalidOverlayPort": "Escribe un puerto entre 1 y 65535.",
   "ttsPlaybackFailed": "No se pudo generar o reproducir la voz. Revisa el modelo seleccionado y la salida de audio.",
   "voiceCommandFailed": "No se pudo completar el comando de voz. Revisa la conexión con OBS e inténtalo de nuevo.",
@@ -324,7 +324,7 @@
   "blockedWordsHint": "palabra\nfrase completa",
   "chatError": "No se pudieron cargar los mensajes del chat.",
   "platformConnectionFailed": "No se pudo conectar con {platform}. Revisa el canal y tu conexión a Internet.",
-  "obsConnectionProblem": "OBS no pudo completar la acción solicitada. Revisa la configuración de conexión.",
+  "obsConnectionProblem": "OBS no pudo completar la acción. Comprueba que OBS esté abierto, que WebSocket esté activado y que el servidor y la contraseña coincidan con los de OBS.",
   "defaultVoice": "Predeterminada",
   "newsVoice": "Voz de noticias",
   "newsVoiceNumber": "Voz de noticias {number}",
@@ -1285,5 +1285,14 @@
   "mediaWorking": "Procesando…",
   "mediaEmpty": "Usa Añadir archivos para importar imágenes, videos o sonidos.",
   "overlayStyleReplaceConfirm": "¿Reemplazar el estilo actual del chat y las alertas por «{name}»?",
-  "overlayStyleReplace": "Reemplazar estilo"
+  "overlayStyleReplace": "Reemplazar estilo",
+  "settingsRemoveChannel": "¿Quitar el canal o la emisión guardada de {channel}?",
+  "settingsStartChatHelp": "Escribe y activa al menos un canal para iniciar el chat.",
+  "settingsDualYoutubeHelp": "Escribe dos URL de videos o directos distintos de YouTube para activarlo.",
+  "settingsDisconnectObs": "¿Desconectar de OBS?",
+  "settingsOverlayReady": "El servidor de superposiciones está activo",
+  "settingsChatLogOpenFailed": "No se pudo abrir la carpeta del historial del chat. Revisa los permisos de la carpeta Documentos.",
+  "settingsRemoveAlertTier": "¿Quitar este nivel de alerta?",
+  "settingsAlertTierLimit": "Límite de {count} niveles alcanzado. Quita uno para añadir otro.",
+  "settingsImportCouldNotApply": "No se pudo importar la configuración. Comprueba que el archivo se pueda leer e inténtalo de nuevo."
 }
